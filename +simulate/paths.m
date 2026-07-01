@@ -58,11 +58,17 @@ n_clamp_c  = 0;
 n_clamp_pi = 0;
 n_negLW    = 0;
 
+% Nearest-feasible-neighbor map depends only on the fixed simplex grid, not
+% on t or on which policy array -- build it once and reuse it, instead of
+% re-running an O(n_bad*n_ok) search inside the loop below 2*T times.
+mask_ok = ~isnan(sol.c_pol(:,:,:,1));
+[bad_lin, nn_lin] = build_nan_fill_map(mask_ok);
+
 pp_c  = cell(T, 1);  pp_pi = cell(T, 1);
 for t = 1:T
     Cpol = sol.c_pol(:,:,:,t);  Ppol = sol.pi_pol(:,:,:,t);
-    Cf = fill_nan_nearest_3d(Cpol);
-    Pf = fill_nan_nearest_3d(Ppol);
+    Cf = apply_nan_fill(Cpol, bad_lin, nn_lin);
+    Pf = apply_nan_fill(Ppol, bad_lin, nn_lin);
     pp_c{t}  = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, Cf, 'linear', 'nearest');
     pp_pi{t} = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, Pf, 'linear', 'nearest');
 end
@@ -198,18 +204,29 @@ sim.diagnostics = struct('n_clamp_c', n_clamp_c, 'n_clamp_pi', n_clamp_pi, ...
                          'n_negLW', n_negLW);
 end
 
-function Z = fill_nan_nearest_3d(M)
-Z = M;
-if ~any(isnan(Z(:))), return; end
-[NL, NA, NH] = size(Z);
-mask_ok = ~isnan(Z);
+function [bad_lin, nn_lin] = build_nan_fill_map(mask_ok)
+% For every infeasible grid node, find the linear index of its nearest
+% feasible neighbor. Depends only on the (fixed) grid geometry, so callers
+% should compute this once and reuse it via apply_nan_fill, rather than
+% re-deriving it for every policy array.
+bad_lin = find(~mask_ok);
+nn_lin  = zeros(size(bad_lin));
+if isempty(bad_lin), return; end
+[NL, NA, NH] = size(mask_ok);
 [Ig, Jg, Kg] = ndgrid(1:NL, 1:NA, 1:NH);
-I_ok = Ig(mask_ok); J_ok = Jg(mask_ok); K_ok = Kg(mask_ok); V_ok = Z(mask_ok);
+I_ok = Ig(mask_ok); J_ok = Jg(mask_ok); K_ok = Kg(mask_ok);
+ok_lin = find(mask_ok);
 I_bad = Ig(~mask_ok); J_bad = Jg(~mask_ok); K_bad = Kg(~mask_ok);
 for k = 1:numel(I_bad)
     di = I_bad(k) - I_ok; dj = J_bad(k) - J_ok; dk = K_bad(k) - K_ok;
     d2 = di.*di + dj.*dj + dk.*dk;
     [~, q] = min(d2);
-    Z(I_bad(k), J_bad(k), K_bad(k)) = V_ok(q);
+    nn_lin(k) = ok_lin(q);
 end
+end
+
+function Z = apply_nan_fill(M, bad_lin, nn_lin)
+Z = M;
+if isempty(bad_lin), return; end
+Z(bad_lin) = M(nn_lin);
 end
