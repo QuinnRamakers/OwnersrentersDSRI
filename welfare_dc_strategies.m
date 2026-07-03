@@ -24,13 +24,21 @@ clear; clc;
 %% -----------------------------------------------------------------------
 %% Config
 %% -----------------------------------------------------------------------
-STRATS   = {'riskfree', 'equity_life', 'rule_100age_flat'};
+STRATS   = {'riskfree', 'equity_25', 'equity_50', 'equity_75', 'equity_life', ...
+            'rule_100age_flat', 'rule_110age_flat', 'rule_120age_flat', ...
+            'target_date_10y', 'baseline_glide'};
 HOUSING  = {'renter', 'owner'};
 BENCHMARK = 'rule_100age_flat';   % <-- change reference strategy here
 
 %% -----------------------------------------------------------------------
 %% Load V_tilde at the initial state (t=1) for every available scenario
 %% -----------------------------------------------------------------------
+%   The true initial state (X0=A0=0) sits exactly ON the feasibility
+%   boundary lambda+sA+sH=1 (sX0=0). Because lam0/sH0 fall between grid
+%   nodes, the trilinear interpolation stencil straddles that boundary and
+%   picks up an infeasible (NaN) corner -- 'linear' propagates the NaN.
+%   Fix: NaN-fill infeasible states via nearest-neighbour BEFORE building
+%   the interpolant, same as solve_lifecycle.m / paths.m already do.
 Vt0    = nan(numel(STRATS), numel(HOUSING));
 gamma_ = nan(numel(STRATS), numel(HOUSING));
 found  = false(numel(STRATS), numel(HOUSING));
@@ -48,8 +56,9 @@ for si = 1:numel(STRATS)
         sA0  = 0;
         sH0  = d.p.h_mult / (1 + d.p.h_mult);
 
+        V0_filled = fill_nan_nearest_3d(d.sol.V(:,:,:,1));
         F = griddedInterpolant({d.p.lambda_grid, d.p.sA_grid, d.p.sH_grid}, ...
-                                d.sol.V(:,:,:,1), 'linear', 'nearest');
+                                V0_filled, 'linear', 'nearest');
         Vt0(si, hi)    = F(lam0, sA0, sH0);
         gamma_(si, hi) = d.p.gamma;
         found(si, hi)  = true;
@@ -132,4 +141,23 @@ end
 
 function out = ternary(cond, a, b)
     if cond, out = a; else, out = b; end
+end
+
+function Z = fill_nan_nearest_3d(M)
+% Replace infeasible-state NaNs with nearest finite value (same helper as
+% solve_lifecycle.m / paths.m -- needed because the query point below sits
+% exactly on the feasibility boundary).
+Z = M;
+if ~any(isnan(Z(:))), return; end
+[NL, NA, NH] = size(Z);
+mask_ok = ~isnan(Z);
+[Ig, Jg, Kg] = ndgrid(1:NL, 1:NA, 1:NH);
+I_ok = Ig(mask_ok); J_ok = Jg(mask_ok); K_ok = Kg(mask_ok); V_ok = Z(mask_ok);
+I_bad = Ig(~mask_ok); J_bad = Jg(~mask_ok); K_bad = Kg(~mask_ok);
+for k = 1:numel(I_bad)
+    di = I_bad(k) - I_ok; dj = J_bad(k) - J_ok; dk = K_bad(k) - K_ok;
+    d2 = di.*di + dj.*dj + dk.*dk;
+    [~, q] = min(d2);
+    Z(I_bad(k), J_bad(k), K_bad(k)) = V_ok(q);
+end
 end
