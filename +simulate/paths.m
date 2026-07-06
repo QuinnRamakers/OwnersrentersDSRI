@@ -84,9 +84,23 @@ lam_path(:,1) = Y_path(:,1) ./ W_path(:,1);
 sA_path(:,1)  = A_path(:,1) ./ W_path(:,1);
 sH_path(:,1)  = H_path(:,1) ./ W_path(:,1);
 
-eps_S = randn(N, T-1);
-eps_Y = randn(N, T-1);
-eps_H = randn(N, T-1);
+% Independent standard-normal draws, then Cholesky-correlated (income L,
+% stock S, housing H) with the same Sigma used by grids.shock_grid -- no
+% resampling, just a linear transform of the same three draws.
+eps_S_ind = randn(N, T-1);
+eps_Y_ind = randn(N, T-1);
+eps_H_ind = randn(N, T-1);
+
+Sigma_shock = [1,           p.corr_SL, p.corr_HL; ...
+               p.corr_SL,   1,         p.corr_SH; ...
+               p.corr_HL,   p.corr_SH, 1        ];
+Lc_shock = chol(Sigma_shock, 'lower');
+
+Zind_shock  = [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'];  % 3 x N*(T-1)
+Zcorr_shock = Lc_shock * Zind_shock;
+eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
+eps_S = reshape(Zcorr_shock(2, :), N, T-1);
+eps_H = reshape(Zcorr_shock(3, :), N, T-1);
 
 for t = 1:T
     is_retired = (t >= p.t_ret);

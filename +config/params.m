@@ -36,9 +36,17 @@ p.income_coef = [-1.3672, 0.1046, -0.1905, 0.1165];
 
 % Financial market
 p.r             = 0.04;
-p.mu_S_level    = 0.06;
+p.mu_S_level    = 0.06;    % equity EXCESS return level (over r_f), CGM ~4%
 p.sigma_S_level = 0.157;
-p.corr_SL       = 0.0;
+% Shock correlation structure (income L, stock S, housing H). Each pairwise
+% corr represents the covariance of a single COMPOSITE income shock -- the
+% model has no aggregate/idiosyncratic income split, so corr_SL/corr_HL
+% conflate both channels into one number (see TODO.md, "Code <-> paper
+% audit"). Values TBD from a separate LISS + aggregate-return calibration
+% step; default to 0 (independent) until that calibration lands.
+p.corr_SL       = 0.0;     % corr(stock return, income shock)
+p.corr_HL       = 0.0;     % corr(housing return, income shock)
+p.corr_SH       = 0.0;     % corr(stock return, housing return)
 
 % Pension parameters
 %   kappa targets total replacement of ~0.75 * Y_64 combined with AOW (0.35).
@@ -93,8 +101,11 @@ p.tau_cg_stock = 0.25;
 
 % Derived
 p.Rf      = 1 + p.r;
-p.sigma_S = sqrt(log(1 + (p.sigma_S_level / (1 + p.mu_S_level))^2));
-p.mu_S    = log(1 + p.mu_S_level) - 0.5 * p.sigma_S^2;
+% mu_S_level is the EXCESS return level (over r_f): ln(R_S) = ln(R_f) + mu_S + eps.
+% Total expected gross level return is (1 + r + mu_S_level).
+p.sigma_S = sqrt(log(1 + (p.sigma_S_level / (1 + p.r + p.mu_S_level))^2));
+p.mu_S    = log(1 + p.r + p.mu_S_level) - 0.5 * p.sigma_S^2;
+% mu_H_level is the house's OWN log return (not excess) -- unchanged.
 p.sigma_H = sqrt(log(1 + (p.sigma_H_level / (1 + p.mu_H_level))^2));
 p.mu_H    = log(1 + p.mu_H_level) - 0.5 * p.sigma_H^2;
 p.t_ret   = p.retirement_age - p.age0 + 1;
