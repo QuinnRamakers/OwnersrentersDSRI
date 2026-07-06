@@ -3,7 +3,9 @@
 %
 %   Each strategy overrides the solved-for glide path p.tau_S with a fixed,
 %   exogenous rule; the household's own (c,pi) choice is still solved
-%   optimally given that rule. Crossed with renter/owner -> 10 x 2 = 20 runs.
+%   optimally given that rule. Crossed with renter/owner -> 11 x 2 = 22 runs.
+%   (one strategy, 'no_pension', instead forces kappa=0 -- no DC pension at
+%   all -- as a benchmark for the welfare value of having a DC pension.)
 %
 %   Output files:  dc_{strategy}_{renter|owner}.mat
 %   Log file:      dc_strategies_log.txt  (appended, not overwritten)
@@ -30,6 +32,9 @@ N_SIM    = 5000;
 %                      before retirement, linear glide to 0% at retirement,
 %                      0% thereafter
 %     'default'      : leave config.params()'s own glide path untouched
+%     'kappa_zero'   : no DC pension at all -- kappa forced to 0, so A stays
+%                      0 for life regardless of tau_S (equity share is moot).
+%                      Benchmark for the welfare VALUE of having a DC pension.
 STRATS = {
     'riskfree',         'Risk-free DC (0% equity throughout)',                    'zeros',         NaN;
     'equity_25',        'Constant 25% equity for life',                          'fixed_life',    0.25;
@@ -41,6 +46,7 @@ STRATS = {
     'rule_120age_flat', '(120-age)% rule (capped 100%); flat after',             'age_rule_flat', 120;
     'target_date_10y',  '100% equity to 10y pre-retirement, linear glide to 0',  'target_date',   10;
     'baseline_glide',   'Model default glide path (0.8@30 -> 0 at retirement)',  'default',       NaN;
+    'no_pension',       'No DC pension (kappa=0): household never contributes', 'kappa_zero',    NaN;
 };
 
 HOUSING = {'renter', 'owner'};
@@ -121,6 +127,9 @@ for si = 1:size(STRATS,1)
                 p.tau_S = tau;
             case 'default'
                 % leave config.params()'s own tau_S untouched
+            case 'kappa_zero'
+                p.kappa = 0;                    % no DC contributions -> A stays 0 for life
+                p.tau_S = zeros(p.T-1, 1);       % moot (A=0 always), set for clarity/logging
             otherwise
                 error('run_dc_strategies:badtype', 'Unknown strategy type: %s', s_type);
         end

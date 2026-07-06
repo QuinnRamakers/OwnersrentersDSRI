@@ -26,9 +26,10 @@ clear; clc;
 %% -----------------------------------------------------------------------
 STRATS   = {'riskfree', 'equity_25', 'equity_50', 'equity_75', 'equity_life', ...
             'rule_100age_flat', 'rule_110age_flat', 'rule_120age_flat', ...
-            'target_date_10y', 'baseline_glide'};
+            'target_date_10y', 'baseline_glide', 'no_pension'};
 HOUSING  = {'renter', 'owner'};
-BENCHMARK = 'rule_100age_flat';   % <-- change reference strategy here
+BENCHMARK   = 'rule_100age_flat';   % <-- change reference strategy here
+NO_PENSION  = 'no_pension';          % kappa=0 benchmark: value of having a DC pension
 
 %% -----------------------------------------------------------------------
 %% Load V_tilde at the initial state (t=1) for every available scenario
@@ -98,6 +99,38 @@ for hi = 1:numel(HOUSING)
         g = cev(Vt0(si, hi), Vt0(bi, hi), gamma_(si, hi));
         sign_str = ternary(g >= 0, 'worse by', 'better by');
         fprintf('  %-18s %12.6g %8.3f%%  (%s)\n', STRATS{si}, Vt0(si, hi), g*100, sign_str);
+    end
+end
+
+%% -----------------------------------------------------------------------
+%% Value of having a DC pension at all: every strategy vs "no_pension"
+%% (kappa=0 -- household never contributes, A stays 0 for life)
+%% -----------------------------------------------------------------------
+ni = find(strcmp(STRATS, NO_PENSION));
+if isempty(ni)
+    warning('welfare:nobench', '"%s" not in STRATS list -- skipping pension-value table.', NO_PENSION);
+else
+    fprintf('\n%s\n', repmat('=', 1, 70));
+    fprintf('Value of having a DC pension vs "%s" (kappa=0, no pension)\n', NO_PENSION);
+    fprintf('%s\n', repmat('=', 1, 70));
+
+    for hi = 1:numel(HOUSING)
+        fprintf('\n-- %s --\n', HOUSING{hi});
+        if ~found(ni, hi)
+            fprintf('  "%s" scenario missing for %s -- skipping.\n', NO_PENSION, HOUSING{hi});
+            continue
+        end
+        fprintf('  %-18s %12s %14s\n', 'strategy', 'V_tilde0', 'CEV vs no pension');
+        for si = 1:numel(STRATS)
+            if si == ni, continue; end
+            if ~found(si, hi)
+                fprintf('  %-18s %12s %14s\n', STRATS{si}, 'MISSING', '--');
+                continue
+            end
+            g = cev(Vt0(si, hi), Vt0(ni, hi), gamma_(si, hi));
+            sign_str = ternary(g >= 0, 'pension destroys value', 'pension adds value');
+            fprintf('  %-18s %12.6g %8.3f%%  (%s)\n', STRATS{si}, Vt0(si, hi), abs(g)*100, sign_str);
+        end
     end
 end
 
