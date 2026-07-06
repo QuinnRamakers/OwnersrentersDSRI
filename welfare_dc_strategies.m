@@ -50,7 +50,9 @@ for si = 1:numel(STRATS)
             warning('welfare:missing', 'Missing %s -- skipping.', fname);
             continue
         end
+        fprintf('Loading %-32s ...', fname); t_load = tic;
         d = load(fname, 'p', 'sol');
+        fprintf(' done (%.1f s)\n', toc(t_load));
 
         lam0 = 1 / (1 + d.p.h_mult);
         sA0  = 0;
