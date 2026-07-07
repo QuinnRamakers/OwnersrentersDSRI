@@ -1,7 +1,15 @@
-%% BOOTSTRAP_POD  Reinstall git, clone/pull the repo, and install MATLAB
-%   toolboxes -- everything needed to get a fresh/restarted pod back to a
-%   working state, run entirely from the MATLAB console (no separate
-%   terminal needed).
+%% BOOTSTRAP_POD  Fetch the repo code (ephemeral) and install MATLAB
+%   toolboxes (persistent) -- everything needed to get a fresh/restarted
+%   pod back to a working state, run entirely from the MATLAB console (no
+%   separate terminal needed, and no git/apt-get required).
+%
+%   Design: only the MATLAB install goes on the persistent volume
+%   ($CGM_OUTPUT_DIR/matlab) -- it's the slow, multi-GB part, so it should
+%   only ever be installed once per PVC. The repo itself is ~300KB of .m
+%   files with no tracked binaries, so it's fetched fresh into ephemeral
+%   storage (/tmp) on every run via a plain tarball download -- faster than
+%   `apt-get install git` (which pulls git's whole dependency chain) and
+%   keeps the PV free of a redundant code checkout.
 %
 %   Before running, set the two required environment variables:
 %       setenv('CGM_OUTPUT_DIR', '/Solutionstorage')   % PVC mount path
@@ -15,52 +23,52 @@ token   = getenv('GITHUB_TOKEN');
 assert(~isempty(out_dir), 'Set CGM_OUTPUT_DIR first, e.g. setenv(''CGM_OUTPUT_DIR'',''/Solutionstorage'')');
 assert(~isempty(token),   'Set GITHUB_TOKEN first, e.g. setenv(''GITHUB_TOKEN'',''<your PAT>'')');
 
-repo_dir = fullfile(out_dir, 'OwnersrentersDSRI');
+repo_dir = fullfile(tempdir, 'OwnersrentersDSRI');   % ephemeral -- not on the PV
 
 %% -------------------------------------------------------------------------
-%% 1. Install git
+%% 1. Fetch the repo code as a tarball (no git, no apt-get needed)
 %% -------------------------------------------------------------------------
-system('sudo apt-get update && sudo apt-get install -y git ca-certificates');
+if isfolder(repo_dir), rmdir(repo_dir, 's'); end
+mkdir(repo_dir);
 
-%% -------------------------------------------------------------------------
-%% 2. Clone the repo onto the persistent volume (or pull if already there)
-%% -------------------------------------------------------------------------
-if isfolder(fullfile(repo_dir, '.git'))
-    fprintf('Repo already present at %s -- pulling latest main.\n', repo_dir);
-    [status, output] = system(sprintf( ...
-        'git -C "%s" -c http.extraHeader="Authorization: Bearer %s" pull origin main', ...
-        repo_dir, token));
-else
-    fprintf('Cloning repo to %s\n', repo_dir);
-    [status, output] = system(sprintf( ...
-        'git -c http.extraHeader="Authorization: Bearer %s" clone https://github.com/QuinnRamakers/OwnersrentersDSRI.git "%s"', ...
-        token, repo_dir));
+tarball = fullfile(tempdir, 'repo.tar.gz');
+[status, output] = system(sprintf( ...
+    ['wget -q --header="Authorization: Bearer %s" ' ...
+     '--header="Accept: application/vnd.github+json" ' ...
+     '-O "%s" https://api.github.com/repos/QuinnRamakers/OwnersrentersDSRI/tarball/main'], ...
+    token, tarball));
+if status ~= 0
+    disp(output)
+    error('bootstrap_pod:download', 'Tarball download failed -- see output above.');
 end
+
+[status, output] = system(sprintf('tar -xzf "%s" -C "%s" --strip-components=1', tarball, repo_dir));
 disp(output)
 if status ~= 0
-    error('bootstrap_pod:git', 'git step failed -- see output above.');
+    error('bootstrap_pod:extract', 'Tarball extraction failed -- see output above.');
 end
+delete(tarball);
+fprintf('Code ready at %s (ephemeral -- re-fetched on every pod start)\n', repo_dir);
 
 %% -------------------------------------------------------------------------
-%% 3. Install the missing MATLAB toolboxes into the existing MATLAB install
+%% 2. Install the missing MATLAB toolboxes into the existing MATLAB install
+%%    (persisted on the PV -- only does real work the first time)
 %% -------------------------------------------------------------------------
 matlab_root = matlabroot;
 fprintf('MATLAB root: %s\n', matlab_root);
 
-system('sudo apt-get install -y wget ca-certificates');
-
-cd /tmp
+cd(tempdir)
 system('wget -q https://www.mathworks.com/mpm/glnxa64/mpm');
 system('chmod +x mpm');
 
-cmd = sprintf(['sudo HOME=%s /tmp/mpm install ' ...
+cmd = sprintf(['sudo HOME=%s ./mpm install ' ...
     '--destination=%s --release=R2025a ' ...
     '--products Optimization_Toolbox Parallel_Computing_Toolbox'], ...
     getenv('HOME'), matlab_root);
 [status, output] = system(cmd);
 disp(output)
 
-system('rm -f /tmp/mpm /tmp/mathworks_root.log');
+delete(fullfile(tempdir, 'mpm'));
 
 %% -------------------------------------------------------------------------
 cd(repo_dir)
