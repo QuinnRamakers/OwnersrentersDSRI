@@ -17,7 +17,7 @@
 
 clear; clc;
 
-LOG_FILE = 'dc_strategies_log.txt';
+LOG_FILE = fullfile(utility.output_dir(), 'dc_strategies_log.txt');
 N_SIM    = 5000;
 
 %% -----------------------------------------------------------------------
@@ -90,7 +90,7 @@ for si = 1:size(STRATS,1)
 
     for hi = 1:numel(HOUSING)
         housing  = HOUSING{hi};
-        out_file = sprintf('dc_%s_%s.mat', s_name, housing);
+        out_file = fullfile(utility.output_dir(), sprintf('dc_%s_%s.mat', s_name, housing));
 
         if isfile(out_file)
             lprintf(LOG_FILE, 'SKIP   %s  (file exists)\n', out_file);

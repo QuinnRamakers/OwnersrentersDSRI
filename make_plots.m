@@ -56,6 +56,11 @@ else
     colors       = {[0.45 0.20 0.55], [0.20 0.60 0.30]};
 end
 
+% Read inputs from (and write figures to) the persistent-volume output dir
+% if CGM_OUTPUT_DIR is set -- see +utility/output_dir.m.
+out_dir = utility.output_dir();
+files   = fullfile(out_dir, files);
+
 % ── load ──────────────────────────────────────────────────────────────────
 S = cell(numel(files), 1);
 for k = 1:numel(files)
@@ -380,7 +385,7 @@ for k = 1:numel(files)
     end
 
     hide_axes_toolbars(fig);
-    out = sprintf('fig_dashboard_%s.png', short_names{k});
+    out = fullfile(out_dir, sprintf('fig_dashboard_%s.png', short_names{k}));
     exportgraphics(fig, out, 'Resolution', 150);
     fprintf('Wrote %s\n', out);
     close(fig);
@@ -442,7 +447,7 @@ for k = 1:numel(files)
         view(-40, 28); grid on; box on;
     end
 
-    out = sprintf('fig_policy_3d_%s.png', short_names{k});
+    out = fullfile(out_dir, sprintf('fig_policy_3d_%s.png', short_names{k}));
     exportgraphics(fig, out, 'Resolution', 120);
     fprintf('Wrote %s\n', out);
     close(fig);
@@ -546,7 +551,7 @@ title('Annuity price (cost of converting savings to lifetime income)');
 legend('Location','best','FontSize',7,'Interpreter','none');
 
 hide_axes_toolbars(fig);
-exportgraphics(fig, 'fig_cross_scenario.png', 'Resolution', 130);
+exportgraphics(fig, fullfile(out_dir, 'fig_cross_scenario.png'), 'Resolution', 130);
 fprintf('Wrote fig_cross_scenario.png\n');
 close(fig);
 end % if RUN_ALL_SCENARIOS
@@ -732,7 +737,7 @@ text(0.02, 0.97, box_txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
 title('(l)  Calibration', 'FontSize', FT3);
 
 hide_axes_toolbars(fig);
-exportgraphics(fig, 'fig_renter_vs_owner.png', 'Resolution', 130);
+exportgraphics(fig, fullfile(out_dir, 'fig_renter_vs_owner.png'), 'Resolution', 130);
 fprintf('Wrote fig_renter_vs_owner.png\n');
 close(fig);
 %% =================== REDUCTION OVERLAY (1×3) ============================
@@ -769,7 +774,7 @@ set(gca,'XTick',1:numel(files),'XTickLabel',legend_names,'XTickLabelRotation',30
 ylabel('% of N×T points'); title('Negative-LW frequency'); grid on;
 
 hide_axes_toolbars(fig);
-exportgraphics(fig, 'fig_reduction_overlay.png', 'Resolution', 130);
+exportgraphics(fig, fullfile(out_dir, 'fig_reduction_overlay.png'), 'Resolution', 130);
 fprintf('Wrote fig_reduction_overlay.png\n');
 close(fig);
 end % if RUN_ALL_SCENARIOS

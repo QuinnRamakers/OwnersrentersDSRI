@@ -73,7 +73,7 @@ for k = 1:numel(scenarios)
     timing = sol.timing;
     timing.sim_sec = sim_elapsed;
 
-    fname = sprintf('combined_%s.mat', sc.name);
+    fname = fullfile(utility.output_dir(), sprintf('combined_%s.mat', sc.name));
     save(fname, 'p', 'profile', 'shocks', 'ann_price', 'sol', 'sim', 'sc', 'timing');
     fprintf('  Saved %s\n', fname);
 end

@@ -46,7 +46,7 @@ found  = false(numel(STRATS), numel(HOUSING));
 
 for si = 1:numel(STRATS)
     for hi = 1:numel(HOUSING)
-        fname = sprintf('dc_%s_%s.mat', STRATS{si}, HOUSING{hi});
+        fname = fullfile(utility.output_dir(), sprintf('dc_%s_%s.mat', STRATS{si}, HOUSING{hi}));
         if ~isfile(fname)
             warning('welfare:missing', 'Missing %s -- skipping.', fname);
             continue

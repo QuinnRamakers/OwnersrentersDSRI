@@ -14,10 +14,11 @@
 %   Safe to run on a partially-completed sweep -- only reports on files that
 %   exist at the time it's run.
 
-files = dir('dc_*.mat');
+out_dir = utility.output_dir();
+files = dir(fullfile(out_dir, 'dc_*.mat'));
 if isempty(files)
     error('analyze_dc_strategies_timing:none', ...
-        'No dc_*.mat files found in %s -- run run_dc_strategies.m first.', pwd);
+        'No dc_*.mat files found in %s -- run run_dc_strategies.m first.', out_dir);
 end
 
 n = numel(files);
@@ -107,5 +108,6 @@ bar(run_names, T.period_cv(ord), 'FaceColor',[0.80 0.45 0.25]);
 ylabel('Coefficient of variation'); title('Per-period solve-time variability within each run');
 set(gca, 'XTickLabelRotation', 60, 'FontSize', 8);
 
-exportgraphics(fig, 'fig_dc_strategies_timing.png', 'Resolution', 130);
-fprintf('\nWrote fig_dc_strategies_timing.png\n');
+out_png = fullfile(out_dir, 'fig_dc_strategies_timing.png');
+exportgraphics(fig, out_png, 'Resolution', 130);
+fprintf('\nWrote %s\n', out_png);
