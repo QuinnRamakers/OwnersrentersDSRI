@@ -36,7 +36,7 @@ p.income_coef = [-1.3672, 0.1046, -0.1905, 0.1165];
 
 % Financial market
 p.r             = 0.04;
-p.mu_S_level    = 0.04;    % equity EXCESS return level (over r_f), CGM ~4%
+p.mu_S_level    = 0.02;    % equity EXCESS return level (over r_f)
 p.sigma_S_level = 0.157;
 % Shock correlation structure (income L, stock S, housing H). Each pairwise
 % corr represents the covariance of a single COMPOSITE income shock -- the
