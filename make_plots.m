@@ -109,13 +109,15 @@ fprintf('E[Y@50] = %.4f  |  1 model unit = $%.0f  |  dscale = %.3f k$/unit\n', .
         unit, Y50_dollars/unit, dscale);
 
 % ── Merton benchmark ─────────────────────────────────────────────────────
-% Classical Merton risky share on total wealth: pi* = (mu_S - r) / (gamma * sigma_S^2)
+% Classical Merton risky share on total wealth: pi* = mu_S_excess / (gamma * sigma_S^2)
 % Reference horizontal line for the "Total equity / total wealth W" panels.
+% p.mu_S_level IS ALREADY the excess return over r_f (see params.m) -- do not
+% subtract p.r again here, that would double-count it and always give 0.
 % Uses level (gross) excess return / vol as in params.m. Same across all five
 % scenarios since gamma, mu_S, sigma_S don't vary.
-pi_merton = (S{1}.p.mu_S_level - S{1}.p.r) / (S{1}.p.gamma * S{1}.p.sigma_S_level^2);
-fprintf('Merton benchmark: pi* = (%.3f - %.3f)/(%.0f * %.3f^2) = %.4f\n', ...
-        S{1}.p.mu_S_level, S{1}.p.r, S{1}.p.gamma, S{1}.p.sigma_S_level, pi_merton);
+pi_merton = S{1}.p.mu_S_level / (S{1}.p.gamma * S{1}.p.sigma_S_level^2);
+fprintf('Merton benchmark: pi* = %.3f/(%.0f * %.3f^2) = %.4f\n', ...
+        S{1}.p.mu_S_level, S{1}.p.gamma, S{1}.p.sigma_S_level, pi_merton);
 
 %% =================== PER-SCENARIO DASHBOARDS (3×4) ======================
 % Publication-quality 12-panel dashboard per scenario.
@@ -358,11 +360,15 @@ for k = 1:numel(files)
     else
         house_line = 'Housing not modelled in this scenario.';
     end
+    tau_inc  = NaN; if isfield(p, 'tau_inc'),      tau_inc  = p.tau_inc;      end   % older .mat files predate the tax model
+    tau_cg_b = NaN; if isfield(p, 'tau_cg_bond'),  tau_cg_b = p.tau_cg_bond;  end
+    tau_cg_s = NaN; if isfield(p, 'tau_cg_stock'), tau_cg_s = p.tau_cg_stock; end
     box_txt = {
         '\bf Calibration \rm';
         sprintf('CRRA coefficient \\gamma=%.0f   |   Discount factor \\beta=%.2f   |   Bequest parameter \\chi=%.2f', p.gamma, p.beta, p.chi);
         sprintf('DC contribution rate \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', 100*p.kappa, 100*p.replacement);
         sprintf('Risk-free rate r=%.1f%%   |   Equity return \\mu_S=%.1f%%   |   Equity volatility \\sigma_S=%.1f%%', 100*p.r, 100*p.mu_S_level, 100*p.sigma_S_level);
+        sprintf('Income tax \\tau_{inc}=%.0f%%   |   Capital-gains tax bond/stock=%.0f%%/%.0f%%', 100*tau_inc, 100*tau_cg_b, 100*tau_cg_s);
         house_line;
         sprintf('N=%d households,  ages %d-%d,  retirement age %d', sim.N, p.age0, p.age0+p.T-1, ret_age);
         sprintf('Dollar scale: 1 model unit = $%.0f.   Merton fraction \\pi^{*}=%.2f', Y50_dollars/unit, pi_merton);
@@ -720,11 +726,15 @@ set(gca, 'FontSize', FS3);
 % ── (l) Calibration comparison box ──────────────────────────────────────
 nexttile; axis off;
 ltv_o = NaN; if isfield(owner.p, 'LTV'), ltv_o = owner.p.LTV; end
+tau_inc_o  = NaN; if isfield(owner.p, 'tau_inc'),      tau_inc_o  = owner.p.tau_inc;      end
+tau_cg_b_o = NaN; if isfield(owner.p, 'tau_cg_bond'),  tau_cg_b_o = owner.p.tau_cg_bond;  end
+tau_cg_s_o = NaN; if isfield(owner.p, 'tau_cg_stock'), tau_cg_s_o = owner.p.tau_cg_stock; end
 box_txt = {
     '\bf Calibration (shared parameters) \rm';
     sprintf('CRRA coefficient \\gamma=%.0f   |   Discount factor \\beta=%.2f', owner.p.gamma, owner.p.beta);
     sprintf('DC contribution rate \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', 100*owner.p.kappa, 100*owner.p.replacement);
     sprintf('Risk-free rate r=%.1f%%   |   Equity return \\mu_S=%.1f%%   |   Equity volatility \\sigma_S=%.1f%%', 100*owner.p.r, 100*owner.p.mu_S_level, 100*owner.p.sigma_S_level);
+    sprintf('Income tax \\tau_{inc}=%.0f%%   |   Capital-gains tax bond/stock=%.0f%%/%.0f%%', 100*tau_inc_o, 100*tau_cg_b_o, 100*tau_cg_s_o);
     '';
     '\bf Where renter and owner differ \rm';
     sprintf('Renter:  rent rate \\alpha=%.1f%% of home value p.a., builds no housing equity', 100*renter.p.alpha);
