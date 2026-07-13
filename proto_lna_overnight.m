@@ -33,14 +33,25 @@
 
 clear; clc;
 
+% Pool: request an nw-worker PROCESS pool; if that fails (on the cluster
+% pod, process workers can die on startup -- "MATLAB worker shut down
+% unexpectedly" -- while a Threads pool spans all cores in one process and
+% ran the 2026-07-13 production solves, fmincon included), fall back to
+% Threads. An existing pool with >= nw workers is kept, so starting
+% parpool('Threads') manually beforehand also works.
 nw = str2double(getenv('PROTO_N_WORKERS'));
 if isnan(nw) || nw < 1, nw = feature('numcores'); end
 pool = gcp('nocreate');
-if isempty(pool) || pool.NumWorkers ~= nw || isa(pool, 'parallel.ThreadPool')
+if isempty(pool) || pool.NumWorkers < nw
     if ~isempty(pool), delete(pool); end
-    clus = parcluster('local');
-    clus.NumWorkers = max(clus.NumWorkers, nw);
-    parpool(clus, nw);
+    try
+        clus = parcluster('local');
+        clus.NumWorkers = max(clus.NumWorkers, nw);
+        parpool(clus, nw);
+    catch err
+        fprintf('Process pool failed (%s).\nFalling back to a Threads pool.\n', err.message);
+        parpool('Threads');
+    end
 end
 out_dir = utility.output_dir();
 

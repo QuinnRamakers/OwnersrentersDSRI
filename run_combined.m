@@ -35,11 +35,18 @@ use_lna = strcmp(grid_type, 'lna');
 nw = str2double(getenv('CGM_N_WORKERS'));
 if ~isnan(nw) && nw >= 1
     pool = gcp('nocreate');
-    if isempty(pool) || pool.NumWorkers ~= nw || isa(pool, 'parallel.ThreadPool')
+    if isempty(pool) || pool.NumWorkers < nw
         if ~isempty(pool), delete(pool); end
-        clus = parcluster('local');
-        clus.NumWorkers = max(clus.NumWorkers, nw);
-        parpool(clus, nw);
+        try
+            clus = parcluster('local');
+            clus.NumWorkers = max(clus.NumWorkers, nw);
+            parpool(clus, nw);
+        catch err
+            % Cluster pods can fail to start process workers; Threads spans
+            % all cores in one process and handles fmincon fine.
+            fprintf('Process pool failed (%s); falling back to Threads.\n', err.message);
+            parpool('Threads');
+        end
     end
 elseif isempty(gcp('nocreate'))
     try
