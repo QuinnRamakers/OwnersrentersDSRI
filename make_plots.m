@@ -31,6 +31,7 @@ close all;
 RUN_ALL_SCENARIOS = false;
 
 % ── scenario metadata ─────────────────────────────────────────────────────
+fig_tag = '';    % appended to always-on figure filenames ('' or '_lna')
 if RUN_ALL_SCENARIOS
     files = {'diag_pension_only.mat', ...
              'diag_housing_renter.mat', 'diag_housing_owner.mat', ...
@@ -54,12 +55,42 @@ else
     labels       = {'FULL renter (pension + housing)', ...
                      'FULL owner (pension + housing)'};
     colors       = {[0.45 0.20 0.55], [0.20 0.60 0.30]};
+    % CGM_GRID=lna reads the cube-grid outputs of run_combined
+    % (combined_<name>_lna.mat) and tags figures _lna so the two grid
+    % systems can be plotted side by side. Only this 2-file branch is
+    % lna-aware: the diag_* pipeline and the 3D policy-surface section
+    % assume the simplex (lambda, s_A, s_H) grid layout.
+    if strcmp(getenv('CGM_GRID'), 'lna')
+        files   = strrep(files, '.mat', '_lna.mat');
+        labels  = cellfun(@(s) [s '  [lna grid]'], labels, 'UniformOutput', false);
+        fig_tag = '_lna';
+    end
 end
 
 % Read inputs from (and write figures to) the persistent-volume output dir
 % if CGM_OUTPUT_DIR is set -- see +utility/output_dir.m.
 out_dir = utility.output_dir();
 files   = fullfile(out_dir, files);
+
+% Tolerate missing scenario files in the 2-file mode (e.g. only the renter
+% solved so far): plot what exists, skip the rest. The 5-scenario pipeline
+% keeps the hard requirement because its sections index scenarios by
+% position (S{1}..S{5}).
+if ~RUN_ALL_SCENARIOS
+    present = cellfun(@isfile, files);
+    if ~any(present)
+        error('make_plots:no_inputs', 'None of these exist: %s -- run run_combined first.', ...
+              strjoin(files, ', '));
+    end
+    for k = find(~present)
+        fprintf('NOTE: %s missing -- skipping that scenario.\n', files{k});
+    end
+    files        = files(present);
+    short_names  = short_names(present);
+    legend_names = legend_names(present);
+    labels       = labels(present);
+    colors       = colors(present);
+end
 
 % ── load ──────────────────────────────────────────────────────────────────
 S = cell(numel(files), 1);
@@ -391,7 +422,7 @@ for k = 1:numel(files)
     end
 
     hide_axes_toolbars(fig);
-    out = fullfile(out_dir, sprintf('fig_dashboard_%s.png', short_names{k}));
+    out = fullfile(out_dir, sprintf('fig_dashboard_%s%s.png', short_names{k}, fig_tag));
     exportgraphics(fig, out, 'Resolution', 150);
     fprintf('Wrote %s\n', out);
     close(fig);
@@ -572,6 +603,9 @@ end % if RUN_ALL_SCENARIOS
 % 2 or 5 scenarios.
 renter_idx = find(strcmp(short_names, 'full_renter'));
 owner_idx  = find(strcmp(short_names, 'full_owner'));
+if isempty(renter_idx) || isempty(owner_idx)
+fprintf('Skipping renter-vs-owner comparison: need both scenarios loaded.\n');
+else
 renter = S{renter_idx};  owner = S{owner_idx};
 c_r = [0.55 0.25 0.65];   % purple = renter
 c_o = [0.20 0.60 0.30];   % green  = owner
@@ -747,9 +781,10 @@ text(0.02, 0.97, box_txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
 title('(l)  Calibration', 'FontSize', FT3);
 
 hide_axes_toolbars(fig);
-exportgraphics(fig, fullfile(out_dir, 'fig_renter_vs_owner.png'), 'Resolution', 130);
-fprintf('Wrote fig_renter_vs_owner.png\n');
+exportgraphics(fig, fullfile(out_dir, sprintf('fig_renter_vs_owner%s.png', fig_tag)), 'Resolution', 130);
+fprintf('Wrote fig_renter_vs_owner%s.png\n', fig_tag);
 close(fig);
+end % renter-vs-owner guard
 %% =================== REDUCTION OVERLAY (1×3) ============================
 if RUN_ALL_SCENARIOS
 fig = figure('Position', [40 40 1600 480], 'Color','w');
