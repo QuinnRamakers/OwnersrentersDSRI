@@ -26,9 +26,14 @@
 %   same seed both simulations must reproduce them EXACTLY (bit-identical);
 %   otherwise the shock plumbing differs and the comparison is void.
 %
-%   Pass criterion: mean |dc| and |dpi| at old-sim visited states of order
-%   the grid spacing (~0.02-0.05) at every probe age, no age-localized
-%   blowups.
+%   Pass criterion: INTERIOR (sX >= 0.15) mean |dc| and |dpi| at old-sim
+%   visited states of order the grid spacing (~0.02-0.05) at every probe
+%   age, no age-localized blowups. Boundary (sX < 0.05) stats are reported
+%   separately: the old grid's z_min fill contaminates interpolation cells
+%   straddling the sX=0 plane, so boundary disagreement reflects the OLD
+%   arm's known bias, shrinking only with resolution (smoke diagnosis
+%   2026-07-13: at t=T-1 interior arms agree to dc~0.007/dpi~0.03/dz~0.003;
+%   boundary dz was already 0.60 one step from terminal).
 %
 %   Cluster use (bootstrap_pod.m pod): commit+push, run bootstrap_pod, then
 %     setenv('PROTO_MODE','full'); setenv('PROTO_SKIP_POLISH','1');
@@ -128,14 +133,26 @@ assert(dY == 0 && dA == 0 && dH == 0, ...
 fprintf('OK: Y, A, H paths bit-identical across arms.\n');
 
 % ------------------------- policy diffs at OLD-sim visited states per age --
+% Stratified by distance to the simplex boundary sX = 1-lam-sA-sH: the old
+% grid fills infeasible cube nodes with z_min, which drags interpolated
+% continuation values down in every cell straddling the sX=0 plane, so the
+% two discretizations legitimately disagree there at coarse resolution (the
+% old arm is the contaminated one; see 2026-07-13 smoke diagnosis). The
+% verdict below therefore uses INTERIOR (sX >= 0.15) means; boundary stats
+% and the CE-per-unit-wealth ratio z_new/z_old are reported for convergence
+% tracking across resolutions.
 ages_probe = [30, 50, 65, 75];
-fprintf('\n--- Policy diffs at old-sim visited states (old policy minus new policy) ---\n');
-fprintf('  age   mean|dc|   max|dc|   mean|dpi|  max|dpi|\n');
+omg = 1 - p_base.gamma;
+fprintf('\n--- Diffs at old-sim visited states: INTERIOR sX>=0.15 | BOUNDARY sX<0.05 ---\n');
+fprintf('  age  n_int  mean|dc|  mean|dpi|  mean|dz/z| | n_bnd  mean|dc|  mean|dpi|  mean|dz/z|\n');
 worst_mean = 0;
-diag_diffs = struct('age', {}, 'mean_dc', {}, 'max_dc', {}, 'mean_dpi', {}, 'max_dpi', {});
+diag_diffs = struct('age', {}, 'mean_dc_int', {}, 'mean_dpi_int', {}, 'mean_dz_int', {}, ...
+                    'mean_dc_bnd', {}, 'mean_dpi_bnd', {}, 'mean_dz_bnd', {});
 for a = ages_probe
     t = a - p_base.age0 + 1;
     lam = sim_old.lambda(:,t); sA = sim_old.sA(:,t); sH = sim_old.sH(:,t);
+    sX  = 1 - lam - sA - sH;
+    int_m = sX >= 0.15;  bnd_m = sX < 0.05;
     u1  = min(max(lam, 0), 1);
     sAH = sA + sH;
     u2  = min(max(sAH ./ max(1 - lam, 1e-12), 0), 1);
@@ -144,15 +161,20 @@ for a = ages_probe
                              sol_new.c_pol(:,:,:,t), 'linear', 'nearest');
     Fpi = griddedInterpolant({p_new.u1_grid, p_new.u2_grid, p_new.u3_grid}, ...
                              sol_new.pi_pol(:,:,:,t), 'linear', 'nearest');
+    Fz_new = z_interp({p_new.u1_grid, p_new.u2_grid, p_new.u3_grid}, sol_new.V(:,:,:,t), omg);
+    Fz_old = z_interp({p_old.lambda_grid, p_old.sA_grid, p_old.sH_grid}, sol_old.V(:,:,:,t), omg);
     c_new_v  = min(max(Fc(u1, u2, u3), 0), 1);
     pi_new_v = min(max(Fpi(u1, u2, u3), 0), 1);
     dc  = abs(sim_old.c_frac(:,t) - c_new_v);      % old-sim policies are the
     dpi = abs(sim_old.pi(:,t)    - pi_new_v);      % clamped interpolated values
-    fprintf('  %3d  %9.4f  %8.4f  %9.4f  %8.4f\n', ...
-            a, mean(dc), max(dc), mean(dpi), max(dpi));
-    worst_mean = max([worst_mean, mean(dc), mean(dpi)]);
-    diag_diffs(end+1) = struct('age', a, 'mean_dc', mean(dc), 'max_dc', max(dc), ...
-                               'mean_dpi', mean(dpi), 'max_dpi', max(dpi)); %#ok<SAGROW>
+    dz  = abs(Fz_new(u1, u2, u3) ./ Fz_old(lam, sA, sH) - 1);
+    fprintf('  %3d  %5d  %8.4f  %9.4f  %10.4f | %5d  %8.4f  %9.4f  %10.4f\n', a, ...
+            nnz(int_m), mean(dc(int_m)), mean(dpi(int_m)), mean(dz(int_m)), ...
+            nnz(bnd_m), mean(dc(bnd_m)), mean(dpi(bnd_m)), mean(dz(bnd_m)));
+    worst_mean = max([worst_mean, mean(dc(int_m)), mean(dpi(int_m))]);
+    diag_diffs(end+1) = struct('age', a, ...
+        'mean_dc_int', mean(dc(int_m)), 'mean_dpi_int', mean(dpi(int_m)), 'mean_dz_int', mean(dz(int_m)), ...
+        'mean_dc_bnd', mean(dc(bnd_m)), 'mean_dpi_bnd', mean(dpi(bnd_m)), 'mean_dz_bnd', mean(dz(bnd_m))); %#ok<SAGROW>
 end
 
 % ------------------------------------------------------ simulated moments --
@@ -174,9 +196,9 @@ fprintf('  clamp diagnostics old: c=%d pi=%d negLW=%d | new: c=%d pi=%d negLW=%d
 % ---------------------------------------------------------------- verdict --
 tol_mean = 0.05;    % of order the state/inner grid spacing
 if worst_mean <= tol_mean
-    fprintf('\nPASS: all mean policy diffs <= %.2f (worst %.4f).\n', tol_mean, worst_mean);
+    fprintf('\nPASS: all INTERIOR mean policy diffs <= %.2f (worst %.4f).\n', tol_mean, worst_mean);
 else
-    fprintf('\nCHECK: worst mean policy diff %.4f exceeds %.2f -- inspect per-age table above.\n', ...
+    fprintf('\nCHECK: worst INTERIOR mean policy diff %.4f exceeds %.2f -- inspect per-age table above.\n', ...
             worst_mean, tol_mean);
 end
 fprintf('Solve time old %.1f s vs new %.1f s (new arm skip_polish=%d).\n', ...
@@ -188,3 +210,14 @@ save(out, 'p_old', 'p_new', 'profile', 'shocks', 'ann_price', ...
      'sol_old', 'sol_new', 'sim_old', 'sim_new', 'diag_diffs', ...
      'skip_polish', 'N_sim', '-v7.3');
 fprintf('Saved %s\n', out);
+
+% -------------------------------------------------------- local functions --
+function F = z_interp(gridcell, V, omg)
+% CE-per-unit-wealth interpolant z = ((1-gamma)V)^(1/(1-gamma)), with the
+% same z_min fill for non-finite nodes the solvers use (old-grid infeasible
+% NaNs and cash-infeasible -1e15 sentinels both end up at z_min).
+z = omg * V; z(z <= 0) = NaN; z = z .^ (1/omg);
+z_min = min(z(isfinite(z)), [], 'all');
+z(~isfinite(z)) = z_min;
+F = griddedInterpolant(gridcell, z, 'linear', 'linear');
+end
