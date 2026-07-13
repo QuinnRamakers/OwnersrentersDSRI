@@ -84,6 +84,23 @@ p.sH_grid     = linspace(0, 1, p.N_sH).';
 p.N_c  = 41;
 p.N_pi = 41;
 
+% Alternative cube state grid (lambda, n-tilde, a) -- see solver.bellman_step_lna:
+%   u1 = lambda, u2 = (A+H)/(W-Y), u3 = A/(A+H). Every point of [0,1]^3 is
+%   feasible (the simplex grid above wastes ~82% of its cube on infeasible
+%   points), so 28x20x20 = 11,200 states matches the 40^3 grid's 11,480
+%   feasible points at ~5.7x less memory. lambda is empirically the steepest
+%   policy axis (mean |finite-diff slope| of c/pi is 1.5-2x that of s_A/s_H),
+%   hence the upweighted u1 resolution. Selected via CGM_GRID=lna in
+%   run_combined; the simplex grid stays the production default.
+p.N_u1 = 28; p.N_u2 = 20; p.N_u3 = 20;
+p.u1_grid = linspace(0, 1, p.N_u1).';
+p.u2_grid = linspace(0, 1, p.N_u2).';
+p.u3_grid = linspace(0, 1, p.N_u3).';
+% skip_polish = true skips the lna solver's fmincon polish (grid-search
+% only). Measured at coarse grids the polish adds only ~15% runtime (the
+% 343x41x41 grid-search tensor dominates), so full fidelity is the default.
+p.skip_polish = false;
+
 % Taxes
 %   Income tax (EET pension treatment): DC contributions kappa*Y are pre-tax
 %   (deductible), the DC fund grows tax-free, and BOTH the annuity payout and
