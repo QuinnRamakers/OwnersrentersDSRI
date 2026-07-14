@@ -20,20 +20,32 @@
 %   each other's results).
 %
 %   Grid system (CGM_GRID environment variable):
-%     simplex (default) : production (lambda, s_A, s_H) grid, 40^3 cube with
-%                         feasibility mask (11,480 feasible states).
+%     simplex (default) : (lambda, s_A, s_H) grid, sized to MATCH
+%                         run_spline_strategies.m's default sweep grid
+%                         (state 25x15x15, gh_n=5 -> 125 joint nodes), not
+%                         the full 40^3/gh_n=7 production grid -- so
+%                         welfare (V_tilde) numbers from run_combined and
+%                         run_spline_strategies are directly comparable
+%                         (see that function's own docstring: "All sweep
+%                         runs must share gh_n/state_grid"). If you need
+%                         the full production grid instead, remove the
+%                         grid-override block below.
 %     lna               : (u1,u2,u3) = (lambda, n-tilde, a) cube grid, every
 %                         point feasible, 28x20x20 = 11,200 states -- see
 %                         solver.bellman_step_lna. CGM_SKIP_POLISH=1
 %                         additionally skips the fmincon polish (~15% faster,
-%                         policies accurate to the 41x41 inner grid).
+%                         policies accurate to the 41x41 inner grid). NOT
+%                         matched to run_spline_strategies.m (which has no
+%                         lna path) -- lna outputs are not welfare-comparable
+%                         to the spline sweep regardless of grid size.
 %   Workers: set CGM_N_WORKERS to force an n-worker PROCESS pool (use on the
 %   cluster pod, and on laptops where the 'Threads' profile is capped at 2).
 %
-%   Requires Optimization Toolbox and Parallel Computing Toolbox. At the
-%   production grid (40x40x40 states, 7x7x7 shock nodes) each scenario takes
-%   roughly 1-2 hours on a 16-core machine; all four scenarios run
-%   sequentially (expect ~4-8 hours total at the production grid).
+%   Requires Optimization Toolbox and Parallel Computing Toolbox. At this
+%   reduced grid, one scenario measured ~17 min on a laptop (2-worker
+%   Threads pool) vs ~2 min on the cluster (per-job timings from
+%   spline_strategies_log.txt at the same grid) -- so expect ~1-1.5h total
+%   on a laptop or ~8-10 min total on the cluster for all four scenarios.
 
 clear; clc;
 
@@ -82,6 +94,22 @@ for k = 1:numel(scenarios)
     if ~isnan(sc.kappa)
         p.kappa = sc.kappa;
     end
+
+    % Match run_spline_strategies.m's default sweep grid (state 25x15x15,
+    % gh_n=5) instead of config.params()'s full 40^3/gh_n=7 production
+    % grid, so V_tilde welfare numbers from this script are directly
+    % comparable to the spline-strategy sweep. Only applies to the simplex
+    % path -- lna has no equivalent in run_spline_strategies to match.
+    if ~use_lna
+        p.gh_n     = 5;
+        p.N_lambda = 25;
+        p.N_sA     = 15;
+        p.N_sH     = 15;
+        p.lambda_grid = linspace(0, 1, p.N_lambda).';
+        p.sA_grid     = linspace(0, 1, p.N_sA).';
+        p.sH_grid     = linspace(0, 1, p.N_sH).';
+    end
+
     if use_lna && strcmp(getenv('CGM_SKIP_POLISH'), '1')
         p.skip_polish = true;
     end
