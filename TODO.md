@@ -193,6 +193,35 @@ Tier 3 — consistent but must be documented deliberately:
 - [ ] sex (=3 in params.m): confirm what this maps to in `config.survival`
       (pooled vs. sex-specific table).
 
+## Grid reparametrization (lambda, n-tilde, a) — July 2026
+
+Implemented (commits 6aafa51..e9460ea) as `_lna` copies selectable via
+CGM_GRID=lna: u1 = Y/W, u2 = (A+H)/(W-Y), u3 = A/(A+H) map the whole cube
+[0,1]^3 to feasible states (paper Sec. 3 coordinates, with u1 a bounded
+compactification of the paper's unbounded Y/(W-Y)). 28x20x20 = 11,200
+states matches the 40^3 simplex grid's 11,480 feasible points.
+
+Validation so far (2026-07-13, renter, current calibration):
+- Machinery equivalent: exogenous sim paths bit-identical, CE agreement
+  0.02% one step from terminal, policy diffs at common interior states
+  shrink to ~0.007 by age 90.
+- Simplex grid's z_min boundary fill pollutes the VALUE LEVEL (~2.5x CE
+  gap at ages 25-30 at production resolution, simplex below) and the
+  early-life consumption policy (~2x consumption-rate disagreement at the
+  sX=0 face, where households start). Simplex CE drifts 20%/3x when its
+  grid refines 11^3 -> 16^3; lna moves ~1.6%/0.4% under refinement.
+- [ ] PENDING: overnight z0-ladder arbiter on the pod
+      (proto_lna_overnight.m: lna 28x20x20 / 40x28x28 / 56x40x40 vs
+      simplex 40^3 / 52^3; launched 2026-07-13 night). If lna steps ~0
+      and simplex moves toward lna, adopt lna for ALL results.
+- [ ] Welfare caution: CEVs read sol.V(:,:,:,1) at age 20 — maximally
+      exposed to the simplex value pollution. Re-run welfare on lna
+      solves once adopted; do not trust simplex-based CEV magnitudes.
+- [ ] Paper Sec. 3 follow-ups: eq (33) liquid-share term appears to use
+      A/(A+H) where (A+H)/W-tilde is meant, and the housing-cost term is
+      missing; the "reasonable upper bound" discussion for Y/W can be
+      replaced by the bounded u1 = Y/W convention.
+
 ## Explicitly not calibration targets
 
 gh_n, N_lambda, N_sA, N_sH, N_c, N_pi — solver accuracy/convergence choices,
