@@ -170,28 +170,105 @@ Tier 3 — consistent but must be documented deliberately:
 
 ## Calibration targets — data sourcing (no code change, just inputs)
 
-- [ ] income_coef: own LISS regression (age cubic + cohort effects + Heckman
-      selection correction on full-time employment), replacing dependence on
-      unpublished Been-Knoef-Vethaak coefficients.
-- [ ] sigma_l_log (and sigma_ι, phi if the AR(1) split is ever implemented):
-      Carroll-Samwick / GMM decomposition on LISS income residuals.
-- [ ] r: long-run real return on short Dutch/euro-area government paper
-      (DNB/ECB).
-- [ ] mu_S_level, sigma_S_level: long-run real equity premium/vol from a
-      macrohistory source (Jordà-Schularick-Taylor or Dimson-Marsh-Staunton).
-- [ ] alpha (rent rate): LISS rent / self-assessed home value, by age/region.
-- [ ] theta (maintenance): LISS self-reports, cross-checked against
-      Vereniging Eigen Huis published maintenance-cost norms.
-- [ ] mu_H_level, sigma_H_level: public CBS/Kadaster house price index for
-      the systematic component; LISS panel dispersion around that index for
-      the idiosyncratic piece.
-- [ ] r_m: DNB/CBS published mortgage rate series.
-- [ ] N_mort: Dutch market convention (30-year term), institutional fact.
-- [ ] retirement_age: confirm current statutory AOW eligibility age
-      (SVB/Rijksoverheid) — it's indexed to life expectancy and has been
-      rising past 65.
+- [ ] income_coef / income_source: CURRENTLY 'table' -- DIRECT lookup of
+      Been, Knoef & Vethaak (2026) semi-parametric age-effect estimates
+      (config/income_table_bkv.m, Tables D.1/D.2, FT-selection column),
+      no cubic-fitting step. Selected by p.sex (1=men, 2=women,
+      3=pooled). Two open sub-decisions before this is final:
+        (a) sex=3 pooling is currently a PLAIN MEAN of the men/women
+            series -- should this instead be weighted by something
+            (participation shares? household structure?), and does a
+            single-earner household income process even want "pooled
+            individual wages" as its target, or something else entirely
+            (e.g. household total labor income)?
+        (b) RESOLVED 2026-07-14: p.age0 moved 20 -> 25 (T shortened 81 ->
+            76 to keep terminal age 100 unchanged), so work_ages now start
+            exactly at the table's first non-baseline age (25) and the
+            below-sample linear extrapolation for ages 20-23 is no longer
+            exercised. The extrapolation code path stays in
+            income_profile.m as a guard for any future p.age0 < 24.
+      The 'poly' (CGM 2005 HS-group) option is retained in params.m for
+      comparison/robustness but is no longer the active default.
+- [ ] sigma_l_log: CURRENTLY the CGM (2005) HS-group PERMANENT-shock std
+      (0.1032), matched to this model's pure-random-walk income process.
+      Still needs Carroll-Samwick / GMM decomposition on LISS income
+      residuals (and sigma_ι, phi if the AR(1) split is ever implemented).
+      Note the transitory component (CGM std 0.2717) has no home in the
+      current single-composite-shock structure and is simply omitted.
+      Unaffected by the income_coef/income_source change above -- Been
+      et al.'s reported standard errors are precision of the estimated
+      MEAN age effect, not a measure of individual-level income risk,
+      so they cannot be repurposed for sigma_l_log.
+- [x] r = 0.011 (1.1%): (REAL) risk-free rate, MK estimate (mean 3-month
+      bond interest rate minus inflation), calibration slide deck
+      (2026-07). NOTE: r, mu_S_level, and r_m are now consistently REAL
+      (inflation-adjusted) figures, not nominal — a change from the old
+      unsourced nominal-ish placeholders.
+- [x] mu_S_level = 0.04 (4%), sigma_S_level = 0.16 (16%): equity premium
+      and vol, MK convention (see slide appendix), calibration slide deck
+      (2026-07). Slide notation for vol was "sigma_S = sqrt(16)%",
+      read per user direction as vol = 16% (close to the old 15.7%
+      placeholder); flag if that reading turns out wrong.
+- [x] alpha = 0.1 (10%): rent rate, user-set 2026-07-14 (not sourced from
+      LISS rent / self-assessed home value yet — a placeholder pending
+      that data, not a final estimate).
+- [x] theta = 0.015 (1.5%): maintenance rate, COELO Atlas of Local
+      Government Taxes, MK, calibration slide deck (2026-07) gave two
+      candidate values (1.5%/1.6%); 1.5% chosen per user, 1.6% not used.
+- [x] mu_H_level = 0.027 (2.7%), sigma_H_level = 0.037 (3.7%): house
+      price growth/vol, BIS Real Residential Property Price Index, MK,
+      calibration slide deck (2026-07).
+- [x] r_m = 0.013 (1.3%, real): mortgage rate, ECB MIR series (nominal
+      3.6% less inflation 2.3%), calibration slide deck (2026-07).
+- [x] N_mort = 30: Dutch market convention, confirmed by calibration
+      slide deck (2026-07).
+- [x] retirement_age = 67: calibration slide deck (2026-07). Raising it
+      from 65 to 67 pushes work_ages past the BKV table's max age (64) --
+      ages 65-66 are now held FLAT at the age-64 growth value (zero
+      further deterministic growth) per user decision, not linearly
+      extrapolated; see income_profile.m.
 - [ ] sex (=3 in params.m): confirm what this maps to in `config.survival`
-      (pooled vs. sex-specific table).
+      (pooled vs. sex-specific table). Unaffected by this round of
+      calibration updates.
+- [x] kappa = 0.2 (20%): DC contribution rate, user-set 2026-07-14 (not
+      yet the aggregate participant-weighted DNB/Pensioenfederatie figure
+      described in "Contribution rate (kappa)" above — a placeholder
+      pending that data, not a final estimate). `run_combined.m` now also
+      runs a kappa=0 (no-DC-pension) benchmark alongside the p.kappa=0.2
+      baseline, crossed with renter/owner, so the pension's welfare
+      contribution can be read off directly.
+- [ ] tau_inc (income tax rate): still TBD, calibration slide deck
+      (2026-07) raises an open question (LISS gross vs net income as the
+      target) but gives no value.
+- [ ] beta (discount rate): still TBD, calibration slide deck (2026-07)
+      suggests "moment matching or literature" but gives no value.
+- [ ] chi (bequest intensity): still TBD, calibration slide deck (2026-07)
+      marks it "?" with no value. See Tier 2 note above: baseline chi = 0
+      already sits awkwardly against the paper's bequest rationale.
+- [ ] h_mult (house-price-to-income at purchase): still TBD, calibration
+      slide deck (2026-07) marks it "?" with no value — see "Housing
+      assignment (h_mult)" section above for the sourcing approach.
+- [ ] corr_SL, corr_HL, corr_SH: still TBD, calibration slide deck
+      (2026-07) confirms the sourcing approach (LISS individual
+      income/house growth x aggregate return series) but gives no
+      numbers — see "Stock-labor correlation (corr_SL)" section above.
+- [x] tau_cg_bond = tau_cg_stock = 0.0 (was 0.25 each): calibration slide
+      deck (2026-07), "difficult due to box 3 changes, 0 for now" — see
+      the existing Box 3 mismatch note above (Known open flags).
+
+## Spline strategy menu sizing (July 2026)
+
+- [x] `strategy.menu()` default widened 2026-07-14: levels 0:0.25:1 (35
+      strategies) -> 0:0.125:1 (165 strategies), same 3 knots
+      (age0/retirement_age/age0+T-2 = 25/67/99). Purpose: fill a ~12h
+      cluster window at the observed cluster speed (~1.8-2 min/job from
+      spline_strategies_log.txt) -- 165 strategies x housing="both" = 330
+      jobs x ~2 min = ~11h. If that leaves too much headroom, go finer
+      (0:0.1:1 -> 286 strategies, ~19h) rather than adding knots (which
+      changes what's being compared, not just how many runs).
+      Assumed housing="both" for this sizing -- if a run only covers one
+      housing type, halve the expected wall time (or double the strategy
+      count to compensate).
 
 ## Grid reparametrization (lambda, n-tilde, a) — July 2026
 

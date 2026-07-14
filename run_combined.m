@@ -1,13 +1,23 @@
 % RUN_COMBINED  Solve and simulate the combined pension+housing model.
 %
-%   Two scenarios:
-%     1) Renter (is_owner = false): pays alpha * H_t per period.
-%     2) Owner  (is_owner = true ): pays (theta + m_rate_t) * H_t; bequest +H.
-%   Pension is ON in both (kappa > 0, tau_S glide path, annuitisation at t_ret).
+%   Four scenarios, is_owner x kappa:
+%     1) Renter        (is_owner = false, kappa = p.kappa default): pays
+%        alpha * H_t per period.
+%     2) Owner         (is_owner = true,  kappa = p.kappa default): pays
+%        (theta + m_rate_t) * H_t; bequest +H.
+%     3) Renter_kappa0 (is_owner = false, kappa = 0): NO-DC-PENSION
+%        benchmark -- isolates the DC pension's welfare contribution by
+%        comparison against scenario 1 (same housing tenure, pension off).
+%     4) Owner_kappa0  (is_owner = true,  kappa = 0): same benchmark, owner
+%        tenure.
+%   AOW (first pillar) is always on; only the DC second pillar (kappa) is
+%   toggled by the kappa0 scenarios. tau_S glide path and annuitisation at
+%   t_ret still apply whenever kappa > 0.
 %
-%   Saves combined_renter.mat and combined_owner.mat in this directory
-%   (with an _lna suffix when the cube grid is selected, so the two grid
-%   systems never overwrite each other's results).
+%   Saves combined_renter.mat, combined_owner.mat, combined_renter_kappa0.mat,
+%   and combined_owner_kappa0.mat in this directory (with an _lna suffix
+%   when the cube grid is selected, so the two grid systems never overwrite
+%   each other's results).
 %
 %   Grid system (CGM_GRID environment variable):
 %     simplex (default) : production (lambda, s_A, s_H) grid, 40^3 cube with
@@ -22,7 +32,8 @@
 %
 %   Requires Optimization Toolbox and Parallel Computing Toolbox. At the
 %   production grid (40x40x40 states, 7x7x7 shock nodes) each scenario takes
-%   roughly 1-2 hours on a 16-core machine; both scenarios run sequentially.
+%   roughly 1-2 hours on a 16-core machine; all four scenarios run
+%   sequentially (expect ~4-8 hours total at the production grid).
 
 clear; clc;
 
@@ -57,8 +68,9 @@ elseif isempty(gcp('nocreate'))
 end
 
 scenarios = struct( ...
-    'name',  {'renter', 'owner'}, ...
-    'is_owner', {false,   true } );
+    'name',     {'renter', 'owner', 'renter_kappa0', 'owner_kappa0'}, ...
+    'is_owner', {false,    true,    false,           true          }, ...
+    'kappa',    {NaN,      NaN,     0,               0             } );
 
 N_sim = 5000;
 
@@ -67,6 +79,9 @@ for k = 1:numel(scenarios)
     fprintf('\n=== Scenario: %s (grid: %s) ===\n', sc.name, grid_type);
     p = config.params();
     p.is_owner = sc.is_owner;
+    if ~isnan(sc.kappa)
+        p.kappa = sc.kappa;
+    end
     if use_lna && strcmp(getenv('CGM_SKIP_POLISH'), '1')
         p.skip_polish = true;
     end
@@ -127,4 +142,4 @@ for k = 1:numel(scenarios)
     fprintf('  Saved %s\n', fname);
 end
 
-fprintf('\nBoth scenarios done.\n');
+fprintf('\nAll scenarios done.\n');
