@@ -305,6 +305,17 @@ Tier 3 — consistent but must be documented deliberately:
       beating every strategy is reported as a plain signed number with no
       "WARNING"/"check calibration" language -- it's a normal, expected
       possible outcome per explicit user direction, not an error state.
+- [x] BUG FOUND & FIXED 2026-07-15 (pod run): `compare_spline_strategies.m`
+      used the legacy `print(fig, fig_file, '-dpng', '-r140')` to save its
+      figure -- the only figure-saving call left on that path in this
+      repo, every other one (make_plots.m, compare_strategy_vs_nopension.m,
+      analyze_dc_strategies_timing.m) already uses `exportgraphics`. `print`
+      hit a graphics-timeout error on the cluster pod (no display); switched
+      to `exportgraphics(fig, fig_file, 'Resolution', 140)`, matching the
+      rest of the codebase. NOTE: `proto_spline_strategy.m` still has the
+      same `print(...,'-dpng',...)` pattern -- not part of any pipeline
+      (nothing calls it), left as-is, but would hit the same issue if ever
+      run headless.
 
 ## Grid reparametrization (lambda, n-tilde, a) — July 2026
 

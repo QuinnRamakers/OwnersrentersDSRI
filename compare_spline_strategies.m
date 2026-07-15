@@ -199,7 +199,11 @@ end
 if n_found_tot > 0
     fig_file = fullfile(RES_DIR, ternary(opts.smoke, ...
         'smoke_fig_spline_comparison.png', 'fig_spline_comparison.png'));
-    print(fig, fig_file, '-dpng', '-r140');
+    % exportgraphics, not the legacy print(...,'-dpng',...) -- print's
+    % rasterization path can hang/timeout on headless machines with no
+    % display (e.g. the cluster pod); exportgraphics is what every other
+    % figure-saving call in this repo already uses without issue.
+    exportgraphics(fig, fig_file, 'Resolution', 140);
     fprintf('\nFigure saved: %s\n', fig_file);
 else
     fprintf('\nNo strategy files found -- nothing to compare.\n');
