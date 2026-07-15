@@ -119,6 +119,18 @@ for hi = 1:numel(HOUSING)
         fprintf('  SANITY FAIL: initial home value H_0 differs between the two files -- kappa should not affect H_0.\n');
         ok = false;
     end
+    % Grid + calibration must match (kappa excluded -- differs by design):
+    % V_tilde values from different grids/parameter vintages are not
+    % comparable, so a stale file on either side makes the CEV meaningless.
+    fp_b = param_fingerprint(best.p);
+    fp_n = param_fingerprint(nop.p);
+    if ~strcmp(fp_b, fp_n)
+        fprintf('  SANITY FAIL: grid/calibration mismatch between the two files -- CEV below is NOT meaningful.\n');
+        fprintf('    best:       %s\n', fp_b);
+        fprintf('    no-pension: %s\n', fp_n);
+        fprintf('    One of them is stale -- delete it and re-solve on the current calibration.\n');
+        ok = false;
+    end
 
     % Welfare gain of the best strategy is always measured against
     % NO_PENSION as the fixed reference: g > 0 means the best strategy
@@ -385,6 +397,21 @@ function g = cev(V_A, V_B, gamma)
 %CEV  Consumption-equivalent variation of A relative to benchmark B.
 %   g > 0: A needs g*100% more lifetime consumption to match B (A worse).
     g = (V_B / V_A) ^ (1 / (1 - gamma)) - 1;
+end
+
+function s = param_fingerprint(p)
+%PARAM_FINGERPRINT  Same convention as compare_spline_strategies.m: one-line
+%   grid + calibration identity string; kappa deliberately excluded.
+flds = {'N_lambda','N_sA','N_sH','gh_n','age0','T','retirement_age', ...
+        'gamma','beta','chi','alpha','theta','h_mult','r','mu_S_level', ...
+        'sigma_S_level','mu_H_level','sigma_H_level','r_m','replacement', ...
+        'sigma_l_log','tau_inc','tau_cg_stock'};
+parts = cell(1, numel(flds));
+for i = 1:numel(flds)
+    if isfield(p, flds{i}), v = p.(flds{i}); else, v = NaN; end
+    parts{i} = sprintf('%s=%.6g', flds{i}, v);
+end
+s = strjoin(parts, ' ');
 end
 
 function out = ternary(cond, a, b)

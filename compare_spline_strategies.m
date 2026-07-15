@@ -60,7 +60,8 @@ for hi = 1:numel(HOUSING)
     end
 
     n = numel(files);
-    R = struct('name',cell(n,1), 'fracs',[], 'Vt0',[], 'gamma',[], 'tau',[], 'ages',[], 'is_benchmark',[]);
+    R = struct('name',cell(n,1), 'fracs',[], 'Vt0',[], 'gamma',[], 'tau',[], ...
+               'ages',[], 'is_benchmark',[], 'file',[], 'fp',[], 'kappa',[]);
     for k = 1:n
         fname = fullfile(files(k).folder, files(k).name);
         m = matfile(fname);
@@ -84,6 +85,11 @@ for hi = 1:numel(HOUSING)
         R(k).tau           = pk.tau_S;
         R(k).ages          = (pk.age0 : pk.age0 + pk.T - 2).';
         R(k).is_benchmark  = false;
+        R(k).file          = files(k).name;
+        R(k).fp            = param_fingerprint(pk);
+        R(k).kappa         = pk.kappa;
+        R(k).grid_str      = sprintf('%dx%dx%d, gh_n=%d', ...
+                                     pk.N_lambda, pk.N_sA, pk.N_sH, pk.gh_n);
     end
     n_found_tot   = n_found_tot + n;
     added_benchmark = false;
@@ -118,6 +124,11 @@ for hi = 1:numel(HOUSING)
         B.tau          = pk.tau_S;
         B.ages         = (pk.age0 : pk.age0 + pk.T - 2).';
         B.is_benchmark = true;
+        B.file         = sprintf('combined_%s_kappa0.mat', housing);
+        B.fp           = param_fingerprint(pk);
+        B.kappa        = pk.kappa;
+        B.grid_str     = sprintf('%dx%dx%d, gh_n=%d', ...
+                                 pk.N_lambda, pk.N_sA, pk.N_sH, pk.gh_n);
         R = [R; B];
         n = n + 1;
         added_benchmark = true;
@@ -126,6 +137,37 @@ for hi = 1:numel(HOUSING)
         fprintf('  NOTE: %s not found -- no-pension benchmark not included (run run_combined first).\n', ...
             nopension_file);
     end
+
+    % CONSISTENCY GATE: every file in a ranking must share the same grid
+    % AND the same calibration -- V_tilde values from different grids or
+    % different parameter vintages are not comparable, and mixing them
+    % produces garbage CEVs that LOOK plausible (this actually happened:
+    % stale pre-calibration-overhaul spl_* files got ranked against a
+    % fresh kappa0 benchmark, yielding a nonsense +792% "pension value").
+    % kappa is checked separately (benchmark is kappa=0 BY DESIGN; all
+    % strategy files must share one kappa but differ from the benchmark).
+    fps  = {R.fp};
+    ufps = unique(fps);
+    if numel(ufps) > 1
+        fprintf('\n  *** GRID/CALIBRATION MISMATCH across the files in this ranking: ***\n');
+        for u = 1:numel(ufps)
+            members = find(strcmp(fps, ufps{u}));
+            fprintf('  Group %d (%d files): %s\n', u, numel(members), ufps{u});
+            show = members(1:min(4, numel(members)));
+            for mm = show, fprintf('      %s\n', R(mm).file); end
+            if numel(members) > numel(show)
+                fprintf('      ... and %d more\n', numel(members) - numel(show));
+            end
+        end
+        error('compare_spline_strategies:mismatch', ...
+            ['Files in %s were produced on different grids and/or calibrations ', ...
+             '(see groups above) -- their V_tilde values are not comparable. ', ...
+             'Delete the stale files (or move them out of the results dir) and re-run.'], RES_DIR);
+    end
+    strat_kappas = unique([R(~[R.is_benchmark]).kappa]);
+    assert(isscalar(strat_kappas), 'compare_spline_strategies:kappaMix', ...
+        'Strategy files mix multiple kappa values (%s) -- not one comparable sweep.', ...
+        strjoin(compose('%.3g', strat_kappas), ', '));
 
     % Rank: V_tilde is increasing in welfare (negative under gamma>1, but
     % larger = better), so descending sort puts the best strategy first.
@@ -146,22 +188,23 @@ for hi = 1:numel(HOUSING)
     end
     g = arrayfun(@(r) cev(Vt0_ref, r.Vt0, r.gamma), R);   % >0: r beats the reference
 
-    fprintf('\n%s\n-- %s: %d strategies found, best first (%s) --\n%s\n', ...
-        repmat('=',1,66), housing, n, ...
-        ternary(added_benchmark, 'includes NO_PENSION reference', 'no-pension reference missing'), ...
-        repmat('=',1,66));
-    fprintf('  rank  %-22s %-22s %12s %12s\n', 'strategy', 'knot fracs', 'V_tilde0', col_hdr);
+    fprintf('\n%s\n-- %s: %d entries, best first (%s) --\n', ...
+        repmat('=',1,78), housing, n, ...
+        ternary(added_benchmark, 'CEV reference: NO_PENSION', 'no-pension reference missing; CEV vs best'));
+    fprintf('   All entries verified to share one grid + calibration: state %s, kappa=%.3g\n%s\n', ...
+        R(1).grid_str, strat_kappas, repmat('=',1,78));
+    row_fmt = '  %4s  %-22s %-18s %14s %12s\n';
+    fprintf(row_fmt, 'rank', 'strategy', 'knot fracs', 'V_tilde0', col_hdr);
     n_show = min(n, 15);
+    print_row = @(k, suffix) fprintf(row_fmt, sprintf('%d', k), R(k).name, ...
+        ['[' strjoin(compose('%.2f', R(k).fracs), ' ') ']'], ...
+        sprintf('%.5g', R(k).Vt0), [sprintf('%+.3f%%', g(k)*100) suffix]);
     for k = 1:n_show
-        marker = ternary(R(k).is_benchmark, '  (reference: no pension)', '');
-        fprintf('  %4d  %-22s [%s] %12.6g %10.3f%%%s\n', k, R(k).name, ...
-            strjoin(compose('%.2f', R(k).fracs), ' '), R(k).Vt0, g(k)*100, marker);
+        print_row(k, ternary(R(k).is_benchmark, '  (reference)', ''));
     end
     if n > n_show
-        fprintf('  ...   (%d more -- full ranking in CSV)\n', n - n_show);
-        marker = ternary(R(n).is_benchmark, '  (reference: no pension)', '');
-        fprintf('  %4d  %-22s [%s] %12.6g %10.3f%%  (worst)%s\n', n, R(n).name, ...
-            strjoin(compose('%.2f', R(n).fracs), ' '), R(n).Vt0, g(n)*100, marker);
+        fprintf('  %4s  (%d more -- full ranking in CSV)\n', '...', n - n_show);
+        print_row(n, [ternary(R(n).is_benchmark, '  (reference)', '') '  (worst)']);
     end
 
     % CSV: full ranking, machine-readable (one fraction column per knot)
@@ -211,6 +254,23 @@ end
 end
 
 %% =======================================================================
+function s = param_fingerprint(p)
+%PARAM_FINGERPRINT  One-line string identifying the grid + calibration a
+%   file was solved under. Two files are welfare-comparable iff their
+%   fingerprints match. kappa is deliberately EXCLUDED (the no-pension
+%   benchmark differs in kappa by design); it is checked separately.
+flds = {'N_lambda','N_sA','N_sH','gh_n','age0','T','retirement_age', ...
+        'gamma','beta','chi','alpha','theta','h_mult','r','mu_S_level', ...
+        'sigma_S_level','mu_H_level','sigma_H_level','r_m','replacement', ...
+        'sigma_l_log','tau_inc','tau_cg_stock'};
+parts = cell(1, numel(flds));
+for i = 1:numel(flds)
+    if isfield(p, flds{i}), v = p.(flds{i}); else, v = NaN; end
+    parts{i} = sprintf('%s=%.6g', flds{i}, v);
+end
+s = strjoin(parts, ' ');
+end
+
 function g = cev(V_A, V_B, gamma)
 %CEV  Consumption-equivalent variation of A relative to benchmark B.
 %   g > 0: A needs g*100% more lifetime consumption to match B (A worse).

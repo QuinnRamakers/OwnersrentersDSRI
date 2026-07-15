@@ -316,6 +316,20 @@ Tier 3 — consistent but must be documented deliberately:
       same `print(...,'-dpng',...)` pattern -- not part of any pipeline
       (nothing calls it), left as-is, but would hit the same issue if ever
       run headless.
+- [x] INCIDENT & FIX 2026-07-15 (pod run): stale spl_* files from the
+      OLD calibration (35-strategy menu, age0=20, kappa=0.05 era) were
+      still on /data and got silently ranked against a freshly-solved
+      kappa0 benchmark at the NEW calibration, producing garbage CEVs
+      (+792% renter / -91.9% owner) that looked like real output. Both
+      comparison scripts now verify every file in a ranking shares one
+      grid AND one calibration (param_fingerprint over grid dims + all
+      key params, kappa excluded since the benchmark differs by design;
+      kappa uniformity of the strategy files checked separately) and
+      ERROR with a per-group file listing on mismatch. Ranking table
+      reformatted (aligned columns, explicit "verified to share one
+      grid + calibration" header line). ACTION on the pod: delete the
+      stale /data/spl_*.mat files and re-run the sweep at the current
+      calibration before comparing anything.
 
 ## Grid reparametrization (lambda, n-tilde, a) — July 2026
 
