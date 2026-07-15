@@ -14,9 +14,17 @@ function compare_spline_strategies(results_dir, opts)
 %   Welfare metric (see welfare_dc_strategies.m): homotheticity gives
 %   V(W,state) = W^(1-gamma) * V_tilde(state); every strategy starts from
 %   the same initial state, so ranking V_tilde there is exact -- no Monte
-%   Carlo noise. CEV of strategy A vs the best strategy B:
-%       g_A = (V_tilde_B / V_tilde_A)^(1/(1-gamma)) - 1
-%   read as: A needs g_A*100% MORE lifetime consumption to match the best.
+%   Carlo noise. Strategies are RANKED by V_tilde (best first), but the
+%   reported CEV is always measured against NO_PENSION (kappa=0, from
+%   run_combined.m's combined_{housing}_kappa0.mat) as the reference, not
+%   against whichever entry happens to rank best -- no pension is the
+%   natural policy counterfactual ("is a DC pension worth having"), and
+%   no-pension ranking #1 (beating every glide path) is a normal, expected
+%   possible outcome, not an error to flag. CEV of strategy A vs reference B:
+%       g_A = (V_tilde_A / V_tilde_B)^(1/(1-gamma)) - 1
+%   read as: g_A > 0 means A delivers g_A*100% MORE lifetime consumption
+%   than no pension (A better); g_A < 0 means A is worse by |g_A|*100%.
+%   Falls back to CEV-vs-best if no combined_{housing}_kappa0.mat is found.
 %
 %   Runs saved by run_spline_strategies carry a small top-level `welfare0`
 %   struct, read via matfile WITHOUT loading the big sol/sim arrays, so this
@@ -52,7 +60,7 @@ for hi = 1:numel(HOUSING)
     end
 
     n = numel(files);
-    R = struct('name',cell(n,1), 'fracs',[], 'Vt0',[], 'gamma',[], 'tau',[], 'ages',[]);
+    R = struct('name',cell(n,1), 'fracs',[], 'Vt0',[], 'gamma',[], 'tau',[], 'ages',[], 'is_benchmark',[]);
     for k = 1:n
         fname = fullfile(files(k).folder, files(k).name);
         m = matfile(fname);
@@ -69,33 +77,91 @@ for hi = 1:numel(HOUSING)
                                      V0f, 'linear', 'nearest');
             Vt0 = Fv(1/(1+pk.h_mult), 0, pk.h_mult/(1+pk.h_mult));
         end
-        R(k).name  = si.name;
-        R(k).fracs = si.knot_fracs;
-        R(k).Vt0   = Vt0;
-        R(k).gamma = pk.gamma;
-        R(k).tau   = pk.tau_S;
-        R(k).ages  = (pk.age0 : pk.age0 + pk.T - 2).';
+        R(k).name         = si.name;
+        R(k).fracs         = si.knot_fracs;
+        R(k).Vt0           = Vt0;
+        R(k).gamma         = pk.gamma;
+        R(k).tau           = pk.tau_S;
+        R(k).ages          = (pk.age0 : pk.age0 + pk.T - 2).';
+        R(k).is_benchmark  = false;
     end
-    n_found_tot = n_found_tot + n;
+    n_found_tot   = n_found_tot + n;
+    added_benchmark = false;
+
+    % No-pension (kappa=0) benchmark, from run_combined.m's
+    % combined_{housing}_kappa0.mat -- folded into the SAME ranking so its
+    % rank position and CEV vs the best strategy read off directly. tau_S
+    % is NOT meaningful for this scenario (A stays 0 for life, so the
+    % glide path has no effect on anything) -- NaN-padded and excluded
+    % from the glide-path figure below, but the file is otherwise read the
+    % same way (welfare0 fast-path, sol.V fallback for legacy files).
+    nopension_file = fullfile(RES_DIR, sprintf('combined_%s_kappa0.mat', housing));
+    if isfile(nopension_file) && n > 0
+        m  = matfile(nopension_file);
+        vars = who(m);
+        pk = m.p;
+        if ismember('welfare0', vars)
+            w0  = m.welfare0;
+            Vt0 = w0.Vt0;
+        else
+            sol = m.sol;
+            V0f = fill_nan_nearest_3d(sol.V(:,:,:,1));
+            Fv  = griddedInterpolant({pk.lambda_grid, pk.sA_grid, pk.sH_grid}, ...
+                                     V0f, 'linear', 'nearest');
+            Vt0 = Fv(1/(1+pk.h_mult), 0, pk.h_mult/(1+pk.h_mult));
+        end
+        nk = numel(R(1).fracs);
+        B.name         = 'NO_PENSION (kappa=0)';
+        B.fracs        = nan(1, nk);
+        B.Vt0          = Vt0;
+        B.gamma        = pk.gamma;
+        B.tau          = pk.tau_S;
+        B.ages         = (pk.age0 : pk.age0 + pk.T - 2).';
+        B.is_benchmark = true;
+        R = [R; B];
+        n = n + 1;
+        added_benchmark = true;
+        n_found_tot = n_found_tot + 1;
+    elseif n > 0
+        fprintf('  NOTE: %s not found -- no-pension benchmark not included (run run_combined first).\n', ...
+            nopension_file);
+    end
 
     % Rank: V_tilde is increasing in welfare (negative under gamma>1, but
     % larger = better), so descending sort puts the best strategy first.
     [~, ord] = sort([R.Vt0], 'descend');
     R = R(ord);
-    g = arrayfun(@(r) cev(r.Vt0, R(1).Vt0, r.gamma), R);   % CEV vs best
 
-    fprintf('\n%s\n-- %s: %d strategies found (best first) --\n%s\n', ...
-        repmat('=',1,66), housing, n, repmat('=',1,66));
-    fprintf('  rank  %-22s %-22s %12s %12s\n', 'strategy', 'knot fracs', 'V_tilde0', 'CEV vs best');
+    % Welfare gain is always measured against NO_PENSION as the reference
+    % (not against whichever entry happens to rank best) -- see docstring.
+    if added_benchmark
+        bi      = find([R.is_benchmark]);
+        Vt0_ref = R(bi).Vt0;
+        col_name = 'cev_vs_nopension_pct';
+        col_hdr  = 'CEV vs no pension';
+    else
+        Vt0_ref  = R(1).Vt0;
+        col_name = 'cev_vs_best_pct';
+        col_hdr  = 'CEV vs best';
+    end
+    g = arrayfun(@(r) cev(Vt0_ref, r.Vt0, r.gamma), R);   % >0: r beats the reference
+
+    fprintf('\n%s\n-- %s: %d strategies found, best first (%s) --\n%s\n', ...
+        repmat('=',1,66), housing, n, ...
+        ternary(added_benchmark, 'includes NO_PENSION reference', 'no-pension reference missing'), ...
+        repmat('=',1,66));
+    fprintf('  rank  %-22s %-22s %12s %12s\n', 'strategy', 'knot fracs', 'V_tilde0', col_hdr);
     n_show = min(n, 15);
     for k = 1:n_show
-        fprintf('  %4d  %-22s [%s] %12.6g %10.3f%%\n', k, R(k).name, ...
-            strjoin(compose('%.2f', R(k).fracs), ' '), R(k).Vt0, g(k)*100);
+        marker = ternary(R(k).is_benchmark, '  (reference: no pension)', '');
+        fprintf('  %4d  %-22s [%s] %12.6g %10.3f%%%s\n', k, R(k).name, ...
+            strjoin(compose('%.2f', R(k).fracs), ' '), R(k).Vt0, g(k)*100, marker);
     end
     if n > n_show
         fprintf('  ...   (%d more -- full ranking in CSV)\n', n - n_show);
-        fprintf('  %4d  %-22s [%s] %12.6g %10.3f%%  (worst)\n', n, R(n).name, ...
-            strjoin(compose('%.2f', R(n).fracs), ' '), R(n).Vt0, g(n)*100);
+        marker = ternary(R(n).is_benchmark, '  (reference: no pension)', '');
+        fprintf('  %4d  %-22s [%s] %12.6g %10.3f%%  (worst)%s\n', n, R(n).name, ...
+            strjoin(compose('%.2f', R(n).fracs), ' '), R(n).Vt0, g(n)*100, marker);
     end
 
     % CSV: full ranking, machine-readable (one fraction column per knot)
@@ -104,21 +170,25 @@ for hi = 1:numel(HOUSING)
     frac_names = compose('f_knot%d', 1:size(fr,2));
     T = table((1:n).', {R.name}.', frac_cols{:}, [R.Vt0].', 100*g(:), ...
               'VariableNames', [{'rank','strategy'}, frac_names, ...
-                                {'V_tilde0','cev_vs_best_pct'}]);
+                                {'V_tilde0', col_name}]);
     csv_file = fullfile(RES_DIR, sprintf('%s_comparison_%s.csv', prefix, housing));
     writetable(T, csv_file);
     fprintf('  CSV written: %s\n', csv_file);
 
-    % Figure panel: top 3 (solid) and bottom 3 (dashed) glide paths
+    % Figure panel: top 3 (solid) and bottom 3 (dashed) glide paths. The
+    % NO_PENSION benchmark is excluded here -- its tau_S is not meaningful
+    % (A stays 0 for life, so the glide path has no effect on anything).
+    not_bench = ~[R.is_benchmark];
+    Rp = R(not_bench); gp = g(not_bench); np = numel(Rp);
     subplot(1, 2, hi); hold on;
-    for k = 1:min(3, n)
-        plot(R(k).ages, R(k).tau, 'LineWidth', 1.8, ...
-            'DisplayName', sprintf('#%d %s (%.2f%%)', k, strrep(R(k).name,'_','\_'), g(k)*100));
+    for k = 1:min(3, np)
+        plot(Rp(k).ages, Rp(k).tau, 'LineWidth', 1.8, ...
+            'DisplayName', sprintf('#%d %s (%.2f%%)', k, strrep(Rp(k).name,'_','\_'), gp(k)*100));
     end
-    for k = max(1, n-2):n
+    for k = max(1, np-2):np
         if k <= 3, continue; end
-        plot(R(k).ages, R(k).tau, '--', 'LineWidth', 1.1, ...
-            'DisplayName', sprintf('#%d %s (%.2f%%)', k, strrep(R(k).name,'_','\_'), g(k)*100));
+        plot(Rp(k).ages, Rp(k).tau, '--', 'LineWidth', 1.1, ...
+            'DisplayName', sprintf('#%d %s (%.2f%%)', k, strrep(Rp(k).name,'_','\_'), gp(k)*100));
     end
     xlabel('age'); ylabel('\tau_S');
     title(sprintf('%s: best (solid) vs worst (dashed)', housing));

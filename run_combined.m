@@ -17,7 +17,10 @@
 %   Saves combined_renter.mat, combined_owner.mat, combined_renter_kappa0.mat,
 %   and combined_owner_kappa0.mat in this directory (with an _lna suffix
 %   when the cube grid is selected, so the two grid systems never overwrite
-%   each other's results).
+%   each other's results). Simplex-path saves also carry a small top-level
+%   `welfare0` struct (V_tilde at the initial state), same convention as
+%   run_spline_strategies.m, so e.g. the renter_kappa0/owner_kappa0 files
+%   can be read as a "no pension" welfare benchmark without loading sol/sim.
 %
 %   Grid system (CGM_GRID environment variable):
 %     simplex (default) : (lambda, s_A, s_H) grid, sized to MATCH
@@ -142,6 +145,23 @@ for k = 1:numel(scenarios)
     fprintf('  Solver: %.1f s  (pool: %s, %d workers, host: %s)\n', ...
         sol.elapsed, sol.timing.pool.type, sol.timing.pool.num_workers, sol.timing.hostname);
 
+    % Welfare summary at the initial state (see welfare_dc_strategies.m):
+    % V(W,state) = W^(1-gamma) * V_tilde(state); saved top-level so
+    % compare_spline_strategies.m (and similar) can read Vt0 via matfile
+    % without loading the big sol/sim arrays -- same convention as
+    % run_spline_strategies.m. Simplex path only: lna uses different state
+    % coordinates (u1,u2,u3) with no equivalent consumer to match today.
+    if ~use_lna
+        lam0 = 1 / (1 + p.h_mult);
+        sH0  = p.h_mult / (1 + p.h_mult);
+        V0f  = fill_nan_nearest_3d(sol.V(:,:,:,1));
+        Fv   = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, ...
+                                  V0f, 'linear', 'nearest');
+        welfare0 = struct('Vt0', Fv(lam0, 0, sH0), 'lam0', lam0, 'sA0', 0, ...
+                          'sH0', sH0, 'gamma', p.gamma);
+        fprintf('  V_tilde0 = %.6g\n', welfare0.Vt0);
+    end
+
     t_sim = tic;
     if use_lna
         sim = simulate.paths_lna(p, profile, sol, ann_price, N_sim);
@@ -166,8 +186,32 @@ for k = 1:numel(scenarios)
 
     suffix = ''; if use_lna, suffix = '_lna'; end
     fname = fullfile(utility.output_dir(), sprintf('combined_%s%s.mat', sc.name, suffix));
-    save(fname, 'p', 'profile', 'shocks', 'ann_price', 'sol', 'sim', 'sc', 'timing');
+    if ~use_lna
+        save(fname, 'p', 'profile', 'shocks', 'ann_price', 'sol', 'sim', 'sc', 'timing', 'welfare0');
+    else
+        save(fname, 'p', 'profile', 'shocks', 'ann_price', 'sol', 'sim', 'sc', 'timing');
+    end
     fprintf('  Saved %s\n', fname);
 end
 
 fprintf('\nAll scenarios done.\n');
+
+%% =======================================================================
+function Z = fill_nan_nearest_3d(M)
+% Same boundary-NaN helper as run_spline_strategies.m / welfare_dc_strategies.m
+% -- the initial state sits exactly on the feasibility boundary, so 'linear'
+% interpolation would pick up a NaN corner.
+Z = M;
+if ~any(isnan(Z(:))), return; end
+[NL, NA, NH] = size(Z);
+mask_ok = ~isnan(Z);
+[Ig, Jg, Kg] = ndgrid(1:NL, 1:NA, 1:NH);
+I_ok = Ig(mask_ok); J_ok = Jg(mask_ok); K_ok = Kg(mask_ok); V_ok = Z(mask_ok);
+I_bad = Ig(~mask_ok); J_bad = Jg(~mask_ok); K_bad = Kg(~mask_ok);
+for k = 1:numel(I_bad)
+    di = I_bad(k) - I_ok; dj = J_bad(k) - J_ok; dk = K_bad(k) - K_ok;
+    d2 = di.*di + dj.*dj + dk.*dk;
+    [~, q] = min(d2);
+    Z(I_bad(k), J_bad(k), K_bad(k)) = V_ok(q);
+end
+end

@@ -172,8 +172,14 @@ for j = 1:numel(jobs)
     end
 
     idx = @(a) a - p.age0 + 1;  % age -> 1-based index into tau_S
-    lprintf(LOG_FILE, '    tau_S: age20=%.2f  age40=%.2f  age64=%.2f  age66=%.2f\n', ...
-        p.tau_S(idx(20)), p.tau_S(idx(40)), p.tau_S(idx(64)), p.tau_S(idx(66)));
+    % Diagnostic ages derived from p.age0/p.retirement_age (not hardcoded
+    % literals) so this never again goes out of range if those shift --
+    % this exact line broke with a negative index after age0 moved 20->25
+    % (age20 fell before the modeled range) until caught here.
+    diag_ages = unique(max(p.age0, min(p.age0 + p.T - 2, ...
+        round([p.age0, (p.age0 + p.retirement_age)/2, p.retirement_age - 1, p.retirement_age]))));
+    lprintf(LOG_FILE, '    tau_S: %s\n', strjoin(arrayfun(@(a) ...
+        sprintf('age%d=%.2f', a, p.tau_S(idx(a))), diag_ages, 'UniformOutput', false), '  '));
 
     %% Shared inputs
     [~, mu_growth, sigma_l_log] = config.income_profile(p);

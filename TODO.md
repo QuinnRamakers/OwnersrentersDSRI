@@ -269,6 +269,42 @@ Tier 3 — consistent but must be documented deliberately:
       Assumed housing="both" for this sizing -- if a run only covers one
       housing type, halve the expected wall time (or double the strategy
       count to compensate).
+- [x] BUG FOUND & FIXED 2026-07-15: `run_spline_strategies.m`'s per-job
+      diagnostic line hardcoded `p.tau_S(idx(20))` etc. (ages 20/40/64/66)
+      -- broke with a negative-index error once age0 moved 20->25 (age 20
+      fell before the modeled range), which would have killed the whole
+      cluster sweep on strategy #1. Never triggered until this file was
+      actually run again post-calibration-overhaul. Fixed to derive
+      diagnostic ages from p.age0/p.retirement_age instead of literals.
+      Lesson: hardcoded age literals anywhere in this codebase are a
+      silent landmine after age0/retirement_age changes -- grep for
+      literal ages when touching either parameter again.
+
+## No-pension benchmark in strategy comparisons (July 2026)
+
+- [x] `compare_spline_strategies.m` now folds `combined_{housing}_kappa0.mat`
+      (run_combined.m's no-DC-pension benchmark) into the SAME ranking as
+      the spline sweep, so its rank position and CEV vs the best strategy
+      read off directly (excluded only from the tau_S glide-path plot,
+      since tau_S is meaningless when A=0 for life). Requires
+      run_combined.m to have been run with the `welfare0` field (added
+      2026-07-15) for the fast matfile-read path; falls back to computing
+      from sol.V for older files, same as the existing spl_* loader.
+- [x] New `compare_strategy_vs_nopension.m`: per housing type, finds the
+      best-ranked spline strategy and compares it against the kappa=0
+      benchmark on a 12-panel overlay dashboard (adapted from make_plots.m's
+      renter-vs-owner layout). Includes explicit sanity-check assertions
+      (no NaN/Inf, A=0 for no-pension, matching tenure and H_0, housing
+      panels should overlap exactly since kappa doesn't affect housing) --
+      designed as a first-look "does this look sane" check on real cluster
+      output, not a replacement for compare_spline_strategies.m's full
+      ranking.
+- [x] FRAMING FIX 2026-07-15 (both files above): welfare gain is always
+      measured against NO_PENSION as the fixed reference (CEV vs no
+      pension, not CEV vs whichever entry ranks best), and no pension
+      beating every strategy is reported as a plain signed number with no
+      "WARNING"/"check calibration" language -- it's a normal, expected
+      possible outcome per explicit user direction, not an error state.
 
 ## Grid reparametrization (lambda, n-tilde, a) — July 2026
 
