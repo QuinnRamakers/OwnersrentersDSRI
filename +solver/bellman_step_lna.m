@@ -49,15 +49,25 @@ inv_omg = 1 / one_m_g;
 is_owner   = p.is_owner;
 is_retired = (t >= p.t_ret);
 
+% Free DC investment choice is a simplex-solver-only feature by design; the
+% lna path has no tau_pol machinery.
+assert(~(isfield(p, 'choose_tau_S') && p.choose_tau_S), ...
+       'bellman_step_lna:choose_tau_S', ...
+       'choose_tau_S is not supported on the lna grid; use solver.bellman_step.');
+
 skip_polish = false; if isfield(p, 'skip_polish'), skip_polish = logical(p.skip_polish); end
 
 % Tax parameters (guarded so legacy p-structs without tax fields => no tax).
 %   tau_inc : income tax on wages, AOW and annuity payout (EET treatment).
 %   tau_b/tau_s : accrual capital-gains tax (no loss offset) on the liquid
 %   bond/stock legs. The DC fund return R_A below stays PRE-TAX (sheltered).
+%   tau_w : box-3-style wealth tax on the LIQUID account's end-of-period
+%   balance (after-CGT return factors scaled by 1-tau_w); housing and the
+%   DC fund are exempt.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
 tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
+tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
 net_inc = 1 - tau_inc;     % take-home factor on taxed income
 
 % Per-period housing carrying-cost rate (fraction of H_t)
@@ -132,10 +142,11 @@ G_next = exp(mu_g + sig_l .* eps_Y);
 R_A    = ((1 - tau) * p.Rf + tau * R_S) / pt;     % survival-credit DC return (PRE-TAX, sheltered)
 
 % After-tax returns on the LIQUID (taxable) account: accrual CGT, no loss
-% offset. Bonds pay tax on the (always positive) interest; stocks pay tax
-% only on positive gains.
-Rf_at  = 1 + p.r * (1 - tau_b);                   % bond leg, after tax
-R_S_at = R_S - tau_s .* max(R_S - 1, 0);          % stock leg, after tax (no loss offset)
+% offset, then the box-3 wealth tax on the end-of-period balance. Bonds pay
+% tax on the (always positive) interest; stocks pay tax only on positive
+% gains.
+Rf_at  = (1 + p.r * (1 - tau_b)) * (1 - tau_w);            % bond leg, after tax
+R_S_at = (R_S - tau_s .* max(R_S - 1, 0)) .* (1 - tau_w);  % stock leg, after tax (no loss offset)
 
 % Z-transform of V_next on the u-grid. No feasibility mask, but keep the
 % arg<=0 guard (cash-infeasible states carry V = -1e15, which for gamma < 1

@@ -30,12 +30,23 @@ is_owner = p.is_owner;
 
 % Tax parameters (guarded so legacy p-structs => no tax). Must match the
 % solver: income tax (EET) on wages/AOW/annuity, accrual CGT (no loss offset)
-% on the liquid account, DC fund sheltered.
+% plus the box-3 wealth tax (tau_wealth on the end-of-period balance) on the
+% liquid account, DC fund and housing sheltered/exempt.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
 tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
+tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
 net_inc = 1 - tau_inc;
-Rf_at   = 1 + p.r * (1 - tau_b);
+Rf_at   = (1 + p.r * (1 - tau_b)) * (1 - tau_w);
+
+% Free DC investment choice: interpolate the solver's per-state tau policy;
+% glide regime replicates p.tau_S. Either way the APPLIED DC equity share is
+% recorded in sim.tau_A (N x T-1; share applies to the t -> t+1 transition).
+choose_tau = isfield(p, 'choose_tau_S') && p.choose_tau_S;
+if choose_tau
+    assert(isfield(sol, 'tau_pol'), ...
+           'paths:no_tau_pol', 'choose_tau_S is set but sol has no tau_pol.');
+end
 
 Y_path  = zeros(N, T);
 X_path  = zeros(N, T);
@@ -53,6 +64,7 @@ m_path  = zeros(N, T);
 ann_pay_path = zeros(N, T);
 disp_inc = zeros(N, T);
 bequest_path = zeros(N, 1);
+tau_A_path = zeros(N, T-1);
 
 n_clamp_c  = 0;
 n_clamp_pi = 0;
@@ -64,13 +76,17 @@ n_negLW    = 0;
 mask_ok = ~isnan(sol.c_pol(:,:,:,1));
 [bad_lin, nn_lin] = build_nan_fill_map(mask_ok);
 
-pp_c  = cell(T, 1);  pp_pi = cell(T, 1);
+pp_c  = cell(T, 1);  pp_pi = cell(T, 1);  pp_tau = cell(T, 1);
 for t = 1:T
     Cpol = sol.c_pol(:,:,:,t);  Ppol = sol.pi_pol(:,:,:,t);
     Cf = apply_nan_fill(Cpol, bad_lin, nn_lin);
     Pf = apply_nan_fill(Ppol, bad_lin, nn_lin);
     pp_c{t}  = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, Cf, 'linear', 'nearest');
     pp_pi{t} = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, Pf, 'linear', 'nearest');
+    if choose_tau && t < T
+        Tf = apply_nan_fill(sol.tau_pol(:,:,:,t), bad_lin, nn_lin);
+        pp_tau{t} = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, Tf, 'linear', 'nearest');
+    end
 end
 
 logY_canon = config.income_profile(p);
@@ -163,13 +179,21 @@ for t = 1:T
     % Returns
     R_S_draw = exp(p.mu_S + p.sigma_S * eps_S(:,t));
     R_H_draw = exp(p.mu_H + p.sigma_H * eps_H(:,t));
-    R_S_at_draw = R_S_draw - tau_s .* max(R_S_draw - 1, 0);   % after-tax equity (no loss offset)
-    R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT
+    R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
+    R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
 
-    % Pension return for transition t -> t+1: tau_S applies on the t-side.
-    tau_t      = p.tau_S(t);
+    % DC equity share for transition t -> t+1 (applies on the t-side):
+    % glide regime uses the plan's tau_S(t); free regime interpolates the
+    % solver's per-state tau policy. Applied share recorded in sim.tau_A.
+    if choose_tau
+        tau_raw = pp_tau{t}(lam_path(:,t), sA_path(:,t), sH_path(:,t));
+        tau_ht  = max(min(tau_raw, 1), 0);
+    else
+        tau_ht  = repmat(p.tau_S(t), N, 1);
+    end
+    tau_A_path(:,t) = tau_ht;
     pt_surv    = profile.p_surv(t);
-    R_A_with   = ((1 - tau_t) * p.Rf + tau_t .* R_S_draw) ./ max(pt_surv, 1e-8);
+    R_A_with   = ((1 - tau_ht) .* p.Rf + tau_ht .* R_S_draw) ./ max(pt_surv, 1e-8);
 
     % Pension account dynamics
     if is_retired
@@ -211,6 +235,7 @@ sim.m_pay = m_path;
 sim.ann_pay = ann_pay_path;
 sim.disp_inc = disp_inc;
 sim.bequest = bequest_path;
+sim.tau_A = tau_A_path;      % applied DC equity share on the t -> t+1 transition (N x T-1)
 sim.ages = (p.age0 : p.age0 + p.T - 1);
 sim.N = N;
 sim.is_owner = is_owner;

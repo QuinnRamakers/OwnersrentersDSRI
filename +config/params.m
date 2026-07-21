@@ -96,6 +96,14 @@ p.kappa     = 0.2;
 p.delta     = 0.0;
 % tau_S is a glide-path lifecycle fund: linear from 0.8 equity at age 30 down
 % to 0.0 at retirement, 0.0 thereafter. (Vector built below, after t_ret.)
+% Free DC investment choice: when choose_tau_S is true, the DC equity share
+% tau becomes a THIRD choice variable (c, pi, tau) in solver.bellman_step
+% (simplex solver only -- bellman_step_lna asserts against it). The annuity
+% is still priced off the plan's tau_S glide path (provider convention).
+% N_tau sizes the tau seed grid for the grid search (the glide value is
+% appended so the free search always contains the glide slice).
+p.choose_tau_S = false;
+p.N_tau        = 11;
 
 % Housing
 p.is_owner      = false;     % flip true for owner scenario
@@ -151,9 +159,8 @@ p.skip_polish = false;
 %   the DC account a positive welfare value (without taxes the DC fund's only
 %   edge is the mortality credit, which does not outweigh its illiquidity).
 %   Still TBD per calibration slide deck (2026-07) -- open question is
-%   whether to target LISS gross or net income; value below is an
-%   unsourced placeholder pending a real number.
-p.tau_inc      = 0.30;
+%   whether to target LISS gross or net income; value user-set 2026-07-16.
+p.tau_inc      = 0.376;
 %   Capital-gains tax on the LIQUID (taxable) account only -- the DC fund is
 %   sheltered. Accrual basis, NO loss offset: only positive gains are taxed
 %   (no credit when equity falls). Split by asset so bonds and stocks can be
@@ -163,6 +170,11 @@ p.tau_inc      = 0.30;
 %   slide deck (2026-07) punts to 0 pending a resolution.
 p.tau_cg_bond  = 0.0;
 p.tau_cg_stock = 0.0;
+%   Box-3-style WEALTH tax on the LIQUID (taxable) account only, levied on
+%   the end-of-period balance: the bond and stock after-CGT return factors
+%   are scaled by (1 - tau_wealth) in the solver and simulator. Housing and
+%   the DC fund are exempt. User-set 2026-07-16 (deemed-return box-3 proxy).
+p.tau_wealth   = 0.0197;
 
 % Derived
 p.Rf      = 1 + p.r;

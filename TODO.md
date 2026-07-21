@@ -369,6 +369,57 @@ calibration; arms lna 28x20x20 / 40x28x28 / 56x40x40 vs simplex 40^3 /
       missing; the "reasonable upper bound" discussion for Y/W can be
       replaced by the bounded u1 = Y/W convention.
 
+## Full-choice vs fixed-path DC welfare — comparison methodology (July 2026)
+
+Open question, flagged 2026-07-21: **we need to think more about how to compare
+the free-DC-investment-choice welfare (`choose_tau_S = true`, individually
+optimal tau) against the fixed glide-path welfare, and against the no-DC
+benchmark.** The per-state dominance property is settled; the scalar welfare
+*number* is not.
+
+Context / what is and isn't resolved:
+- [x] Per-state DOMINANCE of free choice over the glide holds at the production
+      grid (`test_freetau_dominance_prod.m`): over ~70-76k states, min CEV
+      -5.6e-5 (numerical noise), median +1.1%, zero states losing >1e-4.
+      Free choice weakly dominates the glide everywhere, as theory requires.
+      The solver fix that guarantees this (glide-pinned + derivative-free
+      ridge-proof polish in `bellman_step.m`) is in place.
+- [ ] The scalar welfare comparison is NOT trustworthy as currently reported.
+      Both the free-vs-glide CEV and the DC-vs-no-DC CEV are read from
+      `sol.V(:,:,:,1)` at the initial corner node (X0=0, A0=0, H0=h_mult*Y0),
+      which is (a) the SAME unconverged corner already flagged in the grid-
+      reparametrization "Welfare caution" above, and (b) dominated by the t=0
+      liquidity cost of the mandatory kappa contribution: at that corner the
+      DC pension scores -29% (renter) / -48% (owner) CEV vs no-DC even though
+      it raises consumption at nearly every later age. A buffer sweep
+      (`welfare_dc_vs_nodc.m`, `welfare_dc_vs_nodc_by_buffer.png`) flips the
+      sign to positive at ~1.1 yrs of income (renter) / ~5.7 yrs (owner) and
+      reaches +75% / +10% at 10 yrs. So the headline number is an artifact of
+      WHERE welfare is anchored, not a verdict on the pension.
+- [ ] Decisions still needed before any full-choice-vs-fixed-path welfare
+      number goes in the paper:
+  - Anchor: move the welfare evaluation off the X0=0 corner (X0_frac buffer in
+    simulate.paths, already supported) to a converged, economically defensible
+    initial condition — and justify the buffer level rather than picking one
+    that flips the sign. Alternatively report an ex-ante lifetime-utility
+    metric integrated over a plausible initial-wealth distribution instead of a
+    single node.
+  - Comparability of the two regimes: the free-choice and glide solves share
+    grid + calibration (good), but the annuity in BOTH is priced off the glide
+    tau_S by provider convention — so the free household's chosen tau and its
+    annuity pricing are inconsistent. Decide whether the welfare comparison
+    should (i) keep that provider convention (current), or (ii) re-price the
+    annuity off the individually chosen tau, and state which question the CEV
+    is answering ("value of free accumulation choice under a fixed-priced
+    annuity" vs "value of free choice end to end").
+  - Grid convergence: re-check whichever welfare anchor is chosen at a finer
+    grid (the buffer curves are visibly jagged from coarse-grid nearest-
+    neighbour boundary interpolation; the initial corner is still ~-20%/step on
+    simplex refinement per the note above).
+  - Do NOT fold the freetau benchmark into `compare_spline_strategies.m` /
+    `compare_strategy_vs_nopension.m` until the anchor is settled — those
+    scripts also read Vt0 at the same corner and would inherit the artifact.
+
 ## Explicitly not calibration targets
 
 gh_n, N_lambda, N_sA, N_sH, N_c, N_pi — solver accuracy/convergence choices,

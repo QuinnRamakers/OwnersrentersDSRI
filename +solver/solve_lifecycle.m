@@ -12,12 +12,24 @@ c_pol  = zeros(NL, NA, NH, T);
 pi_pol = zeros(NL, NA, NH, T);
 period_sec = zeros(T, 1);
 
+% Free DC investment choice: store the tau policy only in that regime (the
+% glide regime has no per-state tau to record -- it is just p.tau_S).
+choose_tau = isfield(p, 'choose_tau_S') && p.choose_tau_S;
+if choose_tau
+    tau_pol = zeros(NL, NA, NH, T);
+end
+
 t0 = tic;
 
 % Terminal
 t_step = tic;
-[V(:,:,:,T), c_pol(:,:,:,T), pi_pol(:,:,:,T)] = ...
-    solver.bellman_step(T, [], p, profile, shocks, ann_price);
+if choose_tau
+    [V(:,:,:,T), c_pol(:,:,:,T), pi_pol(:,:,:,T), ~, tau_pol(:,:,:,T)] = ...
+        solver.bellman_step(T, [], p, profile, shocks, ann_price);
+else
+    [V(:,:,:,T), c_pol(:,:,:,T), pi_pol(:,:,:,T)] = ...
+        solver.bellman_step(T, [], p, profile, shocks, ann_price);
+end
 period_sec(T) = toc(t_step);
 
 % Pre-build trilinear interpolants for the probe (single mid-life point)
@@ -25,8 +37,13 @@ probe_lam = 0.2; probe_sA = 0.2; probe_sH = 0.4;
 
 for t = T-1 : -1 : 1
     t_step = tic;
-    [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t)] = ...
-        solver.bellman_step(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+    if choose_tau
+        [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t), ~, tau_pol(:,:,:,t)] = ...
+            solver.bellman_step(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+    else
+        [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t)] = ...
+            solver.bellman_step(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+    end
     period_sec(t) = toc(t_step);
     if mod(t, 10) == 0 || t == T-1 || t == 1
         Fc  = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, ...
@@ -41,6 +58,9 @@ for t = T-1 : -1 : 1
 end
 
 sol.V = V; sol.c_pol = c_pol; sol.pi_pol = pi_pol;
+if choose_tau
+    sol.tau_pol = tau_pol;
+end
 sol.elapsed = toc(t0);
 sol.timing  = struct('period_sec', period_sec, 'total_sec', sol.elapsed, ...
                       'pool', pool_info(), 'hostname', hostname(), ...

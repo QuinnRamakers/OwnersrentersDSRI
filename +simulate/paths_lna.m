@@ -25,12 +25,14 @@ is_owner = p.is_owner;
 
 % Tax parameters (guarded so legacy p-structs => no tax). Must match the
 % solver: income tax (EET) on wages/AOW/annuity, accrual CGT (no loss offset)
-% on the liquid account, DC fund sheltered.
+% plus the box-3 wealth tax (tau_wealth on the end-of-period balance) on the
+% liquid account, DC fund and housing sheltered/exempt.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
 tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
+tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
 net_inc = 1 - tau_inc;
-Rf_at   = 1 + p.r * (1 - tau_b);
+Rf_at   = (1 + p.r * (1 - tau_b)) * (1 - tau_w);
 
 Y_path  = zeros(N, T);
 X_path  = zeros(N, T);
@@ -158,8 +160,8 @@ for t = 1:T
     % Returns
     R_S_draw = exp(p.mu_S + p.sigma_S * eps_S(:,t));
     R_H_draw = exp(p.mu_H + p.sigma_H * eps_H(:,t));
-    R_S_at_draw = R_S_draw - tau_s .* max(R_S_draw - 1, 0);   % after-tax equity (no loss offset)
-    R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT
+    R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
+    R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
 
     % Pension return for transition t -> t+1: tau_S applies on the t-side.
     tau_t      = p.tau_S(t);

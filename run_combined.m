@@ -1,26 +1,27 @@
 % RUN_COMBINED  Solve and simulate the combined pension+housing model.
 %
-%   Four scenarios, is_owner x kappa:
-%     1) Renter        (is_owner = false, kappa = p.kappa default): pays
-%        alpha * H_t per period.
-%     2) Owner         (is_owner = true,  kappa = p.kappa default): pays
+%   Four scenarios, is_owner x DC-investment regime (kappa = p.kappa = 0.2
+%   throughout; the old kappa=0 no-pension benchmark scenarios were removed
+%   2026-07-16, see git history):
+%     1) Renter         (is_owner = false, glide tau_S): pays alpha * H_t
+%        per period.
+%     2) Owner          (is_owner = true,  glide tau_S): pays
 %        (theta + m_rate_t) * H_t; bequest +H.
-%     3) Renter_kappa0 (is_owner = false, kappa = 0): NO-DC-PENSION
-%        benchmark -- isolates the DC pension's welfare contribution by
-%        comparison against scenario 1 (same housing tenure, pension off).
-%     4) Owner_kappa0  (is_owner = true,  kappa = 0): same benchmark, owner
+%     3) Renter_freetau (is_owner = false, choose_tau_S = true): the DC
+%        equity share is a free per-state choice variable -- benchmarks the
+%        value of free pension investment choice against the glide plan.
+%     4) Owner_freetau  (is_owner = true,  choose_tau_S = true): same, owner
 %        tenure.
-%   AOW (first pillar) is always on; only the DC second pillar (kappa) is
-%   toggled by the kappa0 scenarios. tau_S glide path and annuitisation at
-%   t_ret still apply whenever kappa > 0.
+%   The freetau scenarios are SKIPPED under CGM_GRID=lna (choose_tau_S is a
+%   simplex-solver-only feature; bellman_step_lna asserts against it).
 %
-%   Saves combined_renter.mat, combined_owner.mat, combined_renter_kappa0.mat,
-%   and combined_owner_kappa0.mat in this directory (with an _lna suffix
+%   Saves combined_renter.mat, combined_owner.mat, combined_renter_freetau.mat,
+%   and combined_owner_freetau.mat in this directory (with an _lna suffix
 %   when the cube grid is selected, so the two grid systems never overwrite
 %   each other's results). Simplex-path saves also carry a small top-level
 %   `welfare0` struct (V_tilde at the initial state), same convention as
-%   run_spline_strategies.m, so e.g. the renter_kappa0/owner_kappa0 files
-%   can be read as a "no pension" welfare benchmark without loading sol/sim.
+%   run_spline_strategies.m, so the scenarios can be welfare-ranked without
+%   loading sol/sim.
 %
 %   Grid system (CGM_GRID environment variable):
 %     simplex (default) : (lambda, s_A, s_H) grid, sized to MATCH
@@ -83,20 +84,22 @@ elseif isempty(gcp('nocreate'))
 end
 
 scenarios = struct( ...
-    'name',     {'renter', 'owner', 'renter_kappa0', 'owner_kappa0'}, ...
-    'is_owner', {false,    true,    false,           true          }, ...
-    'kappa',    {NaN,      NaN,     0,               0             } );
+    'name',       {'renter', 'owner', 'renter_freetau', 'owner_freetau'}, ...
+    'is_owner',   {false,    true,    false,            true           }, ...
+    'choose_tau', {false,    false,   true,             true           } );
 
 N_sim = 5000;
 
 for k = 1:numel(scenarios)
     sc = scenarios(k);
+    if use_lna && sc.choose_tau
+        fprintf('\n=== Scenario: %s SKIPPED (choose_tau_S unsupported on the lna grid) ===\n', sc.name);
+        continue
+    end
     fprintf('\n=== Scenario: %s (grid: %s) ===\n', sc.name, grid_type);
     p = config.params();
     p.is_owner = sc.is_owner;
-    if ~isnan(sc.kappa)
-        p.kappa = sc.kappa;
-    end
+    p.choose_tau_S = sc.choose_tau;
 
     % Match run_spline_strategies.m's default sweep grid (state 25x15x15,
     % gh_n=5) instead of config.params()'s full 40^3/gh_n=7 production
@@ -127,8 +130,13 @@ for k = 1:numel(scenarios)
 
     fprintf('  kappa=%.3f, alpha=%.3f, theta=%.3f, h_mult=%.1f\n', ...
         p.kappa, p.alpha, p.theta, p.h_mult);
-    fprintf('  tau_S glide: t=1 -> %.2f, t_ret-1 -> %.2f\n', ...
-        p.tau_S(1), p.tau_S(p.t_ret-1));
+    if sc.choose_tau
+        fprintf('  DC equity share: FREE per-state choice (N_tau=%d); annuity still priced off the tau_S glide\n', ...
+            p.N_tau);
+    else
+        fprintf('  tau_S glide: t=1 -> %.2f, t_ret-1 -> %.2f\n', ...
+            p.tau_S(1), p.tau_S(p.t_ret-1));
+    end
     fprintf('  ann_price(t_ret)=%.3f\n', ann_price(p.t_ret));
     if sc.is_owner
         fprintf('  mortgage rate (years 1..%d): %.4f per period\n', ...
