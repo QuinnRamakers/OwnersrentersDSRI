@@ -107,15 +107,12 @@ for k = 1:numel(scenarios)
     % comparable to the spline-strategy sweep. Only applies to the simplex
     % path -- lna has no equivalent in run_spline_strategies to match.
     if ~use_lna
-        p.gh_n     = 5;
-        p.N_lambda = 25;
-        p.N_sA     = 15;
-        p.N_sH     = 15;
-        p.lambda_grid = linspace(0, 1, p.N_lambda).';
-        p.sA_grid     = linspace(0, 1, p.N_sA).';
-        p.sH_grid     = linspace(0, 1, p.N_sH).';
-        p = config.insert_anchor_nodes(p);   % rebuild dropped the welfare anchors
+        % build_state_grids rebuilds the linspaces AND re-inserts the welfare
+        % anchors, so N_lambda/N_sH come back +2 -- read them off p, never off
+        % the requested dims.
+        p = utility.build_state_grids(p, [25 15 15], 5);
     end
+    p = assert_production_fill(p);
 
     if use_lna && strcmp(getenv('CGM_SKIP_POLISH'), '1')
         p.skip_polish = true;
@@ -161,14 +158,9 @@ for k = 1:numel(scenarios)
     % run_spline_strategies.m. Simplex path only: lna uses different state
     % coordinates (u1,u2,u3) with no equivalent consumer to match today.
     if ~use_lna
-        lam0 = 1 / (1 + p.h_mult);
-        sH0  = p.h_mult / (1 + p.h_mult);
-        V0f  = fill_nan_nearest_3d(sol.V(:,:,:,1));
-        Fv   = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, ...
-                                  V0f, 'linear', 'nearest');
-        welfare0 = struct('Vt0', Fv(lam0, 0, sH0), 'lam0', lam0, 'sA0', 0, ...
-                          'sH0', sH0, 'gamma', p.gamma);
-        fprintf('  V_tilde0 = %.6g\n', welfare0.Vt0);
+        welfare0 = utility.welfare_summary(p, sol.V(:,:,:,1));
+        fprintf('  V_tilde0 = %.6g (corner, b=0) | %.6g at b0=%.4f | %.6g at b_alt=%.4f\n', ...
+            welfare0.Vt0, welfare0.Vt0_b0, welfare0.b0, welfare0.Vt0_b_alt, welfare0.b_alt);
     end
 
     t_sim = tic;
@@ -206,21 +198,14 @@ end
 fprintf('\nAll scenarios done.\n');
 
 %% =======================================================================
-function Z = fill_nan_nearest_3d(M)
-% Same boundary-NaN helper as run_spline_strategies.m / welfare_dc_strategies.m
-% -- the initial state sits exactly on the feasibility boundary, so 'linear'
-% interpolation would pick up a NaN corner.
-Z = M;
-if ~any(isnan(Z(:))), return; end
-[NL, NA, NH] = size(Z);
-mask_ok = ~isnan(Z);
-[Ig, Jg, Kg] = ndgrid(1:NL, 1:NA, 1:NH);
-I_ok = Ig(mask_ok); J_ok = Jg(mask_ok); K_ok = Kg(mask_ok); V_ok = Z(mask_ok);
-I_bad = Ig(~mask_ok); J_bad = Jg(~mask_ok); K_bad = Kg(~mask_ok);
-for k = 1:numel(I_bad)
-    di = I_bad(k) - I_ok; dj = J_bad(k) - J_ok; dk = K_bad(k) - K_ok;
-    d2 = di.*di + dj.*dj + dk.*dk;
-    [~, q] = min(d2);
-    Z(I_bad(k), J_bad(k), K_bad(k)) = V_ok(q);
-end
+function p = assert_production_fill(p)
+% PRODUCTION GUARD -- see run_nodc.m for the full rationale. Short version:
+% p.legacy_fill restores the pre-fix continuation fill (a ruin-blended
+% penalty one interpolation cell wide along the sX = 0 face, which is where
+% the welfare anchor sits) and is test-only. Stamping false explicitly is
+% what makes utility.param_fingerprint fence pre-fix files off from post-fix
+% ones -- an absent field fingerprints as NaN on BOTH vintages.
+assert(~(isfield(p, 'legacy_fill') && p.legacy_fill), 'run_combined:legacy_fill', ...
+    'p.legacy_fill is set -- that is the pre-fix phantom-penalty fill, test-only.');
+p.legacy_fill = false;
 end

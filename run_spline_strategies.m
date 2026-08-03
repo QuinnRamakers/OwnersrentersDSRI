@@ -35,7 +35,9 @@ function run_spline_strategies(strats, opts)
 %
 %   Output files:  {strategy}_{renter|owner}.mat, e.g. spl_100_050_000_owner.mat.
 %   Each file carries a small top-level `welfare0` summary (V_tilde at the
-%   initial state) so compare_spline_strategies can rank runs without
+%   initial state -- corner, the calibrated b0/b_alt anchors, and a buffer
+%   sensitivity curve; see utility.welfare_summary) so
+%   compare_spline_strategies can rank runs, at any of those anchors, without
 %   loading the big sol/sim arrays.
 %   Log file:      spline_strategies_log.txt  (appended, not overwritten)
 %
@@ -153,25 +155,18 @@ for j = 1:numel(jobs)
     p.is_owner = strcmp(housing, 'owner');
     p.tau_S    = strategy.spline_tau(p, st.knot_ages, st.knot_fracs);
 
-    % Sweep grids (defaults reduced vs the full model's 40^3 / gh_n=7)
-    p.gh_n     = opts.gh_n;
-    p.N_lambda = opts.state_grid(1);
-    p.N_sA     = opts.state_grid(2);
-    p.N_sH     = opts.state_grid(3);
-    p.lambda_grid = linspace(0, 1, p.N_lambda).';
-    p.sA_grid     = linspace(0, 1, p.N_sA).';
-    p.sH_grid     = linspace(0, 1, p.N_sH).';
-    p = config.insert_anchor_nodes(p);   % rebuild dropped the welfare anchors
+    % Sweep grids (defaults reduced vs the full model's 40^3 / gh_n=7).
+    % build_state_grids rebuilds the linspaces AND re-inserts the welfare
+    % anchors, so N_lambda/N_sH come back +2 -- read them off p, never off
+    % opts.state_grid.
+    p = utility.build_state_grids(p, opts.state_grid, opts.gh_n);
 
     if SMOKE
-        p.gh_n     = 3;
-        p.N_lambda = 12;  p.N_sA = 12;  p.N_sH = 12;
-        p.lambda_grid = linspace(0, 1, p.N_lambda).';
-        p.sA_grid     = linspace(0, 1, p.N_sA).';
-        p.sH_grid     = linspace(0, 1, p.N_sH).';
-        p = config.insert_anchor_nodes(p);
+        p = utility.build_state_grids(p, [12 12 12], 3);
         p.N_c = 15;  p.N_pi = 15;
     end
+
+    p = assert_production_fill(p);
 
     idx = @(a) a - p.age0 + 1;  % age -> 1-based index into tau_S
     % Diagnostic ages derived from p.age0/p.retirement_age (not hardcoded
@@ -199,14 +194,9 @@ for j = 1:numel(jobs)
     %% V(W,state) = W^(1-gamma) * V_tilde(state); all strategies share the
     %% same initial state, so V_tilde there is the exact welfare ranking.
     %% Saved top-level so comparison can matfile-read it without touching sol.
-    lam0 = 1 / (1 + p.h_mult);
-    sH0  = p.h_mult / (1 + p.h_mult);
-    V0f  = fill_nan_nearest_3d(sol.V(:,:,:,1));
-    Fv   = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, ...
-                              V0f, 'linear', 'nearest');
-    welfare0 = struct('Vt0', Fv(lam0, 0, sH0), 'lam0', lam0, 'sA0', 0, ...
-                      'sH0', sH0, 'gamma', p.gamma);
-    lprintf(LOG_FILE, '    V_tilde0 = %.6g\n', welfare0.Vt0);
+    welfare0 = utility.welfare_summary(p, sol.V(:,:,:,1));
+    lprintf(LOG_FILE, '    V_tilde0 = %.6g (corner) | %.6g at b0 | %.6g at b_alt\n', ...
+        welfare0.Vt0, welfare0.Vt0_b0, welfare0.Vt0_b_alt);
 
     %% Simulate
     t_sim = tic;
@@ -267,21 +257,15 @@ function out = ternary(cond, a, b)
     if cond, out = a; else, out = b; end
 end
 
-function Z = fill_nan_nearest_3d(M)
-% Replace infeasible-state NaNs with nearest finite value (same helper as
-% welfare_dc_strategies.m -- the initial state sits exactly on the
-% feasibility boundary, so 'linear' interpolation would pick up a NaN corner).
-Z = M;
-if ~any(isnan(Z(:))), return; end
-[NL, NA, NH] = size(Z);
-mask_ok = ~isnan(Z);
-[Ig, Jg, Kg] = ndgrid(1:NL, 1:NA, 1:NH);
-I_ok = Ig(mask_ok); J_ok = Jg(mask_ok); K_ok = Kg(mask_ok); V_ok = Z(mask_ok);
-I_bad = Ig(~mask_ok); J_bad = Jg(~mask_ok); K_bad = Kg(~mask_ok);
-for k = 1:numel(I_bad)
-    di = I_bad(k) - I_ok; dj = J_bad(k) - J_ok; dk = K_bad(k) - K_ok;
-    d2 = di.*di + dj.*dj + dk.*dk;
-    [~, q] = min(d2);
-    Z(I_bad(k), J_bad(k), K_bad(k)) = V_ok(q);
-end
+function p = assert_production_fill(p)
+% PRODUCTION GUARD -- see run_nodc.m for the full rationale. Short version:
+% p.legacy_fill restores the pre-fix continuation fill (a ruin-blended
+% penalty one interpolation cell wide along the sX = 0 face, which is where
+% the welfare anchor sits) and is test-only. Stamping false explicitly is
+% what makes utility.param_fingerprint fence pre-fix files off from post-fix
+% ones -- an absent field fingerprints as NaN on BOTH vintages.
+assert(~(isfield(p, 'legacy_fill') && p.legacy_fill), ...
+    'run_spline_strategies:legacy_fill', ...
+    'p.legacy_fill is set -- that is the pre-fix phantom-penalty fill, test-only.');
+p.legacy_fill = false;
 end

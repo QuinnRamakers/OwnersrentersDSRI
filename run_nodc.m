@@ -9,7 +9,15 @@
 %   same tax calibration (tau_inc=0.376, tau_wealth=0.0197) so these are the
 %   correct no-pension baseline for THIS vintage (the old
 %   combined_*_kappa0.mat are a pre-tax-change vintage -- do NOT reuse).
-%   Saves combined_{renter,owner}_nodc.mat with the welfare0 convention.
+%   Saves combined_{renter,owner}_nodc.mat with the welfare0 convention
+%   (utility.welfare_summary: corner Vt0, the calibrated b0 / b_alt anchors,
+%   and the b_grid sensitivity curve).
+%
+%   This IS the no-pension benchmark the comparison scripts look for. The old
+%   combined_*_kappa0.mat name was retired with run_combined's kappa=0
+%   scenarios on 2026-07-16; compare_spline_strategies and
+%   compare_strategy_vs_nopension load _nodc first and only fall back to
+%   _kappa0 for legacy folders.
 
 clear; clc;
 if isempty(gcp('nocreate'))
@@ -28,12 +36,11 @@ for k = 1:numel(scenarios)
     p.kappa        = 0;
     p.choose_tau_S = false;
 
-    % Match run_combined's production sweep grid.
-    p.gh_n = 5; p.N_lambda = 25; p.N_sA = 15; p.N_sH = 15;
-    p.lambda_grid = linspace(0, 1, p.N_lambda).';
-    p.sA_grid     = linspace(0, 1, p.N_sA).';
-    p.sH_grid     = linspace(0, 1, p.N_sH).';
-    p = config.insert_anchor_nodes(p);   % rebuild dropped the welfare anchors
+    % Match run_combined's production sweep grid. build_state_grids rebuilds
+    % the linspaces AND re-inserts the welfare anchors, so N_lambda/N_sH come
+    % back +2 -- read them off p, never off the requested dims.
+    p = utility.build_state_grids(p, [25 15 15], 5);
+    p = assert_production_fill(p);
 
     [~, mu_growth, sigma_l_log] = config.income_profile(p);
     profile.mu_growth   = mu_growth;
@@ -48,12 +55,9 @@ for k = 1:numel(scenarios)
     sol = solver.solve_lifecycle(p, profile, shocks, ann_price);
     fprintf('  Solver: %.1f s (%d workers)\n', sol.elapsed, sol.timing.pool.num_workers);
 
-    lam0 = 1 / (1 + p.h_mult);
-    sH0  = p.h_mult / (1 + p.h_mult);
-    V0f  = fill_nan_nearest_3d(sol.V(:,:,:,1));
-    Fv   = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, V0f, 'linear', 'nearest');
-    welfare0 = struct('Vt0', Fv(lam0, 0, sH0), 'lam0', lam0, 'sA0', 0, 'sH0', sH0, 'gamma', p.gamma);
-    fprintf('  V_tilde0 = %.6g\n', welfare0.Vt0);
+    welfare0 = utility.welfare_summary(p, sol.V(:,:,:,1));
+    fprintf('  V_tilde0 = %.6g (corner, b=0) | %.6g at b0=%.4f | %.6g at b_alt=%.4f\n', ...
+        welfare0.Vt0, welfare0.Vt0_b0, welfare0.b0, welfare0.Vt0_b_alt, welfare0.b_alt);
 
     sim = simulate.paths(p, profile, sol, ann_price, N_sim);
     timing = sol.timing;
@@ -64,18 +68,21 @@ for k = 1:numel(scenarios)
 end
 fprintf('\nNo-DC benchmark done.\n');
 
-function Z = fill_nan_nearest_3d(M)
-Z = M;
-if ~any(isnan(Z(:))), return; end
-[NL, NA, NH] = size(Z);
-mask_ok = ~isnan(Z);
-[Ig, Jg, Kg] = ndgrid(1:NL, 1:NA, 1:NH);
-I_ok = Ig(mask_ok); J_ok = Jg(mask_ok); K_ok = Kg(mask_ok); V_ok = Z(mask_ok);
-I_bad = Ig(~mask_ok); J_bad = Jg(~mask_ok); K_bad = Kg(~mask_ok);
-for k = 1:numel(I_bad)
-    di = I_bad(k) - I_ok; dj = J_bad(k) - J_ok; dk = K_bad(k) - K_ok;
-    d2 = di.*di + dj.*dj + dk.*dk;
-    [~, q] = min(d2);
-    Z(I_bad(k), J_bad(k), K_bad(k)) = V_ok(q);
-end
+function p = assert_production_fill(p)
+% PRODUCTION GUARD. p.legacy_fill is a TEST-ONLY switch in
+% solver.bellman_step that restores the pre-fix continuation fill (infeasible
+% cube nodes filled with the global minimum feasible z, i.e. the z-image of
+% the -1e15 ruin assignment) so tests/smoke_fill_fix.m can A/B it. It puts a
+% ruin-blended penalty one interpolation cell wide along the entire sX = 0
+% face -- which is exactly where the welfare anchor sits. Nothing solved with
+% it may be presented as a result.
+%
+% Setting the field to false explicitly (rather than leaving it absent) is
+% load-bearing: utility.param_fingerprint reads absent fields as NaN, so a
+% stamped post-fix file ("legacy_fill=0") fingerprints differently from a
+% pre-fix file that never had the field ("legacy_fill=NaN") and the two can
+% never be ranked together. Leave the field absent and both read NaN.
+assert(~(isfield(p, 'legacy_fill') && p.legacy_fill), 'run_nodc:legacy_fill', ...
+    'p.legacy_fill is set -- that is the pre-fix phantom-penalty fill, test-only.');
+p.legacy_fill = false;
 end
