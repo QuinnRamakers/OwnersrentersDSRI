@@ -89,12 +89,7 @@ fprintf('shared inputs: kappa=%.3f, gamma=%.1f, mu_S_level=%.3f, tau_inc=%.2f, a
         p_base.kappa, p_base.gamma, p_base.mu_S_level, p_base.tau_inc, ann_price(p_base.t_ret));
 
 % ----------------------------------------------- arm 1: old simplex grid --
-p_old = p_base;
-p_old.N_lambda = N_old; p_old.N_sA = N_old; p_old.N_sH = N_old;
-p_old.lambda_grid = linspace(0, 1, N_old).';
-p_old.sA_grid     = linspace(0, 1, N_old).';
-p_old.sH_grid     = linspace(0, 1, N_old).';
-p_old = config.insert_anchor_nodes(p_old);   % rebuild dropped the welfare anchors
+p_old = utility.build_state_grids(p_base, [N_old N_old N_old]);
 [Lg, Ag, Hg] = ndgrid(p_old.lambda_grid, p_old.sA_grid, p_old.sH_grid);
 n_feas_old = nnz(Lg + Ag + Hg <= 1 + 1e-12);
 fprintf('\n--- OLD arm: %d^3 = %d cube points, %d feasible (%.1f%%), polish always ON ---\n', ...

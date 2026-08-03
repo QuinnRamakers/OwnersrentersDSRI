@@ -183,15 +183,12 @@ if strcmp(typ, 'lna')
     p.u3_grid = linspace(0, 1, dims(3)).';
     p.skip_polish = false;
 else
-    p.N_lambda = dims(1); p.N_sA = dims(2); p.N_sH = dims(3);
-    p.lambda_grid = linspace(0, 1, dims(1)).';
-    p.sA_grid     = linspace(0, 1, dims(2)).';
-    p.sH_grid     = linspace(0, 1, dims(3)).';
-    % Rebuild dropped the welfare anchors; solve_lifecycle asserts on them.
-    % This shifts each simplex arm's lambda/s_H count by up to +2 -- both arms
-    % of the resolution ladder get the same treatment, and try_reuse's grid
-    % isequal check invalidates pre-anchor cached solutions automatically.
-    p = config.insert_anchor_nodes(p);
+    % build_state_grids re-inserts the welfare anchors that the rebuild
+    % dropped (solve_lifecycle asserts on them). This shifts each simplex
+    % arm's lambda/s_H count by up to +2 -- both arms of the resolution
+    % ladder get the same treatment, and try_reuse's grid isequal check
+    % invalidates pre-anchor cached solutions automatically.
+    p = utility.build_state_grids(p, dims);
 end
 end
 
