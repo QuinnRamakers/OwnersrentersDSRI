@@ -393,8 +393,7 @@ box_txt = {
     sprintf('Welfare read at anchor: %s.', strrep(anchor_used, '_', '\_'));
     sanity_line;
     '';
-    sprintf('DC contribution rate (best strategy) \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', ...
-            100*p_b.kappa, 100*p_b.replacement);
+    kappa_summary_line(p_b);
     sprintf('CRRA coefficient \\gamma=%.0f   |   Discount factor \\beta=%.2f', p_b.gamma, p_b.beta);
     sprintf('N=%d households per scenario,  ages %d-%d,  retirement age %d', ...
             sim_b.N, p_b.age0, p_b.age0+p_b.T-1, ret_age);
@@ -527,16 +526,18 @@ is_ret = (1:T) >= p.t_ret;
 tau_inc = 0; if isfield(p, 'tau_inc'), tau_inc = p.tau_inc; end
 net_inc = 1 - tau_inc;
 
+kap = config.kappa_path(p);                      % 1 x T age profile (row, broadcasts)
+
 d.gross_Y = sim.Y;
 d.tax     = zeros(N, T);
-d.tax(:, ~is_ret) = (1 - p.delta) * (1 - p.kappa) * tau_inc .* sim.Y(:, ~is_ret);
+d.tax(:, ~is_ret) = (1 - p.delta) * (1 - kap(~is_ret)) * tau_inc .* sim.Y(:, ~is_ret);
 d.tax(:, is_ret)  = (1 - p.delta) * tau_inc .* sim.Y(:, is_ret);
 
 d.pension_contrib = zeros(N, T);
-d.pension_contrib(:, ~is_ret) = p.kappa .* sim.Y(:, ~is_ret);
+d.pension_contrib(:, ~is_ret) = kap(~is_ret) .* sim.Y(:, ~is_ret);
 
 contrib_factor = repmat((1 - p.delta) * net_inc, N, T);
-contrib_factor(:, ~is_ret) = (1 - p.delta) * (1 - p.kappa) * net_inc;
+contrib_factor(:, ~is_ret) = repmat((1 - p.delta) * (1 - kap(~is_ret)) * net_inc, N, 1);
 d.takehome = contrib_factor .* sim.Y;
 
 d.annuity = net_inc .* sim.ann_pay;

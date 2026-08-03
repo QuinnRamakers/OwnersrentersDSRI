@@ -126,8 +126,9 @@ for k = 1:numel(scenarios)
 
     ann_price = pension.annuity_price(p, profile, shocks);
 
-    fprintf('  kappa=%.3f, alpha=%.3f, theta=%.3f, h_mult=%.1f\n', ...
-        p.kappa, p.alpha, p.theta, p.h_mult);
+    kap_w = config.kappa_path(p); kap_w = kap_w(1 : p.t_ret - 1);
+    fprintf('  kappa_t=%.3f-%.3f (franchise-based), alpha=%.3f, theta=%.3f, h_mult=%.1f\n', ...
+        min(kap_w), max(kap_w), p.alpha, p.theta, p.h_mult);
     if sc.choose_tau
         fprintf('  DC equity share: FREE per-state choice (N_tau=%d); annuity still priced off the tau_S glide\n', ...
             p.N_tau);

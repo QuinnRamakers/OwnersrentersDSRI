@@ -99,6 +99,13 @@ switch p.income_source
         % Anchor: absolute euro level at age 25, from Been et al.
         % Section 3.2.3 descriptives (full-time average wage by sex).
         % Shifts the whole (relative) growth series to pass through it.
+        %
+        % p.income_price_factor rescales this anchor to 2026 prices (CBS CPI),
+        % per the calibration table. Before the franchise-based contribution
+        % rate (config.params, kappa_t) the euro LEVEL was irrelevant -- the
+        % model is homothetic in W -- so the anchor was never price-adjusted.
+        % It now sets Y_t relative to the franchise F, hence the explicit
+        % factor. Default 1.0 = no rescaling; see params.m.
         switch p.sex
             case 1
                 anchor_age = 25; anchor_level = 33000;
@@ -106,6 +113,9 @@ switch p.income_source
                 anchor_age = 25; anchor_level = 30000;
             case 3
                 anchor_age = 25; anchor_level = (33000 + 30000) / 2;  % see TODO.md
+        end
+        if isfield(p, 'income_price_factor')
+            anchor_level = anchor_level * p.income_price_factor;
         end
         anchor_idx = find(all_ages == anchor_age, 1);
         logY_work  = log(anchor_level) + (growth_at_work_ages - all_growth(anchor_idx));

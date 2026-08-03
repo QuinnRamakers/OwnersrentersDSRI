@@ -93,8 +93,16 @@ eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
 eps_S = reshape(Zcorr_shock(2, :), N, T-1);
 eps_H = reshape(Zcorr_shock(3, :), N, T-1);
 
+% Bequeathed housing value as a fraction of H: owners' estates sell the house
+% and pay p.sell_cost. Must match the solver.
+sell_cost = 0; if isfield(p, 'sell_cost'), sell_cost = p.sell_cost; end
+h_beq_fac = is_owner * (1 - sell_cost);
+
 for t = 1:T
     is_retired = (t >= p.t_ret);
+    % Franchise-based DC contribution rate at this age (T x 1 profile; min()
+    % keeps legacy scalar-kappa p-structs working). See config.params.
+    kappa_t = p.kappa(min(t, numel(p.kappa)));
 
     if is_owner
         if t <= numel(p.m_rate_path)
@@ -115,7 +123,7 @@ for t = 1:T
         LW = X_path(:,t) + contrib_factor .* Y_path(:,t) + ann_pay_net ...
              - h_cost_rate .* H_path(:,t);
     else
-        contrib_factor = (1 - p.delta) * (1 - p.kappa) * net_inc;  % deductible contrib; rest taxed
+        contrib_factor = (1 - p.delta) * (1 - kappa_t) * net_inc;  % deductible contrib; rest taxed
         ann_pay     = zeros(N, 1);
         ann_pay_net = zeros(N, 1);
         LW = X_path(:,t) + contrib_factor .* Y_path(:,t) ...
@@ -143,13 +151,10 @@ for t = 1:T
     C_path(:,t)  = cf .* max(LW, 0);
 
     if t == T
-        % Bequest: liquid wealth post-consumption + housing (if owner).
-        % Pension A is forfeited at death (annuity convention).
-        if is_owner
-            bequest_path = max(0, (1 - cf) .* LW) + H_path(:,t);
-        else
-            bequest_path = max(0, (1 - cf) .* LW);
-        end
+        % Bequest: liquid wealth post-consumption + housing net of the
+        % seller transaction cost (if owner). Pension A is forfeited at
+        % death (annuity convention).
+        bequest_path = max(0, (1 - cf) .* LW) + h_beq_fac * H_path(:,t);
         break
     end
 
@@ -172,7 +177,7 @@ for t = 1:T
     if is_retired
         A_pre = A_path(:,t) - ann_pay;            % stock after payout
     else
-        A_pre = A_path(:,t) + p.kappa .* Y_path(:,t);   % stock after contribution
+        A_pre = A_path(:,t) + kappa_t .* Y_path(:,t);   % stock after contribution
     end
 
     X_path(:,t+1) = R_X .* X_post;

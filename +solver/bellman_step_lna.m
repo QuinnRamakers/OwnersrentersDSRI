@@ -82,11 +82,20 @@ else
     h_cost_rate = p.alpha;
 end
 
+% Effective DC contribution rate at this age (franchise-based T x 1 profile;
+% min() keeps legacy scalar-kappa p-structs working). See config.params.
+kappa_t = p.kappa(min(t, numel(p.kappa)));
+
+% Bequeathed housing value as a fraction of H: owners' estates sell the house
+% and pay p.sell_cost; renters bequeath no housing.
+sell_cost = 0; if isfield(p, 'sell_cost'), sell_cost = p.sell_cost; end
+h_beq_fac = is_owner * (1 - sell_cost);
+
 % Income contribution factor (take-home wage as fraction of Y)
 if is_retired
     contrib_factor = (1 - p.delta) * net_inc;            % AOW, taxed as income
 else
-    contrib_factor = (1 - p.delta) * (1 - p.kappa) * net_inc;  % deductible contrib; rest taxed
+    contrib_factor = (1 - p.delta) * (1 - kappa_t) * net_inc;  % deductible contrib; rest taxed
 end
 
 % Terminal period: no continuation, consume all liquid wealth (modulo bequest)
@@ -107,7 +116,7 @@ if t == p.T
             pi_pol(k) = 0;
             continue
         end
-        beq_H = is_owner * sH;
+        beq_H = h_beq_fac * sH;
         if chi_T <= 0
             c_star = 1;
             V_t(k) = (c_star * LW_W)^one_m_g / one_m_g;
@@ -208,7 +217,7 @@ parfor k = 1:n_states
         A_next_pre_return = sA * A_keep_fac;
     else
         LW_W              = sX + contrib_factor * lam - h_cost_rate * sH;
-        A_next_pre_return = sA + p.kappa * lam;
+        A_next_pre_return = sA + kappa_t * lam;
     end
 
     if LW_W <= 1e-9
@@ -246,11 +255,7 @@ parfor k = 1:n_states
     EV     = reshape(sum(w_join .* V_n, 1), NC, NP);   % NC x NP
     rhs    = u_now + beta_eff * EV;                     % u_now (NC x 1) broadcasts
     if beq_eff > 0
-        if is_owner
-            beq_base = X_next + H_next_W;
-        else
-            beq_base = X_next;
-        end
+        beq_base = X_next + h_beq_fac * H_next_W;
         beq_n = beq_base .^ one_m_g / one_m_g;
         rhs   = rhs + beq_eff * reshape(sum(w_join .* beq_n, 1), NC, NP);
     end
@@ -268,7 +273,7 @@ parfor k = 1:n_states
     ub = [1 - 1e-6; 1];
     polish_obj = @(x) -bellman_rhs_z_u(x(1), x(2), LW_W, Rf_at, R_S_at, ...
                                         A_next_W, H_next_W, Y_next_W, ...
-                                        w_join, pp_z, one_m_g, beta_eff, beq_eff, is_owner);
+                                        w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
 
     V_polish = -inf; x_opt = x0;
     try
@@ -293,7 +298,7 @@ pi_pol(:) = pi_flat;
 end
 
 function rhs_val = bellman_rhs_z_u(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                                    w, pp_z, one_m_g, beta_eff, beq_eff, is_owner)
+                                    w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac)
     % Same Bellman RHS as bellman_step's bellman_rhs_z, but the continuation
     % value is interpolated in (u1,u2,u3) coordinates.
     R_X      = (1 - pi_eq) * Rf_at + pi_eq .* R_S_at;
@@ -310,11 +315,7 @@ function rhs_val = bellman_rhs_z_u(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_ne
     u_now    = (c * LW_W) ^ one_m_g / one_m_g;
     rhs_val  = u_now + beta_eff * EV;
     if beq_eff > 0
-        if is_owner
-            beq_base = X_next_W + H_next_W;
-        else
-            beq_base = X_next_W;
-        end
+        beq_base = X_next_W + h_beq_fac * H_next_W;
         beq_n   = beq_base .^ one_m_g / one_m_g;
         E_beq   = sum(w .* beq_n);
         rhs_val = rhs_val + beq_eff * E_beq;

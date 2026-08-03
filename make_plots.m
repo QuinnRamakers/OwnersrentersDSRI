@@ -166,7 +166,7 @@ BAND_NOTE = 'Lines show the average across simulated households; shaded bands sh
 for k = 1:numel(files)
     sim = S{k}.sim;  p = S{k}.p;  sol = S{k}.sol;
     col = colors{k};
-    has_pension = p.kappa > 0;
+    has_pension = any(config.kappa_path(p) > 0);   % kappa is an age profile
     has_housing = p.h_mult > 0;
     is_own      = p.is_owner;
 
@@ -397,7 +397,7 @@ for k = 1:numel(files)
     box_txt = {
         '\bf Calibration \rm';
         sprintf('CRRA coefficient \\gamma=%.0f   |   Discount factor \\beta=%.2f   |   Bequest parameter \\chi=%.2f', p.gamma, p.beta, p.chi);
-        sprintf('DC contribution rate \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', 100*p.kappa, 100*p.replacement);
+        kappa_box_line(p);
         sprintf('Risk-free rate r=%.1f%%   |   Equity return \\mu_S=%.1f%%   |   Equity volatility \\sigma_S=%.1f%%', 100*p.r, 100*p.mu_S_level, 100*p.sigma_S_level);
         sprintf('Income tax \\tau_{inc}=%.0f%%   |   Capital-gains tax bond/stock=%.0f%%/%.0f%%', 100*tau_inc, 100*tau_cg_b, 100*tau_cg_s);
         house_line;
@@ -766,7 +766,7 @@ tau_cg_s_o = NaN; if isfield(owner.p, 'tau_cg_stock'), tau_cg_s_o = owner.p.tau_
 box_txt = {
     '\bf Calibration (shared parameters) \rm';
     sprintf('CRRA coefficient \\gamma=%.0f   |   Discount factor \\beta=%.2f', owner.p.gamma, owner.p.beta);
-    sprintf('DC contribution rate \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', 100*owner.p.kappa, 100*owner.p.replacement);
+    kappa_box_line(owner.p);
     sprintf('Risk-free rate r=%.1f%%   |   Equity return \\mu_S=%.1f%%   |   Equity volatility \\sigma_S=%.1f%%', 100*owner.p.r, 100*owner.p.mu_S_level, 100*owner.p.sigma_S_level);
     sprintf('Income tax \\tau_{inc}=%.0f%%   |   Capital-gains tax bond/stock=%.0f%%/%.0f%%', 100*tau_inc_o, 100*tau_cg_b_o, 100*tau_cg_s_o);
     '';
@@ -885,18 +885,20 @@ is_ret = (1:T) >= p.t_ret;                       % 1×T logical, retired ages
 tau_inc = 0; if isfield(p, 'tau_inc'), tau_inc = p.tau_inc; end
 net_inc = 1 - tau_inc;
 
+kap = config.kappa_path(p);                      % 1 x T age profile (row, broadcasts)
+
 d.gross_Y = sim.Y;
 d.tax     = zeros(N, T);                                    % income tax (=0 if tau_inc=0)
-d.tax(:, ~is_ret) = (1 - p.delta) * (1 - p.kappa) * tau_inc .* sim.Y(:, ~is_ret);
+d.tax(:, ~is_ret) = (1 - p.delta) * (1 - kap(~is_ret)) * tau_inc .* sim.Y(:, ~is_ret);
 d.tax(:, is_ret)  = (1 - p.delta) * tau_inc .* sim.Y(:, is_ret);
 
-% Pension contribution kappa*Y (working only; funds the future DC annuity)
+% Pension contribution kappa_t*Y (working only; funds the future DC annuity)
 d.pension_contrib = zeros(N, T);
-d.pension_contrib(:, ~is_ret) = p.kappa .* sim.Y(:, ~is_ret);
+d.pension_contrib(:, ~is_ret) = kap(~is_ret) .* sim.Y(:, ~is_ret);
 
 % Take-home labour / AOW income actually entering the budget (post income tax)
 contrib_factor = repmat((1 - p.delta) * net_inc, N, T);
-contrib_factor(:, ~is_ret) = (1 - p.delta) * (1 - p.kappa) * net_inc;
+contrib_factor(:, ~is_ret) = repmat((1 - p.delta) * (1 - kap(~is_ret)) * net_inc, N, 1);
 d.takehome = contrib_factor .* sim.Y;
 
 d.annuity = net_inc .* sim.ann_pay;               % DC pension payout, net of income tax
@@ -1025,5 +1027,21 @@ else
         [~, ia] = min(abs(p.sA_grid - sA_t));
     end
     sl = squeeze(pol_4d(lam_idx, ia, :, tt));
+end
+end
+
+function s = kappa_box_line(p)
+%KAPPA_BOX_LINE  Calibration-box line for the DC contribution rate.
+%   kappa is a franchise-based AGE PROFILE from 2026-07 on, so report its
+%   working-life range rather than a single number; legacy scalar-kappa
+%   p-structs collapse to the old single-value wording.
+kap  = config.kappa_path(p);
+kapw = kap(1 : max(p.t_ret - 1, 1));
+if max(kapw) - min(kapw) < 1e-10
+    s = sprintf('DC contribution rate \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', ...
+                100*kapw(1), 100*p.replacement);
+else
+    s = sprintf('DC contribution rate \\kappa_t=%.1f-%.1f%% of gross (franchise-based)   |   AOW replacement rate=%.0f%%', ...
+                100*min(kapw), 100*max(kapw), 100*p.replacement);
 end
 end

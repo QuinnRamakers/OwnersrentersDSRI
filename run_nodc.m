@@ -50,7 +50,7 @@ for k = 1:numel(scenarios)
     ann_price = pension.annuity_price(p, profile, shocks);
 
     fprintf('  kappa=%.3f (DC off), alpha=%.3f, theta=%.3f, h_mult=%.1f, tau_inc=%.3f, tau_wealth=%.4f\n', ...
-        p.kappa, p.alpha, p.theta, p.h_mult, p.tau_inc, p.tau_wealth);
+        max(p.kappa), p.alpha, p.theta, p.h_mult, p.tau_inc, p.tau_wealth);
 
     sol = solver.solve_lifecycle(p, profile, shocks, ann_price);
     fprintf('  Solver: %.1f s (%d workers)\n', sol.elapsed, sol.timing.pool.num_workers);

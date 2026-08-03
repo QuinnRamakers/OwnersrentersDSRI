@@ -26,13 +26,17 @@ function p = params()
 %   100 (unchanged) despite the later start.
 p.T              = 76;
 p.age0           = 25;
-p.retirement_age = 67;      % statutory AOW eligibility age, calibration slide deck (2026-07)
-p.sex            = 3;
+p.retirement_age = 67;      % statutory AOW eligibility age (2026), calibration table
+% p.sex now drives the INCOME profile only (1=men, 2=women, 3=pooled).
+% Mortality is unisex from 2026-07 onward: config.survival reads the CBS
+% "totaal mannen en vrouwen" life table, which has no sex dimension.
+% Calibration table specifies Been-Knoef-Vethaak Table D.1, MEN -> p.sex = 1.
+p.sex            = 1;
 
 % Preferences
-p.gamma = 5;         % risk aversion: confirmed by calibration slide deck (2026-07)
-p.beta  = 0.96;       % discount rate -- TBD (moment matching or literature), calibration slide deck (2026-07); unsourced placeholder
-p.chi   = 0.0;        % bequest intensity -- TBD, calibration slide deck (2026-07); unsourced placeholder
+p.gamma = 5;         % risk aversion (CRRA): Cocco, Gomes & Maenhout (2005), calibration table
+p.beta  = 0.96;       % time discount factor: Larsen et al. (2023), calibration table
+p.chi   = 0.0;        % bequest intensity: switched off in the baseline (calibration table)
 
 % Labour income
 %   income_source: 'table' uses the direct Been-Knoef-Vethaak (2026)
@@ -68,7 +72,17 @@ p.income_coef = [0.530339, 0.16818, -0.323371, 0.19704];
 %   single-composite-shock structure (see TODO.md, "Code <-> paper
 %   audit") -- a known simplification, not fixed by this change.
 p.sigma_l_log = 0.1032;
-p.replacement = 0.307;      % AOW-only first-pillar replacement: median replacement rate (DNB), calibration slide deck (2026-07)
+p.replacement = 0.307;      % AOW-only first-pillar replacement: DNB "Toereikendheid van pensioenen" Table 3, median first-pillar replacement rate
+%   income_price_factor: CPI rescaling of the Been-Knoef-Vethaak euro anchor
+%   (config.income_profile, currently EUR 33k men / 30k women at age 25, from
+%   the paper's 2001-2014 IPO descriptives) to 2026 prices, per the
+%   calibration table. This ONLY matters because the DC contribution rate is
+%   now franchise-based (kappa_t below) -- everything else in the model is
+%   scale-free, so the euro level of income was previously irrelevant. Set to
+%   1.0 = NO rescaling, i.e. the anchor is treated as already being in 2026
+%   euros. THIS IS A PLACEHOLDER: replace with the CBS CPI ratio
+%   (2026 / anchor base year) once the anchor's base year is pinned down.
+p.income_price_factor = 1.0;
 
 % Financial market
 %   r: real risk-free rate, MK estimate (mean 3-month bond interest rate
@@ -90,9 +104,28 @@ p.corr_HL       = 0.0;     % corr(housing return, income shock)
 p.corr_SH       = 0.0;     % corr(stock return, housing return)
 
 % Pension parameters
-%   kappa (DC contribution rate) targets total replacement of ~0.75 * Y_64
-%   combined with AOW. User-set 2026-07-14 (slide deck left this TBD).
-p.kappa     = 0.2;
+%   DC contributions are levied on gross income ABOVE a franchise (the AOW
+%   offset), per the calibration table:
+%       kappa_t = kappa_base * max(Y_t - F, 0) / Y_t
+%   so the EFFECTIVE contribution rate on gross income rises with income and
+%   is therefore an AGE PROFILE, not a scalar. p.kappa is built below (after
+%   t_ret / the income profile are available) as a T x 1 vector; solver and
+%   simulator index it as p.kappa(min(t, numel(p.kappa))), which keeps
+%   legacy scalar-kappa p-structs (and p.kappa = 0 overrides in run_nodc /
+%   run_dc_strategies) working unchanged.
+%
+%   IMPORTANT APPROXIMATION: kappa_t is evaluated on the DETERMINISTIC income
+%   profile, not on each household's realised Y_t. The model is homothetic in
+%   W (only lambda = Y/W is a state, the euro level of Y is not), so a
+%   contribution rate that depended on realised Y would break the normalised
+%   state space entirely. The calibration table itself specifies kappa_t as an
+%   "age profile", which is exactly this object.
+p.kappa_base = 0.186;    % contribution rate above the franchise: OECD Pensions at a Glance (2022 country note; 2025 Table 3.4)
+p.franchise  = 18475;    % franchise threshold, EUR: Belastingdienst 2025
+%   p.delta is NOT the calibration table's delta. The table's delta (0.382,
+%   average income tax rate) is this file's p.tau_inc, in the Taxes block
+%   below. p.delta is a separate legacy proportional wedge on gross income
+%   ((1-delta) multiplies Y in the budget constraint everywhere) and stays 0.
 p.delta     = 0.0;
 % tau_S is a glide-path lifecycle fund: linear from 0.8 equity at age 30 down
 % to 0.0 at retirement, 0.0 thereafter. (Vector built below, after t_ret.)
@@ -107,13 +140,26 @@ p.N_tau        = 11;
 
 % Housing
 p.is_owner      = false;     % flip true for owner scenario
-p.alpha         = 0.1;       % rent rate (fraction of H_t / period): user-set 2026-07-14, slide deck left this TBD
-p.theta         = 0.015;     % maintenance rate: COELO Atlas of Local Government Taxes, MK, calibration slide deck (2026-07) gave 1.5%/1.6%; 1.5% chosen
-p.mu_H_level    = 0.027;     % real housing price drift: BIS Real Residential Property Price Index, MK, calibration slide deck (2026-07)
-p.sigma_H_level = 0.037;     % housing price log-vol: BIS Real Residential Property Price Index, MK, calibration slide deck (2026-07)
-p.h_mult        = 4.0;       % H_0 = h_mult * Y_0 -- house-price-to-income at purchase, TBD, calibration slide deck (2026-07)
-p.r_m           = 0.013;     % real mortgage rate (>= r_f): ECB MIR series, nominal 3.6% less inflation 2.3%, calibration slide deck (2026-07)
-p.N_mort        = 30;        % mortgage term (years) -- convention, confirmed by calibration slide deck (2026-07)
+p.alpha         = 0.06;      % rent-to-price ratio (fraction of H_t / period): Yao & Zhang (2005), calibration table
+p.theta         = 0.015;     % maintenance cost fraction: Yao & Zhang (2005); Nibud (1% maintenance) plus taxes
+p.mu_H_level    = 0.027;     % real house-price drift: BIS Real Residential Property Price Index (NL), CPI-deflated
+p.sigma_H_level = 0.037;     % house-price return vol: BIS Real Residential Property Price Index (NL), CPI-deflated
+p.h_mult        = 4.0;       % b_H: H_0 = h_mult * Y_0 -- placeholder, to be replaced by the binding Nibud loan-to-income norm
+p.r_m           = 0.0136;    % real mortgage rate (>= r_f): ECB MIR, NL cost of borrowing for house purchase, May 2026 (3.66 - 2.3)
+p.N_mort        = 30;        % mortgage term (years): standard Dutch annuity mortgage term
+%   LTV: loan-to-value at purchase. Only 1.00 is currently CONSISTENT with the
+%   rest of the model -- the household is endowed with the house outright at
+%   t=1 (X_0 = 0, H_0 = h_mult*Y_0) and services a mortgage on its full value,
+%   i.e. a 100% loan. LTV < 1 would additionally require modelling the down
+%   payment (a negative initial X), which is not implemented, so the assert
+%   below fails loudly rather than silently producing a half-calibrated run.
+%   The field is wired into the amortisation rate so the mortgage payment
+%   scales with the borrowed fraction once that endowment is added.
+p.LTV           = 1.00;
+%   Seller transaction cost charged on the house when it is BEQUEATHED (the
+%   estate sells): the bequest base becomes X + (1 - sell_cost)*H for owners.
+%   Hambel et al. (2026). Inert in the baseline, where chi = 0.
+p.sell_cost     = 0.025;
 
 % Numerical: 3D state grid (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1.
 % gh_n^3 = 343 joint Gauss-Hermite shock nodes per state.
@@ -171,8 +217,10 @@ p.skip_polish = false;
 %   the DC account a positive welfare value (without taxes the DC fund's only
 %   edge is the mortality credit, which does not outweigh its illiquidity).
 %   Still TBD per calibration slide deck (2026-07) -- open question is
-%   whether to target LISS gross or net income; value user-set 2026-07-16.
-p.tau_inc      = 0.376;
+%   whether to target LISS gross or net income. This field IS the calibration
+%   table's delta ("average income tax rate"); do not confuse it with the
+%   code's p.delta, which is a separate wedge fixed at 0.
+p.tau_inc      = 0.382;    % CBS, average tax burden on income, 2019
 %   Capital-gains tax on the LIQUID (taxable) account only -- the DC fund is
 %   sheltered. Accrual basis, NO loss offset: only positive gains are taxed
 %   (no credit when equity falls). Split by asset so bonds and stocks can be
@@ -207,9 +255,24 @@ glide(ages_grid >= p.retirement_age) = 0.0;
 p.tau_S_raw = glide;
 p.tau_S     = glide;
 
+% Effective DC contribution rate on GROSS income, kappa_t (T x 1). Built from
+% the franchise rule kappa_t = kappa_base * max(Y_t - F, 0) / Y_t evaluated on
+% the DETERMINISTIC income profile (see the Pension block above), and zero
+% from retirement on (contributions stop; the solver/simulator branch on
+% is_retired anyway, so the zeros are belt-and-braces).
+assert(p.LTV == 1.00, 'params:LTV', ...
+    ['LTV = %.4f: only 1.00 is implemented. LTV < 1 needs a down-payment ' ...
+     'endowment (negative initial X) that the simulator does not model.'], p.LTV);
+logY_det       = config.income_profile(p);
+Y_det          = exp(logY_det);
+p.kappa        = zeros(p.T, 1);
+work_t         = 1 : (p.t_ret - 1);
+p.kappa(work_t) = p.kappa_base .* max(Y_det(work_t) - p.franchise, 0) ./ Y_det(work_t);
+
 % Mortgage amortisation rate (homothetic approximation -- applied as a rate
-% on current H_t for years 1..N_mort, zero thereafter).
-amort_rate     = p.r_m * (1 + p.r_m)^p.N_mort / ((1 + p.r_m)^p.N_mort - 1);
+% on current H_t for years 1..N_mort, zero thereafter). Scaled by LTV: the
+% annuity payment is on the BORROWED fraction of the house value.
+amort_rate     = p.LTV * p.r_m * (1 + p.r_m)^p.N_mort / ((1 + p.r_m)^p.N_mort - 1);
 p.m_rate_path  = zeros(p.T - 1, 1);
 p.m_rate_path(1 : min(p.N_mort, p.T - 1)) = amort_rate;
 

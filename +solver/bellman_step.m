@@ -97,11 +97,21 @@ else
     h_cost_rate = p.alpha;
 end
 
+% Effective DC contribution rate at this age. p.kappa is a T x 1 franchise-
+% based profile (config.params); min() keeps legacy scalar-kappa p-structs
+% and the p.kappa = 0 overrides in run_nodc / run_dc_strategies working.
+kappa_t = p.kappa(min(t, numel(p.kappa)));
+
+% Bequeathed housing value as a fraction of H: owners' estates sell the
+% house and pay p.sell_cost; renters bequeath no housing.
+sell_cost = 0; if isfield(p, 'sell_cost'), sell_cost = p.sell_cost; end
+h_beq_fac = is_owner * (1 - sell_cost);
+
 % Income contribution factor (take-home wage as fraction of Y)
 if is_retired
     contrib_factor = (1 - p.delta) * net_inc;            % AOW, taxed as income
 else
-    contrib_factor = (1 - p.delta) * (1 - p.kappa) * net_inc;  % deductible contrib; rest taxed
+    contrib_factor = (1 - p.delta) * (1 - kappa_t) * net_inc;  % deductible contrib; rest taxed
 end
 
 % Terminal period: no continuation, consume all liquid wealth (modulo bequest)
@@ -125,7 +135,7 @@ if t == p.T
                     pi_pol(il, ia, ih) = 0;
                     continue
                 end
-                beq_H = is_owner * sH;
+                beq_H = h_beq_fac * sH;
                 if chi_T <= 0
                     c_star = 1;
                     V_t(il, ia, ih) = (c_star * LW_W)^one_m_g / one_m_g;
@@ -278,7 +288,7 @@ parfor k = 1:n_feas
         A_next_pre_return = sA * A_keep_fac;
     else
         LW_W              = sX + contrib_factor * lam - h_cost_rate * sH;
-        A_next_pre_return = sA + p.kappa * lam;
+        A_next_pre_return = sA + kappa_t * lam;
     end
 
     if LW_W <= 1e-9
@@ -326,11 +336,7 @@ parfor k = 1:n_feas
         EV     = reshape(sum(w_join .* V_n, 1), NC, NP);   % NC x NP
         rhs    = u_now + beta_eff * EV;                     % u_now (NC x 1) broadcasts
         if beq_eff > 0
-            if is_owner
-                beq_base = X_next + H_next_W;
-            else
-                beq_base = X_next;
-            end
+            beq_base = X_next + h_beq_fac * H_next_W;
             beq_n = beq_base .^ one_m_g / one_m_g;
             rhs   = rhs + beq_eff * reshape(sum(w_join .* beq_n, 1), NC, NP);
         end
@@ -367,7 +373,7 @@ parfor k = 1:n_feas
         obj3 = @(x) -bellman_rhs_z3(x(1), x(2), x(3), LW_W, Rf_at, R_S_at, ...
                                      p.Rf, R_S, pt, A_next_pre_return, ...
                                      H_next_W, Y_next_W, ...
-                                     w_join, pp_z, one_m_g, beta_eff, beq_eff, is_owner);
+                                     w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
         V_polish = -inf; x_opt = [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)];
         try
             [x_try, neg_V_try, exitflag] = fmincon(obj3, ...
@@ -416,7 +422,7 @@ parfor k = 1:n_feas
             obj2 = @(x) -bellman_rhs_z3(x(1), x(2), tau_fix, LW_W, Rf_at, R_S_at, ...
                                          p.Rf, R_S, pt, A_next_pre_return, ...
                                          H_next_W, Y_next_W, ...
-                                         w_join, pp_z, one_m_g, beta_eff, beq_eff, is_owner);
+                                         w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
             try
                 [x_try, neg_V_try, exitflag] = fmincon(obj2, pin_starts(s, 1:2).', ...
                     [], [], [], [], [c_floor; 0], [1 - 1e-6; 1], [], opts_polish);
@@ -446,7 +452,7 @@ parfor k = 1:n_feas
         if isfinite(v_gl)
             [c_r, p_r, v_r] = refine_cpi(c_gl, p_gl, tau, v_gl, LW_W, Rf_at, R_S_at, ...
                 p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
-                w_join, pp_z, one_m_g, beta_eff, beq_eff, is_owner, c_floor, dc0, dp0);
+                w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
             if v_r > V_polish
                 V_polish = v_r; x_opt = [c_r; p_r; tau];
             end
@@ -458,7 +464,7 @@ parfor k = 1:n_feas
         end
         [c_r, p_r, v_r] = refine_cpi(cb0, pb0, tb0, vb0, LW_W, Rf_at, R_S_at, ...
             p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
-            w_join, pp_z, one_m_g, beta_eff, beq_eff, is_owner, c_floor, dc0, dp0);
+            w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
         if v_r > V_polish
             V_polish = v_r; x_opt = [c_r; p_r; tb0];
         end
@@ -475,7 +481,7 @@ parfor k = 1:n_feas
         ub = [1 - 1e-6; 1];
         polish_obj = @(x) -bellman_rhs_z(x(1), x(2), LW_W, Rf_at, R_S_at, ...
                                           A_next_W, H_next_W, Y_next_W, ...
-                                          w_join, pp_z, one_m_g, beta_eff, beq_eff, is_owner);
+                                          w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
 
         V_polish = -inf; x_opt = x0;
         try
@@ -505,7 +511,7 @@ end
 end
 
 function rhs_val = bellman_rhs_z(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                                  w, pp_z, one_m_g, beta_eff, beq_eff, is_owner)
+                                  w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac)
     % R_S_at/Rf_at are after-tax returns, precomputed once by the caller.
     R_X      = (1 - pi_eq) * Rf_at + pi_eq .* R_S_at;
     X_next_W = R_X * (1 - c) * LW_W;
@@ -526,11 +532,7 @@ function rhs_val = bellman_rhs_z(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_next
     u_now    = (c * LW_W) ^ one_m_g / one_m_g;
     rhs_val  = u_now + beta_eff * EV;
     if beq_eff > 0
-        if is_owner
-            beq_base = X_next_W + H_next_W;
-        else
-            beq_base = X_next_W;
-        end
+        beq_base = X_next_W + h_beq_fac * H_next_W;
         beq_n   = beq_base .^ one_m_g / one_m_g;
         E_beq   = sum(w .* beq_n);
         rhs_val = rhs_val + beq_eff * E_beq;
@@ -539,7 +541,7 @@ end
 
 function [c_b, p_b, v_b] = refine_cpi(c0, p0, tau_fix, v0, LW_W, Rf_at, R_S_at, Rf, R_S, pt, ...
                                        A_next_pre_return, H_next_W, Y_next_W, ...
-                                       w, pp_z, one_m_g, beta_eff, beq_eff, is_owner, ...
+                                       w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
                                        c_floor, dc0, dp0)
     % Shrinking-radius local grid scan of the (c, pi) rhs surface with tau
     % pinned at tau_fix. Derivative-free, so it resolves the narrow
@@ -581,11 +583,7 @@ function [c_b, p_b, v_b] = refine_cpi(c0, p0, tau_fix, v0, LW_W, Rf_at, R_S_at, 
         V_n    = (W_g .* z_n) .^ one_m_g / one_m_g;
         rhs    = (cv.' * LW_W) .^ one_m_g / one_m_g + beta_eff * (w.' * V_n).';
         if beq_eff > 0
-            if is_owner
-                beq_base = X_next + H_next_W;
-            else
-                beq_base = X_next;
-            end
+            beq_base = X_next + h_beq_fac * H_next_W;
             rhs = rhs + beq_eff * (w.' * (beq_base .^ one_m_g / one_m_g)).';
         end
         [mv, im] = max(rhs);
@@ -597,7 +595,7 @@ end
 
 function rhs_val = bellman_rhs_z3(c, pi_eq, tau_dc, LW_W, Rf_at, R_S_at, Rf, R_S, pt, ...
                                    A_next_pre_return, H_next_W, Y_next_W, ...
-                                   w, pp_z, one_m_g, beta_eff, beq_eff, is_owner)
+                                   w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac)
     % 3-choice Bellman RHS for the free-DC-share regime: same as
     % bellman_rhs_z but the DC position A_next_W is rebuilt from the choice
     % variable tau_dc (survival-credit return, PRE-TAX -- the fund is
@@ -623,11 +621,7 @@ function rhs_val = bellman_rhs_z3(c, pi_eq, tau_dc, LW_W, Rf_at, R_S_at, Rf, R_S
     u_now    = (c * LW_W) ^ one_m_g / one_m_g;
     rhs_val  = u_now + beta_eff * EV;
     if beq_eff > 0
-        if is_owner
-            beq_base = X_next_W + H_next_W;
-        else
-            beq_base = X_next_W;
-        end
+        beq_base = X_next_W + h_beq_fac * H_next_W;
         beq_n   = beq_base .^ one_m_g / one_m_g;
         E_beq   = sum(w .* beq_n);
         rhs_val = rhs_val + beq_eff * E_beq;
