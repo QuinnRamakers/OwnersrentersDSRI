@@ -15,20 +15,18 @@ f = figure('Visible','off','Position',[100 100 780 500]); hold on; grid on;
 for i = 1:numel(tenures)
     D = load(fullfile(repo, sprintf('combined_%s_freetau.mat', tenures{i})), 'sol','p');
     B = load(fullfile(repo, sprintf('combined_%s_nodc.mat',    tenures{i})), 'sol','p');
-    p = D.p; gamma = p.gamma; hm = p.h_mult;
+    p = D.p; gamma = p.gamma;
     % Calibrated buffer anchors (config.params). Pre-anchor .mat vintages have
     % no b0/b_alt on their stored p -- fall back to the same expressions.
     if isempty(b0)
         if isfield(p, 'b0'),    b0   = p.b0;      else, b0   = 3400 / (31500 * 1.303); end
         if isfield(p, 'b_alt'), balt = p.b_alt;   else, balt = 9800 / (31500 * 1.303); end
     end
-    FvB = mk_interp(B.sol.V(:,:,:,1), p);
-    FvD = mk_interp(D.sol.V(:,:,:,1), p);
-    cev = zeros(size(buffers));
-    for j = 1:numel(buffers)
-        b = buffers(j); den = b+hm+1;
-        cev(j) = (FvD(1/den,0,hm/den)/FvB(1/den,0,hm/den))^(1/(1-gamma)) - 1;
-    end
+    % utility.welfare_anchor builds each arm's NaN-filled interpolant once and
+    % queries the whole buffer sweep off it (the fill is the expensive part).
+    vB  = utility.welfare_anchor(p, B.sol.V(:,:,:,1), buffers);
+    vD  = utility.welfare_anchor(p, D.sol.V(:,:,:,1), buffers);
+    cev = (vD ./ vB) .^ (1/(1-gamma)) - 1;
     h(i) = plot(buffers, 100*cev, '-', 'LineWidth', 1.8);
 end
 yline(0, ':k', 'LineWidth', 1.2);
@@ -46,18 +44,3 @@ legend(h, tenures, 'Location','southeast');   % explicit handles: the y/xlines a
 saveas(f, fullfile(repo, 'welfare_dc_vs_nodc_by_buffer.png'));
 close(f);
 fprintf('Saved welfare_dc_vs_nodc_by_buffer.png\n');
-
-function F = mk_interp(V0, p)
-    Z = V0;
-    if any(isnan(Z(:)))
-        [NL,NA,NH]=size(Z); mo=~isnan(Z);
-        [Ig,Jg,Kg]=ndgrid(1:NL,1:NA,1:NH);
-        Io=Ig(mo);Jo=Jg(mo);Ko=Kg(mo);Vo=Z(mo);
-        Ib=Ig(~mo);Jb=Jg(~mo);Kb=Kg(~mo);
-        for k=1:numel(Ib)
-            d2=(Ib(k)-Io).^2+(Jb(k)-Jo).^2+(Kb(k)-Ko).^2;
-            [~,q]=min(d2); Z(Ib(k),Jb(k),Kb(k))=Vo(q);
-        end
-    end
-    F = griddedInterpolant({p.lambda_grid,p.sA_grid,p.sH_grid}, Z, 'linear','nearest');
-end

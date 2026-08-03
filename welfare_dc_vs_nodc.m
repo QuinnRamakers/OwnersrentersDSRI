@@ -13,9 +13,10 @@
 %   welfare verdict depends on it.
 %
 %   Buffered initial node (buffer b years of income): W0=(b+h_mult+1)*Y0,
-%   lam0=1/(b+h_mult+1), sX0=b/W0frac, sH0=h_mult/(b+h_mult+1), sA0=0.
-%   Both scenarios share W0 at a given b, so
-%   CEV = (Vtilde_DC / Vtilde_noDC)^(1/(1-gamma)) - 1.
+%   lam0=1/(b+h_mult+1), sX0=b/(b+h_mult+1), sH0=h_mult/(b+h_mult+1), sA0=0
+%   -- the node is built by utility.welfare_anchor, the single implementation
+%   shared with the runners and the comparison scripts. Both scenarios share
+%   W0 at a given b, so CEV = (Vtilde_DC / Vtilde_noDC)^(1/(1-gamma)) - 1.
 
 % Repo = the checkout this script lives in. which() rather than mfilename():
 % mfilename returns the CALLER's name when a script is invoked via run() from
@@ -35,7 +36,7 @@ for i = 1:numel(tenures)
     ten = tenures{i};
     B = load(fullfile(repo, sprintf('combined_%s_nodc.mat', ten)),    'sol','p');
     D = load(fullfile(repo, sprintf('combined_%s_freetau.mat', ten)), 'sol','p');
-    p = D.p; gamma = p.gamma; hm = p.h_mult;
+    p = D.p; gamma = p.gamma;
 
     % Pre-anchor .mat vintages have no b0/b_alt on their stored p; fall back
     % to the config.params expressions so this still runs on the committed
@@ -46,37 +47,22 @@ for i = 1:numel(tenures)
     anchors  = [b0, balt];
     buf_ten  = sort(unique([buffers, anchors]));
 
-    FvB = mk_interp(B.sol.V(:,:,:,1), p);
-    FvD = mk_interp(D.sol.V(:,:,:,1), p);
+    % One interpolant build per arm, queried at every buffer at once. Both
+    % arms are read on p = D.p's grids (the two files must be same-grid for
+    % the CEV to mean anything; utility.welfare_anchor asserts the sizes match).
+    [vB, node] = utility.welfare_anchor(p, B.sol.V(:,:,:,1), buf_ten);
+    vD         = utility.welfare_anchor(p, D.sol.V(:,:,:,1), buf_ten);
+    cev        = (vD ./ vB) .^ (1/(1-gamma)) - 1;
 
     fprintf('\n=== %s: welfare gain of DC+free-choice over no-DC, by initial liquid buffer ===\n', ten);
     fprintf('  X0(yrs)   lam0    sX0     Vtilde no-DC     Vtilde DC-free    CEV\n');
-    for b = buf_ten
-        den  = b + hm + 1;
-        lam0 = 1/den; sX0 = b/den; sH0 = hm/den;
-        vB = FvB(lam0, 0, sH0);
-        vD = FvD(lam0, 0, sH0);
-        cev = (vD/vB)^(1/(1-gamma)) - 1;
+    for j = 1:numel(buf_ten)
+        b = buf_ten(j);
         if     b == anchors(1), tag = '  <- calibrated (b0)';
         elseif b == anchors(2), tag = '  <- sensitivity (b_alt)';
         else,                   tag = '';
         end
         fprintf('  %6.4f  %.4f  %.4f  % .6e   % .6e   %+7.2f%%%s\n', ...
-            b, lam0, sX0, vB, vD, 100*cev, tag);
+            b, node.lam0(j), node.sX0(j), vB(j), vD(j), 100*cev(j), tag);
     end
-end
-
-function F = mk_interp(V0, p)
-    Z = V0;
-    if any(isnan(Z(:)))
-        [NL,NA,NH] = size(Z); mo = ~isnan(Z);
-        [Ig,Jg,Kg] = ndgrid(1:NL,1:NA,1:NH);
-        Io=Ig(mo); Jo=Jg(mo); Ko=Kg(mo); Vo=Z(mo);
-        Ib=Ig(~mo); Jb=Jg(~mo); Kb=Kg(~mo);
-        for k=1:numel(Ib)
-            d2=(Ib(k)-Io).^2+(Jb(k)-Jo).^2+(Kb(k)-Ko).^2;
-            [~,q]=min(d2); Z(Ib(k),Jb(k),Kb(k))=Vo(q);
-        end
-    end
-    F = griddedInterpolant({p.lambda_grid,p.sA_grid,p.sH_grid}, Z, 'linear','nearest');
 end
