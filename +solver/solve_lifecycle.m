@@ -7,6 +7,13 @@ function sol = solve_lifecycle(p, profile, shocks, ann_price)
 %   compared after the fact.
 
 NL = p.N_lambda; NA = p.N_sA; NH = p.N_sH; T = p.T;
+
+% Nearest-feasible fill map for the continuation interpolant's infeasible cube
+% nodes (solver.build_fill_map: replaces the old global-minimum fill, which put
+% a phantom ruin penalty one cell wide along the sX = 0 face). Grid-only, so it
+% is built once here and reused by every Bellman step.
+p.fill_map = solver.build_fill_map(p.lambda_grid, p.sA_grid, p.sH_grid);
+
 V      = zeros(NL, NA, NH, T);
 c_pol  = zeros(NL, NA, NH, T);
 pi_pol = zeros(NL, NA, NH, T);

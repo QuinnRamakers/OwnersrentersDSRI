@@ -40,7 +40,12 @@ function [V_t, c_pol, pi_pol, feas, tau_pol] = bellman_step(t, V_next, p, profil
 %       tau_pol (5th output) returns the chosen DC share; it is [] when
 %       choose_tau_S is off. With a single tau slice the tensor collapses to
 %       the old glide-path grid search exactly (bit-identical).
-%   z-transform on V_next throughout.
+%   z-transform on V_next throughout. The continuation interpolant is built on
+%   the whole cube, and its infeasible nodes are filled by nearest-feasible
+%   projection onto the simplex face (solver.build_fill_map) rather than the
+%   global-minimum z the code used to use -- that minimum was the z-image of
+%   the -1e15 ruin assignment, so it imposed a phantom penalty one cell wide
+%   along the sX = 0 face at every age.
 
 NL = p.N_lambda; NA = p.N_sA; NH = p.N_sH;
 V_t    = nan(NL, NA, NH);
@@ -189,8 +194,34 @@ if isempty(z_finite)
     error('bellman_step:no_finite_z', 'No finite z values at t=%d', t);
 end
 z_min = min(z_finite);
+
+% Infeasible-node fill. The interpolant lives on the whole cube but only the
+% simplex is solved, so every cell that touches the sX = 0 face mixes solved
+% corners with unsolved ones. Filling those with the GLOBAL MINIMUM feasible z
+% (the old behaviour) blended every face-adjacent query with the z-image of
+% the -1e15 ruin assignment (~1e-4 against ~0.02-0.07 next door): a phantom
+% penalty one cell wide along the whole face, at every age. Negative liquid
+% wealth is unreachable here (see solver.build_fill_map), so instead take the
+% z of the nearest feasible node to the radial projection of the infeasible
+% node onto the face. The map is grid-only, so solve_lifecycle precomputes it
+% on p.fill_map and this is a single gather; recompute as a fallback when a
+% caller invokes bellman_step directly.
+if isfield(p, 'fill_map') && ~isempty(p.fill_map) && isequal(p.fill_map.dims, [NL NA NH])
+    fmap = p.fill_map;
+else
+    fmap = solver.build_fill_map(p.lambda_grid, p.sA_grid, p.sH_grid);
+end
 z_next_filled = z_next;
-z_next_filled(~feas) = z_min;
+% Test-only escape hatch reproducing the pre-fix global-minimum fill, so the
+% monotonicity check in tests/smoke_fill_fix.m can solve both variants on one
+% grid. Never set in production configs.
+if isfield(p, 'legacy_fill') && p.legacy_fill
+    z_next_filled(~feas) = z_min;
+else
+    z_next_filled(fmap.infeas_lin) = z_next(fmap.src_lin);
+end
+% Final safety only: feasible nodes whose arg <= 0 (and any infeasible node
+% whose source was such a node) are still NaN at this point.
 z_next_filled(isnan(z_next_filled)) = z_min;
 pp_z = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, ...
                           z_next_filled, 'linear', 'linear');
