@@ -1,4 +1,4 @@
-function compare_strategy_vs_nopension(results_dir)
+function compare_strategy_vs_nopension(results_dir, opts)
 %COMPARE_STRATEGY_VS_NOPENSION  Sanity-check dashboard: best spline glide
 % path vs no DC pension at all (kappa=0), for renter and owner separately.
 %
@@ -7,8 +7,9 @@ function compare_strategy_vs_nopension(results_dir)
 %
 %   For each housing type, finds the best-ranked spl_*_{housing}.mat (by
 %   V_tilde0, same ranking as compare_spline_strategies.m) and compares it
-%   against combined_{housing}_kappa0.mat (the no-pension benchmark from
-%   run_combined.m) on a 12-panel dashboard layout adapted from make_plots.m's
+%   against combined_{housing}_nodc.mat (the no-pension benchmark from
+%   run_nodc.m; falls back to the retired combined_{housing}_kappa0.mat name
+%   for legacy folders) on a 12-panel dashboard layout adapted from make_plots.m's
 %   renter-vs-owner comparison -- both lines share housing tenure here, only
 %   the DC pension differs, so this is a direct visual "does having a
 %   pension actually help, and does it look sane" check: pension balance
@@ -21,8 +22,16 @@ function compare_strategy_vs_nopension(results_dir)
 %   means the best strategy beats no pension, negative means no pension
 %   wins -- both are normal, expected possible outcomes, not an error.
 %
+%   The dashboard itself stays a TWO-line figure (imposed glide vs no
+%   pension) -- that is what its panel-by-panel sanity checks are built
+%   around. The third arm, combined_{housing}_freetau.mat (free DC
+%   investment choice), is reported numerically alongside it when present, so
+%   the printed summary and panel (l) always carry the full three-arm
+%   comparison. compare_spline_strategies.m is where all three are ranked in
+%   one table.
+%
 %   Requires spl_*_{housing}.mat files from run_spline_strategies.m and
-%   combined_{housing}_kappa0.mat from run_combined.m to already exist in
+%   combined_{housing}_nodc.mat from run_nodc.m to already exist in
 %   results_dir -- this does no solving itself.
 %
 %   Output (written into results_dir):
@@ -31,6 +40,8 @@ function compare_strategy_vs_nopension(results_dir)
 
 arguments
     results_dir {mustBeTextScalar} = ''
+    opts.anchor (1,1) string ...
+        {mustBeMember(opts.anchor, ["auto","b0","b_alt","corner"])} = "auto"
 end
 
 RES_DIR = char(results_dir);
@@ -49,44 +60,48 @@ for hi = 1:numel(HOUSING)
             housing, RES_DIR);
         continue
     end
-    best_Vt0 = -Inf; best_file = '';
-    for k = 1:numel(files)
-        fname = fullfile(files(k).folder, files(k).name);
-        m = matfile(fname); vars = who(m);
-        if ismember('welfare0', vars)
-            w0 = m.welfare0; Vt0 = w0.Vt0;
-        else
-            pk  = m.p; sol = m.sol;
-            V0f = fill_nan_nearest_3d(sol.V(:,:,:,1));
-            Fv  = griddedInterpolant({pk.lambda_grid, pk.sA_grid, pk.sH_grid}, ...
-                                     V0f, 'linear', 'nearest');
-            Vt0 = Fv(1/(1+pk.h_mult), 0, pk.h_mult/(1+pk.h_mult));
-        end
-        if Vt0 > best_Vt0
-            best_Vt0 = Vt0; best_file = fname;
-        end
-    end
-
-    nopension_file = fullfile(RES_DIR, sprintf('combined_%s_kappa0.mat', housing));
-    if ~isfile(nopension_file)
-        fprintf('  %s not found -- run run_combined first. Skipping.\n', nopension_file);
+    % No-pension benchmark: run_nodc.m's file, with a fallback to the name
+    % run_combined.m used before its kappa=0 scenarios were removed
+    % (2026-07-16). Same discovery order as compare_spline_strategies.
+    nopension_file = first_existing(RES_DIR, ...
+        {sprintf('combined_%s_nodc.mat', housing), ...
+         sprintf('combined_%s_kappa0.mat', housing)});
+    if isempty(nopension_file)
+        fprintf(['  combined_%s_nodc.mat not found in %s -- run run_nodc first ' ...
+                 '(combined_%s_kappa0.mat, the retired name, is also accepted). Skipping.\n'], ...
+                 housing, RES_DIR, housing);
         continue
     end
+    % Third arm: free DC investment choice. Optional -- reported numerically
+    % when present, never required for the two-line dashboard.
+    freetau_file = first_existing(RES_DIR, {sprintf('combined_%s_freetau.mat', housing)});
 
-    % No-pension Vt0, same fast-path-with-fallback as the strategy loop above.
-    mn = matfile(nopension_file); vars_n = who(mn);
-    if ismember('welfare0', vars_n)
-        w0n = mn.welfare0; nop_Vt0 = w0n.Vt0;
-    else
-        pk  = mn.p; sol = mn.sol;
-        V0f = fill_nan_nearest_3d(sol.V(:,:,:,1));
-        Fv  = griddedInterpolant({pk.lambda_grid, pk.sA_grid, pk.sH_grid}, ...
-                                 V0f, 'linear', 'nearest');
-        nop_Vt0 = Fv(1/(1+pk.h_mult), 0, pk.h_mult/(1+pk.h_mult));
+    % Read every candidate's anchors first, then pick ONE anchor for all of
+    % them (never a per-file fallback -- that would compare two different
+    % initial states and call the difference a welfare gain).
+    W = cell(1, numel(files));
+    for k = 1:numel(files)
+        W{k} = read_anchors(fullfile(files(k).folder, files(k).name));
     end
+    W{end+1} = read_anchors(nopension_file);
+    if ~isempty(freetau_file), W{end+1} = read_anchors(freetau_file); end
+    A = [W{:}];
+    [Vt0_all, anchor_used] = pick_anchor(A, opts.anchor);
+
+    [best_Vt0, bi] = max(Vt0_all(1:numel(files)));
+    best_file      = fullfile(files(bi).folder, files(bi).name);
+    nop_Vt0        = Vt0_all(numel(files) + 1);
+    free_Vt0       = NaN;
+    if ~isempty(freetau_file), free_Vt0 = Vt0_all(end); end
 
     fprintf('  Best strategy: %s\n', best_file);
     fprintf('  No-pension:    %s\n', nopension_file);
+    if ~isempty(freetau_file)
+        fprintf('  Free DC:       %s\n', freetau_file);
+    else
+        fprintf('  Free DC:       combined_%s_freetau.mat not found -- third arm omitted.\n', housing);
+    end
+    fprintf('  Welfare read at anchor: %s\n', anchor_used);
     best = load(best_file, 'p', 'profile', 'sim', 'strat_info');
     nop  = load(nopension_file, 'p', 'profile', 'sim');
     % +simulate/paths.m does not compute H_net/M_balance itself (only
@@ -122,8 +137,8 @@ for hi = 1:numel(HOUSING)
     % Grid + calibration must match (kappa excluded -- differs by design):
     % V_tilde values from different grids/parameter vintages are not
     % comparable, so a stale file on either side makes the CEV meaningless.
-    fp_b = param_fingerprint(best.p);
-    fp_n = param_fingerprint(nop.p);
+    fp_b = utility.param_fingerprint(best.p);
+    fp_n = utility.param_fingerprint(nop.p);
     if ~strcmp(fp_b, fp_n)
         fprintf('  SANITY FAIL: grid/calibration mismatch between the two files -- CEV below is NOT meaningful.\n');
         fprintf('    best:       %s\n', fp_b);
@@ -140,8 +155,28 @@ for hi = 1:numel(HOUSING)
     % single number, not a "who won" branch.
     gamma  = best.p.gamma;
     g      = cev(nop_Vt0, best_Vt0, gamma);
-    fprintf('  V_tilde0: best=%.6g   no-pension (reference)=%.6g\n', best_Vt0, nop_Vt0);
+    g_free = cev(nop_Vt0, free_Vt0, gamma);   % NaN when the third arm is absent
+    fprintf('  V_tilde0: best=%.6g   no-pension (reference)=%.6g   free DC=%.6g\n', ...
+        best_Vt0, nop_Vt0, free_Vt0);
     fprintf('  Best strategy vs no pension (reference): %+.3f%% lifetime consumption-equivalent welfare gain.\n', g*100);
+    if ~isnan(g_free)
+        % Free choice is the upper bound an imposed glide path can aspire to
+        % (it optimises the same tau per state), so the ratio is how much of
+        % the DC pension's attainable value the imposed plan actually captures.
+        fprintf('  Free DC choice vs no pension:            %+.3f%%\n', g_free*100);
+        if abs(g_free) > eps
+            fprintf('  Imposed glide captures %.1f%% of the free-choice gain.\n', 100*g/g_free);
+        end
+        % Free choice weakly dominates the same-p imposed plan by
+        % construction (test_freetau_dominance_prod.m): a violation beyond
+        % fmincon basin drift means one of the two files is stale.
+        if free_Vt0 < best_Vt0 && abs(free_Vt0 - best_Vt0) > 1e-6 * abs(nop_Vt0)
+            fprintf(['  SANITY FAIL: free DC choice scores BELOW the best imposed glide ' ...
+                     '-- free choice weakly dominates by construction, so one of these ' ...
+                     'files is stale.\n']);
+            ok = false;
+        end
+    end
     if ok
         fprintf('  Sanity checks passed: no NaN/Inf, A=0 throughout for no-pension, matching tenure and H_0.\n');
     else
@@ -151,12 +186,14 @@ for hi = 1:numel(HOUSING)
     %% Dashboard: best strategy vs no pension, same 12-panel layout as
     %% make_plots.m's renter-vs-owner comparison, adapted to two DC-pension
     %% configurations at fixed housing tenure instead of two tenures.
-    plot_comparison_dashboard(best, nop, housing, best.strat_info.name, g, ok, RES_DIR);
+    plot_comparison_dashboard(best, nop, housing, best.strat_info.name, g, g_free, ...
+                              anchor_used, ok, RES_DIR);
 end
 end
 
 %% =======================================================================
-function plot_comparison_dashboard(best, nop, housing, best_name, g, sanity_ok, out_dir)
+function plot_comparison_dashboard(best, nop, housing, best_name, g, g_free, ...
+                                   anchor_used, sanity_ok, out_dir)
 p_b = best.p; p_n = nop.p;
 sim_b = best.sim; sim_n = nop.sim;
 ages    = sim_b.ages(:).';
@@ -337,13 +374,23 @@ set(gca, 'FontSize', FS);
 
 % (l) Summary: CEV (vs no-pension reference) + sanity-check status
 nexttile; axis off;
-cev_line = sprintf('Best strategy vs no pension (reference): %+.3f%% welfare gain.', g*100);
+cev_line = sprintf('Best imposed glide vs no pension (reference): %+.3f%% welfare gain.', g*100);
+if isnan(g_free)
+    free_line = 'Free DC choice arm: combined\_*\_freetau.mat not found.';
+elseif abs(g_free) > eps
+    free_line = sprintf('Free DC choice vs no pension: %+.3f%% (imposed glide captures %.0f%% of it).', ...
+                        g_free*100, 100*g/g_free);
+else
+    free_line = sprintf('Free DC choice vs no pension: %+.3f%%.', g_free*100);
+end
 sanity_line = ternary(sanity_ok, ...
     'Sanity checks: PASSED (no NaN/Inf, A=0 for no-pension, matching tenure and H_0).', ...
     'Sanity checks: FAILED -- see console output.');
 box_txt = {
     '\bf Comparison summary \rm';
     cev_line;
+    free_line;
+    sprintf('Welfare read at anchor: %s.', strrep(anchor_used, '_', '\_'));
     sanity_line;
     '';
     sprintf('DC contribution rate (best strategy) \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', ...
@@ -399,19 +446,51 @@ function g = cev(V_A, V_B, gamma)
     g = (V_B / V_A) ^ (1 / (1 - gamma)) - 1;
 end
 
-function s = param_fingerprint(p)
-%PARAM_FINGERPRINT  Same convention as compare_spline_strategies.m: one-line
-%   grid + calibration identity string; kappa deliberately excluded.
-flds = {'N_lambda','N_sA','N_sH','gh_n','age0','T','retirement_age', ...
-        'gamma','beta','chi','alpha','theta','h_mult','r','mu_S_level', ...
-        'sigma_S_level','mu_H_level','sigma_H_level','r_m','replacement', ...
-        'sigma_l_log','tau_inc','tau_cg_stock'};
-parts = cell(1, numel(flds));
-for i = 1:numel(flds)
-    if isfield(p, flds{i}), v = p.(flds{i}); else, v = NaN; end
-    parts{i} = sprintf('%s=%.6g', flds{i}, v);
+function a = read_anchors(fname)
+%READ_ANCHORS  V_tilde at every anchor a file carries, without loading sol.
+%   Same fast-path-with-fallback as compare_spline_strategies.read_entry:
+%   welfare0 when present, otherwise sol.V once through utility.welfare_anchor.
+m = matfile(fname); vars = who(m); pk = m.p;
+a = struct('file', fname, 'corner', NaN, 'b0', NaN, 'b_alt', NaN);
+if ismember('welfare0', vars)
+    w0 = m.welfare0;
+    a.corner = w0.Vt0;
+    if isfield(w0, 'Vt0_b0'),    a.b0    = w0.Vt0_b0;    end
+    if isfield(w0, 'Vt0_b_alt'), a.b_alt = w0.Vt0_b_alt; end
+else
+    sol = m.sol;
+    if isfield(pk, 'b0') && isfield(pk, 'b_alt')
+        v = utility.welfare_anchor(pk, sol.V(:,:,:,1), [0, pk.b0, pk.b_alt]);
+        a.corner = v(1); a.b0 = v(2); a.b_alt = v(3);
+    else
+        a.corner = utility.welfare_anchor(pk, sol.V(:,:,:,1), 0);
+    end
 end
-s = strjoin(parts, ' ');
+end
+
+function [Vt0, used] = pick_anchor(A, want)
+%PICK_ANCHOR  One anchor for every file in this comparison -- see
+%   compare_spline_strategies.m for why a per-file fallback is not allowed.
+have = struct('corner', all(~isnan([A.corner])), ...
+              'b0',     all(~isnan([A.b0])), ...
+              'b_alt',  all(~isnan([A.b_alt])));
+used = char(want);
+if strcmp(used, 'auto')
+    used = ternary(have.b0, 'b0', 'corner');
+end
+assert(have.(used), 'compare_strategy_vs_nopension:anchor', ...
+    ['Anchor "%s" is not available on every file in this comparison (older ' ...
+     'files carry only the b = 0 corner). Re-solve them, or pass anchor="corner".'], used);
+Vt0 = [A.(used)];
+end
+
+function f = first_existing(dir_path, candidates)
+%FIRST_EXISTING  Full path of the first candidate that exists, else ''.
+f = '';
+for k = 1:numel(candidates)
+    cand = fullfile(dir_path, candidates{k});
+    if isfile(cand), f = cand; return; end
+end
 end
 
 function out = ternary(cond, a, b)
@@ -518,20 +597,3 @@ eq_frac_fin = (eq_priv + eq_pens) ./ fin_raw;
 eq_frac_fin(fin_raw < 1e-6) = NaN;
 end
 
-function Z = fill_nan_nearest_3d(M)
-% Replace infeasible-state NaNs with nearest finite value -- same helper
-% used throughout this repo (solve_lifecycle.m, paths.m, welfare_dc_strategies.m).
-Z = M;
-if ~any(isnan(Z(:))), return; end
-[NL, NA, NH] = size(Z);
-mask_ok = ~isnan(Z);
-[Ig, Jg, Kg] = ndgrid(1:NL, 1:NA, 1:NH);
-I_ok = Ig(mask_ok); J_ok = Jg(mask_ok); K_ok = Kg(mask_ok); V_ok = Z(mask_ok);
-I_bad = Ig(~mask_ok); J_bad = Jg(~mask_ok); K_bad = Kg(~mask_ok);
-for k = 1:numel(I_bad)
-    di = I_bad(k) - I_ok; dj = J_bad(k) - J_ok; dk = K_bad(k) - K_ok;
-    d2 = di.*di + dj.*dj + dk.*dk;
-    [~, q] = min(d2);
-    Z(I_bad(k), J_bad(k), K_bad(k)) = V_ok(q);
-end
-end
