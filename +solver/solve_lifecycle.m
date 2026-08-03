@@ -8,6 +8,30 @@ function sol = solve_lifecycle(p, profile, shocks, ann_price)
 
 NL = p.N_lambda; NA = p.N_sA; NH = p.N_sH; T = p.T;
 
+% Welfare-anchor guard. The calibrated (b0) and sensitivity (b_alt) initial
+% nodes must be EXACT grid members or the headline welfare number becomes a
+% trilinear blend that moves with grid resolution. config.params installs them
+% via config.insert_anchor_nodes; a run script that rebuilds the grid vectors
+% afterwards must call it again. Skipped for legacy p-structs (loaded from an
+% old .mat) that predate the anchors.
+if all(isfield(p, {'b0', 'b_alt', 'h_mult'}))
+    b_a  = [p.b0, p.b_alt];
+    name = {'b0', 'b_alt'};
+    for a = 1:2
+        den = 1 + p.h_mult + b_a(a);
+        assert(min(abs(p.lambda_grid - 1/den)) == 0, ...
+            'solve_lifecycle:anchor_missing', ...
+            ['lambda anchor %.17g (buffer %s = %.6g) is not an exact node of ' ...
+             'lambda_grid -- call config.insert_anchor_nodes(p) after rebuilding ' ...
+             'the grid vectors.'], 1/den, name{a}, b_a(a));
+        assert(min(abs(p.sH_grid - p.h_mult/den)) == 0, ...
+            'solve_lifecycle:anchor_missing', ...
+            ['s_H anchor %.17g (buffer %s = %.6g) is not an exact node of ' ...
+             'sH_grid -- call config.insert_anchor_nodes(p) after rebuilding ' ...
+             'the grid vectors.'], p.h_mult/den, name{a}, b_a(a));
+    end
+end
+
 % Nearest-feasible fill map for the continuation interpolant's infeasible cube
 % nodes (solver.build_fill_map: replaces the old global-minimum fill, which put
 % a phantom ruin penalty one cell wide along the sX = 0 face). Grid-only, so it

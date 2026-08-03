@@ -125,6 +125,18 @@ p.lambda_grid = linspace(0, 1, p.N_lambda).';
 p.sA_grid     = linspace(0, 1, p.N_sA).';
 p.sH_grid     = linspace(0, 1, p.N_sH).';
 
+% Calibrated initial liquid buffer (welfare anchor).
+% b0 = median bank & savings deposits, households with main earner < 25
+%      (CBS StatLine 83834NED, component 1.1.1, stock 1-1-2024, provisional:
+%      EUR 3,400) / BKV pooled age-25 full-time wage in 2024 euros
+%      (EUR 31,500 in 2015 prices x CPI factor 1.303, CBS 83131NED = 41,057).
+% b_alt = same with the 25-35 median cell (EUR 9,800), upper sensitivity.
+% config.insert_anchor_nodes (called at the end of this file) puts the
+% corresponding (lambda, s_H) coordinates onto the grids as EXACT nodes, so
+% the welfare read at t=1 is a solved value rather than a trilinear blend.
+p.b0    = 3400 / (31500 * 1.303);     % = 0.0828 years of entry income
+p.b_alt = 9800 / (31500 * 1.303);     % = 0.2388
+
 % Inner (choice) grid that seeds the per-state fmincon polish in bellman_step.
 %   N_c  : consumption-fraction grid. Must stay fine -- the objective is
 %          multimodal in c, and a coarse grid seeds the wrong basin.
@@ -200,5 +212,11 @@ p.tau_S     = glide;
 amort_rate     = p.r_m * (1 + p.r_m)^p.N_mort / ((1 + p.r_m)^p.N_mort - 1);
 p.m_rate_path  = zeros(p.T - 1, 1);
 p.m_rate_path(1 : min(p.N_mort, p.T - 1)) = amort_rate;
+
+% Put the calibrated welfare anchors (b0, b_alt) on the lambda / s_H grids as
+% exact nodes. Last, because it depends on h_mult, b0, b_alt and the grid
+% vectors all being set. Any script that REBUILDS the grids after this must
+% call config.insert_anchor_nodes again -- solver.solve_lifecycle asserts it.
+p = config.insert_anchor_nodes(p);
 
 end

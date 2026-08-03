@@ -187,6 +187,11 @@ else
     p.lambda_grid = linspace(0, 1, dims(1)).';
     p.sA_grid     = linspace(0, 1, dims(2)).';
     p.sH_grid     = linspace(0, 1, dims(3)).';
+    % Rebuild dropped the welfare anchors; solve_lifecycle asserts on them.
+    % This shifts each simplex arm's lambda/s_H count by up to +2 -- both arms
+    % of the resolution ladder get the same treatment, and try_reuse's grid
+    % isequal check invalidates pre-anchor cached solutions automatically.
+    p = config.insert_anchor_nodes(p);
 end
 end
 

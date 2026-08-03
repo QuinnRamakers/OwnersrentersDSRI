@@ -94,6 +94,7 @@ p_old.N_lambda = N_old; p_old.N_sA = N_old; p_old.N_sH = N_old;
 p_old.lambda_grid = linspace(0, 1, N_old).';
 p_old.sA_grid     = linspace(0, 1, N_old).';
 p_old.sH_grid     = linspace(0, 1, N_old).';
+p_old = config.insert_anchor_nodes(p_old);   % rebuild dropped the welfare anchors
 [Lg, Ag, Hg] = ndgrid(p_old.lambda_grid, p_old.sA_grid, p_old.sH_grid);
 n_feas_old = nnz(Lg + Ag + Hg <= 1 + 1e-12);
 fprintf('\n--- OLD arm: %d^3 = %d cube points, %d feasible (%.1f%%), polish always ON ---\n', ...

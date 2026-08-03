@@ -161,6 +161,7 @@ for j = 1:numel(jobs)
     p.lambda_grid = linspace(0, 1, p.N_lambda).';
     p.sA_grid     = linspace(0, 1, p.N_sA).';
     p.sH_grid     = linspace(0, 1, p.N_sH).';
+    p = config.insert_anchor_nodes(p);   % rebuild dropped the welfare anchors
 
     if SMOKE
         p.gh_n     = 3;
@@ -168,6 +169,7 @@ for j = 1:numel(jobs)
         p.lambda_grid = linspace(0, 1, p.N_lambda).';
         p.sA_grid     = linspace(0, 1, p.N_sA).';
         p.sH_grid     = linspace(0, 1, p.N_sH).';
+        p = config.insert_anchor_nodes(p);
         p.N_c = 15;  p.N_pi = 15;
     end
 

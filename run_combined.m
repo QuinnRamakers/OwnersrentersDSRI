@@ -114,6 +114,7 @@ for k = 1:numel(scenarios)
         p.lambda_grid = linspace(0, 1, p.N_lambda).';
         p.sA_grid     = linspace(0, 1, p.N_sA).';
         p.sH_grid     = linspace(0, 1, p.N_sH).';
+        p = config.insert_anchor_nodes(p);   % rebuild dropped the welfare anchors
     end
 
     if use_lna && strcmp(getenv('CGM_SKIP_POLISH'), '1')
