@@ -445,6 +445,25 @@ function g = cev(V_A, V_B, gamma)
     g = (V_B / V_A) ^ (1 / (1 - gamma)) - 1;
 end
 
+function s = kappa_summary_line(p)
+%KAPPA_SUMMARY_LINE  Panel (l)'s DC-contribution line.
+%   kappa is franchise-based and therefore an age profile
+%   (kappa_t = kappa_base*max(Y_t-F,0)/Y_t), so quote its working-life RANGE
+%   -- the old "%.0f%%" of a scalar silently printed only kappa(1) once the
+%   profile landed. A genuinely flat kappa (or a kappa = 0 benchmark)
+%   collapses to a single number and is printed as one.
+kap = config.kappa_path(p);
+kap = kap(1 : max(1, p.t_ret - 1));
+lo  = min(kap); hi = max(kap);
+if abs(hi - lo) < 1e-12
+    ks = sprintf('\\kappa=%.1f%%', 100*hi);
+else
+    ks = sprintf('\\kappa_t=%.1f-%.1f%% (franchise-based)', 100*lo, 100*hi);
+end
+s = sprintf('DC contribution rate (best strategy) %s   |   AOW replacement rate=%.0f%%', ...
+            ks, 100*p.replacement);
+end
+
 function a = read_anchors(fname)
 %READ_ANCHORS  V_tilde at every anchor a file carries, without loading sol.
 %   Same fast-path-with-fallback as compare_spline_strategies.read_entry:
