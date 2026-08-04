@@ -39,18 +39,31 @@ confirmed, no fingerprint edit was needed.
       the three consistency fixes below.
 
 **Euro-consistency fixes (2026-08-04):**
-- [x] income_price_factor 1.0 (placeholder) → 1.3704. BKV wages are in 2015
+
+PRICE-YEAR CONVENTION (decided 2026-08-04, final): all euro-denominated
+inputs are **2025 euros** — the last complete calendar year, so the CBS annual
+CPI is final and the statutory pension amounts are settled. A 2026 base was
+built first and then rejected: 2026 is still running, so its factor could only
+come from a part-year CPI average CBS will revise. Exactly two inputs carry a
+price year (income_price_factor, franchise) and they must move together;
+b0/b_alt are a same-year ratio and are price-level-free; every rate in
+params.m is real or unit-free and has no price year. Mixing years — not
+picking the "wrong" year — is the failure mode this guards against, since
+income and the franchise both track the CPI (the 2026 base gave kappa_25 =
+10.71% vs 10.86% on the 2025 base).
+
+- [x] income_price_factor 1.0 (placeholder) → 1.3456. BKV wages are in 2015
       euros (their Section 3.1: FT-equivalent wage "expressed in (log) 2015
-      euros" — pinned from the paper, not assumed). CPI chain: 83131NED
-      (2015=100, CLOSED at 2025 — CBS rebased to 2025=100 in Jan 2026) gives
-      2015→2025 = 134.56/100 = 1.3456; successor 86141NED gives 2025→2026 =
-      mean(Jan–Jun 2026) = 101.845/100 = 1.01845; product 1.3704. Revisit
-      when the 2026 annual index is published (H2 flash ~3% y/y ⇒ full-year
-      factor slightly higher). kappa_25 moves 8.2% → 10.7%.
-- [x] franchise 18,475 (2025) → 19,172 (2026): Belastingdienst CAP,
-      "Overzicht AOW-inbouwbedragen en AOW-franchises" (02-01-2026), art.
-      18a lid 3 Wet LB minimum franchise; provisional V&A 25-008 (09-12-2025)
-      had the same amount. Now in the same 2026 euros as the income anchor.
+      euros" — pinned from the paper, not assumed). Factor = CPI(2025)/
+      CPI(2015) = 134.56/100.00, CBS 83131NED (2015=100, annual; series
+      closed at 2025 when CBS rebased to 2025=100 — successor table is
+      86141NED). kappa_25 moves 8.2% → 10.86%; profile peaks 14.56% at 55.
+- [x] franchise stays 18,475 = the 1-1-2025 minimum AOW-franchise (art. 18a
+      lid 3 Wet LB), Belastingdienst CAP "Overzicht AOW-inbouwbedragen en
+      AOW-franchises". It was briefly moved to the 2026 figure 19,172
+      (commit 3c13cb4) while the base year was 2026, then moved back with the
+      rebase (bea5dee) — the 2026 amount is correct only alongside a 2026
+      income factor.
 - [x] b0/b_alt 0.0828/0.2388 → 0.0791/0.2279. Audit outcome: the old ratio
       was already price-year consistent (1-1-2024 deposits over a 2024-euro
       wage, 31,500 × 1.303) — the real inconsistency was POOLED wage vs the
@@ -64,9 +77,62 @@ confirmed, no fingerprint edit was needed.
       pass, and such files are fingerprint-fenced anyway.
 - [x] verify_income_profile.m pins income_price_factor = 1 (its expected
       values are in the table's own 2015 euros); re-run 2026-08-04, ALL
-      CHECKS PASSED. config.params() smoke-checked: Y_25 = 45,223, kappa
-      profile 10.7% (25) → ~14.5% (mid-career), anchors land as exact grid
-      nodes, fingerprint carries the new values.
+      CHECKS PASSED. config.params() smoke-checked: Y_25 = 44,404.8, kappa
+      profile 10.86% (25) → 14.56% (peak, age 55), anchors land as exact
+      grid nodes, fingerprint carries the new values.
+- [x] TAX INSTRUMENTS — DECISION 2026-08-04: keep BOTH the accrual CGT
+      (tau_cg_bond/tau_cg_stock) and the box-3-style wealth tax
+      (tau_wealth) wired into the model rather than collapsing to one. They
+      represent different regimes — the proposed return-based box-3 successor
+      with loss carry-forward is a CGT, the current deemed-return levy on the
+      balance is a wealth tax, and a court ruling already lets taxpayers elect
+      realised returns when lower. Only the wealth leg is calibrated
+      (0.0197, Hambel et al. 2026); the CGT legs stay at 0 pending a rate.
+      CONSEQUENCE FOR THE PAPER: the DC account's tax preference today comes
+      from EET + wealth-tax exemption, NOT from "capital gains taxes set to
+      zero in the DC account" — CGT is currently zero in BOTH accounts, so
+      that sentence in the Taxes subsection describes a mechanism that is not
+      doing any work. Fix the writeup or give the CGT legs a rate.
+
+## Paper writeup ↔ code audit (2026-08-04, Calibration + Social-planner sections)
+
+Every headline number in the draft Calibration section matches the live code
+(timing, mortality, preferences, BKV income, DNB replacement, OECD 18.6%,
+tau_inc, r/premium/vol, BIS housing, h_mult, LTV, mortgage, theta, alpha,
+sell_cost). Open discrepancies, all paper-side:
+
+- [ ] Taxes subsection: "we set the capital gains taxes in the DC account to
+      zero to make them tax-preferred" — CGT is zero in BOTH accounts, so the
+      DC preference actually comes from EET (deductible contributions, untaxed
+      fund, taxed annuity/AOW) plus the DC's exemption from tau_wealth. The
+      EET mechanics are not stated anywhere in the section. See the tax
+      decision logged below.
+- [ ] Social-planner section: "there is no preferential tax treatment of the
+      DC account as income and capital gains are zero in this run" contradicts
+      the Calibration section (tau_inc = 0.382 and tau_wealth = 0.0197 are
+      both live). True of the older test run only — qualify it or re-run.
+- [ ] The franchise is never stated in the paper although kappa_t now depends
+      on it: EUR 18,475 (1-1-2025, art. 18a lid 3 Wet LB, Belastingdienst CAP).
+- [ ] "adjust this using CPI data to 2026 purchasing power" — should read 2025
+      purchasing power, and needs the arithmetic: BKV amounts are 2015 euros
+      (their Sec. 3.1), factor = CPI(2025)/CPI(2015) = 134.56/100 = 1.3456
+      (CBS 83131NED). Not reproducible as written.
+- [ ] The welfare metric's initial state is unstated and it drives the
+      results: V_0 is read at the b0-buffered anchor (0.0791 years of entry
+      income), NOT the zero-liquid-wealth corner — see the "Full-choice vs
+      fixed-path DC welfare" section below for why the corner number is an
+      artifact. The planner section's "over-saving / welfare losses" reading
+      is anchored at the old corner.
+- [ ] Off-by-ones: BKV's last observed age is 64 (not 65), and the code holds
+      the age-64 level flat over ages 65-66 only; the spline knots are at ages
+      25/67/99 (last TRANSITION age), not [T_0, T_R, T_D], and tau has length
+      T-1 transitions, not T_D; the phi sentence is reversed relative to the
+      formula (CE(tau,kappa)/CE(0,0) is exposed-over-benchmark).
+- [ ] Minor: housing vol "3.7^2%" should be 3.7%; wealth tax "1.97" missing %;
+      the cited ECB MIR series is the all-mortgages cost-of-borrowing
+      indicator, not 30-year-fixed specifically — say so in the text rather
+      than in a margin note; typos (morality/piller/dditionally/perioding/
+      yiels).
 
 ## Income process
 
