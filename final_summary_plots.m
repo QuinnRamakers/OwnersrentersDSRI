@@ -26,7 +26,7 @@ repo = fileparts(which('final_summary_plots'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
 X0_FRAC = 1.0;               % initial liquid buffer, in years of income
-N_sim   = 5000;
+N_sim   = 10000;
 
 tenures = {'renter', 'owner'};
 

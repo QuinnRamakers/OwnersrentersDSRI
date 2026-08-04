@@ -90,7 +90,7 @@ scenarios = struct( ...
     'is_owner',   {false,    true,    false,            true           }, ...
     'choose_tau', {false,    false,   true,             true           } );
 
-N_sim = 5000;
+N_sim = 10000;
 
 for k = 1:numel(scenarios)
     sc = scenarios(k);

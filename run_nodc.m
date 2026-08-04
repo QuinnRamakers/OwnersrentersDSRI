@@ -26,7 +26,7 @@ end
 
 scenarios = struct('name', {'renter_nodc', 'owner_nodc'}, ...
                    'is_owner', {false, true});
-N_sim = 5000;
+N_sim = 10000;
 
 for k = 1:numel(scenarios)
     sc = scenarios(k);
