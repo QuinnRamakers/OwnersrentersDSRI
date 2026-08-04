@@ -282,7 +282,19 @@ p.tau_cg_stock = 0.0;
 %   the end-of-period balance: the bond and stock after-CGT return factors
 %   are scaled by (1 - tau_wealth) in the solver and simulator. Housing and
 %   the DC fund are exempt. User-set 2026-07-16 (deemed-return box-3 proxy).
-p.tau_wealth   = 0.0197;
+%
+%   SET TO 0 (2026-08-04, user decision, "for now"). At the calibrated
+%   0.0197 the liquid account's safe return was
+%       (1 + r(1 - tau_cg_bond))(1 - tau_wealth) = 1.011 * 0.9803 - 1 = -0.892%
+%   i.e. NEGATIVE in real terms, against +1.100% for the same asset inside
+%   the sheltered DC fund -- a 1.99pp/yr wedge on the safe leg (2.07pp on
+%   equity), compounding to 2.31x over the 42 working years. With tau_cg_bond
+%   and tau_cg_stock both still 0, tau_wealth WAS the liquid account's entire
+%   tax disadvantage. It drove the no-DC benchmark to hoard ~9x peak income
+%   and consume ~26% of net income at 25, which in turn inflated the DC-vs-
+%   no-DC CEV to ~+319% (renter) / ~+82% (owner) at the b=1 anchor.
+%   Restore by putting 0.0197 back here; nothing else needs to change.
+p.tau_wealth   = 0.0;      % was 0.0197 (box-3 deemed-return proxy)
 
 % Derived
 p.Rf      = 1 + p.r;
