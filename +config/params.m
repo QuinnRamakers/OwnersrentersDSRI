@@ -184,17 +184,29 @@ p.lambda_grid = linspace(0, 1, p.N_lambda).';
 p.sA_grid     = linspace(0, 1, p.N_sA).';
 p.sH_grid     = linspace(0, 1, p.N_sH).';
 
-% Calibrated initial liquid buffer (welfare anchor).
+% Calibrated initial liquid buffer (welfare anchor), in YEARS of the model's
+% own age-25 gross income.
 % b0 = median bank & savings deposits, households with main earner < 25
-%      (CBS StatLine 83834NED, component 1.1.1, stock 1-1-2024, provisional:
-%      EUR 3,400) / BKV pooled age-25 full-time wage in 2024 euros
-%      (EUR 31,500 in 2015 prices x CPI factor 1.303, CBS 83131NED = 41,057).
-% b_alt = same with the 25-35 median cell (EUR 9,800), upper sensitivity.
+%      (CBS StatLine 83834NED, component 1.1.1 "bank- en spaartegoeden",
+%      mediaan, stock 1-1-2024, the latest published year: EUR 3,400)
+%      / the MEN's BKV age-25 full-time wage in 2024 euros
+%      (EUR 33,000 in 2015 prices x CPI 2015->2024 = 130.31/100 = 1.3031,
+%      CBS 83131NED, = EUR 43,002).
+% b_alt = same with the 25-35 median deposits cell (EUR 9,800), upper
+%      sensitivity.
+% Euro-year consistency: numerator and denominator are BOTH in ~2024 euros,
+% so the ratio is price-level-free -- rescaling both sides to 2026 with the
+% same CPI factor cancels. (Dividing the 1-1-2024 deposits by the 2026-euro
+% wage 33,000 * income_price_factor would UNDERSTATE the buffer by ~5%.)
+% Was 3400/(31500*1.303) = 0.0828 and 9800/(31500*1.303) = 0.2388: the old
+% denominator used the POOLED men/women wage while production runs the men's
+% profile (p.sex = 1) -- the buffer is measured in years of the modeled
+% agent's income, so the men's wage is the consistent denominator.
 % config.insert_anchor_nodes (called at the end of this file) puts the
 % corresponding (lambda, s_H) coordinates onto the grids as EXACT nodes, so
 % the welfare read at t=1 is a solved value rather than a trilinear blend.
-p.b0    = 3400 / (31500 * 1.303);     % = 0.0828 years of entry income
-p.b_alt = 9800 / (31500 * 1.303);     % = 0.2388
+p.b0    = 3400 / (33000 * 1.3031);    % = 0.0791 years of entry income
+p.b_alt = 9800 / (33000 * 1.3031);    % = 0.2279
 
 % Inner (choice) grid that seeds the per-state fmincon polish in bellman_step.
 %   N_c  : consumption-fraction grid. Must stay fine -- the objective is
