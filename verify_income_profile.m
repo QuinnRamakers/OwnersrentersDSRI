@@ -16,6 +16,13 @@ fprintf('--- verify_income_profile ---\n');
 
 p = config.params();
 
+% The expected values below are in the BKV table's own 2015 euros. The
+% production p.income_price_factor (CPI 2015->2026, see params.m) is a pure
+% multiplicative rescaling of the whole profile, orthogonal to the table
+% lookup / extrapolation logic this script checks -- pin it to 1 so the
+% expected numbers stay valid at any production factor.
+p.income_price_factor = 1.0;
+
 % Expected exp(logY) at check ages, by p.sex (1=men, 2=women, 3=pooled),
 % computed independently in Python from the same table + extrapolation
 % logic. Tolerance is loose (0.5%) since these are cross-checking logic,

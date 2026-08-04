@@ -74,15 +74,21 @@ p.income_coef = [0.530339, 0.16818, -0.323371, 0.19704];
 p.sigma_l_log = 0.1032;
 p.replacement = 0.307;      % AOW-only first-pillar replacement: DNB "Toereikendheid van pensioenen" Table 3, median first-pillar replacement rate
 %   income_price_factor: CPI rescaling of the Been-Knoef-Vethaak euro anchor
-%   (config.income_profile, currently EUR 33k men / 30k women at age 25, from
-%   the paper's 2001-2014 IPO descriptives) to 2026 prices, per the
-%   calibration table. This ONLY matters because the DC contribution rate is
-%   now franchise-based (kappa_t below) -- everything else in the model is
-%   scale-free, so the euro level of income was previously irrelevant. Set to
-%   1.0 = NO rescaling, i.e. the anchor is treated as already being in 2026
-%   euros. THIS IS A PLACEHOLDER: replace with the CBS CPI ratio
-%   (2026 / anchor base year) once the anchor's base year is pinned down.
-p.income_price_factor = 1.0;
+%   (config.income_profile, EUR 33k men / 30k women at age 25, the paper's
+%   Section 3.2.3 / Figure 4 descriptives) to 2026 prices. BKV express all
+%   wages in 2015 euros (Section 3.1: "full-time equivalent (before tax)
+%   wage expressed in (log) 2015 euros"), so the factor is CPI(2026)/CPI(2015):
+%     2015 -> 2025: CBS 83131NED (CPI 2015=100, closed series 1996-2025),
+%                   annual 2025 = 134.56  =>  1.3456
+%     2025 -> 2026: CBS 86141NED (successor, CPI 2025=100), mean of the
+%                   published 2026 months (Jan-Jun) = 101.845  =>  1.01845
+%     1.3456 * 1.01845 = 1.3704
+%   The 2026 leg is a Jan-Jun average because the 2026 annual index does not
+%   exist yet -- revisit once CBS publishes it (H2 flash y/y rates ~3% imply
+%   the full-year factor will land slightly higher). This factor ONLY matters
+%   because the contribution rate is franchise-based (kappa_t below);
+%   everything else in the model is scale-free.
+p.income_price_factor = 1.3704;
 
 % Financial market
 %   r: real risk-free rate, MK estimate (mean 3-month bond interest rate
