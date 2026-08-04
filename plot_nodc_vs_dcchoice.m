@@ -10,7 +10,11 @@
 %   prints the welfare gain (CEV at the initial node) of having the DC
 %   pension with free investment choice.
 
-repo = 'C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI';
+% Repo = the checkout this script lives in (see final_summary_plots.m): an
+% absolute path here loaded another checkout's .mat files and wrote the
+% figures back into it.
+repo = fileparts(which('plot_nodc_vs_dcchoice'));
+if isempty(repo), repo = pwd; end
 addpath(repo);
 tenures = {'renter', 'owner'};
 

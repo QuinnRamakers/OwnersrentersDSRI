@@ -12,7 +12,10 @@
 %   cev(state,t) = (V_free / V_glide)^(1/(1-gamma)) - 1
 %   > 0 : free choice raises welfare;  ~0 : indifferent;  < 0 : loss.
 
-repo = 'C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI';
+% Repo = the checkout this script lives in (see final_summary_plots.m): an
+% absolute path here tested another checkout's .mat files.
+repo = fileparts(which('test_freetau_dominance_prod'));
+if isempty(repo), repo = pwd; end
 addpath(repo);
 
 pairs = {'renter', 'combined_renter.mat', 'combined_renter_freetau.mat'; ...

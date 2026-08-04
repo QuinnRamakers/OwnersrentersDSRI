@@ -16,7 +16,14 @@
 %       the chosen anchor marked.
 %   Prints the welfare CEV table (DC vs no-DC, and free vs glide) at X0_FRAC.
 
-repo = 'C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI';
+% Repo = the checkout this script lives in, same convention as
+% welfare_dc_vs_nodc.m / plot_welfare_vs_buffer.m. which() rather than
+% mfilename(): mfilename returns the CALLER's name when run() is used from a
+% function. This used to be an absolute path to the OwnersrentersDSRI
+% checkout, which silently loaded that copy's .mat files and wrote the
+% figures back there no matter which checkout the script was launched from.
+repo = fileparts(which('final_summary_plots'));
+if isempty(repo), repo = pwd; end
 addpath(repo);
 X0_FRAC = 1.0;               % initial liquid buffer, in years of income
 N_sim   = 5000;
