@@ -121,7 +121,14 @@ p.corr_SH       = 0.0;     % corr(stock return, housing return)
 %   state space entirely. The calibration table itself specifies kappa_t as an
 %   "age profile", which is exactly this object.
 p.kappa_base = 0.186;    % contribution rate above the franchise: OECD Pensions at a Glance (2022 country note; 2025 Table 3.4)
-p.franchise  = 18475;    % franchise threshold, EUR: Belastingdienst 2025
+%   franchise: minimum AOW-franchise (art. 18a lid 3 Wet LB), EUR 19,172 per
+%   1-1-2026: Belastingdienst Centraal Aanspreekpunt Pensioenen, "Overzicht
+%   AOW-inbouwbedragen en AOW-franchises" (published 02-01-2026; first set
+%   provisionally in V&A 25-008, 09-12-2025). Was 18,475 (the 2025 figure) --
+%   updated so the franchise sits in the same 2026 euros as the CPI-rescaled
+%   income anchor (income_price_factor above); mixing a 2025 franchise with
+%   2026-euro income would overstate kappa_t slightly at every age.
+p.franchise  = 19172;
 %   p.delta is NOT the calibration table's delta. The table's delta (0.382,
 %   average income tax rate) is this file's p.tau_inc, in the Taxes block
 %   below. p.delta is a separate legacy proportional wedge on gross income
