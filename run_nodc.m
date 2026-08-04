@@ -39,7 +39,13 @@ for k = 1:numel(scenarios)
     % Match run_combined's production sweep grid. build_state_grids rebuilds
     % the linspaces AND re-inserts the welfare anchors, so N_lambda/N_sH come
     % back +2 -- read them off p, never off the requested dims.
-    p = utility.build_state_grids(p, [25 15 15], 5);
+    % CGM_STATE_GRID / CGM_GH_N override it for smoke runs only; unset (the
+    % production path) they are a no-op. See utility.grid_override.
+    [dims_sweep, gh_sweep] = utility.grid_override([25 15 15], 5);
+    p = utility.build_state_grids(p, dims_sweep, gh_sweep);
+    fprintf('  grid: requested [%d %d %d] gh_n=%d -> N_lambda=%d N_sA=%d N_sH=%d\n', ...
+        dims_sweep(1), dims_sweep(2), dims_sweep(3), gh_sweep, ...
+        p.N_lambda, p.N_sA, p.N_sH);
     p = assert_production_fill(p);
 
     [~, mu_growth, sigma_l_log] = config.income_profile(p);

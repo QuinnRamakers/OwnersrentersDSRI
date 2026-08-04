@@ -1,8 +1,10 @@
 % RUN_COMBINED  Solve and simulate the combined pension+housing model.
 %
-%   Four scenarios, is_owner x DC-investment regime (kappa = p.kappa = 0.2
-%   throughout; the old kappa=0 no-pension benchmark scenarios were removed
-%   2026-07-16, see git history):
+%   Four scenarios, is_owner x DC-investment regime (kappa is the T x 1
+%   franchise-based AGE PROFILE p.kappa from config.params, ~10.9%-14.6%
+%   over the working life, NOT the flat 0.2 this line used to claim; the old
+%   kappa=0 no-pension benchmark scenarios were removed 2026-07-16, see git
+%   history -- they now live in run_nodc.m):
 %     1) Renter         (is_owner = false, glide tau_S): pays alpha * H_t
 %        per period.
 %     2) Owner          (is_owner = true,  glide tau_S): pays
@@ -110,7 +112,14 @@ for k = 1:numel(scenarios)
         % build_state_grids rebuilds the linspaces AND re-inserts the welfare
         % anchors, so N_lambda/N_sH come back +2 -- read them off p, never off
         % the requested dims.
-        p = utility.build_state_grids(p, [25 15 15], 5);
+        % CGM_STATE_GRID / CGM_GH_N override the sweep grid for smoke runs
+        % only; unset (the production path) they are a no-op. See
+        % utility.grid_override.
+        [dims_sweep, gh_sweep] = utility.grid_override([25 15 15], 5);
+        p = utility.build_state_grids(p, dims_sweep, gh_sweep);
+        fprintf('  grid: requested [%d %d %d] gh_n=%d -> N_lambda=%d N_sA=%d N_sH=%d\n', ...
+            dims_sweep(1), dims_sweep(2), dims_sweep(3), gh_sweep, ...
+            p.N_lambda, p.N_sA, p.N_sH);
     end
     p = assert_production_fill(p);
 
