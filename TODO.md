@@ -3,6 +3,71 @@
 Living list of calibration decisions and code changes needed before the model
 is ready for the paper. Grouped by area. Check items off as they're resolved.
 
+## Session log — 2026-08-03/04: baseline calibration table + franchise kappa + 2026-euro consistency
+
+Recorded after the fact for 2026-08-03 (the session-log convention broke that
+night); the three euro-consistency fixes landed 2026-08-04. Everything here
+changes grid nodes or kappa_t, so it all had to land BEFORE the cluster
+re-solve. `utility.param_fingerprint` gates on `income_price_factor`,
+`franchise` (via `kappa_base`/`franchise`), `b0` and `b_alt`, so every .mat
+file solved before these commits is fenced out of comparisons automatically —
+confirmed, no fingerprint edit was needed.
+
+**Calibration-table adoption (2026-08-03, commits ee86115 / 4ba539f):**
+- [x] alpha = 0.06 (rent-to-price; Yao & Zhang 2005 + Fischer, literature
+      convention — supersedes the 0.1 placeholder logged further down).
+- [x] tau_inc = 0.382 (CBS average tax burden on income, 2019 — the paper's
+      delta; code p.delta stays a dead 0 wedge).
+- [x] r_m = 0.0136 real (ECB MIR NL cost of borrowing for house purchase,
+      May 2026: 3.66% nominal − 2.3% inflation).
+- [x] sell_cost = 0.025 wired into the owner bequest base (Hambel et al.
+      2026); inert while chi = 0.
+- [x] LTV = 1.00 with a hard assert — LTV < 1 needs a down-payment endowment
+      the simulator does not model, so it fails loudly.
+- [x] Mortality: CBS unisex ("totaal mannen en vrouwen") life table 2021–2026
+      (37360ned → CBSunisexmortality21-26.csv); p.sex now drives INCOME only,
+      set to 1 (men, BKV Table D.1) per the calibration table.
+- [x] kappa is now an AGE PROFILE, not a scalar: kappa_t = kappa_base *
+      max(Y_t − F, 0)/Y_t with kappa_base = 0.186 (OECD Pensions at a Glance
+      2022 country note / 2025 Table 3.4 — the 18.6% is the rate ABOVE the
+      franchise per the 2022 note; the 2025 edition repeats the number without
+      restating that). APPROXIMATION, documented in params.m: kappa_t is
+      evaluated on the DETERMINISTIC income profile, not realised Y_t — the
+      model is homothetic in W (only lambda = Y/W is a state), so a rate
+      depending on realised Y would break the normalised state space. This
+      made the euro LEVEL of income matter for the first time, which forced
+      the three consistency fixes below.
+
+**Euro-consistency fixes (2026-08-04):**
+- [x] income_price_factor 1.0 (placeholder) → 1.3704. BKV wages are in 2015
+      euros (their Section 3.1: FT-equivalent wage "expressed in (log) 2015
+      euros" — pinned from the paper, not assumed). CPI chain: 83131NED
+      (2015=100, CLOSED at 2025 — CBS rebased to 2025=100 in Jan 2026) gives
+      2015→2025 = 134.56/100 = 1.3456; successor 86141NED gives 2025→2026 =
+      mean(Jan–Jun 2026) = 101.845/100 = 1.01845; product 1.3704. Revisit
+      when the 2026 annual index is published (H2 flash ~3% y/y ⇒ full-year
+      factor slightly higher). kappa_25 moves 8.2% → 10.7%.
+- [x] franchise 18,475 (2025) → 19,172 (2026): Belastingdienst CAP,
+      "Overzicht AOW-inbouwbedragen en AOW-franchises" (02-01-2026), art.
+      18a lid 3 Wet LB minimum franchise; provisional V&A 25-008 (09-12-2025)
+      had the same amount. Now in the same 2026 euros as the income anchor.
+- [x] b0/b_alt 0.0828/0.2388 → 0.0791/0.2279. Audit outcome: the old ratio
+      was already price-year consistent (1-1-2024 deposits over a 2024-euro
+      wage, 31,500 × 1.303) — the real inconsistency was POOLED wage vs the
+      production men's profile (p.sex = 1). Recomputed as CBS 83834NED median
+      bank/savings deposits (main earner <25: EUR 3,400; 25–35: EUR 9,800;
+      1-1-2024, latest published) / men's age-25 wage in 2024 euros
+      (33,000 × 1.3031 = 43,002). The ratio is formed in matching 2024 euros
+      deliberately: CPI scaling of both sides to 2026 cancels. Legacy
+      fallbacks in welfare_dc_vs_nodc.m / plot_welfare_vs_buffer.m still hold
+      the old pooled formula for p-structs lacking b0 — out of scope this
+      pass, and such files are fingerprint-fenced anyway.
+- [x] verify_income_profile.m pins income_price_factor = 1 (its expected
+      values are in the table's own 2015 euros); re-run 2026-08-04, ALL
+      CHECKS PASSED. config.params() smoke-checked: Y_25 = 45,223, kappa
+      profile 10.7% (25) → ~14.5% (mid-career), anchors land as exact grid
+      nodes, fingerprint carries the new values.
+
 ## Income process
 
 - [x] CONFIRMED, no change needed: `bellman_step.m` (`Y_next_W = G_next * lam`)
