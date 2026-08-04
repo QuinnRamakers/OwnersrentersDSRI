@@ -73,22 +73,30 @@ p.income_coef = [0.530339, 0.16818, -0.323371, 0.19704];
 %   audit") -- a known simplification, not fixed by this change.
 p.sigma_l_log = 0.1032;
 p.replacement = 0.307;      % AOW-only first-pillar replacement: DNB "Toereikendheid van pensioenen" Table 3, median first-pillar replacement rate
+%   PRICE-YEAR CONVENTION: every euro-denominated input in this file is in
+%   2025 EUROS. 2025 is the most recent COMPLETE calendar year -- its CBS
+%   annual CPI is final and its statutory pension amounts are settled --
+%   whereas any 2026 figure rests on a part-year CPI average that CBS will
+%   revise. Only two inputs actually carry a price year (this factor and
+%   p.franchise); b0/b_alt are a ratio of same-year euros and so are
+%   price-level-free (see below), and every rate in the file (r, r_m,
+%   mu_H_level, tau_inc, ...) is real or unit-free and therefore has no
+%   price year at all. Change the two together or not at all: pairing a
+%   rescaled income with a franchise from another year silently misstates
+%   kappa_t at every age.
+%
 %   income_price_factor: CPI rescaling of the Been-Knoef-Vethaak euro anchor
 %   (config.income_profile, EUR 33k men / 30k women at age 25, the paper's
-%   Section 3.2.3 / Figure 4 descriptives) to 2026 prices. BKV express all
+%   Section 3.2.3 / Figure 4 descriptives) to 2025 prices. BKV express all
 %   wages in 2015 euros (Section 3.1: "full-time equivalent (before tax)
-%   wage expressed in (log) 2015 euros"), so the factor is CPI(2026)/CPI(2015):
-%     2015 -> 2025: CBS 83131NED (CPI 2015=100, closed series 1996-2025),
-%                   annual 2025 = 134.56  =>  1.3456
-%     2025 -> 2026: CBS 86141NED (successor, CPI 2025=100), mean of the
-%                   published 2026 months (Jan-Jun) = 101.845  =>  1.01845
-%     1.3456 * 1.01845 = 1.3704
-%   The 2026 leg is a Jan-Jun average because the 2026 annual index does not
-%   exist yet -- revisit once CBS publishes it (H2 flash y/y rates ~3% imply
-%   the full-year factor will land slightly higher). This factor ONLY matters
-%   because the contribution rate is franchise-based (kappa_t below);
-%   everything else in the model is scale-free.
-p.income_price_factor = 1.3704;
+%   wage expressed in (log) 2015 euros"), so the factor is CPI(2025)/CPI(2015)
+%   = 134.56 / 100.00 = 1.3456, straight off CBS 83131NED (CPI 2015=100,
+%   annual figures, series closed at 2025 when CBS rebased to 2025=100).
+%   Single-table, single-step, final -- no chaining through the successor
+%   table 86141NED and no provisional part-year average.
+%   This factor ONLY matters because the contribution rate is franchise-based
+%   (kappa_t below); everything else in the model is scale-free.
+p.income_price_factor = 1.3456;
 
 % Financial market
 %   r: real risk-free rate, MK estimate (mean 3-month bond interest rate
@@ -127,14 +135,12 @@ p.corr_SH       = 0.0;     % corr(stock return, housing return)
 %   state space entirely. The calibration table itself specifies kappa_t as an
 %   "age profile", which is exactly this object.
 p.kappa_base = 0.186;    % contribution rate above the franchise: OECD Pensions at a Glance (2022 country note; 2025 Table 3.4)
-%   franchise: minimum AOW-franchise (art. 18a lid 3 Wet LB), EUR 19,172 per
-%   1-1-2026: Belastingdienst Centraal Aanspreekpunt Pensioenen, "Overzicht
-%   AOW-inbouwbedragen en AOW-franchises" (published 02-01-2026; first set
-%   provisionally in V&A 25-008, 09-12-2025). Was 18,475 (the 2025 figure) --
-%   updated so the franchise sits in the same 2026 euros as the CPI-rescaled
-%   income anchor (income_price_factor above); mixing a 2025 franchise with
-%   2026-euro income would overstate kappa_t slightly at every age.
-p.franchise  = 19172;
+%   franchise: minimum AOW-franchise (art. 18a lid 3 Wet LB) per 1-1-2025,
+%   EUR 18,475: Belastingdienst Centraal Aanspreekpunt Pensioenen, "Overzicht
+%   AOW-inbouwbedragen en AOW-franchises". 2025 to match the 2025-euro income
+%   anchor above, per the price-year convention. (The 2026 figure on the same
+%   page is EUR 19,172; use it only together with a 2026 income factor.)
+p.franchise  = 18475;
 %   p.delta is NOT the calibration table's delta. The table's delta (0.382,
 %   average income tax rate) is this file's p.tau_inc, in the Taxes block
 %   below. p.delta is a separate legacy proportional wedge on gross income
@@ -194,10 +200,15 @@ p.sH_grid     = linspace(0, 1, p.N_sH).';
 %      CBS 83131NED, = EUR 43,002).
 % b_alt = same with the 25-35 median deposits cell (EUR 9,800), upper
 %      sensitivity.
-% Euro-year consistency: numerator and denominator are BOTH in ~2024 euros,
-% so the ratio is price-level-free -- rescaling both sides to 2026 with the
-% same CPI factor cancels. (Dividing the 1-1-2024 deposits by the 2026-euro
-% wage 33,000 * income_price_factor would UNDERSTATE the buffer by ~5%.)
+% Euro-year consistency: numerator and denominator are BOTH in 2024 euros, so
+% the ratio is PRICE-LEVEL-FREE and needs no rebasing when the file's price
+% year moves. Restating both sides in 2025 euros gives the same number --
+% 3,400 * (134.56/130.31) / (33,000 * 1.3456) = 3,510.9 / 44,404.8 = 0.0791 --
+% which is why b0/b_alt are exempt from the price-year convention above.
+% 1-1-2024 is the latest deposits stock CBS publishes (checked 2026-08-04);
+% a 2025 stock would replace the numerator, not merely reprice it.
+% (Dividing the 2024-euro deposits by a 2025- or 2026-euro wage, i.e. by
+% 33,000 * income_price_factor, would UNDERSTATE the buffer by ~3-5%.)
 % Was 3400/(31500*1.303) = 0.0828 and 9800/(31500*1.303) = 0.2388: the old
 % denominator used the POOLED men/women wage while production runs the men's
 % profile (p.sex = 1) -- the buffer is measured in years of the modeled
@@ -246,6 +257,18 @@ p.skip_polish = false;
 %   table's delta ("average income tax rate"); do not confuse it with the
 %   code's p.delta, which is a separate wedge fixed at 0.
 p.tau_inc      = 0.382;    % CBS, average tax burden on income, 2019
+%   DECISION 2026-08-04: KEEP BOTH tax instruments (accrual CGT below and the
+%   box-3-style wealth tax further down) wired into the model. They are not
+%   alternatives to be collapsed into one: the proposed Dutch box-3 successor
+%   is return-based with loss carry-forward (a CGT), while the current regime
+%   is a deemed-return levy on the balance (a wealth tax), and a court ruling
+%   lets taxpayers already elect realised returns when those are lower. Only
+%   the wealth-tax LEG is calibrated (tau_wealth = 0.0197); the CGT legs stay
+%   at 0 pending a rate, so today the liquid account's tax disadvantage runs
+%   entirely through tau_wealth plus the EET treatment above. Keeping the CGT
+%   fields live means switching regimes later is a calibration change, not a
+%   code change.
+%
 %   Capital-gains tax on the LIQUID (taxable) account only -- the DC fund is
 %   sheltered. Accrual basis, NO loss offset: only positive gains are taxed
 %   (no credit when equity falls). Split by asset so bonds and stocks can be

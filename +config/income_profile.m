@@ -102,8 +102,9 @@ switch p.income_source
         % to 2015 prices). Shifts the whole (relative) growth series to
         % pass through it.
         %
-        % p.income_price_factor rescales this 2015-euro anchor to 2026
-        % prices (CBS CPI 2015->2026 = 1.3704; derivation in params.m).
+        % p.income_price_factor rescales this 2015-euro anchor to 2025
+        % prices (CBS CPI 2015->2025 = 1.3456; derivation and the file's
+        % price-year convention are in params.m).
         % Before the franchise-based contribution rate (config.params,
         % kappa_t) the euro LEVEL was irrelevant -- the model is
         % homothetic in W -- so the anchor was never price-adjusted. It
