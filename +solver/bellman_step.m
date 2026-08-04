@@ -30,16 +30,34 @@ function [V_t, c_pol, pi_pol, feas, tau_pol] = bellman_step(t, V_next, p, profil
 %       and liquid equity share; the DC share tau is the fixed tau_S glide
 %       path. 41x41 grid search + 2-var fmincon polish.
 %     Free DC choice (p.choose_tau_S true): (c, pi, tau) -- the DC equity
-%       share becomes a third choice variable. Unified grid search over
-%       (n_shock x N_c x N_pi x N_tau) tau-slices -- the tau seed grid is
-%       linspace(0,1,p.N_tau) with the glide value tau_S(t) appended, so the
-%       free search always contains the glide slice and free choice can
-%       never lose to the glide on the grid -- plus a 3-var fmincon polish
-%       started from the best grid point (and additionally from the glide
-%       slice's best point when that is a different tau slice; best kept).
-%       tau_pol (5th output) returns the chosen DC share; it is [] when
+%       share becomes a third choice variable, but ONLY WHILE WORKING
+%       (t < t_ret). Unified grid search over (n_shock x N_c x N_pi x N_tau)
+%       tau-slices -- the tau seed grid is linspace(0,1,p.N_tau) with the
+%       glide value tau_S(t) appended, so the free search always contains the
+%       glide slice and free choice can never lose to the glide on the grid
+%       -- plus a 3-var fmincon polish started from the best grid point (and
+%       additionally from the glide slice's best point when that is a
+%       different tau slice; best kept).
+%       tau_pol (5th output) returns the DC share in force; it is [] when
 %       choose_tau_S is off. With a single tau slice the tensor collapses to
 %       the old glide-path grid search exactly (bit-identical).
+%
+%   RETIREMENT (t >= t_ret) is never a tau choice, in EITHER regime. The
+%   share is fixed by the decumulation strategy, config.tau_effective(p)
+%   (p.tau_decum; historically 0, i.e. an all-bond fund). This is what keeps
+%   the annuity price honest at no cost: a(t) is read only for t >= t_ret and
+%   recurses backward from T, so a(t_ret) depends solely on the decumulation
+%   share -- deterministic here, hence exactly what pension.annuity_price
+%   prices. The two alternatives are both worse. Letting retirees re-pick tau
+%   makes the draw rate 1/a(tau) a decumulation-SPEED lever (31% bigger draw
+%   at tau = 0.75 than at 0), conflating portfolio choice with how fast the
+%   fund is run down. Pinning the rate at the conversion tau instead would
+%   make it history-dependent, i.e. a fourth state variable through the whole
+%   retirement.
+%
+%   The upshot for the free-vs-glide comparison is a cleaner one: both arms
+%   now behave identically after t_ret, so the entire difference between them
+%   is attributable to ACCUMULATION-phase investment choice.
 %   z-transform on V_next throughout. The continuation interpolant is built on
 %   the whole cube, and its infeasible nodes are filled by nearest-feasible
 %   projection onto the simplex face (solver.build_fill_map) rather than the
@@ -56,7 +74,17 @@ V_t    = nan(NL, NA, NH);
 c_pol  = nan(NL, NA, NH);
 pi_pol = nan(NL, NA, NH);
 
+% choose_tau  : record a tau policy at all (allocates tau_pol, 5th output).
+% optimise_tau: actually treat tau as a CHOICE at this age. Free DC choice is
+%   an ACCUMULATION-phase feature -- after retirement the share is fixed by
+%   the decumulation strategy (config.tau_effective / p.tau_decum). Letting
+%   retirees re-pick tau would turn the annuity draw rate 1/a(tau) into a
+%   decumulation-speed lever, and pinning it at conversion instead would cost
+%   a fourth state variable. With optimise_tau false the tau grid collapses to
+%   one slice and this step is the glide step, bit-identically.
 choose_tau = isfield(p, 'choose_tau_S') && p.choose_tau_S;
+is_retired_t = (t >= p.t_ret);
+optimise_tau = choose_tau && ~is_retired_t;
 tau_pol = [];
 if choose_tau
     tau_pol = nan(NL, NA, NH);
@@ -160,7 +188,12 @@ if t == p.T
 end
 
 % --- Non-terminal: build z-space interpolant then optimise per feasible state.
-tau      = p.tau_S(t);
+% Effective DC equity share at this age: the accumulation glide before
+% retirement, the decumulation strategy (p.tau_decum) after it. Under
+% choose_tau_S this is the seed/fallback while working and the FIXED share
+% once retired -- see optimise_tau below.
+tau_eff_path = config.tau_effective(p);
+tau      = tau_eff_path(t);
 pt       = profile.p_surv(t);
 beta_eff = p.beta * pt;
 chi = 0; if isfield(p, 'chi'), chi = p.chi; end
@@ -180,11 +213,11 @@ G_next = exp(mu_g + sig_l .* eps_Y);
 % Free choice: linspace seed grid with the glide value appended (unique()
 % keeps it a single copy when it coincides with a seed point), so the free
 % search always weakly dominates the glide slice on the grid.
-if choose_tau
+if optimise_tau
     NT = 11; if isfield(p, 'N_tau'), NT = p.N_tau; end
     tau_grid = unique([linspace(0, 1, NT).'; tau]);
 else
-    tau_grid = tau;
+    tau_grid = tau;   % glide arm, or ANY retired age: one slice, share fixed
 end
 NTg     = numel(tau_grid);
 j_glide = find(tau_grid == tau, 1);
@@ -350,13 +383,13 @@ parfor k = 1:n_feas
         if j == j_glide
             maxval_g = mv;
             [ic_g, ip_g] = ind2sub([NC, NP], lin_idx);
-            if choose_tau
+            if optimise_tau
                 rhs_g = rhs;   % kept for multi-basin polish starts below
             end
         end
     end
 
-    if choose_tau
+    if optimise_tau
         % Free-tau polish: best of three candidates (each may fail; grid max
         % is the fallback).
         %   A) 3-var (c, pi, tau) fmincon from the global grid best. The

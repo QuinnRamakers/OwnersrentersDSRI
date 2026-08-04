@@ -315,6 +315,25 @@ glide(ages_grid >= p.retirement_age) = 0.0;
 p.tau_S_raw = glide;
 p.tau_S     = glide;
 
+% DECUMULATION strategy: the DC equity share held from t_ret onward. Free
+% investment choice (p.choose_tau_S) is an ACCUMULATION-phase feature -- the
+% solver never re-picks tau after retirement, in either regime -- so this is
+% the single knob controlling the retired fund, and config.tau_effective
+% splices it onto the glide above.
+%
+% [] (default) keeps the glide's own retirement values, which are 0: an
+% all-bond decumulation fund. Set a scalar for a constant share, or a vector
+% for a path (see config.tau_effective for the accepted lengths), e.g.
+%     p.tau_decum = 0.3;                       % constant 30% equity
+%     p.tau_decum = linspace(0.3, 0, p.T - p.t_ret);   % taper to zero
+%
+% Whatever is set here is PRICED: pension.annuity_price reads the same
+% effective path, so the annuity and the portfolio can never disagree. a_t
+% falls as the share rises (a higher-return fund sustains a bigger level
+% payout), so this materially moves the retired budget -- 0.3 buys a ~12%
+% bigger payout per unit of stock than 0. It is in the fingerprint gate.
+p.tau_decum = [];
+
 % Effective DC contribution rate on GROSS income, kappa_t (T x 1). Built from
 % the franchise rule kappa_t = kappa_base * max(Y_t - F, 0) / Y_t evaluated on
 % the DETERMINISTIC income profile (see the Pension block above), and zero

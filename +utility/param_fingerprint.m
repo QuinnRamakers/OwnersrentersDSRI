@@ -51,6 +51,18 @@ function [s, arm] = param_fingerprint(p)
 %     b0/b_alt                        different welfare anchors => different
 %                                     inserted nodes => different grid => the
 %                                     welfare node itself moves
+%     tau_decum                       the DECUMULATION equity share
+%                                     (config.tau_effective). It sets the
+%                                     retired portfolio AND, through
+%                                     pension.annuity_price, the draw rate, so
+%                                     two files with different values are not
+%                                     the same model. Empty (the historical
+%                                     all-bond default) is non-scalar and so
+%                                     fingerprints as NaN, exactly like an
+%                                     older vintage that never had the field
+%                                     -- deliberate: those two ARE the same
+%                                     model, since [] reproduces the old
+%                                     behaviour bit-for-bit.
 %     legacy_fill                     the pre-fix phantom-penalty continuation
 %                                     fill. A file solved with it carries a
 %                                     ruin-blended penalty along the sX = 0
@@ -70,7 +82,7 @@ FLDS = {'N_lambda','N_sA','N_sH','gh_n','age0','T','retirement_age', ...
         'sigma_S_level','mu_H_level','sigma_H_level','r_m','N_mort','LTV', ...
         'sell_cost','replacement','delta','sigma_l_log','income_price_factor', ...
         'sex','kappa_base','franchise','tau_inc','tau_cg_bond','tau_cg_stock', ...
-        'tau_wealth','b0','b_alt','legacy_fill'};
+        'tau_wealth','b0','b_alt','legacy_fill','tau_decum'};
 
 parts = cell(1, numel(FLDS));
 for i = 1:numel(FLDS)
