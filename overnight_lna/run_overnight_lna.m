@@ -80,7 +80,46 @@ if isempty(getenv('CGM_OUTPUT_DIR'))
          '(export CGM_OUTPUT_DIR=/data) and relaunch, or accept the risk.'], OUT);
 end
 
+% Parallel pool, same convention as run_spline_strategies / run_combined:
+%   CGM_N_WORKERS set -> force an n-worker PROCESS pool (laptop; the Threads
+%     profile is capped at 2 there), falling back to Threads if the cluster
+%     refuses to start process workers.
+%   unset          -> Threads, which spans all cores in one process and is the
+%     pod default.
+% Without this the first parfor auto-starts whatever the default profile is
+% ('Processes'), which pods can fail to launch -- and a failed pool means the
+% solve silently runs SERIAL, roughly 16x slower, which would eat the budget.
+nw = str2double(getenv('CGM_N_WORKERS'));
+if ~isnan(nw) && nw >= 1
+    pool = gcp('nocreate');
+    if isempty(pool) || pool.NumWorkers < nw
+        if ~isempty(pool), delete(pool); end
+        try
+            clus = parcluster('local');
+            clus.NumWorkers = max(clus.NumWorkers, nw);
+            parpool(clus, nw);
+        catch err
+            fprintf('Process pool failed (%s); falling back to Threads.\n', err.message);
+            parpool('Threads');
+        end
+    end
+elseif isempty(gcp('nocreate'))
+    try
+        parpool('Threads');
+    catch
+        try, parpool('local'); catch, warning('run_overnight_lna:nopool', ...
+            'parpool failed -- the solve will run SERIAL and blow the budget.'); end
+    end
+end
+
 lp(LOG,'\n%s\novernight_lna start %s\n', repmat('=',1,68), datestr(now,'yyyy-mm-dd HH:MM:SS'));
+pl = gcp('nocreate');
+if isempty(pl)
+    lp(LOG,'POOL: NONE -- running SERIAL. Expect ~16x the per-arm time below.\n');
+else
+    % class(pl) works for both kinds; a ThreadPool has no .Cluster property.
+    lp(LOG,'POOL: %s, %d workers\n', class(pl), pl.NumWorkers);
+end
 lp(LOG,'housing=%s  cube=[%d %d %d]  skip_polish=%d  n_sim=%d\n', ...
     opts.housing, opts.cube, opts.skip_polish, opts.n_sim);
 lp(LOG,'budget %.1f h over %d candidate strategies (%s ... %s)\n%s\n', ...
