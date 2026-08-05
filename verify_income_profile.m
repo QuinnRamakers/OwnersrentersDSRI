@@ -1,26 +1,22 @@
-%VERIFY_INCOME_PROFILE  Sanity-check the new p.income_source='table' path.
+%VERIFY_INCOME_PROFILE  Sanity-check the p.income_source='table' path.
 %
 %   Run from the repo root (where +config lives):
 %       matlab -batch verify_income_profile
 %   or from inside MATLAB:
 %       run verify_income_profile
 %
-%   This was written and its expected numbers were computed with a
-%   Python re-implementation of the same logic (no MATLAB was available
-%   in that environment) -- it has NOT been run against the real
-%   income_profile.m / income_table_bkv.m. Please run it for real before
-%   trusting the new code path. If anything fails, the assertion message
-%   will say which (age, sex) pair and by how much.
+%   Checks the BKV table lookup and both extrapolation edges against expected
+%   values. If anything fails, the assertion says which (age, sex) pair and by
+%   how much.
 
 fprintf('--- verify_income_profile ---\n');
 
 p = config.params();
 
 % The expected values below are in the BKV table's own 2015 euros. The
-% production p.income_price_factor (CPI 2015->2026, see params.m) is a pure
-% multiplicative rescaling of the whole profile, orthogonal to the table
-% lookup / extrapolation logic this script checks -- pin it to 1 so the
-% expected numbers stay valid at any production factor.
+% production p.income_price_factor rescales the whole profile multiplicatively
+% and is orthogonal to the lookup and extrapolation logic checked here, so pin
+% it to 1 and the expected numbers stay valid at any production factor.
 p.income_price_factor = 1.0;
 
 % Expected exp(logY) at check ages, by p.sex (1=men, 2=women, 3=pooled),

@@ -5,32 +5,25 @@ function tau_e = tau_effective(p)
 %
 %   Splices two regimes at retirement:
 %
-%     ACCUMULATION (t < t_ret)   p.tau_S(t) -- the glide. Under
-%       p.choose_tau_S the solver optimises tau per state and this is only
-%       the seed/fallback, but the value here is still what an unoptimised
-%       caller (and the glide arm) uses.
+%     ACCUMULATION (t < t_ret)   p.tau_S(t), the glide. Under p.choose_tau_S
+%       the solver optimises tau per state and this is only the seed and
+%       fallback, but it is still what the glide arm uses.
 %
 %     DECUMULATION (t >= t_ret)  p.tau_decum if set, else p.tau_S(t).
 %
-%   WHY THIS EXISTS. Free tau choice is an ACCUMULATION-phase feature: after
-%   retirement the equity share is set by the decumulation strategy, not
-%   re-chosen state by state. That restriction is what keeps the annuity
-%   price correct without a new state variable --
-%
-%     a(t) is only ever read for t >= t_ret and its recursion runs backward
-%     from T, so a(t_ret) depends SOLELY on tau from t_ret onward. Make that
-%     deterministic and pension.annuity_price prices exactly the fund the
-%     household runs. Let retirees re-choose tau instead and the draw rate
-%     1/a(tau) becomes a decumulation-speed lever (a 31% bigger draw at
-%     tau = 0.75 than at 0), and pinning it at conversion would mean carrying
-%     the conversion tau as a fourth state variable through retirement.
+%   Why the split. Free tau choice is accumulation-only, and that restriction
+%   is what keeps the annuity price correct without a new state variable.
+%   a(t) is read only for t >= t_ret and recurses backward from T, so a(t_ret)
+%   depends solely on tau from t_ret onward; make that deterministic and
+%   pension.annuity_price prices exactly the fund the household runs. The
+%   alternatives are worse: letting retirees re-choose tau turns the draw rate
+%   1/a(tau) into a decumulation-speed lever, and pinning it at conversion
+%   means carrying the conversion tau as a fourth state variable.
 %
 %   p.tau_decum accepts:
-%     absent / []            keep p.tau_S over retirement too (the historical
-%                            behaviour: tau_S is 0 across the whole
-%                            retirement, so the fund is 100% bonds). Returns
-%                            p.tau_S unchanged, so every existing result is
-%                            reproduced bit-for-bit.
+%     absent / []            keep p.tau_S over retirement too. tau_S is 0
+%                            across retirement, so this is an all-bond fund,
+%                            and it reproduces pre-existing results exactly.
 %     scalar                 constant equity share held through retirement.
 %     vector, T-1 or T long  a full path; entries t_ret..T-1 are used.
 %     vector, T-t_ret long   the retirement path on its own.

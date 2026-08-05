@@ -1,7 +1,7 @@
 function sim = paths(p, profile, sol, ann_price, N, seed, X0_frac)
 %PATHS  Forward Monte-Carlo simulation, combined pension+housing model.
 %
-%   Initial state at age 20: X = X0_frac*Y_0, A = 0, H = h_mult * Y_0, Y = Y_0.
+%   Initial state at p.age0: X = X0_frac*Y_0, A = 0, H = h_mult*Y_0, Y = Y_0.
 %   X0_frac (optional, default 0) endows the household with an initial liquid
 %   buffer of X0_frac years of income -- used for buffered-benchmark welfare.
 %

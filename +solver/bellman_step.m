@@ -29,45 +29,28 @@ function [V_t, c_pol, pi_pol, feas, tau_pol] = bellman_step(t, V_next, p, profil
 %     Default (p.choose_tau_S false/absent): (c, pi) -- consumption fraction
 %       and liquid equity share; the DC share tau is the fixed tau_S glide
 %       path. 41x41 grid search + 2-var fmincon polish.
-%     Free DC choice (p.choose_tau_S true): (c, pi, tau) -- the DC equity
-%       share becomes a third choice variable, but ONLY WHILE WORKING
-%       (t < t_ret). Unified grid search over (n_shock x N_c x N_pi x N_tau)
-%       tau-slices -- the tau seed grid is linspace(0,1,p.N_tau) with the
-%       glide value tau_S(t) appended, so the free search always contains the
-%       glide slice and free choice can never lose to the glide on the grid
-%       -- plus a 3-var fmincon polish started from the best grid point (and
-%       additionally from the glide slice's best point when that is a
-%       different tau slice; best kept).
-%       tau_pol (5th output) returns the DC share in force; it is [] when
-%       choose_tau_S is off. With a single tau slice the tensor collapses to
-%       the old glide-path grid search exactly (bit-identical).
+%     Free DC choice (p.choose_tau_S true): (c, pi, tau), but only while
+%       WORKING (t < t_ret). The tau seed grid is linspace(0,1,p.N_tau) with
+%       the glide value appended, so the free search always contains the glide
+%       slice and cannot lose to it on the grid; the polish then runs from the
+%       best grid point and, separately, pinned at the glide value.
+%       tau_pol (5th output) is the DC share in force, [] when the option is
+%       off. With a single tau slice the tensor collapses to the glide-path
+%       grid search bit-identically.
 %
-%   RETIREMENT (t >= t_ret) is never a tau choice, in EITHER regime. The
-%   share is fixed by the decumulation strategy, config.tau_effective(p)
-%   (p.tau_decum; historically 0, i.e. an all-bond fund). This is what keeps
-%   the annuity price honest at no cost: a(t) is read only for t >= t_ret and
-%   recurses backward from T, so a(t_ret) depends solely on the decumulation
-%   share -- deterministic here, hence exactly what pension.annuity_price
-%   prices. The two alternatives are both worse. Letting retirees re-pick tau
-%   makes the draw rate 1/a(tau) a decumulation-SPEED lever (31% bigger draw
-%   at tau = 0.75 than at 0), conflating portfolio choice with how fast the
-%   fund is run down. Pinning the rate at the conversion tau instead would
-%   make it history-dependent, i.e. a fourth state variable through the whole
-%   retirement.
+%   Retirement (t >= t_ret) is never a tau choice in either regime: the share
+%   comes from config.tau_effective(p). That restriction is what keeps the
+%   annuity price honest without a fourth state variable, and it means both
+%   arms behave identically after t_ret, so the whole free-vs-glide difference
+%   is attributable to accumulation. See config.tau_effective.
 %
-%   The upshot for the free-vs-glide comparison is a cleaner one: both arms
-%   now behave identically after t_ret, so the entire difference between them
-%   is attributable to ACCUMULATION-phase investment choice.
-%   z-transform on V_next throughout. The continuation interpolant is built on
-%   the whole cube, and its infeasible nodes are filled by nearest-feasible
-%   projection onto the simplex face (solver.build_fill_map) rather than the
-%   global-minimum z the code used to use -- that minimum was the z-image of
-%   the -1e15 ruin assignment, so it imposed a phantom penalty one cell wide
-%   along the sX = 0 face at every age. Every continuation query then asserts
-%   lambda+sA+sH <= 1: negative liquid wealth is unreachable in this model, and
-%   the assert makes that assumption fail loudly rather than silently if
-%   leverage, additive returns, post-return cost deduction or a mortgage stock
-%   is ever added.
+%   The continuation interpolant works on the z-transform of V_next and is
+%   built over the whole cube; infeasible nodes are filled from their nearest
+%   feasible neighbour (solver.build_fill_map). Every continuation query
+%   asserts lambda+sA+sH <= 1. Negative liquid wealth is unreachable in this
+%   model, and the assert makes that assumption fail loudly rather than
+%   silently if leverage, additive returns, post-return cost deduction or a
+%   mortgage stock is ever added.
 
 NL = p.N_lambda; NA = p.N_sA; NH = p.N_sH;
 V_t    = nan(NL, NA, NH);
@@ -75,13 +58,9 @@ c_pol  = nan(NL, NA, NH);
 pi_pol = nan(NL, NA, NH);
 
 % choose_tau  : record a tau policy at all (allocates tau_pol, 5th output).
-% optimise_tau: actually treat tau as a CHOICE at this age. Free DC choice is
-%   an ACCUMULATION-phase feature -- after retirement the share is fixed by
-%   the decumulation strategy (config.tau_effective / p.tau_decum). Letting
-%   retirees re-pick tau would turn the annuity draw rate 1/a(tau) into a
-%   decumulation-speed lever, and pinning it at conversion instead would cost
-%   a fourth state variable. With optimise_tau false the tau grid collapses to
-%   one slice and this step is the glide step, bit-identically.
+% optimise_tau: treat tau as a choice at this age -- accumulation only. With
+%   optimise_tau false the tau grid collapses to one slice and this step is
+%   the glide step, bit-identically.
 choose_tau = isfield(p, 'choose_tau_S') && p.choose_tau_S;
 is_retired_t = (t >= p.t_ret);
 optimise_tau = choose_tau && ~is_retired_t;
@@ -243,16 +222,11 @@ end
 z_min = min(z_finite);
 
 % Infeasible-node fill. The interpolant lives on the whole cube but only the
-% simplex is solved, so every cell that touches the sX = 0 face mixes solved
-% corners with unsolved ones. Filling those with the GLOBAL MINIMUM feasible z
-% (the old behaviour) blended every face-adjacent query with the z-image of
-% the -1e15 ruin assignment (~1e-4 against ~0.02-0.07 next door): a phantom
-% penalty one cell wide along the whole face, at every age. Negative liquid
-% wealth is unreachable here (see solver.build_fill_map), so instead take the
-% z of the nearest feasible node to the radial projection of the infeasible
-% node onto the face. The map is grid-only, so solve_lifecycle precomputes it
-% on p.fill_map and this is a single gather; recompute as a fallback when a
-% caller invokes bellman_step directly.
+% simplex is solved, so every cell touching the sX = 0 face mixes solved
+% corners with unsolved ones. Fill the unsolved ones from the nearest feasible
+% node to their radial projection onto the face (solver.build_fill_map). The
+% map is grid-only, so solve_lifecycle precomputes it on p.fill_map and this
+% is a single gather; recompute as a fallback for direct callers.
 if isfield(p, 'fill_map') && ~isempty(p.fill_map) && isequal(p.fill_map.dims, [NL NA NH])
     fmap = p.fill_map;
 else
@@ -390,19 +364,18 @@ parfor k = 1:n_feas
     end
 
     if optimise_tau
-        % Free-tau polish: best of three candidates (each may fail; grid max
-        % is the fallback).
+        % Free-tau polish: best of three candidates (each may fail; the grid
+        % max is the fallback).
         %   A) 3-var (c, pi, tau) fmincon from the global grid best. The
-        %      interior-point barrier keeps tau strictly inside (0,1), so
-        %      when the optimum sits ON a tau bound (e.g. tau*=0 in
-        %      retirement) this candidate alone under-performs by up to
-        %      ~0.3% CEV -- hence the pinned candidates below.
-        %   B) 2-var (c, pi) fmincon with tau PINNED at the best grid tau.
-        %   C) 2-var (c, pi) fmincon with tau PINNED at the glide value,
-        %      from the glide slice's best grid point -- exactly replicates
-        %      the glide regime's polish, so the free value can never fall
-        %      below the glide value for the same continuation (the
-        %      dominance anchor). Skipped when identical to B.
+        %      interior-point barrier keeps tau strictly inside (0,1), so when
+        %      the optimum sits on a tau bound this candidate alone
+        %      under-performs -- hence the pinned candidates.
+        %   B) 2-var (c, pi) fmincon, tau pinned at the best grid tau.
+        %   C) 2-var (c, pi) fmincon, tau pinned at the glide value, from the
+        %      glide slice's best grid point. This replicates the glide
+        %      regime's own polish, so the free value can never fall below the
+        %      glide value for the same continuation. Skipped when it would
+        %      duplicate B.
         obj3 = @(x) -bellman_rhs_z3(x(1), x(2), x(3), LW_W, Rf_at, R_S_at, ...
                                      p.Rf, R_S, pt, A_next_pre_return, ...
                                      H_next_W, Y_next_W, ...
@@ -427,13 +400,12 @@ parfor k = 1:n_feas
         % Track the best glide-pinned candidate so the derivative-free
         % refinement below can start from it.
         v_gl = maxval_g; c_gl = c_grid(ic_g); p_gl = pi_grid(ip_g);
-        % The rhs surface is multimodal in c, and the polish basin reached
-        % from a single argmax start shifts with small continuation changes
-        % (the glide solve's continuation differs from ours). Anchor against
-        % every basin the glide step could polish into: pin tau at the glide
-        % value and also start from the top interior local maxima of the
-        % glide slice's rhs surface (4-neighbour test, up to 2 beyond the
-        % argmax).
+        % The rhs surface is multimodal in c, and the basin a single argmax
+        % start reaches shifts with small continuation changes -- and the
+        % glide solve's continuation differs from ours. So anchor against
+        % every basin the glide step could land in: pin tau at the glide value
+        % and also start from the top interior local maxima of the glide
+        % slice's surface (4-neighbour test, up to 2 beyond the argmax).
         if ~isempty(rhs_g)
             is_lmax = true(NC, NP);
             is_lmax(2:NC,   :) = is_lmax(2:NC,   :) & (rhs_g(2:NC,:)   >= rhs_g(1:NC-1,:));
@@ -472,14 +444,12 @@ parfor k = 1:n_feas
             end
         end
 
-        % Derivative-free local refinement: the coarse-grid z-interpolant
-        % puts narrow kink ridges in the rhs surface, and fmincon's finite
-        % differences step straight over them (it can even walk OFF such a
-        % ridge when started on it). A shrinking-radius local grid scan is
-        % ridge-proof. Refine (a) pinned at the glide tau from the best
-        % glide-pinned candidate -- this is the dominance anchor, since the
-        % glide regime's own fmincon can land on these ridges -- and (b)
-        % pinned at the current best tau from the current best point.
+        % Derivative-free local refinement. The coarse-grid z-interpolant puts
+        % narrow kink ridges in the rhs surface, and fmincon's finite
+        % differences step straight over them (it can even walk off one when
+        % started on it). A shrinking-radius grid scan is ridge-proof. Refine
+        % (a) pinned at the glide tau from the best glide-pinned candidate --
+        % the dominance anchor -- and (b) pinned at the current best tau.
         dc0 = c_grid(2) - c_grid(1);
         dp0 = pi_grid(min(2, NP)) - pi_grid(1);
         if isfinite(v_gl)

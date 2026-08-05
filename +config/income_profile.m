@@ -20,29 +20,20 @@ function [logY, mu_growth, sigma_l_log] = income_profile(p)
 %              Currently a CGM (2005, RFS) high-school-group placeholder
 %              (see params.m / TODO.md) -- US data, fitted, not Dutch.
 %
-%   'table' -- DIRECT lookup of the semi-parametric age-effect estimates
+%   'table' -- direct lookup of the semi-parametric age-effect estimates
 %              in Been, Knoef & Vethaak (2026, JBES 44(1):215-226),
 %              Online Appendix Tables D.1 (men) / D.2 (women),
-%              "Full-time, Selection" column. No cubic-fitting step, no
-%              smoothing: ages 24-64 get their exact published
-%              coefficient. Selected by p.sex (1=men, 2=women,
-%              3=pooled -- currently a plain mean of the two published
-%              series, NOT participation-weighted; see TODO.md).
-%              Ages below 24 are outside the paper's estimation sample
-%              (24-64) and would be linearly extrapolated using the slope
-%              of the first three observed points (ages 24-27) -- a
-%              placeholder assumption, not an estimate. With the current
-%              default p.age0=25 this extrapolation path is never
-%              exercised (work_ages starts one year past the table's own
-%              reference age); it stays in the code as a guard for any
-%              p.age0 < 24 configuration.
-%              Ages above 64 (relevant once p.retirement_age > 65, e.g.
-%              the current default of 67) are likewise outside the
-%              sample and are held FLAT at the age-64 growth value --
-%              i.e. zero further deterministic income growth from 64
-%              onward, per user decision (not a linear extrapolation of
-%              the pre-64 decline, which is unreliable this close to the
-%              edge of the sample).
+%              "Full-time, Selection" column. No fitting or smoothing:
+%              ages 24-64 get their exact published coefficient. Selected
+%              by p.sex (1=men, 2=women, 3=pooled).
+%
+%              Both edges fall outside the estimation sample. Below 24 the
+%              series would be linearly extrapolated from the slope of ages
+%              24-27; with the default p.age0=25 that path is never taken
+%              and stays only as a guard. Above 64, relevant because
+%              retirement is at 67, growth is held FLAT at the age-64 value
+%              -- extrapolating the pre-64 decline is unreliable this close
+%              to the sample edge. See CALIBRATION.md.
 
 T     = p.T;
 t_ret = p.t_ret;
@@ -96,19 +87,14 @@ switch p.income_source
             'work_ages not fully covered by table + extrapolation.');
         growth_at_work_ages = all_growth(loc);
 
-        % Anchor: absolute euro level at age 25, from Been et al.
-        % Section 3.2.3 descriptives (full-time average wage by sex),
-        % expressed in 2015 euros (their Section 3.1 deflates all wages
-        % to 2015 prices). Shifts the whole (relative) growth series to
-        % pass through it.
+        % Anchor: absolute euro level at age 25, from Been et al. Section
+        % 3.2.3 descriptives (full-time average wage by sex), in 2015
+        % euros. Shifts the whole relative growth series to pass through
+        % it; p.income_price_factor then rescales to 2025 prices.
         %
-        % p.income_price_factor rescales this 2015-euro anchor to 2025
-        % prices (CBS CPI 2015->2025 = 1.3456; derivation and the file's
-        % price-year convention are in params.m).
-        % Before the franchise-based contribution rate (config.params,
-        % kappa_t) the euro LEVEL was irrelevant -- the model is
-        % homothetic in W -- so the anchor was never price-adjusted. It
-        % now sets Y_t relative to the franchise F, hence the factor.
+        % The euro level matters only because the contribution rate is
+        % franchise-based -- the model is otherwise homothetic in W. See
+        % CALIBRATION.md.
         switch p.sex
             case 1
                 anchor_age = 25; anchor_level = 33000;

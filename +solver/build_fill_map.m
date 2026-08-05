@@ -7,30 +7,27 @@ function map = build_fill_map(lambda_grid, sA_grid, sH_grid)
 %   infeasible node needs SOME value: a query inside a cell that touches the
 %   sX = 0 face blends feasible corners with infeasible ones.
 %
-%   The original fill put the GLOBAL MINIMUM feasible z at every infeasible
-%   node. That minimum is numerically the z-image of the -1e15 ruin
-%   assignment (~1e-4, against ~0.02-0.07 at face-adjacent nodes), so every
-%   legitimate face-adjacent query was blended with ruin -- an artificial
-%   penalty one cell wide along the whole sX = 0 face, at every age. Negative
-%   liquid wealth is unreachable in this model (gross exp() return factors at
-%   every GH node, pi bounded to [0,1] in both the seed grid and the fmincon
-%   bounds, c <= 1-1e-6, and states whose committed outgoings exceed resources
-%   already get V = -1e15 explicitly BEFORE interpolation), so that fill had
-%   no protective function -- it was pure distortion. See the assert in
-%   bellman_step, which fails loudly if leverage, additive returns, post-return
-%   cost deduction or a mortgage stock ever make sX < 0 reachable.
+%   The fill is nearest-feasible: project the infeasible node radially onto
+%   the simplex face (divide its coordinates by their sum, which exceeds 1 by
+%   construction) and take the z of the nearest feasible grid node to that
+%   projection, Euclidean in (lambda, s_A, s_H).
 %
-%   The fix is a nearest-feasible fill: project the infeasible node radially
-%   onto the simplex face (divide the coordinate vector by its sum, which is
-%   > 1 by construction) and take the z of the nearest FEASIBLE grid node to
-%   that projection, Euclidean in (lambda, s_A, s_H).
+%   The earlier version instead put the global minimum feasible z at every
+%   infeasible node. That minimum is the z-image of the -1e15 ruin
+%   assignment, so every legitimate face-adjacent query was blended with ruin
+%   -- an artificial penalty one cell wide along the whole sX = 0 face, at
+%   every age. It had no protective role either, because negative liquid
+%   wealth is unreachable here: return factors are gross exp() at every node,
+%   pi is bounded to [0,1] in both the seed grid and the fmincon bounds,
+%   c <= 1-1e-6, and states whose committed outgoings exceed resources already
+%   get V = -1e15 before interpolation. The assert in bellman_step fails
+%   loudly if leverage, additive returns, post-return cost deduction or a
+%   mortgage stock ever make sX < 0 reachable.
 %
-%   The map depends only on the grid, so it is built ONCE per solve
-%   (solver.solve_lifecycle stores it on p.fill_map) and each Bellman step is
-%   then a single gather. Brute-force vectorised in chunks: at 52^3 that is
-%   ~116k infeasible x ~25k feasible distance evaluations, fine as a one-off,
-%   and deliberately toolbox-free (no knnsearch -- Statistics Toolbox is not a
-%   dependency of this project).
+%   The map depends only on the grid, so solver.solve_lifecycle builds it once
+%   per solve and each Bellman step is a single gather. Brute-force
+%   vectorised in chunks, and deliberately toolbox-free -- Statistics Toolbox
+%   (knnsearch) is not a dependency of this project.
 %
 %   Returns a struct with fields:
 %       dims       : [NL NA NH] the map was built for (validity check)

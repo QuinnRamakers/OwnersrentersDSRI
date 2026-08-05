@@ -1,23 +1,21 @@
-% RUN_NODC  No-DC-account benchmark at the CURRENT calibration + production
-% grid, for comparison against the free-DC-choice (freetau) runs.
+% RUN_NODC  No-DC-account benchmark at the current calibration, for comparison
+% against the glide and free-DC runs.
 %
-%   Two scenarios (kappa = 0, so the DC second pillar is OFF; AOW first
-%   pillar still on, tau_S/annuity irrelevant with no DC balance):
-%     renter_nodc (is_owner=false), owner_nodc (is_owner=true).
-%   Same simplex grid as run_combined (25x15x15, gh_n=5) so welfare0.Vt0 is
-%   directly comparable to combined_{renter,owner}{,_freetau}.mat, and the
-%   same tax calibration (tau_inc=0.376, tau_wealth=0.0197) so these are the
-%   correct no-pension baseline for THIS vintage (the old
-%   combined_*_kappa0.mat are a pre-tax-change vintage -- do NOT reuse).
-%   Saves combined_{renter,owner}_nodc.mat with the welfare0 convention
-%   (utility.welfare_summary: corner Vt0, the calibrated b0 / b_alt anchors,
-%   and the b_grid sensitivity curve).
+%   Two scenarios with kappa = 0, so the DC second pillar is off. The AOW
+%   first pillar is still on; tau_S and the annuity are irrelevant with no DC
+%   balance.
+%     renter_nodc (is_owner = false), owner_nodc (is_owner = true).
 %
-%   This IS the no-pension benchmark the comparison scripts look for. The old
-%   combined_*_kappa0.mat name was retired with run_combined's kappa=0
-%   scenarios on 2026-07-16; compare_spline_strategies and
-%   compare_strategy_vs_nopension load _nodc first and only fall back to
-%   _kappa0 for legacy folders.
+%   Solved on the same simplex grid as run_combined (25x15x15, gh_n=5) and at
+%   the same calibration, so welfare0 is directly comparable to
+%   combined_{renter,owner}{,_freetau}.mat. Saves
+%   combined_{renter,owner}_nodc.mat with the welfare0 convention: corner Vt0,
+%   the calibrated b0 / b_alt anchors, and the b_grid sensitivity curve.
+%
+%   This is the no-pension benchmark the comparison scripts look for. The
+%   older combined_*_kappa0.mat name is a pre-tax-change vintage and is not
+%   comparable; the comparison scripts load _nodc first and fall back to
+%   _kappa0 only for legacy folders.
 
 clear; clc;
 if isempty(gcp('nocreate'))

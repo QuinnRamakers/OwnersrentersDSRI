@@ -1,57 +1,41 @@
 % RUN_COMBINED  Solve and simulate the combined pension+housing model.
 %
-%   Four scenarios, is_owner x DC-investment regime (kappa is the T x 1
-%   franchise-based AGE PROFILE p.kappa from config.params, ~10.9%-14.6%
-%   over the working life, NOT the flat 0.2 this line used to claim; the old
-%   kappa=0 no-pension benchmark scenarios were removed 2026-07-16, see git
-%   history -- they now live in run_nodc.m):
-%     1) Renter         (is_owner = false, glide tau_S): pays alpha * H_t
-%        per period.
-%     2) Owner          (is_owner = true,  glide tau_S): pays
-%        (theta + m_rate_t) * H_t; bequest +H.
-%     3) Renter_freetau (is_owner = false, choose_tau_S = true): the DC
-%        equity share is a free per-state choice variable -- benchmarks the
-%        value of free pension investment choice against the glide plan.
-%     4) Owner_freetau  (is_owner = true,  choose_tau_S = true): same, owner
-%        tenure.
-%   The freetau scenarios are SKIPPED under CGM_GRID=lna (choose_tau_S is a
-%   simplex-solver-only feature; bellman_step_lna asserts against it).
+%   Four scenarios, tenure x DC-investment regime. The contribution rate is
+%   the franchise-based age profile p.kappa from config.params, roughly
+%   10.9%-14.6% over the working life. The kappa = 0 no-pension benchmark
+%   lives in run_nodc.m.
+%     1) renter          glide tau_S; pays alpha * H_t per period.
+%     2) owner           glide tau_S; pays (theta + m_rate_t) * H_t, bequest +H.
+%     3) renter_freetau  choose_tau_S = true: the DC equity share is a free
+%                        per-state choice, benchmarking the value of free
+%                        pension investment choice against the glide plan.
+%     4) owner_freetau   same, owner tenure.
+%   The freetau scenarios are skipped under CGM_GRID=lna -- choose_tau_S is a
+%   simplex-solver feature and bellman_step_lna asserts against it.
 %
-%   Saves combined_renter.mat, combined_owner.mat, combined_renter_freetau.mat,
-%   and combined_owner_freetau.mat in this directory (with an _lna suffix
-%   when the cube grid is selected, so the two grid systems never overwrite
-%   each other's results). Simplex-path saves also carry a small top-level
-%   `welfare0` struct (V_tilde at the initial state), same convention as
-%   run_spline_strategies.m, so the scenarios can be welfare-ranked without
-%   loading sol/sim.
+%   Saves combined_{renter,owner}[_freetau].mat here, with an _lna suffix on
+%   the cube grid so the two grid systems never overwrite each other.
+%   Simplex saves carry a small top-level `welfare0` struct (V_tilde at the
+%   initial state) so scenarios can be welfare-ranked without loading sol/sim.
 %
-%   Grid system (CGM_GRID environment variable):
-%     simplex (default) : (lambda, s_A, s_H) grid, sized to MATCH
-%                         run_spline_strategies.m's default sweep grid
-%                         (state 25x15x15, gh_n=5 -> 125 joint nodes), not
-%                         the full 40^3/gh_n=7 production grid -- so
-%                         welfare (V_tilde) numbers from run_combined and
-%                         run_spline_strategies are directly comparable
-%                         (see that function's own docstring: "All sweep
-%                         runs must share gh_n/state_grid"). If you need
-%                         the full production grid instead, remove the
-%                         grid-override block below.
-%     lna               : (u1,u2,u3) = (lambda, n-tilde, a) cube grid, every
-%                         point feasible, 28x20x20 = 11,200 states -- see
-%                         solver.bellman_step_lna. CGM_SKIP_POLISH=1
-%                         additionally skips the fmincon polish (~15% faster,
-%                         policies accurate to the 41x41 inner grid). NOT
-%                         matched to run_spline_strategies.m (which has no
-%                         lna path) -- lna outputs are not welfare-comparable
-%                         to the spline sweep regardless of grid size.
-%   Workers: set CGM_N_WORKERS to force an n-worker PROCESS pool (use on the
-%   cluster pod, and on laptops where the 'Threads' profile is capped at 2).
+%   Grid system (CGM_GRID):
+%     simplex (default) : (lambda, s_A, s_H), sized to MATCH
+%                         run_spline_strategies' default sweep grid
+%                         (25x15x15, gh_n=5) rather than the full 40^3/gh_n=7
+%                         production grid, so welfare numbers from the two
+%                         scripts are directly comparable. Remove the
+%                         grid-override block below if you want production.
+%     lna               : (u1,u2,u3) cube grid, every point feasible -- see
+%                         solver.bellman_step_lna. CGM_SKIP_POLISH=1 also
+%                         skips the fmincon polish. Not matched to
+%                         run_spline_strategies, so lna output is not
+%                         welfare-comparable to the sweep at any grid size.
 %
-%   Requires Optimization Toolbox and Parallel Computing Toolbox. At this
-%   reduced grid, one scenario measured ~17 min on a laptop (2-worker
-%   Threads pool) vs ~2 min on the cluster (per-job timings from
-%   spline_strategies_log.txt at the same grid) -- so expect ~1-1.5h total
-%   on a laptop or ~8-10 min total on the cluster for all four scenarios.
+%   Set CGM_N_WORKERS to force an n-worker process pool -- useful on the
+%   cluster pod, and where the Threads profile is capped at 2.
+%
+%   Requires the Optimization and Parallel Computing toolboxes. At this grid,
+%   budget roughly ten minutes per scenario on 16 cores.
 
 clear; clc;
 

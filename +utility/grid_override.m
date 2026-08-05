@@ -9,20 +9,16 @@ function [dims, gh_n] = grid_override(dims_default, gh_default)
 %       CGM_STATE_GRID = "12 10 12"   (or "12,10,12") -> dims  = [12 10 12]
 %       CGM_GH_N       = "3"                          -> gh_n  = 3
 %
-%   Motivation: run_combined.m and run_nodc.m both hardcode the sweep grid
-%   that makes their welfare numbers comparable to run_spline_strategies.m,
-%   and that grid is deliberately not a parameter -- changing it silently
-%   would break the comparability the docstrings promise. But a smoke test
-%   needs a much smaller grid to finish in minutes rather than hours, and
-%   before this helper the only way to get one was to edit the runner, which
-%   means the thing being smoke-tested is not the thing that ships.
+%   run_combined and run_nodc hardcode the sweep grid that makes their welfare
+%   numbers comparable to run_spline_strategies, and that grid is deliberately
+%   not a parameter. But a smoke test needs a much smaller grid, and editing
+%   the runner to get one means the thing being tested is not the thing that
+%   ships. Hence an opt-in override: the default path is unchanged, and both
+%   runners print the grid they ended up with.
 %
-%   So the default path is unchanged and the override is opt-in, explicit,
-%   and loud: the caller is expected to print the grid it ended up with (both
-%   runners do). Do NOT set these variables for a production solve -- the
-%   resulting .mat is not welfare-comparable to the spline sweep, and
-%   utility.param_fingerprint will (correctly) fence it off from files solved
-%   at the default grid.
+%   Do not set these for a production solve. The resulting .mat is not
+%   welfare-comparable to the spline sweep, and utility.param_fingerprint will
+%   correctly fence it off from files solved at the default grid.
 %
 %   dims is passed straight to utility.build_state_grids, which re-inserts
 %   the welfare anchors and can return N_lambda/N_sH up to +2 larger.

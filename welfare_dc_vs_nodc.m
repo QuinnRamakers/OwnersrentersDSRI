@@ -2,21 +2,19 @@
 % choice) over the no-DC-account benchmark, as a function of the household's
 % INITIAL LIQUID BUFFER X0_frac.
 %
-%   The default welfare0 metric evaluates V at the initial state
-%   (X=0, A=0, H=h_mult*Y, Y) -- a ZERO-liquid-buffer corner. With kappa=0.2
-%   the mandatory DC contribution cuts already-near-zero t=0 consumption, and
-%   CRRA(gamma=5) marginal utility at near-zero c dominates the lifetime
-%   value, so at that corner the DC pension looks welfare-NEGATIVE even
-%   though it raises consumption at almost every later age (see the
-%   nodc_vs_dcchoice_*.png life-cycle panels). Endowing a modest liquid
-%   buffer moves the initial node off the corner; this sweep shows how the
-%   welfare verdict depends on it.
+%   The default welfare0 metric evaluates V at the zero-liquid-buffer corner
+%   (X=0, A=0, H=h_mult*Y, Y). There the mandatory contribution cuts an
+%   already near-zero t=0 consumption, and CRRA(gamma=5) marginal utility at
+%   near-zero c dominates lifetime value, so the DC pension looks
+%   welfare-negative even though it raises consumption at almost every later
+%   age -- see the nodc_vs_dcchoice_*.png life-cycle panels. Endowing a modest
+%   buffer moves the initial node off the corner; this sweep shows how much
+%   the verdict depends on that choice.
 %
 %   Buffered initial node (buffer b years of income): W0=(b+h_mult+1)*Y0,
-%   lam0=1/(b+h_mult+1), sX0=b/(b+h_mult+1), sH0=h_mult/(b+h_mult+1), sA0=0
-%   -- the node is built by utility.welfare_anchor, the single implementation
-%   shared with the runners and the comparison scripts. Both scenarios share
-%   W0 at a given b, so CEV = (Vtilde_DC / Vtilde_noDC)^(1/(1-gamma)) - 1.
+%   lam0=1/(b+h_mult+1), sX0=b/(b+h_mult+1), sH0=h_mult/(b+h_mult+1), sA0=0,
+%   built by utility.welfare_anchor. Both scenarios share W0 at a given b, so
+%   CEV = (Vtilde_DC / Vtilde_noDC)^(1/(1-gamma)) - 1.
 
 % Repo = the checkout this script lives in. which() rather than mfilename():
 % mfilename returns the CALLER's name when a script is invoked via run() from

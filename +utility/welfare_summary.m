@@ -21,11 +21,9 @@ function w = welfare_summary(p, V0)
 %     lam0/sA0/sH0   corner state coordinates (legacy fields, b = 0)
 %     gamma      CRRA coefficient, so a CEV can be formed without loading p
 %
-%   b_grid exists so downstream scripts (welfare_dc_vs_nodc,
-%   plot_welfare_vs_buffer, the comparison scripts) never have to reload the
-%   multi-GB sol just to draw a sensitivity curve. plot_welfare_vs_buffer
-%   still reloads sol for its 41-point curve; b_grid is the coarse version
-%   that travels with the file.
+%   b_grid exists so downstream scripts never have to reload the multi-GB sol
+%   just to draw a sensitivity curve. plot_welfare_vs_buffer still does, for
+%   its finer 41-point version.
 %
 %   All values come from utility.welfare_anchor, which builds the NaN-filled
 %   interpolant once and queries every buffer off it.

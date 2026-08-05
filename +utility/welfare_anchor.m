@@ -17,19 +17,15 @@ function [Vt0, node] = welfare_anchor(p, V0, b)
 %       sA0  = 0
 %   (lam0 + sX0 + sH0 = 1 with sA0 = 0; sX0 is implied by the simplex and is
 %   not an interpolation coordinate, it is returned in `node` for reporting.)
-%   b = 0 is the ZERO-buffer corner -- the convention every welfare0.Vt0
-%   written before 2026-08 used. The calibrated anchors are p.b0 and p.b_alt
-%   (config.params), which config.insert_anchor_nodes puts on the grid as
-%   exact nodes so the value read there is solved rather than interpolated.
+%   b = 0 is the zero-buffer corner, the convention every welfare0.Vt0 written
+%   before 2026-08 used. The calibrated anchors are p.b0 and p.b_alt, which
+%   config.insert_anchor_nodes puts on the grid as exact nodes, so the value
+%   read there is solved rather than interpolated.
 %
-%   This is the single implementation of the interpolate-V-at-a-node step
-%   that used to be copy-pasted inline in run_combined, run_nodc,
-%   run_spline_strategies, welfare_dc_vs_nodc, plot_welfare_vs_buffer and
-%   both comparison scripts. NaN handling is unchanged from those copies:
-%   infeasible-state NaNs are filled with the nearest finite node value
-%   before a 'linear'/'nearest' griddedInterpolant is built, because the
-%   initial state sits exactly on the feasibility boundary and plain linear
-%   interpolation would otherwise pick up a NaN corner.
+%   Infeasible-state NaNs are filled with the nearest finite node value before
+%   the interpolant is built: the initial state sits exactly on the
+%   feasibility boundary, so plain linear interpolation would pick up a NaN
+%   corner.
 %
 %   b may be a vector; the interpolant (and its NaN fill, which is the
 %   expensive part) is then built ONCE and queried at every buffer. Vt0 comes
@@ -66,10 +62,8 @@ end
 
 %% =======================================================================
 function Z = fill_nan_nearest_3d(M)
-% Replace infeasible-state NaNs with the nearest finite value. Byte-for-byte
-% the helper that used to be duplicated in run_combined / run_nodc /
-% run_spline_strategies / welfare_dc_strategies / both comparison scripts --
-% do not "improve" it, the welfare numbers depend on this exact behaviour.
+% Replace infeasible-state NaNs with the nearest finite value. The welfare
+% numbers depend on this exact behaviour, so changing it changes results.
 Z = M;
 if ~any(isnan(Z(:))), return; end
 [NL, NA, NH] = size(Z);

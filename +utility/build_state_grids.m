@@ -5,25 +5,23 @@ function p = build_state_grids(p, dims, gh_n)
 %   p = utility.build_state_grids(p, dims, gh_n)
 %   p = utility.build_state_grids(p)          % rebuild at the current N_*
 %
-%   Every run script that overrides config.params()'s production grid does the
-%   same four things: set N_lambda/N_sA/N_sH, rebuild the three linspaces,
-%   re-insert the calibrated welfare anchors, and rely on solve_lifecycle to
-%   notice if it forgot the third step. Doing that by hand at six-plus call
-%   sites is exactly the duplication that let the fingerprint drift out of
-%   sync with the parameters; this is the one place it happens.
+%   Every run script that overrides the production grid does the same four
+%   things: set N_lambda/N_sA/N_sH, rebuild the three linspaces, re-insert the
+%   calibrated welfare anchors, and rely on solve_lifecycle to catch it if the
+%   third step was forgotten. This is the one place that happens.
 %
-%   The anchor re-insertion (config.insert_anchor_nodes) is why the returned
-%   N_lambda / N_sH can exceed dims(1) / dims(3) by up to 2 -- p.b0 and
-%   p.b_alt are forced on as exact grid nodes and the counts are refreshed
-%   from the resulting vectors, never from dims. Read them back off p.
+%   Anchor re-insertion is why the returned N_lambda / N_sH can exceed dims(1)
+%   / dims(3) by up to 2: p.b0 and p.b_alt are forced on as exact nodes and
+%   the counts are refreshed from the resulting vectors, never from dims. Read
+%   them back off p.
 %
-%   The membership assert below duplicates solver.solve_lifecycle's guard on
-%   purpose: it fires here, at the call site that rebuilt the grid, instead of
-%   inside the solver several dozen lines later. solve_lifecycle's copy stays
-%   as the backstop for grids built any other way.
+%   The membership assert below duplicates solver.solve_lifecycle's guard
+%   deliberately, so it fires at the call site that rebuilt the grid rather
+%   than inside the solver later. The solver's copy is the backstop for grids
+%   built any other way.
 %
-%   lna cube grids (u1,u2,u3) are NOT handled here -- they have no simplex
-%   feasibility boundary and no anchors; see config.params.
+%   lna cube grids are not handled here -- they have no simplex feasibility
+%   boundary and no anchors.
 
 if nargin >= 2 && ~isempty(dims)
     assert(isnumeric(dims) && numel(dims) == 3 && all(dims == round(dims)) ...

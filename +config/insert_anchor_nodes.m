@@ -5,27 +5,23 @@ function p = insert_anchor_nodes(p)
 %   in liquid wealth is
 %       W0 = (1 + h_mult + b) * Y0
 %       lambda0 = 1/(1 + h_mult + b),  sH0 = h_mult/(1 + h_mult + b),  sA0 = 0
-%   and the welfare metric (welfare0.Vt0, welfare_dc_vs_nodc.m,
-%   plot_welfare_vs_buffer.m) is read exactly there. Unless those coordinates
-%   ARE grid nodes, the headline number is a trilinear blend of surrounding
-%   nodes, which both smears the corner the CEV is most sensitive to and makes
-%   the number move with grid resolution. This inserts the anchors for the
-%   calibrated buffer p.b0 and the sensitivity buffer p.b_alt exactly, and
+%   and the welfare metric is read exactly there. Unless those coordinates are
+%   grid nodes the headline number is a trilinear blend, which smears the
+%   corner the CEV is most sensitive to and makes the number move with grid
+%   resolution. This inserts the anchors for p.b0 and p.b_alt exactly and
 %   refreshes p.N_lambda / p.N_sH.
 %
-%   sA is untouched: the anchor sits at sA0 = 0, which is already node 1 of
-%   every linspace(0,1,N) grid.
+%   sA is untouched: the anchor sits at sA0 = 0, already node 1 of every
+%   linspace(0,1,N) grid.
 %
-%   Call this at the end of config.params AND again after any script rebuilds
-%   the grid vectors (run_combined, run_nodc, run_spline_strategies,
-%   proto_lna_*) -- solver.solve_lifecycle asserts the anchors are exact
+%   Call this at the end of config.params and again after any script rebuilds
+%   the grid vectors. solver.solve_lifecycle asserts the anchors are exact
 %   members, so a rebuild that drops them fails loudly instead of silently
 %   reverting to interpolated welfare.
 %
-%   Idempotent: re-running on an already-anchored grid is a no-op.
-%   Non-uniform grid vectors are safe here -- downstream code only ever reads
-%   the grids through griddedInterpolant and numel-derived sizes, never
-%   through uniform-spacing arithmetic.
+%   Idempotent. Non-uniform grid vectors are safe: downstream code reads the
+%   grids only through griddedInterpolant and numel, never through
+%   uniform-spacing arithmetic.
 
 if ~all(isfield(p, {'b0', 'b_alt', 'h_mult', 'lambda_grid', 'sH_grid'}))
     return

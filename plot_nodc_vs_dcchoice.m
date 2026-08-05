@@ -1,9 +1,10 @@
 % PLOT_NODC_VS_DCCHOICE  Life-cycle comparison: no-DC-account benchmark vs
 % the free-DC-investment-choice model, for renter and owner tenure.
 %
-%   no DC   : combined_{tenure}_nodc.mat     (kappa=0; liquid + housing only)
-%   DC free : combined_{tenure}_freetau.mat  (kappa=0.2, individually optimal
-%             DC equity share, EET-sheltered, annuitised at retirement)
+%   no DC   : combined_{tenure}_nodc.mat     (kappa = 0; liquid + housing only)
+%   DC free : combined_{tenure}_freetau.mat  (franchise-based kappa profile,
+%             individually optimal DC equity share, EET-sheltered,
+%             annuitised at retirement)
 %   Same calibration + production grid, so levels and welfare are comparable.
 %
 %   Produces nodc_vs_dcchoice_{renter,owner}.png (6-panel life-cycle) and
