@@ -99,22 +99,20 @@ for i = 1:numel(tenures)
     fprintf('  %-7s: DC-free vs no-DC = %+6.2f%% | DC-glide vs no-DC = %+6.2f%% | free vs glide = %+5.2f%%\n', ...
         ten, 100*cev(vD,vB), 100*cev(vG,vB), 100*cev(vD,vG));
 
-    % stash tau_A means for the shared DC-equity-share plot
+    % stash the equity shares for the shared equity-share plot. pi is recorded
+    % for every period and tau_A only for the T-1 transitions; both are the
+    % share chosen at t, so drop pi's last column to align.
     S.(ten).ages = ages; S.(ten).ages_tr = ages_tr;
     S.(ten).tau_free  = mB(simD.tau_A);
-    S.(ten).tau_glide = p.tau_S(:).';
+    S.(ten).pi_free   = mB(simD.pi(:, 1:end-1));
 end
 
 % ---- DC equity share: free vs glide, both tenures ----
-f = figure('Visible','off','Position',[100 100 820 500]); hold on; grid on;
-plot(S.renter.ages_tr, S.renter.tau_free, '-',  'LineWidth',1.7, 'Color',[0 0.45 0.74]);
-plot(S.owner.ages_tr,  S.owner.tau_free,  '-',  'LineWidth',1.7, 'Color',[0.85 0.33 0.10]);
-plot(S.renter.ages_tr, S.renter.tau_glide,'--k','LineWidth',1.8);
-xline(D.p.retirement_age, ':k');
-xlabel('age'); ylabel('mean DC equity share \tau_A'); ylim([0 1.02]);
-legend({'renter: free choice','owner: free choice','glide path (both)'}, 'Location','northeast');
-title(sprintf('Individually optimal vs glide-path DC equity share (X_0 = %.1f yr buffer)', X0_FRAC));
-saveas(f, fullfile(repo, 'summary_dc_equity_share.png'));
+% Same renderer as plot_dc_equity_share.m, so the slide figure and the review
+% run cannot drift apart.
+f = dc_equity_share_figure(S, D.p, X0_FRAC);
+set(f, 'Visible', 'off');
+exportgraphics(f, fullfile(repo, 'summary_dc_equity_share.png'), 'Resolution', 300);
 close(f);
 
 % ---- welfare vs buffer sweep, anchor marked ----

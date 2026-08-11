@@ -99,6 +99,18 @@ p.N_mort        = 30;        % mortgage term (years)
 p.LTV           = 1.00;
 p.sell_cost     = 0.025;     % seller transaction cost at bequest; inert while chi = 0
 
+% Rent process (renters only). The renter's H state is a rent index rather than
+% a house: it has no resale or bequest value, and its only role is to set the
+% rent alpha*H_t. Rent increases are therefore their own process, calibrated on
+% rent data, not the house-price return. See config.h_process.
+%
+% Both figures must be real (CPI-deflated), on the same footing as
+% mu_H_level -- published Dutch rent-increase series are nominal.
+%
+% The defaults equal the housing pair, which reproduces the pre-split model.
+p.mu_R_level    = p.mu_H_level;      % real rent growth, mean
+p.sigma_R_level = p.sigma_H_level;   % real rent growth, vol
+
 % Numerical: 3D state grid (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1.
 % gh_n^3 = 343 joint Gauss-Hermite shock nodes per state.
 p.gh_n     = 7;
@@ -159,6 +171,9 @@ p.mu_S    = log(1 + p.r + p.mu_S_level) - 0.5 * p.sigma_S^2;
 % mu_H_level is the house's OWN log return (not excess).
 p.sigma_H = sqrt(log(1 + (p.sigma_H_level / (1 + p.mu_H_level))^2));
 p.mu_H    = log(1 + p.mu_H_level) - 0.5 * p.sigma_H^2;
+% Rent-index growth, same level-to-log conversion as the house.
+p.sigma_R = sqrt(log(1 + (p.sigma_R_level / (1 + p.mu_R_level))^2));
+p.mu_R    = log(1 + p.mu_R_level) - 0.5 * p.sigma_R^2;
 p.t_ret   = p.retirement_age - p.age0 + 1;
 
 % Pension glide path tau_S, length T-1 (transitions).

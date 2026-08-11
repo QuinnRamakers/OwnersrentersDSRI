@@ -13,11 +13,16 @@ function [s, arm] = param_fingerprint(p)
 %
 %   The string covers the grid dimensions and every calibrated parameter:
 %   state and quadrature grid, lifecycle length, preferences, housing costs,
-%   return process, income and first pillar, mortgage and bequest-sale block,
-%   taxes, welfare anchors, and the decumulation share. kappa_base and
-%   franchise are included because they define the kappa_t profile;
-%   run_nodc overrides p.kappa to 0 and leaves both untouched, so this is safe
-%   even though kappa itself is an arm field.
+%   return and rent processes, income and first pillar, mortgage and
+%   bequest-sale block, taxes, welfare anchors, and the decumulation share.
+%   kappa_base and franchise are included because they define the kappa_t
+%   profile; run_nodc overrides p.kappa to 0 and leaves both untouched, so this
+%   is safe even though kappa itself is an arm field.
+%
+%   is_owner is in the list because tenure selects which growth process the H
+%   state follows (config.h_process), not just the carrying-cost rate, so owner
+%   and renter files are solved against different stochastics and were never
+%   welfare-comparable to begin with.
 %
 %   ARM fields (kappa, choose_tau_S) are deliberately excluded and returned
 %   separately, because they are what the comparison is about: the no-pension
@@ -42,7 +47,8 @@ function [s, arm] = param_fingerprint(p)
 
 FLDS = {'N_lambda','N_sA','N_sH','gh_n','age0','T','retirement_age', ...
         'gamma','beta','chi','alpha','theta','h_mult','r','mu_S_level', ...
-        'sigma_S_level','mu_H_level','sigma_H_level','r_m','N_mort','LTV', ...
+        'sigma_S_level','mu_H_level','sigma_H_level','mu_R_level','sigma_R_level', ...
+        'is_owner','r_m','N_mort','LTV', ...
         'sell_cost','replacement','delta','sigma_l_log','income_price_factor', ...
         'sex','kappa_base','franchise','tau_inc','tau_cg_bond','tau_cg_stock', ...
         'tau_wealth','b0','b_alt','legacy_fill','tau_decum'};

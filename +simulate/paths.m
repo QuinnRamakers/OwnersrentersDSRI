@@ -8,7 +8,7 @@ function sim = paths(p, profile, sol, ann_price, N, seed, X0_frac)
 %   Working transitions:
 %     X_{t+1} = R_X * X_post
 %     A_{t+1} = R_A_with * (A_t + kappa * Y_t)
-%     H_{t+1} = R_H * H_t
+%     H_{t+1} = R_H * H_t          (house-price return / rent increase by tenure)
 %     Y_{t+1} = Y_t * exp(mu_g + sigma_l * eps_Y)
 %   Retirement transition (t = t_ret - 1): Y_{t+1} = replacement * Y_t,
 %     A_{t+1} = R_A_with * (A_t + kappa*Y_t)  (one last contribution).
@@ -93,6 +93,9 @@ logY_canon = config.income_profile(p);
 Y0 = exp(logY_canon(1));
 Y_path(:,1) = Y0;
 H_path(:,1) = p.h_mult * Y0;
+% House-price return for owners, rent increase for renters -- the same pair
+% grids.shock_grid quadratures over, so solver and simulator cannot disagree.
+[mu_HR, sigma_HR] = config.h_process(p);
 X_path(:,1) = X0_frac * Y0;
 A_path(:,1) = 0;
 W_path(:,1) = X_path(:,1) + A_path(:,1) + H_path(:,1) + Y_path(:,1);
@@ -183,7 +186,7 @@ for t = 1:T
 
     % Returns
     R_S_draw = exp(p.mu_S + p.sigma_S * eps_S(:,t));
-    R_H_draw = exp(p.mu_H + p.sigma_H * eps_H(:,t));
+    R_H_draw = exp(mu_HR + sigma_HR * eps_H(:,t));
     R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
     R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
 

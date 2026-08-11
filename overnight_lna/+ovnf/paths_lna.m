@@ -44,6 +44,7 @@ sA_path  = zeros(N, T);
 sH_path  = zeros(N, T);
 c_path  = zeros(N, T);
 pi_path = zeros(N, T);
+tau_A_path = zeros(N, T-1);   % applied DC equity share on the t -> t+1 transition
 C_path  = zeros(N, T);
 LW_path = zeros(N, T);
 m_path  = zeros(N, T);
@@ -73,6 +74,7 @@ logY_canon = config.income_profile(p);
 Y0 = exp(logY_canon(1));
 Y_path(:,1) = Y0;
 H_path(:,1) = p.h_mult * Y0;
+[mu_HR, sigma_HR] = config.h_process(p);   % house return / rent increase by tenure
 X_path(:,1) = X0_frac * Y0;
 A_path(:,1) = 0;
 W_path(:,1) = X_path(:,1) + A_path(:,1) + H_path(:,1) + Y_path(:,1);
@@ -169,7 +171,7 @@ for t = 1:T
 
     % Returns
     R_S_draw = exp(p.mu_S + p.sigma_S * eps_S(:,t));
-    R_H_draw = exp(p.mu_H + p.sigma_H * eps_H(:,t));
+    R_H_draw = exp(mu_HR + sigma_HR * eps_H(:,t));
     R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
     R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
 
@@ -179,6 +181,7 @@ for t = 1:T
     else
         tau_t = p.tau_S(t);
     end
+    tau_A_path(:,t) = tau_t;          % scalar under the glide, N x 1 under free choice
     pt_surv    = profile.p_surv(t);
     R_A_with   = ((1 - tau_t) * p.Rf + tau_t .* R_S_draw) ./ max(pt_surv, 1e-8);
 
@@ -222,6 +225,7 @@ sim.m_pay = m_path;
 sim.ann_pay = ann_pay_path;
 sim.disp_inc = disp_inc;
 sim.bequest = bequest_path;
+sim.tau_A = tau_A_path;      % matches simulate.paths, so plotting code is shared
 sim.ages = (p.age0 : p.age0 + p.T - 1);
 sim.N = N;
 sim.is_owner = is_owner;

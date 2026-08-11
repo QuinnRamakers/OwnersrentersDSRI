@@ -129,12 +129,43 @@ drift `mu_H_level` is the house's own return, not excess.
 | `sigma_S_level` | 0.16 | Equity return volatility |
 | `mu_H_level` | 0.027 | BIS Real Residential Property Price Index (NL), CPI-deflated |
 | `sigma_H_level` | 0.037 | Same |
+| `mu_R_level` | *(placeholder: `mu_H_level`)* | Real rent growth, mean — to be filled from the rent estimate |
+| `sigma_R_level` | *(placeholder: `sigma_H_level`)* | Real rent growth, vol — same |
 | `corr_SL`, `corr_HL`, `corr_SH` | 0 | Not yet estimated |
 
 The correlations are wired through a Cholesky factor in both `grids.shock_grid`
 and `simulate.paths`, so giving them values costs nothing in runtime or node
 count. Each represents the covariance of a single composite income shock: with
-no aggregate/idiosyncratic split, one number absorbs both channels.
+no aggregate/idiosyncratic split, one number absorbs both channels. `corr_HL`
+is the third shock's correlation with income, so it means corr(house return,
+income) for an owner and corr(rent growth, income) for a renter.
+
+## The rent process
+
+The `H` state carries a different object in each scenario. For an owner it is
+the house, and its growth factor is the house-price return. For a renter it has
+no resale or bequest value — its only role is to set the rent `alpha * H_t` —
+so it is a rent index, and its growth factor is the rent increase. Those are
+distinct processes and are calibrated separately: `config.h_process` returns
+`(mu_R, sigma_R)` for renters and `(mu_H, sigma_H)` for owners, and both
+`grids.shock_grid` and the simulators draw from whichever pair it hands back.
+
+Both are lognormal growth factors, so log rent is a random walk with drift
+under either tenure and no state variable is added. A p-struct predating the
+split has no rent fields and falls back to the housing pair, which is what
+every earlier solve assumed.
+
+`mu_R_level` and `sigma_R_level` must be **real** (CPI-deflated), on the same
+footing as `mu_H_level`. Published Dutch rent-increase series are nominal, and
+substituting one directly makes the renter's position worse rather than better.
+
+The rent drift is the single most consequential number for the renter arm. Rent
+compounds for all 76 model years while retirement income is flat in real terms
+after the 0.307 replacement drop, so the renter's burden is governed by the
+growth differential compounded over the 33 retirement years. At `mu_R_level =
+mu_H_level = 0.027` the median rent reaches roughly 240% of net retirement
+income at 67 and 570% at 100, which is what drives the zero-consumption
+incidence in the renter arms.
 
 ## Housing
 
