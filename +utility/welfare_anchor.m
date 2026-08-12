@@ -34,6 +34,34 @@ function [Vt0, node] = welfare_anchor(p, V0, b)
 if nargin < 3 || isempty(b), b = 0; end
 assert(isnumeric(b) && isreal(b) && all(b(:) >= 0), 'welfare_anchor:b', ...
     'b must be real, non-negative (years of income).');
+
+% LNA cube: same physical anchor, different coordinates.
+%   u1 = lambda = 1/den,  u2 = (A+H)/(W-Y) = h_mult/(h_mult+b),  u3 = A/(A+H) = 0
+% config.insert_anchor_nodes puts u1 and u2 on the grid as exact nodes, so this
+% is a solved value rather than a blend -- the same guarantee the simplex has.
+% Every cube point is feasible, so there are no NaNs to fill.
+if isfield(p, 'grid_type') && strcmp(char(p.grid_type), 'lna')
+    assert(all(isfield(p, {'u1_grid', 'u2_grid', 'u3_grid', 'h_mult'})), ...
+        'welfare_anchor:params', 'p needs u1_grid/u2_grid/u3_grid/h_mult.');
+    sz_want = [numel(p.u1_grid), numel(p.u2_grid), numel(p.u3_grid)];
+    sz_got  = [size(V0, 1), size(V0, 2), size(V0, 3)];
+    assert(isequal(sz_got, sz_want), 'welfare_anchor:size', ...
+        ['V0 is %dx%dx%d but the cube grids in p are %dx%dx%d -- p and the ' ...
+         'solution come from different vintages.'], sz_got, sz_want);
+
+    F   = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, V0, 'linear', 'nearest');
+    den = b(:) + p.h_mult + 1;
+    u1  = 1        ./ den;
+    u2  = p.h_mult ./ (p.h_mult + b(:));
+    u3  = zeros(size(den));
+    Vt0 = reshape(F(u1, u2, u3), size(b));
+    if nargout > 1
+        node = struct('b', b(:).', 'u1', u1.', 'u2', u2.', 'u3', u3.', ...
+                      'W0_over_Y0', den.');
+    end
+    return
+end
+
 assert(all(isfield(p, {'lambda_grid', 'sA_grid', 'sH_grid', 'h_mult'})), ...
     'welfare_anchor:params', 'p needs lambda_grid/sA_grid/sH_grid/h_mult.');
 

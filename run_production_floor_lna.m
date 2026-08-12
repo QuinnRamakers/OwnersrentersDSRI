@@ -49,12 +49,11 @@ for a = 1:numel(arms)
     p = config.params();
     p.is_owner    = false;
     p.legacy_fill = false;
-    p.gh_n = GH_N;
     p.grid_type = 'lna';        % declared for the fingerprint; the solver asserts it
-    p.N_u1 = CUBE(1); p.N_u2 = CUBE(2); p.N_u3 = CUBE(3);
-    p.u1_grid = linspace(0, 1, p.N_u1).';
-    p.u2_grid = linspace(0, 1, p.N_u2).';
-    p.u3_grid = linspace(0, 1, p.N_u3).';
+    % Through build_state_grids, not by hand: rebuilding the linspaces directly
+    % would drop the welfare anchors that config.insert_anchor_nodes put on u1
+    % and u2, and the headline number would go back to being a blend.
+    p = utility.build_state_grids(p, CUBE, GH_N);
     p.mu_R_level    = arms(a).mu;
     p.sigma_R_level = arms(a).sigma;
     p.sigma_R = sqrt(log(1 + (p.sigma_R_level / (1 + p.mu_R_level))^2));
@@ -69,14 +68,10 @@ for a = 1:numel(arms)
 
     sol = solver.solve_lifecycle_lna(p, profile, shocks, ann_price);
 
-    % Welfare anchor at the calibrated buffer b0, in u-coordinates. Same
-    % conversion overnight_lna/run_overnight_lna uses.
-    den  = p.b0 + p.h_mult + 1;
-    lam0 = 1/den;  sH0 = p.h_mult/den;
-    u1 = lam0;  u2 = sH0/(1 - lam0);  u3 = 0;
-    F  = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, sol.V(:,:,:,1), ...
-                            'linear', 'nearest');
-    welfare0 = struct('Vt0_b0', F(u1, u2, u3), 'u', [u1 u2 u3], 'b0', p.b0);
+    % Same welfare path the simplex uses: utility.welfare_summary dispatches on
+    % grid_type, so the cube no longer needs its own hand-rolled extraction and
+    % the two grids report a comparable object.
+    welfare0 = utility.welfare_summary(p, sol.V(:,:,:,1));
 
     sim = simulate.paths_lna(p, profile, sol, ann_price, N_SIM, SEED, p.b0);
 
