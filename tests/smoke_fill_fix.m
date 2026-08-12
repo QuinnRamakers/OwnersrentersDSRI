@@ -3,12 +3,20 @@ function smoke_fill_fix()
 %
 %   Diagnosis being tested: solver.bellman_step used to fill every INFEASIBLE
 %   node of the continuation interpolant with the GLOBAL MINIMUM feasible z.
-%   That minimum is the z-image of the -1e15 ruin assignment (~1e-4, against
+%   That minimum was the z-image of the ruin assignment (~1e-4, against
 %   ~0.02-0.07 at face-adjacent nodes), so any legitimate query landing in a
 %   cell that touches the sX = 0 face was blended with ruin -- an artificial
 %   penalty one cell wide along the whole face, at every age. Negative liquid
 %   wealth is unreachable in this model, so the fill had no protective role.
 %   It is now a nearest-feasible fill (solver.build_fill_map).
+%
+%   This file runs with the floor off (phi_floor = 0), which is where the
+%   -1e15 ruin sentinel it refers to still exists. Under a positive floor
+%   there is no sentinel: states short of resources take an ordinary value
+%   built on u(phi_floor * Y) and the region has a gradient. The fill fix is
+%   independent of that -- it is about infeasible cube nodes, not about how
+%   ruined feasible states are priced -- so the checks below are unaffected,
+%   but the specific z magnitudes quoted here are the phi_floor = 0 ones.
 %
 %   Checks:
 %     (a) Monotonicity. The fill only RAISES z pointwise; linear interpolation
@@ -291,6 +299,7 @@ function p = smoke_params(is_owner)
 % barely move it. Raise N to 12+ on the cluster for a sharper reading; the
 % monotonicity property being tested is grid-independent.
 p = config.params();
+p.phi_floor    = 0;        % the fill fix is a phi_floor = 0 result; see the header
 p.is_owner     = is_owner;
 p.kappa        = 0;        % nodc regime: fastest, and the Task-4 benchmark
 p.choose_tau_S = false;

@@ -11,10 +11,16 @@ function T = analyse_overnight_lna(res_dir)
 %         region is large, nothing below carries much weight.
 %     [2] DECISION GATE  -- does the value function agree with simulated E[U]
 %         on the best arm? At gamma = 5 roughly 60% of E[U] sits in the worst
-%         1% of paths, and production leaves that region undefined (solver
-%         charges V = -1e15, simulator sets C = 0 and forgives the shortfall).
-%         Disagreement here means the ranking is NOT reportable, and the fix is
-%         a consumption floor in both, not a finer cube.
+%         1% of paths. The solver/simulator split that used to leave that
+%         region undefined is fixed: config.params sets a consumption floor
+%         phi_floor * Y_t carried by both sides, so C = 0 no longer occurs and
+%         the -1e15 sentinel is gone. Disagreement can still remain, for two
+%         reasons that a finer cube also will not fix: the solver quadratures
+%         over bounded Gauss-Hermite nodes while the simulator draws continuous
+%         lognormals (set p.gh_shocks to remove that), and at a floor as low as
+%         1e-6 utility is still effectively unbounded below, so any policy
+%         interpolation error carries an unbounded welfare cost. Raising
+%         phi_floor is what closes it. See tests/smoke_consumption_floor.
 %     [3] LIKE-FOR-LIKE  -- the menu's knots sit at [age0, retirement_age,
 %         age0+T-2], so knots 2-3 set the RETIREMENT share as well as the
 %         glide. Only arms sharing (knot2, knot3) differ in the accumulation

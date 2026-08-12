@@ -34,12 +34,12 @@ function run_overnight_lna(strats, opts)
 %        Cheap arms mean a coarse cube, which is the same lever. If you want
 %        many strategies, take the count from opts.cube knowingly.
 %     2. The left tail. At gamma = 5 roughly 60% of E[U] comes from the worst
-%        1% of paths, and production leaves that region undefined -- the solver
-%        charges V = -1e15 when LW <= 0 while simulate.paths_lna sets C = 0 and
-%        forgives the shortfall. compare_overnight_lna reports the
-%        value-function and simulated rankings side by side; if they disagree,
-%        the ranking is not decidable without a consumption floor carried by
-%        both sides.
+%        1% of paths. Both sides now carry the same consumption floor
+%        phi_floor * Y_t, so the region is defined -- C = 0 no longer occurs
+%        and the -1e15 sentinel is gone. compare_overnight_lna still reports
+%        the value-function and simulated rankings side by side, because the
+%        two integrate different shock distributions and because at a low
+%        floor the left tail still dominates E[U].
 %
 %   NOTE ON THE MENU FAMILY. strategy.menu puts its knots at
 %   [age0, retirement_age, age0+T-2], so knots 2-3 set the RETIREMENT equity

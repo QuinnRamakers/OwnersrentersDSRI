@@ -13,16 +13,18 @@ function map = build_fill_map(lambda_grid, sA_grid, sH_grid)
 %   projection, Euclidean in (lambda, s_A, s_H).
 %
 %   The earlier version instead put the global minimum feasible z at every
-%   infeasible node. That minimum is the z-image of the -1e15 ruin
-%   assignment, so every legitimate face-adjacent query was blended with ruin
-%   -- an artificial penalty one cell wide along the whole sX = 0 face, at
-%   every age. It had no protective role either, because negative liquid
-%   wealth is unreachable here: return factors are gross exp() at every node,
-%   pi is bounded to [0,1] in both the seed grid and the fmincon bounds,
-%   c <= 1-1e-6, and states whose committed outgoings exceed resources already
-%   get V = -1e15 before interpolation. The assert in bellman_step fails
-%   loudly if leverage, additive returns, post-return cost deduction or a
-%   mortgage stock ever make sX < 0 reachable.
+%   infeasible node. That minimum is the z-image of whatever the solver
+%   charges where committed outgoings exceed resources, so every legitimate
+%   face-adjacent query was blended with ruin -- an artificial penalty one
+%   cell wide along the whole sX = 0 face, at every age. It had no protective
+%   role either, because negative liquid wealth is unreachable here: return
+%   factors are gross exp() at every node, pi is bounded to [0,1] in both the
+%   seed grid and the fmincon bounds, c <= 1-1e-6, and states short of
+%   resources are already priced before interpolation -- at the consumption
+%   floor u(phi_floor * Y), or at the -1e15 sentinel when phi_floor = 0. The
+%   assert in bellman_step fails loudly if leverage, additive returns,
+%   post-return cost deduction or a mortgage stock ever make sX < 0
+%   reachable.
 %
 %   The map depends only on the grid, so solver.solve_lifecycle builds it once
 %   per solve and each Bellman step is a single gather. Brute-force

@@ -11,13 +11,15 @@ function T = compare_overnight_lna(res_dir)
 %     (b) from the SIMULATED consumption paths,
 %         U = E[ sum_t beta^(t-1) * S_t * u(C_t) ].
 %
-%   READ (a) AND (b) TOGETHER. They are not two estimates of one number. Where
-%   liquid wealth goes negative the solver charges V = -1e15 while
-%   simulate.paths_lna sets C = 0 and forgives the shortfall, so the two price
-%   the left tail differently -- and at gamma = 5 roughly 60% of E[U] sits in
-%   the worst 1% of paths. Agreement on the top arm means the ranking survives
-%   that gap. Disagreement means it is not decidable without a consumption
-%   floor carried identically by both sides; a finer cube will not fix it.
+%   READ (a) AND (b) TOGETHER. They are not two estimates of one number. The
+%   consumption floor phi_floor * Y_t is now carried identically by both sides,
+%   so the old split -- solver charging V = -1e15 while simulate.paths_lna set
+%   C = 0 and forgave the shortfall -- is gone. What remains is that the solver
+%   integrates bounded Gauss-Hermite nodes while the simulator draws continuous
+%   lognormals, so the two do not share a reachable set (p.gh_shocks removes
+%   that), and at gamma = 5 roughly 60% of E[U] still sits in the worst 1% of
+%   paths. Agreement on the top arm means the ranking survives the gap; a finer
+%   cube will not close it.
 %
 %   tau_acc / tau_dec are the mean equity share over accumulation and over
 %   retirement. The menu's knots sit at [age0, retirement_age, age0+T-2], so

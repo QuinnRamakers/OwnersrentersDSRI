@@ -12,9 +12,12 @@ function T = compare_lna_all(res_dir)
 %
 %   Both metrics are shown for every arm: the value function at the anchor, and
 %   E[sum beta^(t-1) S_t u(C_t)] from the simulated paths. Where they disagree
-%   the ranking is not reportable -- the solver charges V = -1e15 when LW <= 0
-%   while the simulator sets C = 0 and forgives the shortfall, and at gamma = 5
-%   most of the welfare weight sits in exactly that region.
+%   the ranking is not reportable. The two sides now implement one rule -- a
+%   consumption floor phi_floor * Y_t, so C = 0 no longer occurs and the -1e15
+%   sentinel is gone -- but they still integrate different shock distributions
+%   (bounded Gauss-Hermite against continuous lognormal; p.gh_shocks removes
+%   that), and at gamma = 5 most of the welfare weight sits in the left tail
+%   either way. See tests/smoke_consumption_floor.
 %
 %   The free arm comes from ovnf.*, an unvalidated grid-only port (no polish on
 %   the tau axis), so treat its value as a LOWER BOUND on true free choice.
