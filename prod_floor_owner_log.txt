@@ -1,0 +1,54 @@
+﻿run_production_floor_owner
+  grid [40 40 40], gh_n = 7, 20000 paths, seed 20260812
+Starting parallel pool (parpool) using the 'Processes' profile ...
+Connected to parallel pool with 16 workers.
+  pool: 16 workers
+
+[Warning: A worker aborted during execution of the parfor loop. The parfor loop will now run again on the remaining workers.] 
+[> In parallel.internal.parfor/ParforEngine/handleIntervalErrorResult (line 285)
+In parallel.internal.parfor/ParforEngine/getCompleteIntervals (line 225)
+In parallel_function>distributed_execution (line 705)
+In parallel_function (line 537)
+In solver.bellman_step (line 303)
+In solver.solve_lifecycle (line 84)
+In run_production_floor_owner (line 42)] 
+[Warning: A worker aborted during execution of the parfor loop. The parfor loop will now run again on the remaining workers.] 
+[> In parallel.internal.parfor/ParforEngine/handleIntervalErrorResult (line 285)
+In parallel.internal.parfor/ParforEngine/getCompleteIntervals (line 225)
+In parallel_function>distributed_execution (line 705)
+In parallel_function (line 537)
+In solver.bellman_step (line 303)
+In solver.solve_lifecycle (line 84)
+In run_production_floor_owner (line 42)] 
+[Warning: A worker aborted during execution of the parfor loop. The parfor loop will now run again on the remaining workers.] 
+[> In parallel.internal.parfor/ParforEngine/handleIntervalErrorResult (line 285)
+In parallel.internal.parfor/ParforEngine/getCompleteIntervals (line 225)
+In parallel_function>distributed_execution (line 705)
+In parallel_function (line 537)
+In solver.bellman_step (line 303)
+In solver.solve_lifecycle (line 84)
+In run_production_floor_owner (line 42)] 
+[Warning: A worker aborted during execution of the parfor loop. The parfor loop will now run again on the remaining workers.] 
+[> In parallel.internal.parfor/ParforEngine/handleIntervalErrorResult (line 285)
+In parallel.internal.parfor/ParforEngine/getCompleteIntervals (line 225)
+In parallel_function>distributed_execution (line 705)
+In parallel_function (line 537)
+In solver.bellman_step (line 303)
+In solver.solve_lifecycle (line 84)
+In run_production_floor_owner (line 42)] 
+[Warning: A worker aborted during execution of the parfor loop. The parfor loop will now run again on the remaining workers.] 
+[> In parallel.internal.parfor/ParforEngine/handleIntervalErrorResult (line 285)
+In parallel.internal.parfor/ParforEngine/getCompleteIntervals (line 225)
+In parallel_function>distributed_execution (line 705)
+In parallel_function (line 537)
+In solver.bellman_step (line 303)
+In solver.solve_lifecycle (line 84)
+In run_production_floor_owner (line 42)] 
+[Warning: A worker aborted during execution of the parfor loop. The parfor loop will now run again on the remaining workers.] 
+[> In parallel.internal.parfor/ParforEngine/handleIntervalErrorResult (line 285)
+In parallel.internal.parfor/ParforEngine/getCompleteIntervals (line 225)
+In parallel_function>distributed_execution (line 705)
+In parallel_function (line 537)
+In solver.bellman_step (line 303)
+In solver.solve_lifecycle (line 84)
+In run_production_floor_owner (line 42)] 

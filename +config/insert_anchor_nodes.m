@@ -23,18 +23,33 @@ function p = insert_anchor_nodes(p)
 %   grids only through griddedInterpolant and numel, never through
 %   uniform-spacing arithmetic.
 
-if ~all(isfield(p, {'b0', 'b_alt', 'h_mult', 'lambda_grid', 'sH_grid'}))
+if ~all(isfield(p, {'b0', 'b_alt', 'h_mult'}))
     return
 end
 
-den        = 1 + p.h_mult + [p.b0, p.b_alt];
-lam_anchor = 1 ./ den;
-sH_anchor  = p.h_mult ./ den;
+den = 1 + p.h_mult + [p.b0, p.b_alt];
 
-p.lambda_grid = merge_nodes(p.lambda_grid, lam_anchor);
-p.sH_grid     = merge_nodes(p.sH_grid,     sH_anchor);
-p.N_lambda    = numel(p.lambda_grid);
-p.N_sH        = numel(p.sH_grid);
+% Simplex (lambda, s_A, s_H). s_A is untouched: the anchor is at sA0 = 0.
+if all(isfield(p, {'lambda_grid', 'sH_grid'}))
+    p.lambda_grid = merge_nodes(p.lambda_grid, 1 ./ den);
+    p.sH_grid     = merge_nodes(p.sH_grid,     p.h_mult ./ den);
+    p.N_lambda    = numel(p.lambda_grid);
+    p.N_sH        = numel(p.sH_grid);
+end
+
+% LNA cube (u1, u2, u3). Same anchor state, expressed in cube coordinates:
+%   u1 = lambda = 1/den
+%   u2 = (A+H)/(W-Y) = h_mult/(h_mult + b)     (A = 0 at the anchor)
+%   u3 = A/(A+H)     = 0                       (already node 1 of a linspace)
+% Without these the cube's headline welfare number is a trilinear blend while
+% the simplex's is a solved node, so the two are not measuring the same thing
+% and the cube's number moves with resolution.
+if all(isfield(p, {'u1_grid', 'u2_grid'}))
+    p.u1_grid = merge_nodes(p.u1_grid, 1 ./ den);
+    p.u2_grid = merge_nodes(p.u2_grid, p.h_mult ./ (p.h_mult + [p.b0, p.b_alt]));
+    p.N_u1    = numel(p.u1_grid);
+    p.N_u2    = numel(p.u2_grid);
+end
 end
 
 function g = merge_nodes(g, anchors)
