@@ -1,4 +1,4 @@
-function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price)
+function [V_t, c_pol, pi_pol, tau_pol] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price)
 %BELLMAN_STEP_LNA  One backward-induction step on (u1, u2, u3) = (lambda, n-tilde, a).
 %
 %   Reparametrization of the (lambda, s_A, s_H) simplex onto the full cube
@@ -32,10 +32,20 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   search -- is IDENTICAL to solver.bellman_step; only the state
 %   coordinates change.
 
+% Free DC investment choice, same contract as solver.bellman_step: (c, pi, tau)
+% while working, tau fixed at config.tau_effective once retired, and the glide
+% value is always in the seed grid AND polished from separately, so the free
+% arm cannot fall below the glide arm for the same continuation. That dominance
+% is what tests/smoke_freetau_dominance_lna checks.
+choose_tau   = isfield(p, 'choose_tau_S') && p.choose_tau_S;
+optimise_tau = choose_tau && (t < p.t_ret);
+
 N1 = numel(p.u1_grid); N2 = numel(p.u2_grid); N3 = numel(p.u3_grid);
 V_t    = nan(N1, N2, N3);
 c_pol  = nan(N1, N2, N3);
 pi_pol = nan(N1, N2, N3);
+tau_pol = [];
+if choose_tau, tau_pol = nan(N1, N2, N3); end
 
 [U1, U2, U3] = ndgrid(p.u1_grid, p.u2_grid, p.u3_grid);
 Lam_all = U1;
@@ -48,12 +58,6 @@ inv_omg = 1 / one_m_g;
 
 is_owner   = p.is_owner;
 is_retired = (t >= p.t_ret);
-
-% Free DC investment choice is a simplex-solver-only feature by design; the
-% lna path has no tau_pol machinery.
-assert(~(isfield(p, 'choose_tau_S') && p.choose_tau_S), ...
-       'bellman_step_lna:choose_tau_S', ...
-       'choose_tau_S is not supported on the lna grid; use solver.bellman_step.');
 
 skip_polish = false; if isfield(p, 'skip_polish'), skip_polish = logical(p.skip_polish); end
 
@@ -142,7 +146,11 @@ if t == p.T
 end
 
 % --- Non-terminal: build z-space interpolant then optimise per state.
-tau      = p.tau_S(t);
+% config.tau_effective, not p.tau_S: the accumulation glide before retirement
+% and p.tau_decum after it. Reading p.tau_S directly here silently ignored the
+% decumulation strategy, which solver.bellman_step has always honoured.
+tau_eff_path = config.tau_effective(p);
+tau      = tau_eff_path(t);
 pt       = profile.p_surv(t);
 beta_eff = p.beta * pt;
 chi = 0; if isfield(p, 'chi'), chi = p.chi; end
@@ -156,7 +164,20 @@ n_shock = numel(w_join);
 mu_g   = profile.mu_growth(t);
 sig_l  = profile.sigma_l_log(t);
 G_next = exp(mu_g + sig_l .* eps_Y);
-R_A    = ((1 - tau) * p.Rf + tau * R_S) / pt;     % survival-credit DC return (PRE-TAX, sheltered)
+% DC equity-share grid. Glide regime (or any retired age): the single fixed
+% value, so the slice loop below collapses to the original one-slice search
+% bit-identically. Free choice: linspace seed with the glide value appended,
+% so the free search always contains the glide slice on the grid.
+if optimise_tau
+    NT = 11; if isfield(p, 'N_tau'), NT = p.N_tau; end
+    tau_grid = unique([linspace(0, 1, NT).'; tau]);
+else
+    tau_grid = tau;
+end
+NTg     = numel(tau_grid);
+j_glide = find(tau_grid == tau, 1);
+% Survival-credit DC returns per tau slice (PRE-TAX, sheltered), n_shock x NTg
+R_A_all = ((1 - tau_grid.') * p.Rf + R_S * tau_grid.') / pt;
 
 % After-tax returns on the LIQUID (taxable) account: accrual CGT, no loss
 % offset, then the box-3 wealth tax on the end-of-period balance. Bonds pay
@@ -199,6 +220,7 @@ opts_polish = optimoptions('fmincon', ...
 
 n_states = numel(Lam_all);
 V_flat   = zeros(n_states, 1);
+tau_flat = zeros(n_states, 1);
 c_flat   = zeros(n_states, 1);
 pi_flat  = zeros(n_states, 1);
 
@@ -228,32 +250,37 @@ parfor k = 1:n_states
         A_next_pre_return = sA + kappa_t * lam;
     end
 
-    A_next_W = R_A * A_next_pre_return;      % n_shock x 1
     H_next_W = sH * R_H;                     % n_shock x 1
     Y_next_W = G_next * lam;                 % n_shock x 1
     F_W      = max(phi_floor * lam, FLOOR_EPS);   % consumption floor, share of W
 
     if ~use_floor
         if LW_W <= 1e-9
-            V_flat(k) = -1e15; c_flat(k) = 1e-6; pi_flat(k) = 0;
+            V_flat(k) = -1e15; c_flat(k) = 1e-6; pi_flat(k) = 0; tau_flat(k) = tau;
             continue
         end
     elseif LW_W <= F_W
         % Floor absorbs everything: consume the floor, save nothing, enter
         % next period with X = 0. See solver.bellman_step for the rationale.
-        denAH0 = A_next_W + H_next_W;
-        W_g0   = denAH0 + Y_next_W;
-        u1_0   = max(min(Y_next_W ./ W_g0, 1), 0);
-        u2_0   = max(min(denAH0 ./ max(denAH0, 1e-12), 1), 0);
-        u3_0   = max(min(A_next_W ./ max(denAH0, 1e-12), 1), 0);
-        z_0    = pp_z(u1_0, u2_0, u3_0);
-        val    = F_W ^ one_m_g / one_m_g ...
-                 + beta_eff * sum(w_join .* ((W_g0 .* z_0) .^ one_m_g / one_m_g));
-        if beq_eff > 0
-            beq_base = max(h_beq_fac * H_next_W, FLOOR_EPS);
-            val = val + beq_eff * sum(w_join .* (beq_base .^ one_m_g / one_m_g));
+        % Only tau is still worth choosing here.
+        u_f = F_W ^ one_m_g / one_m_g;
+        best = -inf; j_best = 1;
+        for j = 1:NTg
+            A_n    = R_A_all(:, j) * A_next_pre_return;
+            denAH0 = A_n + H_next_W;
+            W_g0   = denAH0 + Y_next_W;
+            u1_0   = max(min(Y_next_W ./ W_g0, 1), 0);
+            u2_0   = max(min(denAH0 ./ max(denAH0, 1e-12), 1), 0);
+            u3_0   = max(min(A_n ./ max(denAH0, 1e-12), 1), 0);
+            z_0    = pp_z(u1_0, u2_0, u3_0);
+            val    = u_f + beta_eff * sum(w_join .* ((W_g0 .* z_0) .^ one_m_g / one_m_g));
+            if beq_eff > 0
+                beq_base = max(h_beq_fac * H_next_W, FLOOR_EPS);
+                val = val + beq_eff * sum(w_join .* (beq_base .^ one_m_g / one_m_g));
+            end
+            if val > best, best = val; j_best = j; end
         end
-        V_flat(k) = val; c_flat(k) = 1; pi_flat(k) = 0;
+        V_flat(k) = best; c_flat(k) = 1; pi_flat(k) = 0; tau_flat(k) = tau_grid(j_best);
         continue
     end
 
@@ -268,62 +295,181 @@ parfor k = 1:n_states
     % bellman_step; only the next-period state coordinates differ:
     %   u1 = Y/W_g,  u2 = (A+H)/(W_g - Y) = (A+H)/(X+A+H),  u3 = A/(A+H)
     % each clamped to [0,1] (guards the degenerate lines u2=0 and u1=1).
-    denAH  = A_next_W + H_next_W;                     % n_shock x 1
-    u3_col = max(min(A_next_W ./ max(denAH, 1e-12), 1), 0);
-    base_W = denAH + Y_next_W;                        % n_shock x 1
+    % X_next is tau-independent, so it is hoisted out of the slice loop; only
+    % the DC position and the u2/u3 coordinates move with tau. NTg = 1 (glide)
+    % reproduces the original single-tensor search exactly.
     sav    = (1 - c_grid).' * LW_W;                   % 1 x NC (saved liquid wealth)
     RX     = reshape(R_X_all.', n_shock, 1, NP);      % n_shock x 1 x NP
     X_next = RX .* sav;                               % n_shock x NC x NP
-    W_g    = X_next + base_W;                         % n_shock x NC x NP
-    u1_n   = max(min(Y_next_W ./ W_g, 1), 0);
-    u2_n   = max(min(denAH ./ max(X_next + denAH, 1e-12), 1), 0);
-    u3_n   = repmat(u3_col, [1, NC, NP]);             % independent of (c,pi)
-    z_n    = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:)), n_shock, NC, NP);
-    CE     = W_g .* z_n;
-    V_n    = CE .^ one_m_g / one_m_g;
-    EV     = reshape(sum(w_join .* V_n, 1), NC, NP);   % NC x NP
-    rhs    = u_now + beta_eff * EV;                     % u_now (NC x 1) broadcasts
-    if beq_eff > 0
-        beq_base = X_next + h_beq_fac * H_next_W;
-        beq_n = beq_base .^ one_m_g / one_m_g;
-        rhs   = rhs + beq_eff * reshape(sum(w_join .* beq_n, 1), NC, NP);
-    end
 
-    [maxval, lin_idx] = max(rhs(:));
-    [ic_max, ip_max]  = ind2sub([NC, NP], lin_idx);
+    maxval = -inf; ic_max = 1; ip_max = 1; it_max = 1;
+    maxval_g = -inf; ic_g = 1; ip_g = 1;
+    rhs_g = [];
+    for j = 1:NTg
+        A_next_W_j = R_A_all(:, j) * A_next_pre_return;   % n_shock x 1
+        denAH  = A_next_W_j + H_next_W;                   % n_shock x 1
+        u3_col = max(min(A_next_W_j ./ max(denAH, 1e-12), 1), 0);
+        base_W = denAH + Y_next_W;                        % n_shock x 1
+        W_g    = X_next + base_W;                         % n_shock x NC x NP
+        u1_n   = max(min(Y_next_W ./ W_g, 1), 0);
+        u2_n   = max(min(denAH ./ max(X_next + denAH, 1e-12), 1), 0);
+        u3_n   = repmat(u3_col, [1, NC, NP]);             % independent of (c,pi)
+        z_n    = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:)), n_shock, NC, NP);
+        V_n    = (W_g .* z_n) .^ one_m_g / one_m_g;
+        EV     = reshape(sum(w_join .* V_n, 1), NC, NP);   % NC x NP
+        rhs    = u_now + beta_eff * EV;                     % u_now (NC x 1) broadcasts
+        if beq_eff > 0
+            beq_base = X_next + h_beq_fac * H_next_W;
+            beq_n = beq_base .^ one_m_g / one_m_g;
+            rhs   = rhs + beq_eff * reshape(sum(w_join .* beq_n, 1), NC, NP);
+        end
+
+        [mv, lin_idx] = max(rhs(:));
+        if mv > maxval
+            maxval = mv;
+            [ic_max, ip_max] = ind2sub([NC, NP], lin_idx);
+            it_max = j;
+        end
+        if j == j_glide
+            maxval_g = mv;
+            [ic_g, ip_g] = ind2sub([NC, NP], lin_idx);
+            if optimise_tau, rhs_g = rhs; end
+        end
+    end
 
     if skip_polish
         V_flat(k) = maxval; c_flat(k) = c_grid(ic_max); pi_flat(k) = pi_grid(ip_max);
+        tau_flat(k) = tau_grid(it_max);
         continue
     end
 
-    x0 = [c_grid(ic_max); pi_grid(ip_max)];
-    lb = [c_floor; 0];
-    ub = [1 - 1e-6; 1];
-    polish_obj = @(x) -bellman_rhs_z_u(x(1), x(2), LW_W, Rf_at, R_S_at, ...
-                                        A_next_W, H_next_W, Y_next_W, ...
-                                        w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+    lb2 = [c_floor; 0];
+    ub2 = [1 - 1e-6; 1];
 
-    V_polish = -inf; x_opt = x0;
-    try
-        [x_try, neg_V_try, exitflag] = fmincon(polish_obj, x0, [], [], [], [], lb, ub, [], opts_polish);
-        if exitflag > 0 || exitflag == 0
-            V_polish = -neg_V_try;
-            x_opt    = x_try;
+    if optimise_tau
+        % Best of: (A) 3-var (c,pi,tau) from the global grid best; (B) 2-var
+        % pinned at the best grid tau; (C) 2-var pinned at the GLIDE tau from
+        % the glide slice's own best, plus its top interior local maxima. (C)
+        % is what makes the free value unable to fall below the glide value
+        % for the same continuation -- the interior-point barrier keeps tau
+        % strictly inside (0,1), so (A) alone under-performs on a tau bound.
+        obj3 = @(x) -bellman_rhs_z3_u(x(1), x(2), x(3), LW_W, Rf_at, R_S_at, ...
+                                       p.Rf, R_S, pt, A_next_pre_return, ...
+                                       H_next_W, Y_next_W, ...
+                                       w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+        V_polish = -inf; x_opt = [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)];
+        try
+            [x_try, neg_V_try, exitflag] = fmincon(obj3, ...
+                [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)], ...
+                [], [], [], [], [c_floor; 0; 0], [1 - 1e-6; 1; 1], [], opts_polish);
+            if (exitflag > 0 || exitflag == 0) && -neg_V_try > V_polish
+                V_polish = -neg_V_try; x_opt = x_try;
+            end
+        catch
         end
-    catch
-    end
 
-    if V_polish > maxval
-        V_flat(k) = V_polish; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2);
+        pin_starts = [c_grid(ic_max), pi_grid(ip_max), tau_grid(it_max)];
+        if it_max ~= j_glide && isfinite(maxval_g)
+            pin_starts = [pin_starts; c_grid(ic_g), pi_grid(ip_g), tau];
+        end
+        v_gl = maxval_g; c_gl = c_grid(ic_g); p_gl = pi_grid(ip_g);
+        % The rhs surface is multimodal in c and the basin a single argmax
+        % start reaches shifts with small continuation changes, so anchor
+        % against every basin the glide step could land in.
+        if ~isempty(rhs_g)
+            is_lmax = true(NC, NP);
+            is_lmax(2:NC,   :) = is_lmax(2:NC,   :) & (rhs_g(2:NC,:)   >= rhs_g(1:NC-1,:));
+            is_lmax(1:NC-1, :) = is_lmax(1:NC-1, :) & (rhs_g(1:NC-1,:) >= rhs_g(2:NC,:));
+            is_lmax(:, 2:NP  ) = is_lmax(:, 2:NP  ) & (rhs_g(:,2:NP)   >= rhs_g(:,1:NP-1));
+            is_lmax(:, 1:NP-1) = is_lmax(:, 1:NP-1) & (rhs_g(:,1:NP-1) >= rhs_g(:,2:NP));
+            is_lmax(ic_g, ip_g) = false;
+            lm_idx = find(is_lmax);
+            if ~isempty(lm_idx)
+                [~, ord] = sort(rhs_g(lm_idx), 'descend');
+                lm_idx = lm_idx(ord(1:min(2, numel(ord))));
+                [lm_c, lm_p] = ind2sub([NC, NP], lm_idx);
+                pin_starts = [pin_starts; ...
+                              c_grid(lm_c(:)), pi_grid(lm_p(:)), repmat(tau, numel(lm_idx), 1)];
+            end
+        end
+        for s = 1:size(pin_starts, 1)
+            tau_fix = pin_starts(s, 3);
+            obj2 = @(x) -bellman_rhs_z3_u(x(1), x(2), tau_fix, LW_W, Rf_at, R_S_at, ...
+                                           p.Rf, R_S, pt, A_next_pre_return, ...
+                                           H_next_W, Y_next_W, ...
+                                           w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+            try
+                [x_try, neg_V_try, exitflag] = fmincon(obj2, pin_starts(s, 1:2).', ...
+                    [], [], [], [], lb2, ub2, [], opts_polish);
+                if exitflag > 0 || exitflag == 0
+                    if -neg_V_try > V_polish
+                        V_polish = -neg_V_try; x_opt = [x_try; tau_fix];
+                    end
+                    if tau_fix == tau && -neg_V_try > v_gl
+                        v_gl = -neg_V_try; c_gl = x_try(1); p_gl = x_try(2);
+                    end
+                end
+            catch
+            end
+        end
+
+        % Derivative-free refinement. The coarse z-interpolant puts narrow
+        % kink ridges in the surface and fmincon's finite differences step
+        % over them; a shrinking-radius scan is ridge-proof. Refine at the
+        % glide tau (the dominance anchor) and at the current best tau.
+        dc0 = c_grid(2) - c_grid(1);
+        dp0 = pi_grid(min(2, NP)) - pi_grid(1);
+        if isfinite(v_gl)
+            [c_r, p_r, v_r] = refine_cpi_u(c_gl, p_gl, tau, v_gl, LW_W, Rf_at, R_S_at, ...
+                p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+                w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
+            if v_r > V_polish, V_polish = v_r; x_opt = [c_r; p_r; tau]; end
+        end
+        if V_polish > maxval
+            cb0 = x_opt(1); pb0 = x_opt(2); tb0 = x_opt(3); vb0 = V_polish;
+        else
+            cb0 = c_grid(ic_max); pb0 = pi_grid(ip_max); tb0 = tau_grid(it_max); vb0 = maxval;
+        end
+        [c_r, p_r, v_r] = refine_cpi_u(cb0, pb0, tb0, vb0, LW_W, Rf_at, R_S_at, ...
+            p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+            w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
+        if v_r > V_polish, V_polish = v_r; x_opt = [c_r; p_r; tb0]; end
+
+        if V_polish > maxval
+            V_flat(k) = V_polish; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2); tau_flat(k) = x_opt(3);
+        else
+            V_flat(k) = maxval; c_flat(k) = c_grid(ic_max); pi_flat(k) = pi_grid(ip_max);
+            tau_flat(k) = tau_grid(it_max);
+        end
     else
-        V_flat(k) = maxval; c_flat(k) = c_grid(ic_max); pi_flat(k) = pi_grid(ip_max);
+        A_next_W = R_A_all(:, 1) * A_next_pre_return;   % glide-slice DC position
+        x0 = [c_grid(ic_max); pi_grid(ip_max)];
+        polish_obj = @(x) -bellman_rhs_z_u(x(1), x(2), LW_W, Rf_at, R_S_at, ...
+                                            A_next_W, H_next_W, Y_next_W, ...
+                                            w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+
+        V_polish = -inf; x_opt = x0;
+        try
+            [x_try, neg_V_try, exitflag] = fmincon(polish_obj, x0, [], [], [], [], lb2, ub2, [], opts_polish);
+            if exitflag > 0 || exitflag == 0
+                V_polish = -neg_V_try; x_opt = x_try;
+            end
+        catch
+        end
+
+        if V_polish > maxval
+            V_flat(k) = V_polish; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2);
+        else
+            V_flat(k) = maxval; c_flat(k) = c_grid(ic_max); pi_flat(k) = pi_grid(ip_max);
+        end
+        tau_flat(k) = tau;
     end
 end
 
 V_t(:)    = V_flat;
 c_pol(:)  = c_flat;
 pi_pol(:) = pi_flat;
+if choose_tau, tau_pol(:) = tau_flat; end
 end
 
 function rhs_val = bellman_rhs_z_u(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
@@ -348,5 +494,76 @@ function rhs_val = bellman_rhs_z_u(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_ne
         beq_n   = beq_base .^ one_m_g / one_m_g;
         E_beq   = sum(w .* beq_n);
         rhs_val = rhs_val + beq_eff * E_beq;
+    end
+end
+
+function rhs_val = bellman_rhs_z3_u(c, pi_eq, tau_dc, LW_W, Rf_at, R_S_at, Rf, R_S, pt, ...
+                                     A_next_pre_return, H_next_W, Y_next_W, ...
+                                     w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac)
+    % 3-choice Bellman RHS on the cube: as bellman_rhs_z_u, but the DC position
+    % is rebuilt from the choice variable tau_dc (survival-credit return,
+    % PRE-TAX -- the fund is sheltered; only the liquid legs carry tax).
+    R_A      = ((1 - tau_dc) * Rf + tau_dc .* R_S) / pt;
+    A_next_W = R_A * A_next_pre_return;
+    R_X      = (1 - pi_eq) * Rf_at + pi_eq .* R_S_at;
+    X_next_W = R_X * (1 - c) * LW_W;
+    denAH    = A_next_W + H_next_W;
+    W_growth = X_next_W + denAH + Y_next_W;
+    u1_next  = max(min(Y_next_W ./ W_growth, 1), 0);
+    u2_next  = max(min(denAH ./ max(X_next_W + denAH, 1e-12), 1), 0);
+    u3_next  = max(min(A_next_W ./ max(denAH, 1e-12), 1), 0);
+    z_n      = pp_z(u1_next, u2_next, u3_next);
+    V_n      = (W_growth .* z_n) .^ one_m_g / one_m_g;
+    rhs_val  = (c * LW_W) ^ one_m_g / one_m_g + beta_eff * sum(w .* V_n);
+    if beq_eff > 0
+        beq_base = X_next_W + h_beq_fac * H_next_W;
+        rhs_val  = rhs_val + beq_eff * sum(w .* (beq_base .^ one_m_g / one_m_g));
+    end
+end
+
+function [c_b, p_b, v_b] = refine_cpi_u(c0, p0, tau_fix, v0, LW_W, Rf_at, R_S_at, Rf, R_S, pt, ...
+                                         A_next_pre_return, H_next_W, Y_next_W, ...
+                                         w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
+                                         c_floor, dc0, dp0)
+    % Shrinking-radius local grid scan of the (c, pi) surface with tau pinned.
+    % Derivative-free, so it resolves the narrow interpolation-kink ridges that
+    % defeat fmincon's finite differences. Cube twin of refine_cpi.
+    R_A      = ((1 - tau_fix) * Rf + tau_fix .* R_S) / pt;
+    A_next_W = R_A * A_next_pre_return;
+    denAH    = A_next_W + H_next_W;
+    u3_col   = max(min(A_next_W ./ max(denAH, 1e-12), 1), 0);
+    base_W   = denAH + Y_next_W;
+    n_shock  = numel(w);
+    c_b = c0; p_b = p0; v_b = v0;
+    dc = dc0 / 4; dp = max(dp0, 0.05);
+    for r = 1:4
+        if r == 1
+            c_loc = unique(min(max(c0 + dc0 * (-1 : 0.125 : 1), c_floor), 1 - 1e-6));
+            p_loc = unique([linspace(0, 1, 21), p0]);
+        else
+            c_loc = unique(min(max(c_b + dc * (-1 : 0.25 : 1), c_floor), 1 - 1e-6));
+            p_loc = unique(min(max(p_b + dp * (-1 : 0.25 : 1), 0), 1));
+            dc = dc / 4; dp = dp / 4;
+        end
+        [Cm, Pm] = ndgrid(c_loc, p_loc);
+        M   = numel(Cm);
+        cv  = Cm(:).'; pv = Pm(:).';                  % 1 x M
+        R_X    = (1 - pv) .* Rf_at + pv .* R_S_at;    % n_shock x M
+        X_next = R_X .* ((1 - cv) * LW_W);            % n_shock x M
+        W_g    = X_next + base_W;
+        u1_n   = max(min(Y_next_W ./ W_g, 1), 0);
+        u2_n   = max(min(denAH ./ max(X_next + denAH, 1e-12), 1), 0);
+        u3_n   = repmat(u3_col, 1, M);
+        z_n    = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:)), n_shock, M);
+        V_n    = (W_g .* z_n) .^ one_m_g / one_m_g;
+        rhs    = (cv.' * LW_W) .^ one_m_g / one_m_g + beta_eff * (w.' * V_n).';
+        if beq_eff > 0
+            beq_base = X_next + h_beq_fac * H_next_W;
+            rhs = rhs + beq_eff * (w.' * (beq_base .^ one_m_g / one_m_g)).';
+        end
+        [mv, im] = max(rhs);
+        if mv > v_b
+            v_b = mv; c_b = Cm(im); p_b = Pm(im);
+        end
     end
 end

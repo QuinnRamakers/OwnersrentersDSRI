@@ -5,56 +5,5 @@ Connected to parallel pool with 16 workers.
   pool: 16 workers
 
 [1/2] new (rent estimate): mu_R_level = 0.0097, sigma_R_level = 0.0180
-  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7768, pi=0.9776  [65.1 s]
-  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5947, pi=1.0000  [70.7 s]
-  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4823, pi=1.0000  [73.4 s]
-  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4254, pi=1.0000  [75.0 s]
-  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1410, pi=0.9242  [73.5 s]
-  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1619, pi=0.9295  [72.5 s]
-  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1878, pi=0.8766  [74.7 s]
-  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2126, pi=0.9524  [73.6 s]
-  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2772, pi=1.0000  [75.5 s]
-  solved and simulated in 91.9 min
-  V finite everywhere         : 1
-  -1e15 sentinel present      : 0 (expected 0)
-  min simulated consumption   : 0.00150226 (expected > 0)
-  floor binds                 : 1.60% of household-years
-  V_tilde at b0               : -1.126341936e+10
-   age |     rent | % net AOW | floor binds | median C
-    25 |    10657 |       39% |        0.0% |     3128
-    45 |    12881 |       26% |        0.0% |    27838
-    67 |    15856 |      121% |        0.8% |    41942
-    75 |    17100 |      130% |        1.6% |    41155
-    85 |    18814 |      143% |        3.1% |    38311
-    95 |    20664 |      157% |        5.4% |    28892
-   100 |    21672 |      164% |        7.1% |    23625
-  wrote prod_floor_lna_new.mat
-
-[2/2] old (house process): mu_R_level = 0.0270, sigma_R_level = 0.0370
-  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7763, pi=0.9762  [75.6 s]
-  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5910, pi=1.0000  [75.9 s]
-  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4748, pi=1.0000  [76.1 s]
-  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4119, pi=1.0000  [75.1 s]
-  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.0923, pi=0.7141  [71.9 s]
-  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.0942, pi=0.4363  [71.1 s]
-  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.0920, pi=0.1866  [74.0 s]
-  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.0877, pi=0.1165  [62.7 s]
-  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.1140, pi=0.1730  [73.4 s]
-  solved and simulated in 91.0 min
-  V finite everywhere         : 1
-  -1e15 sentinel present      : 0 (expected 0)
-  min simulated consumption   : 0.00150226 (expected > 0)
-  floor binds                 : 16.80% of household-years
-  V_tilde at b0               : -3.958515836e+21
-   age |     rent | % net AOW | floor binds | median C
-    25 |    10657 |       39% |        0.0% |     2476
-    45 |    17911 |       36% |        0.4% |    12728
-    67 |    31658 |      241% |       11.7% |    29363
-    75 |    38943 |      296% |       20.9% |    26034
-    85 |    50561 |      383% |       33.6% |    20590
-    95 |    65417 |      499% |       53.1% |        0
-   100 |    74525 |      567% |       73.8% |        0
-  wrote prod_floor_lna_old.mat
-
-done
-Parallel pool using the 'Processes' profile is shutting down.
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7770, pi=0.9857  [79.6 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5963, pi=1.0000  [95.1 s]

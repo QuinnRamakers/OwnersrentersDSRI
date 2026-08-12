@@ -29,10 +29,22 @@ period_sec = zeros(T, 1);
 
 t0 = tic;
 
+% Free DC investment choice: store the per-state tau policy only in that
+% regime (the glide regime has no per-state tau to record -- it is p.tau_S).
+choose_tau = isfield(p, 'choose_tau_S') && p.choose_tau_S;
+if choose_tau
+    tau_pol = zeros(N1, N2, N3, T);
+end
+
 % Terminal
 t_step = tic;
-[V(:,:,:,T), c_pol(:,:,:,T), pi_pol(:,:,:,T)] = ...
-    solver.bellman_step_lna(T, [], p, profile, shocks, ann_price);
+if choose_tau
+    [V(:,:,:,T), c_pol(:,:,:,T), pi_pol(:,:,:,T), tau_pol(:,:,:,T)] = ...
+        solver.bellman_step_lna(T, [], p, profile, shocks, ann_price);
+else
+    [V(:,:,:,T), c_pol(:,:,:,T), pi_pol(:,:,:,T)] = ...
+        solver.bellman_step_lna(T, [], p, profile, shocks, ann_price);
+end
 period_sec(T) = toc(t_step);
 
 % Probe: same mid-life simplex point as solve_lifecycle, converted to u:
@@ -41,8 +53,13 @@ probe_u1 = 0.2; probe_u2 = 0.75; probe_u3 = 1/3;
 
 for t = T-1 : -1 : 1
     t_step = tic;
-    [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t)] = ...
-        solver.bellman_step_lna(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+    if choose_tau
+        [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t), tau_pol(:,:,:,t)] = ...
+            solver.bellman_step_lna(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+    else
+        [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t)] = ...
+            solver.bellman_step_lna(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+    end
     period_sec(t) = toc(t_step);
     if mod(t, 10) == 0 || t == T-1 || t == 1
         Fc  = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
@@ -57,6 +74,7 @@ for t = T-1 : -1 : 1
 end
 
 sol.V = V; sol.c_pol = c_pol; sol.pi_pol = pi_pol;
+if choose_tau, sol.tau_pol = tau_pol; end
 sol.grid_type = 'lna';
 sol.elapsed = toc(t0);
 sol.timing  = struct('period_sec', period_sec, 'total_sec', sol.elapsed, ...
