@@ -3,3 +3,7 @@
 *.log
 slurm-*.out
 *.mex*
+
+# MATLAB batch logs with parfor worker warning spam
+floor_sweep_log.txt
+floor_test_log.txt
