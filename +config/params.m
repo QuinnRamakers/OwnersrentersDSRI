@@ -142,6 +142,14 @@ p.sigma_R_level = 0.018;     % real rent growth, vol
 % phi_floor = 1 puts it at the AOW, the Dutch social minimum.
 p.phi_floor = 1e-6;
 
+% Which coordinate system a run is solved on. The simplex and the LNA cube are
+% different discretisations of one model and a p-struct carries both sets of
+% grid vectors, so nothing else distinguishes them and
+% utility.param_fingerprint would rate a simplex file and a cube file
+% comparable. Scripts solving on the cube must set this to 'lna'; the LNA
+% solvers assert it.
+p.grid_type = 'simplex';
+
 % Numerical: 3D state grid (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1.
 % gh_n^3 = 343 joint Gauss-Hermite shock nodes per state.
 p.gh_n     = 7;

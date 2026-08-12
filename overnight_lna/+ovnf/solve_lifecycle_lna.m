@@ -7,6 +7,13 @@ function sol = solve_lifecycle_lna(p, profile, shocks, ann_price)
 %   NaN-filling for the probe interpolants.
 %
 %   Records per-period wall time and pool/machine metadata in sol.timing.
+%
+%   The caller must declare p.grid_type = 'lna'; see solver.solve_lifecycle_lna
+%   for why.
+
+assert(isfield(p, 'grid_type') && strcmp(char(p.grid_type), 'lna'), ...
+    'solve_lifecycle_lna:grid_type', ...
+    'p.grid_type must be ''lna'' to solve on the cube.');
 
 N1 = numel(p.u1_grid); N2 = numel(p.u2_grid); N3 = numel(p.u3_grid); T = p.T;
 V      = zeros(N1, N2, N3, T);

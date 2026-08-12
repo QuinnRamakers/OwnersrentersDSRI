@@ -7,6 +7,19 @@ function sol = solve_lifecycle_lna(p, profile, shocks, ann_price)
 %   NaN-filling for the probe interpolants.
 %
 %   Records per-period wall time and pool/machine metadata in sol.timing.
+%
+%   The caller must declare p.grid_type = 'lna'. config.params defaults it to
+%   'simplex' and utility.param_fingerprint records it, so a cube solve that
+%   left the default in place would be labelled a simplex run and would pass
+%   the comparability gate against one. Asserted rather than stamped, because
+%   p is passed by value and the caller is what gets saved.
+
+assert(isfield(p, 'grid_type') && strcmp(char(p.grid_type), 'lna'), ...
+    'solve_lifecycle_lna:grid_type', ...
+    ['p.grid_type must be ''lna'' to solve on the cube (got ''%s''). It is ' ...
+     'what utility.param_fingerprint uses to keep cube runs from rating as ' ...
+     'welfare-comparable to simplex runs.'], ...
+    char(string(getfield_default(p, 'grid_type', 'unset'))));
 
 N1 = numel(p.u1_grid); N2 = numel(p.u2_grid); N3 = numel(p.u3_grid); T = p.T;
 V      = zeros(N1, N2, N3, T);
@@ -67,4 +80,10 @@ try
 catch
     name = 'unknown';
 end
+end
+
+function v = getfield_default(s, f, d)
+% Scalar-safe field read for the assert message above.
+v = d;
+if isfield(s, f) && (ischar(s.(f)) || isstring(s.(f))), v = s.(f); end
 end

@@ -1,0 +1,7 @@
+﻿run_production_floor_lna
+  cube [28 20 20] on (u1,u2,u3), gh_n = 7, 20000 paths, seed 20260812
+Starting parallel pool (parpool) using the 'Processes' profile ...
+Connected to parallel pool with 16 workers.
+  pool: 16 workers
+
+[1/2] new (rent estimate): mu_R_level = 0.0097, sigma_R_level = 0.0180

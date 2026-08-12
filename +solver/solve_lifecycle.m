@@ -6,6 +6,14 @@ function sol = solve_lifecycle(p, profile, shocks, ann_price)
 %   that runs on different hardware (e.g. local machine vs. cluster) can be
 %   compared after the fact.
 
+% Mirror of the guard in solve_lifecycle_lna: a p declared for the cube must
+% not be solved here, or the saved run would carry an 'lna' tag on a simplex
+% solve. Absent field is fine -- p-structs predating the tag are simplex.
+if isfield(p, 'grid_type')
+    assert(~strcmp(char(p.grid_type), 'lna'), 'solve_lifecycle:grid_type', ...
+        'p.grid_type is ''lna'' but this is the simplex solver.');
+end
+
 NL = p.N_lambda; NA = p.N_sA; NH = p.N_sH; T = p.T;
 
 % Welfare-anchor guard. The calibrated (b0) and sensitivity (b_alt) initial

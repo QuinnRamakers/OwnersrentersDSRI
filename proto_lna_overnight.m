@@ -85,6 +85,7 @@ for a = 1:n_arm
     if isempty(sol)
         fprintf('\n--- solving %s (%s, %dx%dx%d) ---\n', name, typ, dims);
         if strcmp(typ, 'lna')
+            p.grid_type = 'lna';    % cube solve; asserted by the solver
             sol = solver.solve_lifecycle_lna(p, profile, shocks, ann_price);
         else
             sol = solver.solve_lifecycle(p, profile, shocks, ann_price);

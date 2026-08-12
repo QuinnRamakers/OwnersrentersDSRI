@@ -165,6 +165,7 @@ for i = 1:numel(strats)
     shocks    = grids.shock_grid(p);
     ann_price = pension.annuity_price(p, profile, shocks);
 
+    p.grid_type = 'lna';        % cube solve; asserted by the solver
     sol = solver.solve_lifecycle_lna(p, profile, shocks, ann_price);
 
     % Welfare anchor at the calibrated buffer b0, in u-coordinates:

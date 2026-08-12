@@ -88,6 +88,7 @@ for a = which(:).'
     shocks    = grids.shock_grid(p);
     ann_price = pension.annuity_price(p, profile, shocks);
 
+    p.grid_type = 'lna';        % cube solve; asserted by both LNA solvers
     if a == "free"
         sol = ovnf.solve_lifecycle_lna(p, profile, shocks, ann_price);
         sim = ovnf.paths_lna(p, profile, sol, ann_price, opts.n_sim, 20260511, p.b0);

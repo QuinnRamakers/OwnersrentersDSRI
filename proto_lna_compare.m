@@ -108,6 +108,7 @@ p_new.skip_polish = skip_polish;
 fprintf('\n--- NEW arm: %dx%dx%d = %d cube points, all feasible, skip_polish=%d ---\n', ...
         Nu(1), Nu(2), Nu(3), prod(Nu), skip_polish);
 
+p_new.grid_type = 'lna';        % cube solve; asserted by the solver
 sol_new = solver.solve_lifecycle_lna(p_new, profile, shocks, ann_price);
 fprintf('NEW solve: %.1f s (%s, %d workers)\n', sol_new.elapsed, ...
         sol_new.timing.pool.type, sol_new.timing.pool.num_workers);

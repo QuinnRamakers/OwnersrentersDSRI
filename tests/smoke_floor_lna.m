@@ -19,6 +19,7 @@ for phi = [0, 1e-6]
     q.u2_grid = linspace(0, 1, q.N_u2).';
     q.u3_grid = linspace(0, 1, q.N_u3).';
     q.gh_n = 3; q.N_c = 9; q.N_pi = 9;
+    q.grid_type = 'lna';
     q.phi_floor = phi;
 
     [~, mg, sl] = config.income_profile(q);

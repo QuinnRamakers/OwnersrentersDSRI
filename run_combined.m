@@ -138,6 +138,7 @@ for k = 1:numel(scenarios)
     if use_lna
         fprintf('  lna grid %dx%dx%d (%d states, all feasible), skip_polish=%d\n', ...
             p.N_u1, p.N_u2, p.N_u3, p.N_u1*p.N_u2*p.N_u3, p.skip_polish);
+        p.grid_type = 'lna';    % cube solve; asserted by the solver
         sol = solver.solve_lifecycle_lna(p, profile, shocks, ann_price);
     else
         sol = solver.solve_lifecycle(p, profile, shocks, ann_price);

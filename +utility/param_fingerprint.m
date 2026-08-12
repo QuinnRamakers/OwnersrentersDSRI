@@ -51,18 +51,39 @@ FLDS = {'N_lambda','N_sA','N_sH','gh_n','age0','T','retirement_age', ...
         'is_owner','r_m','N_mort','LTV', ...
         'sell_cost','replacement','delta','sigma_l_log','income_price_factor', ...
         'sex','kappa_base','franchise','tau_inc','tau_cg_bond','tau_cg_stock', ...
-        'tau_wealth','b0','b_alt','legacy_fill','tau_decum','phi_floor'};
+        'tau_wealth','b0','b_alt','legacy_fill','tau_decum','phi_floor', ...
+        'N_u1','N_u2','N_u3'};
 
 parts = cell(1, numel(FLDS));
 for i = 1:numel(FLDS)
     parts{i} = sprintf('%s=%.6g', FLDS{i}, field_or_nan(p, FLDS{i}));
 end
-s = strjoin(parts, ' ');
+s = sprintf('%s grid=%s', strjoin(parts, ' '), grid_tag(p));
 
 if nargout > 1
     arm = struct('kappa',        kappa_summary(p), ...
                  'choose_tau_S', field_or_nan(p, 'choose_tau_S'));
     arm.str = sprintf('kappa=%.6g choose_tau_S=%.6g', arm.kappa, arm.choose_tau_S);
+end
+end
+
+function g = grid_tag(p)
+%GRID_TAG  Which coordinate system the run was solved on.
+%
+%   The simplex (lambda, s_A, s_H) and the LNA cube (u1, u2, u3) are different
+%   discretisations of the same model, and a p-struct carries BOTH sets of grid
+%   vectors, so nothing else in p tells them apart. Without this tag a simplex
+%   file and an LNA file fingerprint identically and would pass the
+%   comparability gate against each other.
+%
+%   Callers declare it as p.grid_type. config.params defaults it to 'simplex';
+%   solver.solve_lifecycle_lna and ovnf.solve_lifecycle_lna assert it is 'lna',
+%   so a cube solve that forgot to declare itself fails rather than being
+%   silently labelled a simplex run. A p-struct predating the tag reads
+%   'unset', which matches neither.
+g = 'unset';
+if isfield(p, 'grid_type') && (ischar(p.grid_type) || isstring(p.grid_type))
+    g = char(p.grid_type);
 end
 end
 
