@@ -7,3 +7,4 @@ Connected to parallel pool with 16 workers.
 [1/2] new (rent estimate): mu_R_level = 0.0097, sigma_R_level = 0.0180
   t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7770, pi=0.9857  [79.6 s]
   t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5963, pi=1.0000  [95.1 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4833, pi=1.0000  [71.4 s]

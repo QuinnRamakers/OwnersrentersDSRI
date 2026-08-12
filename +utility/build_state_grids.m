@@ -47,8 +47,13 @@ if is_lna
     end
     assert(all(isfield(p, {'N_u1', 'N_u2', 'N_u3'})), 'build_state_grids:noN', ...
         'p has no N_u1/N_u2/N_u3 and no dims were supplied.');
-    p.u1_grid = linspace(0, 1, p.N_u1).';
-    p.u2_grid = linspace(0, 1, p.N_u2).';
+    % u1 = lambda concentrates at the low end (it falls from ~0.20 at the
+    % anchor to ~0.015 by retirement) and u2 = illiquid share of non-income
+    % wealth concentrates at the HIGH end, because u2 -> 1 is no liquid wealth,
+    % which is where the floor binds and where the two coordinate systems were
+    % measured to disagree. u3 is used fairly evenly and stays uniform.
+    p.u1_grid = cluster_lo(p.N_u1, spacing_pow(p));
+    p.u2_grid = cluster_hi(p.N_u2, spacing_pow(p));
     p.u3_grid = linspace(0, 1, p.N_u3).';
     p = config.insert_anchor_nodes(p);
     check_anchors(p, 'u1_grid', 'u2_grid', @(b, hm) 1 ./ (1 + hm + b), ...
@@ -59,9 +64,11 @@ else
     end
     assert(all(isfield(p, {'N_lambda', 'N_sA', 'N_sH'})), 'build_state_grids:noN', ...
         'p has no N_lambda/N_sA/N_sH and no dims were supplied.');
-    p.lambda_grid = linspace(0, 1, p.N_lambda).';
+    % Same idea on the simplex: lambda concentrates low, s_H high (large s_H
+    % with small lambda is the small-s_X corner). s_A stays uniform.
+    p.lambda_grid = cluster_lo(p.N_lambda, spacing_pow(p));
     p.sA_grid     = linspace(0, 1, p.N_sA).';
-    p.sH_grid     = linspace(0, 1, p.N_sH).';
+    p.sH_grid     = cluster_hi(p.N_sH, spacing_pow(p));
     p = config.insert_anchor_nodes(p);
     check_anchors(p, 'lambda_grid', 'sH_grid', @(b, hm) 1 ./ (1 + hm + b), ...
                   @(b, hm) hm ./ (1 + hm + b), 'lambda', 's_H');
@@ -83,4 +90,25 @@ for a = 1:2
         ['%s anchor %.17g (buffer %s = %.6g) is not an exact node after the ' ...
          'rebuild -- config.insert_anchor_nodes did not take.'], n2, a2, name{a}, b_a(a));
 end
+end
+
+function q = spacing_pow(p)
+%SPACING_POW  Node-clustering exponent. 1 = uniform (the default, and what
+%   every solve before this used, so behaviour is unchanged unless asked for).
+%   q > 1 concentrates nodes toward the end of the axis the caller cares about.
+q = 1;
+if isfield(p, 'grid_pow') && isnumeric(p.grid_pow) && isscalar(p.grid_pow)
+    q = max(1, double(p.grid_pow));
+end
+end
+
+function g = cluster_lo(n, q)
+% Nodes on [0,1] bunched toward 0. q = 1 reproduces linspace exactly.
+g = linspace(0, 1, n).' .^ q;
+end
+
+function g = cluster_hi(n, q)
+% Nodes on [0,1] bunched toward 1. q = 1 reproduces linspace exactly.
+g = 1 - (1 - linspace(0, 1, n).') .^ q;
+g = sort(g);
 end
