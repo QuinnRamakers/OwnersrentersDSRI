@@ -129,8 +129,8 @@ drift `mu_H_level` is the house's own return, not excess.
 | `sigma_S_level` | 0.16 | Equity return volatility |
 | `mu_H_level` | 0.027 | BIS Real Residential Property Price Index (NL), CPI-deflated |
 | `sigma_H_level` | 0.037 | Same |
-| `mu_R_level` | *(placeholder: `mu_H_level`)* | Real rent growth, mean — to be filled from the rent estimate |
-| `sigma_R_level` | *(placeholder: `sigma_H_level`)* | Real rent growth, vol — same |
+| `mu_R_level` | 0.0097 | Real rent growth, mean — own estimate. Consistent with the regulated-sector cap formula (CPI or wage growth, plus about 1pp) |
+| `sigma_R_level` | 0.018 | Real rent growth, vol — same estimate. See the caveat below |
 | `corr_SL`, `corr_HL`, `corr_SH` | 0 | Not yet estimated |
 
 The correlations are wired through a Cholesky factor in both `grids.shock_grid`
@@ -162,10 +162,29 @@ substituting one directly makes the renter's position worse rather than better.
 The rent drift is the single most consequential number for the renter arm. Rent
 compounds for all 76 model years while retirement income is flat in real terms
 after the 0.307 replacement drop, so the renter's burden is governed by the
-growth differential compounded over the 33 retirement years. At `mu_R_level =
-mu_H_level = 0.027` the median rent reaches roughly 240% of net retirement
-income at 67 and 570% at 100, which is what drives the zero-consumption
+growth differential compounded over the 33 retirement years. Setting
+`mu_R_level` to the house-price drift of 0.027 — which is what the model did
+before the processes were separated — puts median rent at roughly 240% of net
+AOW at 67 and 570% at 100, and that is what drove the zero-consumption
 incidence in the renter arms.
+
+Two caveats on `sigma_R_level`. Real rent growth is nominal less CPI, and the
+nominal increase is a capped policy number in a narrow band, so nearly all of
+the estimated variance is inflation surprise rather than rent-policy variation
+— an estimation window that excludes 2022-23 will understate it. And the model
+treats the shock as permanent, since log rent is a random walk, whereas the
+real-rent effect of an inflation surprise is largely clawed back the following
+year through the cap formula. Neither is worth much effort at this value: the
+implied 90% band on the rent level after 75 years is only 0.78x to 1.29x, so
+the drift does essentially all the work.
+
+The rent and house-price processes are not jointly consistent when extrapolated
+— 0.0097 against 0.027 implies the rent-to-price ratio falls from `alpha` = 6%
+to about 1.7% over the horizon. Nothing in the model requires consistency,
+because tenure is fixed at t = 1 and no household ever faces both processes, so
+no arbitrage condition is imposed or violated within any household's problem.
+They are calibrated to different observables over different samples. Worth
+stating pre-emptively in the paper rather than being asked.
 
 ## Housing
 
