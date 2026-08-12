@@ -91,6 +91,12 @@ kappa_t = p.kappa(min(t, numel(p.kappa)));
 sell_cost = 0; if isfield(p, 'sell_cost'), sell_cost = p.sell_cost; end
 h_beq_fac = is_owner * (1 - sell_cost);
 
+% Consumption floor as a share of W: phi_floor * lambda (config.params).
+% FLOOR_EPS guards the lambda = 0 grid nodes, which are not reachable states.
+phi_floor = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
+use_floor = phi_floor > 0;
+FLOOR_EPS = 1e-12;
+
 % Income contribution factor (take-home wage as fraction of Y)
 if is_retired
     contrib_factor = (1 - p.delta) * net_inc;            % AOW, taxed as income
@@ -110,7 +116,9 @@ if t == p.T
         else
             LW_W = sX + contrib_factor * lam - h_cost_rate * sH;
         end
-        if LW_W <= 1e-12
+        if use_floor
+            LW_W = max(LW_W, max(phi_floor * lam, FLOOR_EPS));
+        elseif LW_W <= 1e-12
             V_t(k)    = -1e15;
             c_pol(k)  = 1e-6;
             pi_pol(k) = 0;
@@ -220,16 +228,37 @@ parfor k = 1:n_states
         A_next_pre_return = sA + kappa_t * lam;
     end
 
-    if LW_W <= 1e-9
-        V_flat(k) = -1e15; c_flat(k) = 1e-6; pi_flat(k) = 0;
-        continue
-    end
-
     A_next_W = R_A * A_next_pre_return;      % n_shock x 1
     H_next_W = sH * R_H;                     % n_shock x 1
     Y_next_W = G_next * lam;                 % n_shock x 1
+    F_W      = max(phi_floor * lam, FLOOR_EPS);   % consumption floor, share of W
 
-    % Scale-aware c lower bound
+    if ~use_floor
+        if LW_W <= 1e-9
+            V_flat(k) = -1e15; c_flat(k) = 1e-6; pi_flat(k) = 0;
+            continue
+        end
+    elseif LW_W <= F_W
+        % Floor absorbs everything: consume the floor, save nothing, enter
+        % next period with X = 0. See solver.bellman_step for the rationale.
+        denAH0 = A_next_W + H_next_W;
+        W_g0   = denAH0 + Y_next_W;
+        u1_0   = max(min(Y_next_W ./ W_g0, 1), 0);
+        u2_0   = max(min(denAH0 ./ max(denAH0, 1e-12), 1), 0);
+        u3_0   = max(min(A_next_W ./ max(denAH0, 1e-12), 1), 0);
+        z_0    = pp_z(u1_0, u2_0, u3_0);
+        val    = F_W ^ one_m_g / one_m_g ...
+                 + beta_eff * sum(w_join .* ((W_g0 .* z_0) .^ one_m_g / one_m_g));
+        if beq_eff > 0
+            beq_base = max(h_beq_fac * H_next_W, FLOOR_EPS);
+            val = val + beq_eff * sum(w_join .* (beq_base .^ one_m_g / one_m_g));
+        end
+        V_flat(k) = val; c_flat(k) = 1; pi_flat(k) = 0;
+        continue
+    end
+
+    % Scale-aware c lower bound. The floor is a guarantee, not a mandate, so
+    % it is not imposed here -- see solver.bellman_step.
     c_floor = max(1e-3, 0.01 / LW_W);
     c_floor = min(c_floor, 0.5);
     c_grid  = linspace(c_floor, 1 - 1e-6, NC).';

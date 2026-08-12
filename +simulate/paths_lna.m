@@ -54,6 +54,7 @@ bequest_path = zeros(N, 1);
 n_clamp_c  = 0;
 n_clamp_pi = 0;
 n_negLW    = 0;
+phi_floor  = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
 
 % Policy interpolants directly on the cube grid -- all nodes are feasible.
 pp_c  = cell(T, 1);  pp_pi = cell(T, 1);
@@ -149,18 +150,21 @@ for t = 1:T
     n_clamp_pi = n_clamp_pi + sum(abs(pi_ - pi_raw) > 1e-10);
     c_path(:,t)  = cf;
     pi_path(:,t) = pi_;
+    F_t          = phi_floor * Y_path(:,t);
     C_path(:,t)  = cf .* max(LW, 0);
+    short        = LW < F_t;
+    C_path(short, t) = F_t(short);
 
     if t == T
         % Bequest: liquid wealth post-consumption + housing net of the
         % seller transaction cost (if owner). Pension A is forfeited at
         % death (annuity convention).
-        bequest_path = max(0, (1 - cf) .* LW) + h_beq_fac * H_path(:,t);
+        bequest_path = max(LW - C_path(:,t), 0) + h_beq_fac * H_path(:,t);
         break
     end
 
     % No-borrow safety clamp on liquid post-saving
-    X_post = max((1 - cf) .* LW, 0);
+    X_post = max(LW - C_path(:,t), 0);
     n_negLW = n_negLW + sum(LW < 0);
 
     % Returns

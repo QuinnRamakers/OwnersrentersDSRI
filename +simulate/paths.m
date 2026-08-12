@@ -69,6 +69,11 @@ tau_A_path = zeros(N, T-1);
 n_clamp_c  = 0;
 n_clamp_pi = 0;
 n_negLW    = 0;
+n_floored  = 0;
+
+% Consumption floor as a fraction of gross income (config.params). Absent
+% field => no floor, reproducing the pre-floor model exactly.
+phi_floor = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
 
 % Nearest-feasible-neighbor map depends only on the fixed simplex grid, not
 % on t or on which policy array -- build it once and reuse it, instead of
@@ -106,9 +111,28 @@ sH_path(:,1)  = H_path(:,1) ./ W_path(:,1);
 % Independent standard-normal draws, then Cholesky-correlated (income L,
 % stock S, housing H) with the same Sigma used by grids.shock_grid -- no
 % resampling, just a linear transform of the same three draws.
-eps_S_ind = randn(N, T-1);
-eps_Y_ind = randn(N, T-1);
-eps_H_ind = randn(N, T-1);
+% Shock source. The default draws continuous standard normals, which is the
+% right thing for reporting: it is the process the calibration describes.
+%
+% p.gh_shocks = true instead samples the Gauss-Hermite abscissas with their
+% quadrature weights -- the discrete distribution the SOLVER integrates over.
+% The two differ: GH nodes have bounded support, so the continuous draws reach
+% states the solver never contemplates, and with utility unbounded below that
+% shows up as an arbitrarily large gap between simulated E[U] and the value
+% function. Setting this true removes that difference, so any remaining gap is
+% interpolation and Monte Carlo error alone. It is a validation switch, not a
+% modelling choice -- see tests/smoke_consumption_floor.
+gh_shocks = isfield(p, 'gh_shocks') && p.gh_shocks;
+if gh_shocks
+    sg = grids.shock_grid(p);
+    eps_S_ind = gh_sample(N, T-1, sg.z, sg.wz);
+    eps_Y_ind = gh_sample(N, T-1, sg.z, sg.wz);
+    eps_H_ind = gh_sample(N, T-1, sg.z, sg.wz);
+else
+    eps_S_ind = randn(N, T-1);
+    eps_Y_ind = randn(N, T-1);
+    eps_H_ind = randn(N, T-1);
+end
 
 Sigma_shock = [1,           p.corr_SL, p.corr_HL; ...
                p.corr_SL,   1,         p.corr_SH; ...
@@ -170,18 +194,27 @@ for t = 1:T
     n_clamp_pi = n_clamp_pi + sum(abs(pi_ - pi_raw) > 1e-10);
     c_path(:,t)  = cf;
     pi_path(:,t) = pi_;
+    % Consumption floor, the same rule solver.bellman_step optimises against.
+    % It is a guarantee, not a mandate: a household whose own liquid wealth
+    % already covers the floor chooses freely and may consume below it. Only
+    % when own resources fall short does the state top consumption up to the
+    % floor, and then nothing is saved -- so the transfer cannot be banked.
+    F_t          = phi_floor * Y_path(:,t);
     C_path(:,t)  = cf .* max(LW, 0);
+    short        = LW < F_t;
+    C_path(short, t) = F_t(short);
+    n_floored    = n_floored + sum(short);
 
     if t == T
         % Bequest: liquid wealth post-consumption + housing net of the
         % seller transaction cost (if owner). Pension A is forfeited at
         % death (annuity convention).
-        bequest_path = max(0, (1 - cf) .* LW) + h_beq_fac * H_path(:,t);
+        bequest_path = max(LW - C_path(:,t), 0) + h_beq_fac * H_path(:,t);
         break
     end
 
     % No-borrow safety clamp on liquid post-saving
-    X_post = max((1 - cf) .* LW, 0);
+    X_post = max(LW - C_path(:,t), 0);
     n_negLW = n_negLW + sum(LW < 0);
 
     % Returns
@@ -248,7 +281,7 @@ sim.ages = (p.age0 : p.age0 + p.T - 1);
 sim.N = N;
 sim.is_owner = is_owner;
 sim.diagnostics = struct('n_clamp_c', n_clamp_c, 'n_clamp_pi', n_clamp_pi, ...
-                         'n_negLW', n_negLW);
+                         'n_negLW', n_negLW, 'n_floored', n_floored);
 end
 
 function [bad_lin, nn_lin] = build_nan_fill_map(mask_ok)
@@ -276,4 +309,16 @@ function Z = apply_nan_fill(M, bad_lin, nn_lin)
 Z = M;
 if isempty(bad_lin), return; end
 Z(bad_lin) = M(nn_lin);
+end
+
+function Z = gh_sample(n_row, n_col, z, w)
+%GH_SAMPLE  Draw from the discrete Gauss-Hermite standard-normal distribution.
+%   Inverse-CDF sampling of the abscissas z with probabilities w (which sum to
+%   1). Toolbox-free by design, matching the rest of the package.
+edges = [0, cumsum(w(:).')];
+edges(end) = 1;
+u = rand(n_row, n_col);
+[~, idx] = histc(u, edges);              %#ok<HISTC> -- discretize needs a toolbox
+idx = min(max(idx, 1), numel(z));
+Z = reshape(z(idx), n_row, n_col);
 end

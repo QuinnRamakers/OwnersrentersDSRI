@@ -114,6 +114,17 @@ kappa_t = p.kappa(min(t, numel(p.kappa)));
 sell_cost = 0; if isfield(p, 'sell_cost'), sell_cost = p.sell_cost; end
 h_beq_fac = is_owner * (1 - sell_cost);
 
+% Consumption floor as a share of W. The calibrated floor is a fraction of
+% gross income (config.params), and lambda = Y/W, so normalised it is
+% phi_floor * lambda -- homothetic, no extra state. Guarded below by
+% FLOOR_EPS: lambda = 0 is a grid node but not a reachable state (income is
+% strictly positive), and without the guard those nodes would floor at zero
+% and carry u = -inf. Absent field => no floor, reproducing the pre-floor
+% model exactly.
+phi_floor = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
+use_floor = phi_floor > 0;
+FLOOR_EPS = 1e-12;
+
 % Income contribution factor (take-home wage as fraction of Y)
 if is_retired
     contrib_factor = (1 - p.delta) * net_inc;            % AOW, taxed as income
@@ -136,7 +147,11 @@ if t == p.T
                 else
                     LW_W = sX + contrib_factor * lam - h_cost_rate * sH;
                 end
-                if LW_W <= 1e-12
+                if use_floor
+                    % Own resources short of the floor: the shortfall is
+                    % funded from outside, so LW_W <= 0 is not a sentinel.
+                    LW_W = max(LW_W, max(phi_floor * lam, FLOOR_EPS));
+                elseif LW_W <= 1e-12
                     V_t(il, ia, ih)    = -1e15;
                     c_pol(il, ia, ih)  = 1e-6;
                     pi_pol(il, ia, ih) = 0;
@@ -298,15 +313,50 @@ parfor k = 1:n_feas
         A_next_pre_return = sA + kappa_t * lam;
     end
 
-    if LW_W <= 1e-9
-        V_flat(k) = -1e15; c_flat(k) = 1e-6; pi_flat(k) = 0; tau_flat(k) = tau;
+    H_next_W = sH * R_H;                     % n_shock x 1
+    Y_next_W = G_next * lam;                 % n_shock x 1
+    F_W      = max(phi_floor * lam, FLOOR_EPS);   % consumption floor, share of W
+
+    if ~use_floor
+        % No floor: the legacy sentinel, kept so phi_floor = 0 reproduces the
+        % pre-floor model exactly for reruns of old calibrations.
+        if LW_W <= 1e-9
+            V_flat(k) = -1e15; c_flat(k) = 1e-6; pi_flat(k) = 0; tau_flat(k) = tau;
+            continue
+        end
+    elseif LW_W <= F_W
+        % The floor absorbs everything the household has: it consumes exactly
+        % the floor, saves nothing, and enters next period with X = 0. The
+        % continuation still carries the DC balance, housing and income, so
+        % this is an ordinary value that varies across states -- not the flat
+        % sentinel it replaces, which gave the whole region no gradient.
+        % Only tau is still worth choosing here.
+        u_f = F_W ^ one_m_g / one_m_g;
+        best = -inf; j_best = 1;
+        for j = 1:NTg
+            A_next_W_j = R_A_all(:, j) * A_next_pre_return;
+            W_g   = A_next_W_j + H_next_W + Y_next_W;
+            lam_n = max(min(Y_next_W ./ W_g, 1), 0);
+            sA_n  = max(min(A_next_W_j ./ W_g, 1), 0);
+            sH_n  = max(min(H_next_W ./ W_g, 1), 0);
+            z_n   = pp_z(lam_n, sA_n, sH_n);
+            val   = u_f + beta_eff * sum(w_join .* ((W_g .* z_n) .^ one_m_g / one_m_g));
+            if beq_eff > 0
+                beq_base = max(h_beq_fac * H_next_W, FLOOR_EPS);
+                val = val + beq_eff * sum(w_join .* (beq_base .^ one_m_g / one_m_g));
+            end
+            if val > best, best = val; j_best = j; end
+        end
+        V_flat(k) = best; c_flat(k) = 1; pi_flat(k) = 0; tau_flat(k) = tau_grid(j_best);
         continue
     end
 
-    H_next_W = sH * R_H;                     % n_shock x 1
-    Y_next_W = G_next * lam;                 % n_shock x 1
-
-    % Scale-aware c lower bound
+    % Scale-aware c lower bound. The floor is NOT imposed here: it is a
+    % guarantee, not a consumption mandate. A household whose own resources
+    % already exceed the floor is free to consume below it and save the rest,
+    % and only the branch above -- where own resources fall short -- pays the
+    % floor. Forcing c >= F_W/LW_W here instead would make a high floor a
+    % welfare LOSS rather than a transfer.
     c_floor = max(1e-3, 0.01 / LW_W);
     c_floor = min(c_floor, 0.5);
     c_grid  = linspace(c_floor, 1 - 1e-6, NC).';

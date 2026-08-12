@@ -1,0 +1,80 @@
+﻿compare_rent_process
+  grid [25 15 15], gh_n = 5, 20000 paths, seed 20260812
+
+[1/2] old (house process): mu_R_level = 0.0270, sigma_R_level = 0.0370
+Starting parallel pool (parpool) using the 'Processes' profile ...
+Connected to parallel pool with 16 workers.
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.7815, pi=0.9619  [22.6 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.5967, pi=1.0000  [3.0 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4758, pi=1.0000  [2.8 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4230, pi=1.0000  [2.8 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1533, pi=1.0000  [2.7 s]
+  t=30 (age 54): c@(lam=0.2,sA=0.2,sH=0.4)=0.1477, pi=1.0000  [2.8 s]
+  t=20 (age 44): c@(lam=0.2,sA=0.2,sH=0.4)=0.1484, pi=0.9979  [2.8 s]
+  t=10 (age 34): c@(lam=0.2,sA=0.2,sH=0.4)=0.1596, pi=0.9831  [2.7 s]
+  t= 1 (age 25): c@(lam=0.2,sA=0.2,sH=0.4)=0.2113, pi=1.0000  [2.8 s]
+  done in 4.0 min
+
+[2/2] new (rent estimate): mu_R_level = 0.0097, sigma_R_level = 0.0180
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.7823, pi=0.9639  [2.8 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.5994, pi=1.0000  [2.8 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4756, pi=1.0000  [2.8 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4201, pi=1.0000  [2.8 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1674, pi=1.0000  [2.8 s]
+  t=30 (age 54): c@(lam=0.2,sA=0.2,sH=0.4)=0.1730, pi=1.0000  [2.7 s]
+  t=20 (age 44): c@(lam=0.2,sA=0.2,sH=0.4)=0.1912, pi=0.9990  [2.7 s]
+  t=10 (age 34): c@(lam=0.2,sA=0.2,sH=0.4)=0.2168, pi=1.0000  [2.8 s]
+  t= 1 (age 25): c@(lam=0.2,sA=0.2,sH=0.4)=0.2816, pi=1.0000  [2.8 s]
+  done in 3.5 min
+
+fingerprints differ (arms are separate models, no CEV between them): 1
+
+=== Rent burden: median rent as a share of net AOW, and of net AOW+annuity ===
+  age |   rent old   rent new |  ofAOW o  ofAOW n |  ofRes o  ofRes n
+   25 |      10657      10657 |      39%      39% |      39%      39%
+   45 |      17911      12881 |      36%      26% |      36%      26%
+   66 |      30819      15699 |      72%      37% |      72%      37%
+   67 |      31658      15856 |     241%     121% |      72%      36%
+   75 |      38943      17100 |     296%     130% |      88%      39%
+   85 |      50561      18814 |     383%     143% |     115%      43%
+   95 |      65417      20664 |     499%     157% |     149%      47%
+  100 |      74525      21672 |     567%     164% |     170%      49%
+
+=== Zero-consumption incidence (share of surviving households) ===
+  age |        old        new
+   25 |       0.0%       0.0%
+   45 |       0.3%       0.0%
+   66 |      10.2%       2.1%
+   67 |      10.2%       0.8%
+   75 |      19.7%       1.4%
+   85 |      47.5%       3.3%
+   95 |      72.8%       5.8%
+  100 |      81.7%       7.1%
+  all |      20.5%       1.6%
+
+=== Behaviour: median consumption, liquid buffer, DC balance ===
+  age |     C old     C new |     X old     X new |     A old     A new
+   25 |      3132      5060 |      3511      3511 |         0         0
+   45 |     18460     27936 |    298618    203840 |    252271    252271
+   66 |     30532     42915 |    410485    235555 |    797023    797023
+   67 |     34253     42705 |    398285    224136 |    825748    825748
+   75 |     34750     40236 |    271684    163542 |    581640    581640
+   85 |      3077     39388 |      6425     65673 |    315601    315601
+   95 |         0     23850 |         0      2255 |    143504    143504
+  100 |         0     23183 |         0       717 |     48483     48483
+
+=== Portfolio: median liquid equity share pi ===
+  age |       old       new
+   25 |    1.000    1.000
+   45 |    0.525    0.552
+   66 |    0.664    0.900
+   67 |    0.478    0.854
+   75 |    0.435    0.824
+   85 |    0.422    0.857
+
+=== Lifetime consumption, discounted at beta and survival ===
+  old (house process)    mean PV(C) =     445639   mean min C over life =      515
+  new (rent estimate)    mean PV(C) =     602256   mean min C over life =     4275
+
+wrote rent_process_comparison.mat and fig_rent_process_comparison.png
+Parallel pool using the 'Processes' profile is shutting down.

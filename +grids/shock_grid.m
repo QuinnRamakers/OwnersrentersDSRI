@@ -63,6 +63,13 @@ shocks.joint.R_S        = exp(p.mu_S + p.sigma_S * zS);
 shocks.joint.eps_Y_unit = zL;
 shocks.joint.R_H        = exp(mu_H + sigma_H * zH);
 shocks.joint.w          = w_joint;
+
+% The underlying standard-normal quadrature nodes and their probabilities
+% (sum(wz) = 1). simulate.paths can sample from these instead of drawing
+% continuous normals, which makes the panel and the solver share one shock
+% distribution -- the only way the two can be checked against each other.
+shocks.z  = z;
+shocks.wz = wz;
 end
 
 function [x, w] = gauss_hermite(n)

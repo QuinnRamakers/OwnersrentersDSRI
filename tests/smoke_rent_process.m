@@ -33,11 +33,16 @@ legacy = rmfield(pr, {'mu_R', 'sigma_R', 'mu_R_level', 'sigma_R_level'});
 n_fail = n_fail + check('legacy p-struct falls back to housing', ...
                         isequal([ml sl], [p.mu_H p.sigma_H]));
 
-% (b) no-op at the defaults
+% (b) the calibrated rent process really is distinct from the house process,
+% and setting it equal collapses the two tenures back onto one process
 s_r = grids.shock_grid(pr);
 s_o = grids.shock_grid(po);
-n_fail = n_fail + check('defaults leave the two tenures identical', ...
-                        isequal(s_r.joint.R_H, s_o.joint.R_H) && isequal(s_r.R_H, s_o.R_H));
+n_fail = n_fail + check('calibrated rent process differs from the house process', ...
+                        ~isequal(s_r.joint.R_H, s_o.joint.R_H));
+p_same = set_rent(pr, p.mu_H_level, p.sigma_H_level);
+s_same = grids.shock_grid(p_same);
+n_fail = n_fail + check('equating the two calibrations collapses them onto one process', ...
+                        isequal(s_same.joint.R_H, s_o.joint.R_H) && isequal(s_same.R_H, s_o.R_H));
 
 % (c) the split bites once the rent figures move
 pr2 = set_rent(pr, 0.005, 0.02);
@@ -54,13 +59,16 @@ base.legacy_fill = false;
 base = utility.build_state_grids(base, [10 8 8], 3);
 base.N_c = 9; base.N_pi = 9;
 
-[rent_hi, ruin_hi] = solve_and_sim(base);                       % default drift
-[rent_lo, ruin_lo] = solve_and_sim(set_rent(base, 0.005, 0.02));  % lower drift
+% Distress is measured as how often the consumption floor binds. C = 0 is
+% extinct once the floor is on, so the old zero-consumption count no longer
+% separates anything -- see tests/smoke_consumption_floor.
+[rent_hi, ruin_hi] = solve_and_sim(set_rent(base, 0.027, 0.037));  % house-price drift
+[rent_lo, ruin_lo] = solve_and_sim(set_rent(base, 0.005, 0.02));   % lower drift
 
-fprintf('  default drift: rent @67 = %8.0f, C=0 in %.1f%% of household-years\n', rent_hi, 100*ruin_hi);
-fprintf('  0.5%% drift   : rent @67 = %8.0f, C=0 in %.1f%% of household-years\n', rent_lo, 100*ruin_lo);
+fprintf('  2.7%% drift: rent @67 = %8.0f, floor binds in %.1f%% of household-years\n', rent_hi, 100*ruin_hi);
+fprintf('  0.5%% drift: rent @67 = %8.0f, floor binds in %.1f%% of household-years\n', rent_lo, 100*ruin_lo);
 n_fail = n_fail + check('lower rent drift lowers the rent path', rent_lo < rent_hi);
-n_fail = n_fail + check('lower rent drift lowers zero-consumption incidence', ruin_lo < ruin_hi);
+n_fail = n_fail + check('lower rent drift lowers distress incidence', ruin_lo < ruin_hi);
 
 if n_fail == 0
     fprintf('smoke_rent_process: all checks passed\n');
@@ -86,7 +94,12 @@ ann_price = pension.annuity_price(q, profile, shocks);
 sol       = solver.solve_lifecycle(q, profile, shocks, ann_price);
 sim       = simulate.paths(q, profile, sol, ann_price, 1500, 7, q.b0);
 rent_ret  = median(q.alpha * sim.H(:, q.t_ret));
-ruin      = mean(sim.C(:) <= 0);
+phi       = 0; if isfield(q, 'phi_floor'), phi = q.phi_floor; end
+if phi > 0
+    ruin = mean(sim.LW(:) < phi * sim.Y(:));   % floor binds
+else
+    ruin = mean(sim.C(:) <= 0);                % pre-floor convention
+end
 end
 
 function bad = check(name, ok)

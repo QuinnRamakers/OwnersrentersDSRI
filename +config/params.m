@@ -112,6 +112,36 @@ p.sell_cost     = 0.025;     % seller transaction cost at bequest; inert while c
 p.mu_R_level    = 0.0097;    % real rent growth, mean
 p.sigma_R_level = 0.018;     % real rent growth, vol
 
+% Consumption floor, as a fraction of CURRENT GROSS INCOME Y_t. When a
+% household's own liquid resources fall short of phi_floor * Y_t the shortfall
+% is paid from outside, it consumes the floor and saves nothing that period.
+% It is a guarantee, not a mandate: a household that can already afford the
+% floor is free to consume below it and save the difference.
+%
+% phi_floor = 0 switches the floor off and restores the pre-floor sentinel
+% (V = -1e15 where outgoings exceed resources), so old calibrations rerun
+% unchanged. Any positive value removes the sentinel entirely.
+%
+% Expressed against income rather than as a euro level so the model stays
+% homothetic: normalised, the floor is phi_floor * lambda, a function of the
+% existing state, so no fourth state variable is needed. In retirement Y is
+% constant in real terms, so it is a level floor exactly where it binds.
+%
+% Its job is to make C = 0 unreachable. Utility is unbounded below at
+% gamma > 1, so a state consuming exactly zero carries u = -inf, and any arm
+% that can reach one has E[U] = -inf and cannot be ranked against another.
+%
+% At 1e-6 the floor is barely above zero, which is deliberate: ruin stays
+% catastrophic. Be aware of what that implies for welfare. u(1e-6) exceeds
+% u(30000) by 8e41 while the whole beta-and-survival discount spans 1.5e3, so
+% in double precision a single floored year annihilates an entire lifetime of
+% ordinary consumption. E[U] then ranks arms purely by how often the floor
+% binds. That is a legitimate criterion, and it is the one in force at this
+% value -- it is not a criterion that can separate arms differing only in
+% their consumption paths. Raising phi_floor is the only change needed:
+% phi_floor = 1 puts it at the AOW, the Dutch social minimum.
+p.phi_floor = 1e-6;
+
 % Numerical: 3D state grid (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1.
 % gh_n^3 = 343 joint Gauss-Hermite shock nodes per state.
 p.gh_n     = 7;
