@@ -166,12 +166,10 @@ p.grid_type = 'simplex';
 % rate as welfare-comparable even though they agree.
 p.polish_ver = 2;
 
-% Seed search for the polish. 'none' drops the NC x NP tensor entirely and
-% relies on the warm start plus two fixed points, which is the architecture the
-% coauthor's solver uses -- one fmincon per state from a guess, no grid search.
-% 'full' keeps the tensor. Only the glide branch honours this; free-tau always
-% keeps the tensor, since its dominance guarantee rests on the glide slice's
-% grid maximum.
+% Seed search for the polish. 'none' drops the NC x NP grid search and starts
+% the optimiser straight from the previous year's policy -- the architecture
+% the coauthor's solver uses. 'full' keeps the grid search. Ignored unless
+% polish_ver >= 2, since without a warm start there is nothing to start from.
 p.grid_mode = 'none';
 
 % Numerical: 3D state grid (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1.

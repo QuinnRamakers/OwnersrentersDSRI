@@ -318,22 +318,19 @@ end
 NC = 41; if isfield(p, 'N_c'),  NC = p.N_c;  end
 NP = 41; if isfield(p, 'N_pi'), NP = p.N_pi; end
 
-% Seed-search mode. The tensor search is the dominant per-state cost, and with
-% a polish that actually works plus a t+1 warm start it may no longer need to
-% be this fine -- the coauthor's code has no tensor at all, one fmincon from a
-% warm start per state.
-%   'full'   (default) the NC x NP tensor -- unchanged behaviour
-%   'coarse' the same tensor at 9 x 9, as a cheap bracket for the polish
-%   'none'   no tensor: candidates are the t+1 policy plus two fixed points,
-%            evaluated directly, and the polish does the rest
-% Only the GLIDE branch honours this. Free-tau keeps the full tensor: its
-% dominance guarantee is built on the glide slice's grid maximum, and weakening
-% the seed would put that at risk for no measured benefit yet.
-grid_mode = 'full'; if isfield(p, 'grid_mode'), grid_mode = char(p.grid_mode); end
-if strcmp(grid_mode, 'coarse') && ~optimise_tau
-    NC = 9; NP = 9;
-end
-skip_tensor = strcmp(grid_mode, 'none') && ~optimise_tau;
+% Seed search for the polish.
+%   'full'  the NC x NP tensor, then polish from its best point
+%   'none'  no tensor: polish straight from the t+1 policy at this node
+%
+% 'none' needs a warm start to start FROM, so it is only honoured when warm
+% starts are on (polish_ver >= 2). That keeps polish_ver = 1 exactly the
+% original solver whatever grid_mode says.
+%
+% Only the glide branch honours this. Free-tau always keeps the tensor: its
+% guarantee of never doing worse than the fixed glide path is built on the
+% glide slice's grid maximum.
+grid_mode   = 'full'; if isfield(p, 'grid_mode'), grid_mode = char(p.grid_mode); end
+skip_tensor = strcmp(grid_mode, 'none') && ~optimise_tau && use_warm;
 
 pi_grid = linspace(0, 1, NP).';
 R_X_all = (1 - pi_grid) * Rf_at + pi_grid * R_S_at.';     % NP x n_shock (after-tax)
@@ -465,12 +462,14 @@ parfor k = 1:n_feas
     c_seed = c_grid(1); pi_seed = 0;
 
     if skip_tensor
-        % No tensor. Evaluate the t+1 policy at this node plus two fixed
-        % points -- one central, one high-equity/low-consumption -- and take
-        % the best as the polish seed and the fallback value.
-        cand = [0.5, 0.5; 0.15, 1.0];
+        % No tensor: the t+1 policy at this node is the seed. Where there is
+        % none -- an unsolved or infeasible node at t+1 -- fall back to two
+        % fixed points, one central and one high-equity/low-consumption, so
+        % the polish always has somewhere to start.
         if isfinite(c_warm) && isfinite(pi_warm)
-            cand = [min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1); cand];
+            cand = [min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
+        else
+            cand = [0.5, 0.5; 0.15, 1.0];
         end
         for s = 1:size(cand, 1)
             v = bellman_rhs_z3(cand(s,1), cand(s,2), tau, LW_W, Rf_at, R_S_at, ...
@@ -663,18 +662,10 @@ parfor k = 1:n_feas
                                           A_next_W, H_next_W, Y_next_W, ...
                                           w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
 
-        % Best seed (tensor argmax, or the candidate scan when the tensor is
-        % off), plus the t+1 policy at this node when it is available.
+        % Best seed: the tensor argmax, or the warm start when the tensor is
+        % off. With the tensor on, add the t+1 policy as a second start.
         starts = [c_seed, pi_seed];
-        % Two fixed points, ONLY when there is no tensor. They exist to stand
-        % in for the tensor argmax, and with a full tensor they are redundant:
-        % measured over full solves, adding them changed nothing while costing
-        % two fmincon calls per state. Their value showed up only in the
-        % no-tensor mode, where the seed is otherwise just the warm start.
-        if skip_tensor
-            starts = [starts; 0.5, 0.5; 0.15, 1.0];
-        end
-        if isfinite(c_warm) && isfinite(pi_warm)
+        if ~skip_tensor && isfinite(c_warm) && isfinite(pi_warm)
             starts = [starts; min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
         end
         starts(:,1) = min(max(starts(:,1), c_floor), 1 - 1e-6);

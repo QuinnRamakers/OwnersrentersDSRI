@@ -106,6 +106,11 @@ function p = base_params()
 p = config.params();
 p.is_owner    = false;
 p.legacy_fill = false;
+% Pinned to the grid search deliberately. This file tests the SCALING and WARM
+% START in isolation, so both versions must use the same seed search; picking
+% up the 'none' default would compare v1-with-grid-search against
+% v2-without and measure the wrong thing.
+p.grid_mode   = 'full';
 p = utility.build_state_grids(p, [12 10 10], 3);
 p.N_c = 15; p.N_pi = 15;
 end
