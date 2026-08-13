@@ -41,11 +41,25 @@ pool = gcp();
 parfevalOnAll(pool, @() warning('off', 'MATLAB:nearlySingularMatrix'), 0);
 parfevalOnAll(pool, @() warning('off', 'MATLAB:singularMatrix'), 0);
 
+% Resume: configs run strictly in order and each is saved as it finishes, so
+% anything already in grid_study.mat is a prefix of cfg and can be skipped.
 R = struct();
+if isfile('grid_study.mat')
+    S = load('grid_study.mat', 'R');
+    if isfield(S, 'R') && numel(S.R) >= 1 && isfield(S.R, 'tag')
+        R = S.R;
+        fprintf('resuming: %d configuration(s) already on disk (%s)\n\n', ...
+                numel(R), strjoin({R.tag}, ', '));
+    end
+end
 AGES = [25 35 45 55 67 85];
 
 for k = 1:numel(cfg)
     c = cfg(k);
+    if k <= numel(R) && isfield(R, 'tag') && strcmp(R(k).tag, c.tag)
+        fprintf('[%d/%d] %-12s already done, skipping\n', k, numel(cfg), c.tag);
+        continue
+    end
     fprintf('[%d/%d] %-12s %-7s dims=%s pow=%.1f\n', k, numel(cfg), c.tag, c.grid, ...
             mat2str(c.dims), c.pow);
     t0 = tic;
