@@ -1,0 +1,33 @@
+﻿Starting parallel pool (parpool) using the 'Processes' profile ...
+Connected to parallel pool with 16 workers.
+smoke_polish_v2
+       median |V| = 0.8633 -> obj_scale = 1.158
+  ok   (d) scaling moves the objective onto an O(1) scale
+  ok   (a) polish_ver=1 ignores warm starts entirely
+       no warm start: max rel gain 0.487, worst rel loss -5.48e-05
+  ok   (b) scaling alone stays within 1e-3 rel of v1
+       with warm start: max rel gain 0.487, worst rel loss -5.35e-16, improved at 92/323 states
+  ok   (c) complete v2 weakly dominates v1 (tol 1e-9 rel)
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.7929, pi=0.9361  [1.5 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.6091, pi=1.0000  [0.7 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4808, pi=0.9990  [0.4 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4211, pi=0.9914  [0.4 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1994, pi=1.0000  [0.4 s]
+  t=30 (age 54): c@(lam=0.2,sA=0.2,sH=0.4)=0.2007, pi=1.0000  [1.0 s]
+  t=20 (age 44): c@(lam=0.2,sA=0.2,sH=0.4)=0.2353, pi=1.0000  [0.4 s]
+  t=10 (age 34): c@(lam=0.2,sA=0.2,sH=0.4)=0.2775, pi=1.0000  [0.3 s]
+  t= 1 (age 25): c@(lam=0.2,sA=0.2,sH=0.4)=0.3389, pi=0.9757  [0.3 s]
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.7929, pi=0.9361  [0.5 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.6091, pi=1.0000  [0.6 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4808, pi=0.9990  [0.8 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4211, pi=0.9913  [0.7 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1994, pi=1.0000  [0.6 s]
+  t=30 (age 54): c@(lam=0.2,sA=0.2,sH=0.4)=0.2007, pi=1.0000  [0.6 s]
+  t=20 (age 44): c@(lam=0.2,sA=0.2,sH=0.4)=0.2353, pi=1.0000  [0.6 s]
+  t=10 (age 34): c@(lam=0.2,sA=0.2,sH=0.4)=0.2775, pi=1.0000  [0.6 s]
+  t= 1 (age 25): c@(lam=0.2,sA=0.2,sH=0.4)=0.3389, pi=0.9757  [0.7 s]
+       full solve: v1 Vt0_b0=-231351  v2 Vt0_b0=-231347  CEV +0.0004%
+  ok   (e) both versions solve and V is finite
+  ok   polish_ver is in the fingerprint
+smoke_polish_v2: all checks passed
+Parallel pool using the 'Processes' profile is shutting down.

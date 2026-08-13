@@ -631,8 +631,14 @@ end % if RUN_ALL_SCENARIOS
 
 % Look up indices dynamically so this works whether RUN_ALL_SCENARIOS loaded
 % 2 or 5 scenarios.
-renter_idx = find(strcmp(short_names, 'full_renter'));
-owner_idx  = find(strcmp(short_names, 'full_owner'));
+% Prefix match, not equality: the 2-file branch appends the arm, so
+% short_names are 'full_renter_glide' / 'full_owner_glide' there and exact
+% equality never matched. This section was therefore skipped for every
+% arm-tagged run -- with both tenures loaded and a message claiming they
+% were not -- so fig_renter_vs_owner only ever appeared under
+% RUN_ALL_SCENARIOS, where the names happen to be bare.
+renter_idx = find(startsWith(short_names, 'full_renter'), 1);
+owner_idx  = find(startsWith(short_names, 'full_owner'),  1);
 if isempty(renter_idx) || isempty(owner_idx)
 fprintf('Skipping renter-vs-owner comparison: need both scenarios loaded.\n');
 else

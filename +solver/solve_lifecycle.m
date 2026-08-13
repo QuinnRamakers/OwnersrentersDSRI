@@ -76,12 +76,18 @@ probe_lam = 0.2; probe_sA = 0.2; probe_sH = 0.4;
 
 for t = T-1 : -1 : 1
     t_step = tic;
+    % Hand the t+1 policy back in as a warm start. Policies are smooth in t,
+    % so the same node's t+1 optimum is usually a better guess than the grid
+    % argmax; bellman_step uses it as an EXTRA candidate, never a replacement,
+    % and ignores it entirely below polish_ver 2.
+    pol_next = struct('c', c_pol(:,:,:,t+1), 'pi', pi_pol(:,:,:,t+1), 'tau', []);
     if choose_tau
+        pol_next.tau = tau_pol(:,:,:,t+1);
         [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t), ~, tau_pol(:,:,:,t)] = ...
-            solver.bellman_step(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+            solver.bellman_step(t, V(:,:,:,t+1), p, profile, shocks, ann_price, pol_next);
     else
         [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t)] = ...
-            solver.bellman_step(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+            solver.bellman_step(t, V(:,:,:,t+1), p, profile, shocks, ann_price, pol_next);
     end
     period_sec(t) = toc(t_step);
     if mod(t, 10) == 0 || t == T-1 || t == 1

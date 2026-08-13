@@ -1,4 +1,4 @@
-function [V_t, c_pol, pi_pol, feas, tau_pol] = bellman_step(t, V_next, p, profile, shocks, ann_price)
+function [V_t, c_pol, pi_pol, feas, tau_pol] = bellman_step(t, V_next, p, profile, shocks, ann_price, pol_next)
 %BELLMAN_STEP  One backward-induction step on (lambda, s_A, s_H).
 %
 %   State variables:
@@ -51,6 +51,15 @@ function [V_t, c_pol, pi_pol, feas, tau_pol] = bellman_step(t, V_next, p, profil
 %   model, and the assert makes that assumption fail loudly rather than
 %   silently if leverage, additive returns, post-return cost deduction or a
 %   mortgage stock is ever added.
+%
+%   pol_next (optional 7th argument) carries the t+1 policies on this grid,
+%   struct with fields c / pi / tau ([] allowed), supplied by solve_lifecycle.
+%   Under p.polish_ver >= 2 they seed extra fmincon starts -- see below --
+%   and the polish objective runs on the certainty-equivalent scale. With
+%   polish_ver < 2 (or the field absent) both are off and this function is
+%   bit-identical to the original, warm starts ignored.
+
+if nargin < 7, pol_next = []; end
 
 NL = p.N_lambda; NA = p.N_sA; NH = p.N_sH;
 V_t    = nan(NL, NA, NH);
@@ -68,6 +77,30 @@ tau_pol = [];
 if choose_tau
     tau_pol = nan(NL, NA, NH);
 end
+
+% Solver version, recorded in the fingerprint so files solved under different
+% polish versions never rate as welfare-comparable. polish_ver >= 2 turns on
+% two things taken from the coauthor's main_jmp.m:
+%
+%   OBJECTIVE SCALING (their main_jmp.m:403 + the scaling_factor in every
+%   obj_*.m). They multiply the objective handed to fmincon by a scalar
+%   recomputed each period from the previous period's value function, and
+%   divide it back out when storing the result. Same structure here. It
+%   matters because at gamma = 5 our raw rhs is O(1e-19) or smaller -- far
+%   below fmincon's FunctionTolerance of 1e-10, so the polish declared
+%   convergence immediately without moving, while its KKT systems logged
+%   hundreds of singular-matrix warnings. Multiplying by a positive scalar is
+%   monotone, so every argmax is unchanged; only the optimiser's notion of
+%   "small" moves.
+%
+%   WARM STARTS. The t+1 policy at the same node seeds extra polish starts.
+%   Policies are smooth in t, so it is usually a better guess than the grid
+%   argmax, and as an ADDITIONAL candidate it can only improve the result.
+%
+% polish_ver < 2 or absent reproduces the original polish exactly.
+polish_ver = 1; if isfield(p, 'polish_ver'), polish_ver = p.polish_ver; end
+use_scaling = polish_ver >= 2;
+use_warm    = polish_ver >= 2;
 
 [Lam, SA, SH] = ndgrid(p.lambda_grid, p.sA_grid, p.sH_grid);
 feas = (Lam + SA + SH) <= 1 + 1e-12;
@@ -262,11 +295,43 @@ z_next_filled(isnan(z_next_filled)) = z_min;
 pp_z = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, ...
                           z_next_filled, 'linear', 'linear');
 
+% Objective scaling factor for this period, from V_next -- the coauthor's
+% main_jmp.m:403 pattern (they use 1e6/min(V) with V positive in CE units).
+% Their min() does not translate directly: their value function spans a narrow
+% positive range, ours spans ~46 orders of magnitude because the ruin tail
+% reaches |V| ~ 1e27 while ordinary states sit near 1e-19. Keying off either
+% extreme would scale the whole period to the tail. The median magnitude over
+% feasible states is the robust equivalent -- it tracks where the states
+% actually are, which is what the optimiser's tolerances need to match.
+obj_scale = 1;
+if use_scaling
+    absV = abs(V_filled(isfinite(V_filled) & V_filled ~= 0));
+    if ~isempty(absV)
+        obj_scale = 1 / median(absV);
+        if ~isfinite(obj_scale) || obj_scale <= 0, obj_scale = 1; end
+    end
+end
+
 % Inner (c, pi) seed grid for the fmincon polish. NC stays fine because the
 % objective is multimodal in c; NP can be coarsened because it is concave in
 % pi, but production runs keep both at 41 (see config.params).
 NC = 41; if isfield(p, 'N_c'),  NC = p.N_c;  end
 NP = 41; if isfield(p, 'N_pi'), NP = p.N_pi; end
+
+% Seed search for the polish.
+%   'full'  the NC x NP tensor, then polish from its best point
+%   'none'  no tensor: polish straight from the t+1 policy at this node
+%
+% 'none' needs a warm start to start FROM, so it is only honoured when warm
+% starts are on (polish_ver >= 2). That keeps polish_ver = 1 exactly the
+% original solver whatever grid_mode says.
+%
+% Only the glide branch honours this. Free-tau always keeps the tensor: its
+% guarantee of never doing worse than the fixed glide path is built on the
+% glide slice's grid maximum.
+grid_mode   = 'full'; if isfield(p, 'grid_mode'), grid_mode = char(p.grid_mode); end
+skip_tensor = strcmp(grid_mode, 'none') && ~optimise_tau && use_warm;
+
 pi_grid = linspace(0, 1, NP).';
 R_X_all = (1 - pi_grid) * Rf_at + pi_grid * R_S_at.';     % NP x n_shock (after-tax)
 
@@ -291,6 +356,26 @@ lam_pts = Lam(feas);
 sA_pts  = SA(feas);
 sH_pts  = SH(feas);
 
+% Warm starts: the t+1 policy at the SAME node, sliced to the feasible set so
+% the parfor indexes it exactly like lam_pts. Sliced (not broadcast) variables
+% keep the parfor communication cost flat. NaN entries (infeasible or
+% unsolved) are screened per state below.
+have_warm = use_warm && ~isempty(pol_next) && isstruct(pol_next) ...
+            && isfield(pol_next, 'c') && isequal(size(pol_next.c), [NL NA NH]);
+if have_warm
+    cw_pts = pol_next.c(feas);
+    pw_pts = pol_next.pi(feas);
+    if isfield(pol_next, 'tau') && isequal(size(pol_next.tau), [NL NA NH])
+        tw_pts = pol_next.tau(feas);
+    else
+        tw_pts = nan(n_feas, 1);
+    end
+else
+    cw_pts = nan(n_feas, 1);
+    pw_pts = nan(n_feas, 1);
+    tw_pts = nan(n_feas, 1);
+end
+
 % Annuity payout factor for retired branch (constants outside parfor)
 if is_retired
     ann_t      = ann_price(t);
@@ -303,6 +388,7 @@ end
 parfor k = 1:n_feas
     lam = lam_pts(k); sA = sA_pts(k); sH = sH_pts(k);
     sX  = 1 - lam - sA - sH;
+    c_warm = cw_pts(k); pi_warm = pw_pts(k); tau_warm = tw_pts(k);
 
     if is_retired
         LW_W              = sX + contrib_factor * lam + net_inc * sA / ann_t ...
@@ -367,13 +453,39 @@ parfor k = 1:n_feas
     % using the factorisation X_{t+1}/W = R_X(pi) * [(1-c)*LW_W]. X_next is
     % tau-independent and hoisted out of the slice loop. NTg = 1 (glide
     % regime) reproduces the pre-choose_tau_S single-tensor search exactly.
+    maxval = -inf; ic_max = 1; ip_max = 1; it_max = 1;
+    maxval_g = -inf; ic_g = 1; ip_g = 1;
+    rhs_g = [];
+    % Seed values as CONTINUOUS points, so the two modes share the downstream
+    % code: with a tensor they are the argmax, without one they come from the
+    % candidate scan below.
+    c_seed = c_grid(1); pi_seed = 0;
+
+    if skip_tensor
+        % No tensor: the t+1 policy at this node is the seed. Where there is
+        % none -- an unsolved or infeasible node at t+1 -- fall back to two
+        % fixed points, one central and one high-equity/low-consumption, so
+        % the polish always has somewhere to start.
+        if isfinite(c_warm) && isfinite(pi_warm)
+            cand = [min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
+        else
+            cand = [0.5, 0.5; 0.15, 1.0];
+        end
+        for s = 1:size(cand, 1)
+            v = bellman_rhs_z3(cand(s,1), cand(s,2), tau, LW_W, Rf_at, R_S_at, ...
+                    p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+                    w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+            if v > maxval
+                maxval = v; c_seed = cand(s,1); pi_seed = cand(s,2);
+            end
+        end
+        maxval_g = maxval;
+    else
+
     sav    = (1 - c_grid).' * LW_W;                   % 1 x NC (saved liquid wealth)
     RX     = reshape(R_X_all.', n_shock, 1, NP);      % n_shock x 1 x NP
     X_next = RX .* sav;                               % n_shock x NC x NP
 
-    maxval = -inf; ic_max = 1; ip_max = 1; it_max = 1;
-    maxval_g = -inf; ic_g = 1; ip_g = 1;
-    rhs_g = [];
     for j = 1:NTg
         A_next_W_j = R_A_all(:, j) * A_next_pre_return;   % n_shock x 1
         base_W = A_next_W_j + H_next_W + Y_next_W;         % n_shock x 1
@@ -412,6 +524,8 @@ parfor k = 1:n_feas
             end
         end
     end
+    c_seed = c_grid(ic_max); pi_seed = pi_grid(ip_max);
+    end   % if skip_tensor
 
     if optimise_tau
         % Free-tau polish: best of three candidates (each may fail; the grid
@@ -426,7 +540,9 @@ parfor k = 1:n_feas
         %      regime's own polish, so the free value can never fall below the
         %      glide value for the same continuation. Skipped when it would
         %      duplicate B.
-        obj3 = @(x) -bellman_rhs_z3(x(1), x(2), x(3), LW_W, Rf_at, R_S_at, ...
+        % obj_scale multiplies the objective and is divided back out of the
+        % result, so the reported value is on the model's own scale.
+        obj3 = @(x) -obj_scale * bellman_rhs_z3(x(1), x(2), x(3), LW_W, Rf_at, R_S_at, ...
                                      p.Rf, R_S, pt, A_next_pre_return, ...
                                      H_next_W, Y_next_W, ...
                                      w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
@@ -435,8 +551,8 @@ parfor k = 1:n_feas
             [x_try, neg_V_try, exitflag] = fmincon(obj3, ...
                 [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)], ...
                 [], [], [], [], [c_floor; 0; 0], [1 - 1e-6; 1; 1], [], opts_polish);
-            if (exitflag > 0 || exitflag == 0) && -neg_V_try > V_polish
-                V_polish = -neg_V_try;
+            if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_polish
+                V_polish = -neg_V_try/obj_scale;
                 x_opt    = x_try;
             end
         catch
@@ -446,6 +562,16 @@ parfor k = 1:n_feas
         pin_starts = [c_grid(ic_max), pi_grid(ip_max), pin_tau];
         if it_max ~= j_glide && isfinite(maxval_g)
             pin_starts = [pin_starts; c_grid(ic_g), pi_grid(ip_g), tau];
+        end
+        % t+1 policy at this node: an extra start, at its own tau and at the
+        % glide tau. Only a candidate, so it cannot make the answer worse.
+        if isfinite(c_warm) && isfinite(pi_warm)
+            cw = min(max(c_warm, c_floor), 1 - 1e-6);
+            pw = min(max(pi_warm, 0), 1);
+            pin_starts = [pin_starts; cw, pw, tau];
+            if isfinite(tau_warm)
+                pin_starts = [pin_starts; cw, pw, min(max(tau_warm, 0), 1)];
+            end
         end
         % Track the best glide-pinned candidate so the derivative-free
         % refinement below can start from it.
@@ -474,7 +600,7 @@ parfor k = 1:n_feas
         end
         for s = 1:size(pin_starts, 1)
             tau_fix = pin_starts(s, 3);
-            obj2 = @(x) -bellman_rhs_z3(x(1), x(2), tau_fix, LW_W, Rf_at, R_S_at, ...
+            obj2 = @(x) -obj_scale * bellman_rhs_z3(x(1), x(2), tau_fix, LW_W, Rf_at, R_S_at, ...
                                          p.Rf, R_S, pt, A_next_pre_return, ...
                                          H_next_W, Y_next_W, ...
                                          w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
@@ -482,12 +608,13 @@ parfor k = 1:n_feas
                 [x_try, neg_V_try, exitflag] = fmincon(obj2, pin_starts(s, 1:2).', ...
                     [], [], [], [], [c_floor; 0], [1 - 1e-6; 1], [], opts_polish);
                 if exitflag > 0 || exitflag == 0
-                    if -neg_V_try > V_polish
-                        V_polish = -neg_V_try;
+                    V_try = -neg_V_try/obj_scale;
+                    if V_try > V_polish
+                        V_polish = V_try;
                         x_opt    = [x_try; tau_fix];
                     end
-                    if tau_fix == tau && -neg_V_try > v_gl
-                        v_gl = -neg_V_try; c_gl = x_try(1); p_gl = x_try(2);
+                    if tau_fix == tau && V_try > v_gl
+                        v_gl = V_try; c_gl = x_try(1); p_gl = x_try(2);
                     end
                 end
             catch
@@ -529,27 +656,60 @@ parfor k = 1:n_feas
         end
     else
         A_next_W = R_A_all(:, 1) * A_next_pre_return;   % glide-slice DC position
-        x0 = [c_grid(ic_max); pi_grid(ip_max)];
         lb = [c_floor; 0];
         ub = [1 - 1e-6; 1];
-        polish_obj = @(x) -bellman_rhs_z(x(1), x(2), LW_W, Rf_at, R_S_at, ...
+        polish_obj = @(x) -obj_scale * bellman_rhs_z(x(1), x(2), LW_W, Rf_at, R_S_at, ...
                                           A_next_W, H_next_W, Y_next_W, ...
                                           w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
 
-        V_polish = -inf; x_opt = x0;
-        try
-            [x_try, neg_V_try, exitflag] = fmincon(polish_obj, x0, [], [], [], [], lb, ub, [], opts_polish);
-            if exitflag > 0 || exitflag == 0
-                V_polish = -neg_V_try;
-                x_opt    = x_try;
+        % Best seed: the tensor argmax, or the warm start when the tensor is
+        % off. With the tensor on, add the t+1 policy as a second start.
+        starts = [c_seed, pi_seed];
+        if ~skip_tensor && isfinite(c_warm) && isfinite(pi_warm)
+            starts = [starts; min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
+        end
+        starts(:,1) = min(max(starts(:,1), c_floor), 1 - 1e-6);
+        starts(:,2) = min(max(starts(:,2), 0), 1);
+
+        V_polish = -inf; x_opt = starts(1, :).';
+        for s = 1:size(starts, 1)
+            try
+                [x_try, neg_V_try, exitflag] = fmincon(polish_obj, starts(s, :).', ...
+                    [], [], [], [], lb, ub, [], opts_polish);
+                if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_polish
+                    V_polish = -neg_V_try/obj_scale;
+                    x_opt    = x_try;
+                end
+            catch
             end
-        catch
+        end
+
+        % Derivative-free refinement, as in the free-tau branch. Only the free
+        % branch had it, because there the polish was known to walk off the
+        % z-interpolant's kink ridges. The glide branch needs it for the same
+        % reason -- it was simply invisible while the unscaled objective sat
+        % below fmincon's FunctionTolerance and the polish never moved. With
+        % scaling the polish does move, so the ridges matter here too.
+        if use_scaling
+            dc0 = c_grid(2) - c_grid(1);
+            dp0 = pi_grid(min(2, NP)) - pi_grid(1);
+            if V_polish > maxval
+                cb0 = x_opt(1); pb0 = x_opt(2); vb0 = V_polish;
+            else
+                cb0 = c_seed; pb0 = pi_seed; vb0 = maxval;
+            end
+            [c_r, p_r, v_r] = refine_cpi(cb0, pb0, tau, vb0, LW_W, Rf_at, R_S_at, ...
+                p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+                w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
+            if v_r > V_polish
+                V_polish = v_r; x_opt = [c_r; p_r];
+            end
         end
 
         if V_polish > maxval
             V_flat(k) = V_polish; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2);
         else
-            V_flat(k) = maxval; c_flat(k) = c_grid(ic_max); pi_flat(k) = pi_grid(ip_max);
+            V_flat(k) = maxval; c_flat(k) = c_seed; pi_flat(k) = pi_seed;
         end
         tau_flat(k) = tau;
     end

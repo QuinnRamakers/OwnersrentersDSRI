@@ -8,3 +8,16 @@ slurm-*.out
 floor_sweep_log.txt
 floor_test_log.txt
 prod_floor_log.txt
+
+# solver-v2 run logs
+suite_final.txt
+suite_v2default.txt
+eval_no_tensor_log.txt
+eval_final_log.txt
+polish_v2_test.txt
+freetau_lna_test.txt
+v2_pair_log.txt
+v2_dash2.txt
+dash_configs_log.txt
+confirm_default_log.txt
+verify_continuation_log.txt
