@@ -1,0 +1,79 @@
+﻿grid_study: 8 configurations, gh_n = 5, 8000 paths
+
+Starting parallel pool (parpool) using the 'Processes' profile ...
+Connected to parallel pool with 16 workers.
+[1/8] lna_16       lna     dims=[16 12 12] pow=1.0
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7781, pi=0.9765  [11.5 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5983, pi=1.0000  [10.9 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4857, pi=1.0000  [7.1 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4284, pi=1.0000  [7.1 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1519, pi=0.9696  [6.6 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1796, pi=1.0000  [6.7 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.2126, pi=1.0000  [6.6 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2484, pi=1.0000  [6.8 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.3204, pi=1.0000  [7.1 s]
+    3024 states, 8.8 min, Vt0_b0=-1.38082e+06, z=0.020628, floor=2.08%
+
+[2/8] lna_22       lna     dims=[22 16 16] pow=1.0
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7774, pi=0.9835  [15.8 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5970, pi=1.0000  [16.3 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4841, pi=1.0000  [16.0 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4265, pi=1.0000  [16.0 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1434, pi=0.9424  [15.1 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1696, pi=1.0000  [15.0 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1983, pi=1.0000  [15.3 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2282, pi=1.0000  [15.2 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2965, pi=1.0000  [16.1 s]
+    6912 states, 19.5 min, Vt0_b0=-4.73058e+06, z=0.015162, floor=1.74%
+
+[3/8] lna_28       lna     dims=[28 20 20] pow=1.0
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7770, pi=0.9857  [30.5 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5964, pi=1.0000  [30.7 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4832, pi=1.0000  [30.3 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4258, pi=1.0000  [30.6 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1408, pi=0.9554  [28.6 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1615, pi=0.9799  [28.9 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1873, pi=0.8937  [29.0 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2119, pi=0.9776  [29.6 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2767, pi=1.0000  [30.2 s]
+    13200 states, 37.1 min, Vt0_b0=-1.83317e+08, z=0.0060769, floor=1.50%
+
+[4/8] lna_28_clus  lna     dims=[28 20 20] pow=2.5
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7767, pi=0.9956  [30.3 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5959, pi=1.0000  [30.6 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4831, pi=1.0000  [30.2 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4255, pi=1.0000  [29.9 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1377, pi=0.9136  [28.0 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1386, pi=0.4988  [27.8 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1369, pi=0.1323  [27.9 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.1288, pi=0.1825  [28.1 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.1639, pi=0.2921  [29.2 s]
+    13200 states, 36.2 min, Vt0_b0=-7.17214e+24, z=4.3209e-07, floor=0.96%
+
+[5/8] sx_24        simplex dims=[24 24 24] pow=1.0
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.7777, pi=0.9653  [7.0 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.6096, pi=1.0000  [7.0 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4984, pi=1.0000  [6.7 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4444, pi=1.0000  [6.7 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1410, pi=0.9519  [6.7 s]
+  t=30 (age 54): c@(lam=0.2,sA=0.2,sH=0.4)=0.1599, pi=0.9873  [6.8 s]
+  t=20 (age 44): c@(lam=0.2,sA=0.2,sH=0.4)=0.1823, pi=0.8016  [7.5 s]
+  t=10 (age 34): c@(lam=0.2,sA=0.2,sH=0.4)=0.2034, pi=0.8716  [7.5 s]
+  t= 1 (age 25): c@(lam=0.2,sA=0.2,sH=0.4)=0.2662, pi=1.0000  [7.6 s]
+    3021 states, 8.8 min, Vt0_b0=-1.06803e+09, z=0.0039115, floor=1.80%
+
+[6/8] sx_32        simplex dims=[32 32 32] pow=1.0
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.7773, pi=0.9773  [16.9 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.6054, pi=1.0000  [16.9 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4951, pi=1.0000  [16.7 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4409, pi=1.0000  [16.4 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1381, pi=0.9881  [16.8 s]
+[Warning: A worker aborted during execution of the parfor loop. The parfor loop will now run again on the remaining workers.] 
+[> In parallel.internal.parfor/ParforEngine/handleIntervalErrorResult (line 285)
+In parallel.internal.parfor/ParforEngine/getCompleteIntervals (line 225)
+In parallel_function>distributed_execution (line 705)
+In parallel_function (line 537)
+In solver.bellman_step (line 303)
+In solver.solve_lifecycle (line 84)
+In grid_study (line 70)] 
+Parallel pool using the 'Processes' profile is shutting down.
