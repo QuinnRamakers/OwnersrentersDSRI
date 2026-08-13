@@ -664,11 +664,22 @@ parfor k = 1:n_feas
                                           w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
 
         % Best seed (tensor argmax, or the candidate scan when the tensor is
-        % off), plus the t+1 policy at this node when it is available.
-        starts = [c_seed, pi_seed];
+        % off), plus the t+1 policy at this node when it is available, plus two
+        % fixed points.
+        %
+        % The fixed points are not padding. Measured one step from an identical
+        % continuation, seeding ONLY from them beat seeding from the 41x41
+        % tensor argmax at 13 states by up to 1.4% while losing at most 3e-6 --
+        % the rhs is multimodal in c and the argmax is often in the wrong
+        % basin. Over a full solve that compounded to +10% at the welfare
+        % anchor. They cost two fmincon calls against a
+        % n_shock x NC x NP tensor.
+        starts = [c_seed, pi_seed; 0.5, 0.5; 0.15, 1.0];
         if isfinite(c_warm) && isfinite(pi_warm)
             starts = [starts; min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
         end
+        starts(:,1) = min(max(starts(:,1), c_floor), 1 - 1e-6);
+        starts(:,2) = min(max(starts(:,2), 0), 1);
 
         V_polish = -inf; x_opt = starts(1, :).';
         for s = 1:size(starts, 1)
