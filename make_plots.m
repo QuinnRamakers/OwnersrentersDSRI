@@ -31,7 +31,8 @@ close all;
 RUN_ALL_SCENARIOS = false;
 
 % ── scenario metadata ─────────────────────────────────────────────────────
-fig_tag = '';    % appended to always-on figure filenames ('' or '_lna')
+fig_tag = '';    % disambiguates figures NOT named by short_names ('' | '_<arm>' | '_lna')
+dash_tag = fig_tag;  % suffix for fig_dashboard_*: empty when short_names already carry the arm
 if RUN_ALL_SCENARIOS
     files = {'diag_pension_only.mat', ...
              'diag_housing_renter.mat', 'diag_housing_owner.mat', ...
@@ -49,12 +50,35 @@ if RUN_ALL_SCENARIOS
               [0.85 0.40 0.20], [0.85 0.65 0.15], ...
               [0.45 0.20 0.55], [0.20 0.60 0.30]};
 else
-    files        = {'combined_renter.mat',     'combined_owner.mat'};
-    short_names  = {'full_renter',             'full_owner'};
-    legend_names = {'Full renter',             'Full owner'};
-    labels       = {'FULL renter (pension + housing)', ...
-                     'FULL owner (pension + housing)'};
+    % WHICH ARM. CGM_ARM selects the DC regime; every figure this script
+    % writes is from ONE arm, and nothing in the old titles said which, so a
+    % glide dashboard and a free-DC dashboard were indistinguishable once
+    % saved. The arm now appears in the title, the legend and the FILENAME.
+    %   glide   (default) combined_{renter,owner}.mat          -- imposed tau_S
+    %   freetau           combined_{renter,owner}_freetau.mat  -- free DC choice
+    %   nodc              combined_{renter,owner}_nodc.mat     -- no DC pillar
+    arm = getenv('CGM_ARM');
+    if isempty(arm), arm = 'glide'; end
+    switch arm
+        case 'glide',   arm_suffix = '';         arm_label = 'glide \tau_S (imposed)';
+        case 'freetau', arm_suffix = '_freetau'; arm_label = 'FREE DC choice';
+        case 'nodc',    arm_suffix = '_nodc';    arm_label = 'NO DC account (\kappa=0)';
+        otherwise
+            error('make_plots:arm', ...
+                'CGM_ARM must be glide, freetau or nodc (got ''%s'').', arm);
+    end
+    files        = {['combined_renter' arm_suffix '.mat'], ...
+                    ['combined_owner'  arm_suffix '.mat']};
+    short_names  = {['full_renter_' arm],      ['full_owner_' arm]};
+    legend_names = {['Full renter [' arm ']'], ['Full owner [' arm ']']};
+    labels       = {sprintf('FULL renter (pension + housing)  —  %s', arm_label), ...
+                    sprintf('FULL owner (pension + housing)  —  %s',  arm_label)};
     colors       = {[0.45 0.20 0.55], [0.20 0.60 0.30]};
+    % short_names already carry the arm, so fig_dashboard_* is named by them;
+    % fig_tag only has to disambiguate the figures named WITHOUT short_names
+    % (fig_renter_vs_owner), or they would overwrite each other across arms.
+    fig_tag      = ['_' arm];
+    dash_tag     = '';
     % CGM_GRID=lna reads the cube-grid outputs of run_combined
     % (combined_<name>_lna.mat) and tags figures _lna so the two grid
     % systems can be plotted side by side. Only this 2-file branch is
@@ -63,7 +87,7 @@ else
     if strcmp(getenv('CGM_GRID'), 'lna')
         files   = strrep(files, '.mat', '_lna.mat');
         labels  = cellfun(@(s) [s '  [lna grid]'], labels, 'UniformOutput', false);
-        fig_tag = '_lna';
+        fig_tag = [fig_tag '_lna'];   % keep the arm tag: both identify the file
     end
 end
 
@@ -166,7 +190,7 @@ BAND_NOTE = 'Lines show the average across simulated households; shaded bands sh
 for k = 1:numel(files)
     sim = S{k}.sim;  p = S{k}.p;  sol = S{k}.sol;
     col = colors{k};
-    has_pension = p.kappa > 0;
+    has_pension = any(config.kappa_path(p) > 0);   % kappa is an age profile
     has_housing = p.h_mult > 0;
     is_own      = p.is_owner;
 
@@ -338,8 +362,13 @@ for k = 1:numel(files)
     % same for every household, so plotted as a single deterministic line).
     nexttile; hold on; grid on; box on;
     plot_band(ages, sim.pi, col, 'Liquid savings: stock share chosen by the household', LWD);
+    if isfield(p, 'choose_tau_S') && p.choose_tau_S
+        tau_name = 'Pension fund: stock share CHOSEN by the household (mean)';
+    else
+        tau_name = 'Pension fund: stock share set by the plan''s glide path';
+    end
     plot(ages, tau_path, '--', 'Color', [0.75 0.25 0.25], 'LineWidth', LWD, ...
-         'DisplayName', 'Pension fund: stock share set by the plan''s glide path');
+         'DisplayName', tau_name);
     xline(ret_age, 'k--', 'HandleVisibility', 'off');
     xlabel('Age', 'FontSize', FS); ylabel('Stock share [0–1]', 'FontSize', FS);
     title('(i)  Stock share: household savings vs. the pension fund', 'FontSize', FT);
@@ -397,11 +426,12 @@ for k = 1:numel(files)
     box_txt = {
         '\bf Calibration \rm';
         sprintf('CRRA coefficient \\gamma=%.0f   |   Discount factor \\beta=%.2f   |   Bequest parameter \\chi=%.2f', p.gamma, p.beta, p.chi);
-        sprintf('DC contribution rate \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', 100*p.kappa, 100*p.replacement);
+        kappa_box_line(p);
         sprintf('Risk-free rate r=%.1f%%   |   Equity return \\mu_S=%.1f%%   |   Equity volatility \\sigma_S=%.1f%%', 100*p.r, 100*p.mu_S_level, 100*p.sigma_S_level);
         sprintf('Income tax \\tau_{inc}=%.0f%%   |   Capital-gains tax bond/stock=%.0f%%/%.0f%%', 100*tau_inc, 100*tau_cg_b, 100*tau_cg_s);
         house_line;
         sprintf('N=%d households,  ages %d-%d,  retirement age %d', sim.N, p.age0, p.age0+p.T-1, ret_age);
+        sprintf('DC REGIME: %s   |   source file: %s', upper(strrep(labels{k}(strfind(labels{k},'—')+2:end), '\tau_S', 'tau_S')), files{k});
         sprintf('Dollar scale: 1 model unit = $%.0f.   Merton fraction \\pi^{*}=%.2f', Y50_dollars/unit, pi_merton);
     };
     text(0.02, 0.97, box_txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
@@ -422,7 +452,7 @@ for k = 1:numel(files)
     end
 
     hide_axes_toolbars(fig);
-    out = fullfile(out_dir, sprintf('fig_dashboard_%s%s.png', short_names{k}, fig_tag));
+    out = fullfile(out_dir, sprintf('fig_dashboard_%s%s.png', short_names{k}, dash_tag));
     exportgraphics(fig, out, 'Resolution', 150);
     fprintf('Wrote %s\n', out);
     close(fig);
@@ -601,8 +631,14 @@ end % if RUN_ALL_SCENARIOS
 
 % Look up indices dynamically so this works whether RUN_ALL_SCENARIOS loaded
 % 2 or 5 scenarios.
-renter_idx = find(strcmp(short_names, 'full_renter'));
-owner_idx  = find(strcmp(short_names, 'full_owner'));
+% Prefix match, not equality: the 2-file branch appends the arm, so
+% short_names are 'full_renter_glide' / 'full_owner_glide' there and exact
+% equality never matched. This section was therefore skipped for every
+% arm-tagged run -- with both tenures loaded and a message claiming they
+% were not -- so fig_renter_vs_owner only ever appeared under
+% RUN_ALL_SCENARIOS, where the names happen to be bare.
+renter_idx = find(startsWith(short_names, 'full_renter'), 1);
+owner_idx  = find(startsWith(short_names, 'full_owner'),  1);
 if isempty(renter_idx) || isempty(owner_idx)
 fprintf('Skipping renter-vs-owner comparison: need both scenarios loaded.\n');
 else
@@ -719,14 +755,21 @@ legend('Location', 'best', 'FontSize', LFS3 - 1);
 set(gca, 'FontSize', FS3);
 
 % ── (i) Stock share: household's liquid savings vs the pension fund ────
-% pi_t is the household's own choice (renter vs owner, mean+band); tau_S(t)
-% is the pension fund's glide path -- plan design, identical for both, so
-% it is plotted once as a single deterministic line.
+% pi_t is the household's own choice (renter vs owner, mean+band); the DC share
+% is the glide under an imposed plan and the household's own per-state choice
+% under free DC choice -- tau_path carries whichever applies (equity_exposure
+% reads sim.tau_A), and the legend has to say which or the two arms' figures
+% are indistinguishable. Renter's line is plotted; owner's is near-identical.
 nexttile; hold on; grid on; box on;
 plot_band(ages, renter.sim.pi, c_r, 'Renter: liquid savings (household choice)', LWD3);
 plot_band(ages, owner.sim.pi,  c_o, 'Owner: liquid savings (household choice)',  LWD3);
+if isfield(renter.p, 'choose_tau_S') && renter.p.choose_tau_S
+    tau_name3 = 'Pension fund: stock share CHOSEN by the household (renter mean)';
+else
+    tau_name3 = 'Pension fund: stock share set by the plan''s glide path';
+end
 plot(ages, tau_path, '--', 'Color', [0.35 0.35 0.35], 'LineWidth', LWD3, ...
-     'DisplayName', 'Pension fund: stock share set by the plan''s glide path');
+     'DisplayName', tau_name3);
 xline(ret_age, 'k--', 'HandleVisibility', 'off');
 xlabel('Age', 'FontSize', FS3); ylabel('Stock share [0–1]', 'FontSize', FS3);
 title('(i)  Stock share: household savings vs. the pension fund', 'FontSize', FT3);
@@ -766,7 +809,7 @@ tau_cg_s_o = NaN; if isfield(owner.p, 'tau_cg_stock'), tau_cg_s_o = owner.p.tau_
 box_txt = {
     '\bf Calibration (shared parameters) \rm';
     sprintf('CRRA coefficient \\gamma=%.0f   |   Discount factor \\beta=%.2f', owner.p.gamma, owner.p.beta);
-    sprintf('DC contribution rate \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', 100*owner.p.kappa, 100*owner.p.replacement);
+    kappa_box_line(owner.p);
     sprintf('Risk-free rate r=%.1f%%   |   Equity return \\mu_S=%.1f%%   |   Equity volatility \\sigma_S=%.1f%%', 100*owner.p.r, 100*owner.p.mu_S_level, 100*owner.p.sigma_S_level);
     sprintf('Income tax \\tau_{inc}=%.0f%%   |   Capital-gains tax bond/stock=%.0f%%/%.0f%%', 100*tau_inc_o, 100*tau_cg_b_o, 100*tau_cg_s_o);
     '';
@@ -885,18 +928,20 @@ is_ret = (1:T) >= p.t_ret;                       % 1×T logical, retired ages
 tau_inc = 0; if isfield(p, 'tau_inc'), tau_inc = p.tau_inc; end
 net_inc = 1 - tau_inc;
 
+kap = config.kappa_path(p);                      % 1 x T age profile (row, broadcasts)
+
 d.gross_Y = sim.Y;
 d.tax     = zeros(N, T);                                    % income tax (=0 if tau_inc=0)
-d.tax(:, ~is_ret) = (1 - p.delta) * (1 - p.kappa) * tau_inc .* sim.Y(:, ~is_ret);
+d.tax(:, ~is_ret) = (1 - p.delta) * (1 - kap(~is_ret)) * tau_inc .* sim.Y(:, ~is_ret);
 d.tax(:, is_ret)  = (1 - p.delta) * tau_inc .* sim.Y(:, is_ret);
 
-% Pension contribution kappa*Y (working only; funds the future DC annuity)
+% Pension contribution kappa_t*Y (working only; funds the future DC annuity)
 d.pension_contrib = zeros(N, T);
-d.pension_contrib(:, ~is_ret) = p.kappa .* sim.Y(:, ~is_ret);
+d.pension_contrib(:, ~is_ret) = kap(~is_ret) .* sim.Y(:, ~is_ret);
 
 % Take-home labour / AOW income actually entering the budget (post income tax)
 contrib_factor = repmat((1 - p.delta) * net_inc, N, T);
-contrib_factor(:, ~is_ret) = (1 - p.delta) * (1 - p.kappa) * net_inc;
+contrib_factor(:, ~is_ret) = repmat((1 - p.delta) * (1 - kap(~is_ret)) * net_inc, N, 1);
 d.takehome = contrib_factor .* sim.Y;
 
 d.annuity = net_inc .* sim.ann_pay;               % DC pension payout, net of income tax
@@ -939,15 +984,27 @@ function [eq_priv, eq_pens, eq_frac_W, eq_frac_fin, tau_path, HC, W] = equity_ex
 
 [N, T] = size(sim.X);
 
-% Pension glide path: pad to length T (last entry 0 = fully de-risked at death)
-tau_S_vec = [p.tau_S(:); zeros(max(0, T - numel(p.tau_S)), 1)];
-tau_path  = tau_S_vec(1:T).';    % 1×T for plotting against ages
+% DC equity share ACTUALLY APPLIED. Under free choice (p.choose_tau_S) this is
+% a per-household, per-state policy recorded in sim.tau_A -- NOT p.tau_S. Using
+% the glide here regardless of arm mislabelled every free-DC dashboard: panel
+% (i) drew the plan's glide while calling it the fund's share, and (j)/(k)
+% valued pension equity at the wrong allocation entirely.
+% tau_A is N x (T-1) (a transition share); pad the terminal column with 0,
+% matching the glide convention of being fully de-risked at death.
+if isfield(sim, 'tau_A') && ~isempty(sim.tau_A)
+    tau_mat  = [sim.tau_A, zeros(size(sim.tau_A, 1), T - size(sim.tau_A, 2))];  % N x T
+    tau_path = mean(tau_mat, 1);                     % 1 x T, for plotting
+else
+    tau_S_vec = [p.tau_S(:); zeros(max(0, T - numel(p.tau_S)), 1)];
+    tau_path  = tau_S_vec(1:T).';    % 1×T for plotting against ages
+    tau_mat   = repmat(tau_path, N, 1);
+end
 
 % Private equity: π_t * X_t
 eq_priv = sim.pi .* sim.X;       % N×T
 
-% Pension equity: τ_S(t) * A_t  (glide path is deterministic per household)
-eq_pens = bsxfun(@times, sim.A, tau_path);   % N×T
+% Pension equity: tau_{i,t} * A_{i,t}, per household under free choice
+eq_pens = tau_mat .* sim.A;      % N×T
 
 % ---- HC scale factor g_t = E_t[ sum_{s>t} (Y_s/Y_t) * sp_t / Rf^k ] ----
 Rf      = 1 + p.r;
@@ -1025,5 +1082,21 @@ else
         [~, ia] = min(abs(p.sA_grid - sA_t));
     end
     sl = squeeze(pol_4d(lam_idx, ia, :, tt));
+end
+end
+
+function s = kappa_box_line(p)
+%KAPPA_BOX_LINE  Calibration-box line for the DC contribution rate.
+%   kappa is a franchise-based AGE PROFILE from 2026-07 on, so report its
+%   working-life range rather than a single number; legacy scalar-kappa
+%   p-structs collapse to the old single-value wording.
+kap  = config.kappa_path(p);
+kapw = kap(1 : max(p.t_ret - 1, 1));
+if max(kapw) - min(kapw) < 1e-10
+    s = sprintf('DC contribution rate \\kappa=%.0f%%   |   AOW replacement rate=%.0f%%', ...
+                100*kapw(1), 100*p.replacement);
+else
+    s = sprintf('DC contribution rate \\kappa_t=%.1f-%.1f%% of gross (franchise-based)   |   AOW replacement rate=%.0f%%', ...
+                100*min(kapw), 100*max(kapw), 100*p.replacement);
 end
 end

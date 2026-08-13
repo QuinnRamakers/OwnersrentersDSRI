@@ -19,13 +19,20 @@ function shocks = shock_grid(p)
 %                                   marginal nodes -- used by annuity_price.m,
 %                                   which only needs the R_S marginal.
 %       shocks.eps_Y_unit, w_Y     income shock z-points + weights (marginal)
-%       shocks.R_H, w_H            house gross return draws + weights (marginal)
+%       shocks.R_H, w_H            H-state gross growth draws + weights
+%                                   (marginal); house-price return for owners,
+%                                   rent increase for renters -- config.h_process
 %       shocks.joint.{R_S, eps_Y_unit, R_H, w}   Cholesky-correlated tensor
 %                                   product, vectors
 
 [x, w] = gauss_hermite(p.gh_n);
 z  = sqrt(2) * x(:).';
 wz = w(:).' / sqrt(pi);
+
+% Growth process of the H state: house-price return for owners, rent increase
+% for renters. Same lognormal shape either way, so the node structure below is
+% tenure-independent -- only the two parameters move.
+[mu_H, sigma_H] = config.h_process(p);
 
 % Marginal (uncorrelated) univariate nodes/weights -- kept for annuity_price.m
 shocks.R_S = exp(p.mu_S + p.sigma_S * z);
@@ -34,7 +41,7 @@ shocks.w_S = wz;
 shocks.eps_Y_unit = z;
 shocks.w_Y        = wz;
 
-shocks.R_H = exp(p.mu_H + p.sigma_H * z);
+shocks.R_H = exp(mu_H + sigma_H * z);
 shocks.w_H = wz;
 
 % Independent standardized tensor-product nodes (order: L, S, H)
@@ -54,8 +61,15 @@ zL = Zcorr(1, :).'; zS = Zcorr(2, :).'; zH = Zcorr(3, :).';
 
 shocks.joint.R_S        = exp(p.mu_S + p.sigma_S * zS);
 shocks.joint.eps_Y_unit = zL;
-shocks.joint.R_H        = exp(p.mu_H + p.sigma_H * zH);
+shocks.joint.R_H        = exp(mu_H + sigma_H * zH);
 shocks.joint.w          = w_joint;
+
+% The underlying standard-normal quadrature nodes and their probabilities
+% (sum(wz) = 1). simulate.paths can sample from these instead of drawing
+% continuous normals, which makes the panel and the solver share one shock
+% distribution -- the only way the two can be checked against each other.
+shocks.z  = z;
+shocks.wz = wz;
 end
 
 function [x, w] = gauss_hermite(n)

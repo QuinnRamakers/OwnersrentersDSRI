@@ -25,12 +25,14 @@ is_owner = p.is_owner;
 
 % Tax parameters (guarded so legacy p-structs => no tax). Must match the
 % solver: income tax (EET) on wages/AOW/annuity, accrual CGT (no loss offset)
-% on the liquid account, DC fund sheltered.
+% plus the box-3 wealth tax (tau_wealth on the end-of-period balance) on the
+% liquid account, DC fund and housing sheltered/exempt.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
 tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
+tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
 net_inc = 1 - tau_inc;
-Rf_at   = 1 + p.r * (1 - tau_b);
+Rf_at   = (1 + p.r * (1 - tau_b)) * (1 - tau_w);
 
 Y_path  = zeros(N, T);
 X_path  = zeros(N, T);
@@ -52,6 +54,7 @@ bequest_path = zeros(N, 1);
 n_clamp_c  = 0;
 n_clamp_pi = 0;
 n_negLW    = 0;
+phi_floor  = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
 
 % Policy interpolants directly on the cube grid -- all nodes are feasible.
 pp_c  = cell(T, 1);  pp_pi = cell(T, 1);
@@ -66,6 +69,7 @@ logY_canon = config.income_profile(p);
 Y0 = exp(logY_canon(1));
 Y_path(:,1) = Y0;
 H_path(:,1) = p.h_mult * Y0;
+[mu_HR, sigma_HR] = config.h_process(p);   % house return / rent increase by tenure
 X_path(:,1) = X0_frac * Y0;
 A_path(:,1) = 0;
 W_path(:,1) = X_path(:,1) + A_path(:,1) + H_path(:,1) + Y_path(:,1);
@@ -91,8 +95,16 @@ eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
 eps_S = reshape(Zcorr_shock(2, :), N, T-1);
 eps_H = reshape(Zcorr_shock(3, :), N, T-1);
 
+% Bequeathed housing value as a fraction of H: owners' estates sell the house
+% and pay p.sell_cost. Must match the solver.
+sell_cost = 0; if isfield(p, 'sell_cost'), sell_cost = p.sell_cost; end
+h_beq_fac = is_owner * (1 - sell_cost);
+
 for t = 1:T
     is_retired = (t >= p.t_ret);
+    % Franchise-based DC contribution rate at this age (T x 1 profile; min()
+    % keeps legacy scalar-kappa p-structs working). See config.params.
+    kappa_t = p.kappa(min(t, numel(p.kappa)));
 
     if is_owner
         if t <= numel(p.m_rate_path)
@@ -113,7 +125,7 @@ for t = 1:T
         LW = X_path(:,t) + contrib_factor .* Y_path(:,t) + ann_pay_net ...
              - h_cost_rate .* H_path(:,t);
     else
-        contrib_factor = (1 - p.delta) * (1 - p.kappa) * net_inc;  % deductible contrib; rest taxed
+        contrib_factor = (1 - p.delta) * (1 - kappa_t) * net_inc;  % deductible contrib; rest taxed
         ann_pay     = zeros(N, 1);
         ann_pay_net = zeros(N, 1);
         LW = X_path(:,t) + contrib_factor .* Y_path(:,t) ...
@@ -138,28 +150,28 @@ for t = 1:T
     n_clamp_pi = n_clamp_pi + sum(abs(pi_ - pi_raw) > 1e-10);
     c_path(:,t)  = cf;
     pi_path(:,t) = pi_;
+    F_t          = phi_floor * Y_path(:,t);
     C_path(:,t)  = cf .* max(LW, 0);
+    short        = LW < F_t;
+    C_path(short, t) = F_t(short);
 
     if t == T
-        % Bequest: liquid wealth post-consumption + housing (if owner).
-        % Pension A is forfeited at death (annuity convention).
-        if is_owner
-            bequest_path = max(0, (1 - cf) .* LW) + H_path(:,t);
-        else
-            bequest_path = max(0, (1 - cf) .* LW);
-        end
+        % Bequest: liquid wealth post-consumption + housing net of the
+        % seller transaction cost (if owner). Pension A is forfeited at
+        % death (annuity convention).
+        bequest_path = max(LW - C_path(:,t), 0) + h_beq_fac * H_path(:,t);
         break
     end
 
     % No-borrow safety clamp on liquid post-saving
-    X_post = max((1 - cf) .* LW, 0);
+    X_post = max(LW - C_path(:,t), 0);
     n_negLW = n_negLW + sum(LW < 0);
 
     % Returns
     R_S_draw = exp(p.mu_S + p.sigma_S * eps_S(:,t));
-    R_H_draw = exp(p.mu_H + p.sigma_H * eps_H(:,t));
-    R_S_at_draw = R_S_draw - tau_s .* max(R_S_draw - 1, 0);   % after-tax equity (no loss offset)
-    R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT
+    R_H_draw = exp(mu_HR + sigma_HR * eps_H(:,t));
+    R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
+    R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
 
     % Pension return for transition t -> t+1: tau_S applies on the t-side.
     tau_t      = p.tau_S(t);
@@ -170,7 +182,7 @@ for t = 1:T
     if is_retired
         A_pre = A_path(:,t) - ann_pay;            % stock after payout
     else
-        A_pre = A_path(:,t) + p.kappa .* Y_path(:,t);   % stock after contribution
+        A_pre = A_path(:,t) + kappa_t .* Y_path(:,t);   % stock after contribution
     end
 
     X_path(:,t+1) = R_X .* X_post;

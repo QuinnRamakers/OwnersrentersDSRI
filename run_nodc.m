@@ -1,0 +1,92 @@
+% RUN_NODC  No-DC-account benchmark at the current calibration, for comparison
+% against the glide and free-DC runs.
+%
+%   Two scenarios with kappa = 0, so the DC second pillar is off. The AOW
+%   first pillar is still on; tau_S and the annuity are irrelevant with no DC
+%   balance.
+%     renter_nodc (is_owner = false), owner_nodc (is_owner = true).
+%
+%   Solved on the same simplex grid as run_combined (25x15x15, gh_n=5) and at
+%   the same calibration, so welfare0 is directly comparable to
+%   combined_{renter,owner}{,_freetau}.mat. Saves
+%   combined_{renter,owner}_nodc.mat with the welfare0 convention: corner Vt0,
+%   the calibrated b0 / b_alt anchors, and the b_grid sensitivity curve.
+%
+%   This is the no-pension benchmark the comparison scripts look for. The
+%   older combined_*_kappa0.mat name is a pre-tax-change vintage and is not
+%   comparable; the comparison scripts load _nodc first and fall back to
+%   _kappa0 only for legacy folders.
+
+clear; clc;
+if isempty(gcp('nocreate'))
+    try, parpool('Threads'); catch, warning('no pool'); end
+end
+
+scenarios = struct('name', {'renter_nodc', 'owner_nodc'}, ...
+                   'is_owner', {false, true});
+N_sim = 10000;
+
+for k = 1:numel(scenarios)
+    sc = scenarios(k);
+    fprintf('\n=== Scenario: %s (no DC account, kappa=0) ===\n', sc.name);
+    p = config.params();
+    p.is_owner     = sc.is_owner;
+    p.kappa        = 0;
+    p.choose_tau_S = false;
+
+    % Match run_combined's production sweep grid. build_state_grids rebuilds
+    % the linspaces AND re-inserts the welfare anchors, so N_lambda/N_sH come
+    % back +2 -- read them off p, never off the requested dims.
+    % CGM_STATE_GRID / CGM_GH_N override it for smoke runs only; unset (the
+    % production path) they are a no-op. See utility.grid_override.
+    [dims_sweep, gh_sweep] = utility.grid_override([25 15 15], 5);
+    p = utility.build_state_grids(p, dims_sweep, gh_sweep);
+    fprintf('  grid: requested [%d %d %d] gh_n=%d -> N_lambda=%d N_sA=%d N_sH=%d\n', ...
+        dims_sweep(1), dims_sweep(2), dims_sweep(3), gh_sweep, ...
+        p.N_lambda, p.N_sA, p.N_sH);
+    p = assert_production_fill(p);
+
+    [~, mu_growth, sigma_l_log] = config.income_profile(p);
+    profile.mu_growth   = mu_growth;
+    profile.sigma_l_log = sigma_l_log;
+    profile.p_surv      = config.survival(p);
+    shocks    = grids.shock_grid(p);
+    ann_price = pension.annuity_price(p, profile, shocks);
+
+    fprintf('  kappa=%.3f (DC off), alpha=%.3f, theta=%.3f, h_mult=%.1f, tau_inc=%.3f, tau_wealth=%.4f\n', ...
+        max(p.kappa), p.alpha, p.theta, p.h_mult, p.tau_inc, p.tau_wealth);
+
+    sol = solver.solve_lifecycle(p, profile, shocks, ann_price);
+    fprintf('  Solver: %.1f s (%d workers)\n', sol.elapsed, sol.timing.pool.num_workers);
+
+    welfare0 = utility.welfare_summary(p, sol.V(:,:,:,1));
+    fprintf('  V_tilde0 = %.6g (corner, b=0) | %.6g at b0=%.4f | %.6g at b_alt=%.4f\n', ...
+        welfare0.Vt0, welfare0.Vt0_b0, welfare0.b0, welfare0.Vt0_b_alt, welfare0.b_alt);
+
+    sim = simulate.paths(p, profile, sol, ann_price, N_sim);
+    timing = sol.timing;
+
+    fname = fullfile(utility.output_dir(), sprintf('combined_%s.mat', sc.name));
+    save(fname, 'p', 'profile', 'shocks', 'ann_price', 'sol', 'sim', 'sc', 'timing', 'welfare0');
+    fprintf('  Saved %s\n', fname);
+end
+fprintf('\nNo-DC benchmark done.\n');
+
+function p = assert_production_fill(p)
+% PRODUCTION GUARD. p.legacy_fill is a TEST-ONLY switch in
+% solver.bellman_step that restores the pre-fix continuation fill (infeasible
+% cube nodes filled with the global minimum feasible z, i.e. the z-image of
+% the -1e15 ruin assignment) so tests/smoke_fill_fix.m can A/B it. It puts a
+% ruin-blended penalty one interpolation cell wide along the entire sX = 0
+% face -- which is exactly where the welfare anchor sits. Nothing solved with
+% it may be presented as a result.
+%
+% Setting the field to false explicitly (rather than leaving it absent) is
+% load-bearing: utility.param_fingerprint reads absent fields as NaN, so a
+% stamped post-fix file ("legacy_fill=0") fingerprints differently from a
+% pre-fix file that never had the field ("legacy_fill=NaN") and the two can
+% never be ranked together. Leave the field absent and both read NaN.
+assert(~(isfield(p, 'legacy_fill') && p.legacy_fill), 'run_nodc:legacy_fill', ...
+    'p.legacy_fill is set -- that is the pre-fix phantom-penalty fill, test-only.');
+p.legacy_fill = false;
+end

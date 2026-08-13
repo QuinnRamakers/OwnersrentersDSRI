@@ -1,0 +1,149 @@
+﻿
+===== prod_floor_new.mat  (rent 0.97%, simplex 42x40x42) =====
+E[Y@50] = 95746.5920  |  1 model unit = $1  |  dscale = 0.001 k$/unit
+Merton benchmark: pi* = 0.040/(5 * 0.160^2) = 0.3125
+[Warning: Error in state of SceneNode.
+String scalar or character vector must have valid interpreter syntax:
+\\bf Calibration \\rm
+CRRA coefficient \\gamma=5   |   Discount factor \\beta=0.96   |   Bequest parameter \\chi=0.00
+DC contribution rate \\kappa_t=10.9-14.6% of gross (franchise-based)   |   AOW replacement rate=31%
+Risk-free rate r=1.1%   |   Equity return \\mu_S=4.0%   |   Equity volatility \\sigma_S=16.0%
+Income tax \\tau_{inc}=38%   |   Capital-gains tax bond/stock=0%/0%
+Renter:  rent rate \\alpha=6.0% of home value p.a.
+N=20000 households,  ages 25-100,  retirement age 67
+DC REGIME:  GLIDE TAU_S (IMPOSED)   |   source file: C:\\Users\\Quinn\\Desktop\\claudecodetest\\OwnersrentersDSRI-rentproc\\combined_renter.mat
+Dollar scale: 1 model unit = $1.   Merton fraction \\pi^{*}=0.31
+] 
+Wrote C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\fig_dashboard_full_renter_glide.png
+[Warning: Error in state of SceneNode.
+String scalar or character vector must have valid interpreter syntax:
+\\bf Calibration \\rm
+CRRA coefficient \\gamma=5   |   Discount factor \\beta=0.96   |   Bequest parameter \\chi=0.00
+DC contribution rate \\kappa=20%   |   AOW replacement rate=31%
+Risk-free rate r=1.1%   |   Equity return \\mu_S=4.0%   |   Equity volatility \\sigma_S=16.0%
+Income tax \\tau_{inc}=38%   |   Capital-gains tax bond/stock=0%/0%
+Owner:  LTV=80%,  mortgage rate r_m=1.3%,  maintenance \\theta=1.5%
+N=5000 households,  ages 25-100,  retirement age 67
+DC REGIME:  GLIDE TAU_S (IMPOSED)   |   source file:
+C:\\Users\\Quinn\\Desktop\\claudecodetest\\OwnersrentersDSRI-rentproc\\combined_owner.mat
+Dollar scale: 1 model unit = $1.   Merton fraction \\pi^{*}=0.31
+] 
+Wrote C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\fig_dashboard_full_owner_glide.png
+Skipping renter-vs-owner comparison: need both scenarios loaded.
+
+All figures written.
+  wrote fig_dashboard_prod_old_simplex.png
+
+===== prod_floor_old.mat  (rent 2.7%, simplex 42x40x42) =====
+E[Y@50] = 95746.5920  |  1 model unit = $1  |  dscale = 0.001 k$/unit
+Merton benchmark: pi* = 0.040/(5 * 0.160^2) = 0.3125
+[Warning: Error in state of SceneNode.
+String scalar or character vector must have valid interpreter syntax:
+\\bf Calibration \\rm
+CRRA coefficient \\gamma=5   |   Discount factor \\beta=0.96   |   Bequest parameter \\chi=0.00
+DC contribution rate \\kappa_t=10.9-14.6% of gross (franchise-based)   |   AOW replacement rate=31%
+Risk-free rate r=1.1%   |   Equity return \\mu_S=4.0%   |   Equity volatility \\sigma_S=16.0%
+Income tax \\tau_{inc}=38%   |   Capital-gains tax bond/stock=0%/0%
+Renter:  rent rate \\alpha=6.0% of home value p.a.
+N=20000 households,  ages 25-100,  retirement age 67
+DC REGIME:  GLIDE TAU_S (IMPOSED)   |   source file:
+C:\\Users\\Quinn\\Desktop\\claudecodetest\\OwnersrentersDSRI-rentproc\\combined_renter.mat
+Dollar scale: 1 model unit = $1.   Merton fraction \\pi^{*}=0.31
+] 
+Wrote C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\fig_dashboard_full_renter_glide.png
+[Warning: Error in state of SceneNode.
+String scalar or character vector must have valid interpreter syntax:
+\\bf Calibration \\rm
+CRRA coefficient \\gamma=5   |   Discount factor \\beta=0.96   |   Bequest parameter \\chi=0.00
+DC contribution rate \\kappa=20%   |   AOW replacement rate=31%
+Risk-free rate r=1.1%   |   Equity return \\mu_S=4.0%   |   Equity volatility \\sigma_S=16.0%
+Income tax \\tau_{inc}=38%   |   Capital-gains tax bond/stock=0%/0%
+Owner:  LTV=80%,  mortgage rate r_m=1.3%,  maintenance \\theta=1.5%
+N=5000 households,  ages 25-100,  retirement age 67
+DC REGIME:  GLIDE TAU_S (IMPOSED)   |   source file:
+C:\\Users\\Quinn\\Desktop\\claudecodetest\\OwnersrentersDSRI-rentproc\\combined_owner.mat
+Dollar scale: 1 model unit = $1.   Merton fraction \\pi^{*}=0.31
+] 
+Wrote C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\fig_dashboard_full_owner_glide.png
+Skipping renter-vs-owner comparison: need both scenarios loaded.
+
+All figures written.
+  wrote fig_dashboard_prod_old_simplex.png
+
+===== prod_floor_lna_new.mat  (rent 0.97%, cube 28x20x20) =====
+E[Y@50] = 95746.5920  |  1 model unit = $1  |  dscale = 0.001 k$/unit
+Merton benchmark: pi* = 0.040/(5 * 0.160^2) = 0.3125
+[Warning: Error in state of SceneNode.
+String scalar or character vector must have valid interpreter syntax:
+\\bf Calibration \\rm
+CRRA coefficient \\gamma=5   |   Discount factor \\beta=0.96   |   Bequest parameter \\chi=0.00
+DC contribution rate \\kappa_t=10.9-14.6% of gross (franchise-based)   |   AOW replacement rate=31%
+Risk-free rate r=1.1%   |   Equity return \\mu_S=4.0%   |   Equity volatility \\sigma_S=16.0%
+Income tax \\tau_{inc}=38%   |   Capital-gains tax bond/stock=0%/0%
+Renter:  rent rate \\alpha=6.0% of home value p.a.
+N=20000 households,  ages 25-100,  retirement age 67
+DC REGIME:  GLIDE TAU_S (IMPOSED)   |   source file:
+C:\\Users\\Quinn\\Desktop\\claudecodetest\\OwnersrentersDSRI-rentproc\\combined_renter.mat
+Dollar scale: 1 model unit = $1.   Merton fraction \\pi^{*}=0.31
+] 
+Wrote C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\fig_dashboard_full_renter_glide.png
+[Warning: Error in state of SceneNode.
+String scalar or character vector must have valid interpreter syntax:
+\\bf Calibration \\rm
+CRRA coefficient \\gamma=5   |   Discount factor \\beta=0.96   |   Bequest parameter \\chi=0.00
+DC contribution rate \\kappa=20%   |   AOW replacement rate=31%
+Risk-free rate r=1.1%   |   Equity return \\mu_S=4.0%   |   Equity volatility \\sigma_S=16.0%
+Income tax \\tau_{inc}=38%   |   Capital-gains tax bond/stock=0%/0%
+Owner:  LTV=80%,  mortgage rate r_m=1.3%,  maintenance \\theta=1.5%
+N=5000 households,  ages 25-100,  retirement age 67
+DC REGIME:  GLIDE TAU_S (IMPOSED)   |   source file:
+C:\\Users\\Quinn\\Desktop\\claudecodetest\\OwnersrentersDSRI-rentproc\\combined_owner.mat
+Dollar scale: 1 model unit = $1.   Merton fraction \\pi^{*}=0.31
+] 
+Wrote C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\fig_dashboard_full_owner_glide.png
+Skipping renter-vs-owner comparison: need both scenarios loaded.
+
+All figures written.
+  wrote fig_dashboard_prod_old_simplex.png
+
+===== prod_floor_lna_old.mat  (rent 2.7%, cube 28x20x20) =====
+E[Y@50] = 95746.5920  |  1 model unit = $1  |  dscale = 0.001 k$/unit
+Merton benchmark: pi* = 0.040/(5 * 0.160^2) = 0.3125
+[Warning: Error in state of SceneNode.
+String scalar or character vector must have valid interpreter syntax:
+\\bf Calibration \\rm
+CRRA coefficient \\gamma=5   |   Discount factor \\beta=0.96   |   Bequest parameter \\chi=0.00
+DC contribution rate \\kappa_t=10.9-14.6% of gross (franchise-based)   |   AOW replacement rate=31%
+Risk-free rate r=1.1%   |   Equity return \\mu_S=4.0%   |   Equity volatility \\sigma_S=16.0%
+Income tax \\tau_{inc}=38%   |   Capital-gains tax bond/stock=0%/0%
+Renter:  rent rate \\alpha=6.0% of home value p.a.
+N=20000 households,  ages 25-100,  retirement age 67
+DC REGIME:  GLIDE TAU_S (IMPOSED)   |   source file:
+C:\\Users\\Quinn\\Desktop\\claudecodetest\\OwnersrentersDSRI-rentproc\\combined_renter.mat
+Dollar scale: 1 model unit = $1.   Merton fraction \\pi^{*}=0.31
+] 
+Wrote C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\fig_dashboard_full_renter_glide.png
+[Warning: Error in state of SceneNode.
+String scalar or character vector must have valid interpreter syntax:
+\\bf Calibration \\rm
+CRRA coefficient \\gamma=5   |   Discount factor \\beta=0.96   |   Bequest parameter \\chi=0.00
+DC contribution rate \\kappa=20%   |   AOW replacement rate=31%
+Risk-free rate r=1.1%   |   Equity return \\mu_S=4.0%   |   Equity volatility \\sigma_S=16.0%
+Income tax \\tau_{inc}=38%   |   Capital-gains tax bond/stock=0%/0%
+Owner:  LTV=80%,  mortgage rate r_m=1.3%,  maintenance \\theta=1.5%
+N=5000 households,  ages 25-100,  retirement age 67
+DC REGIME:  GLIDE TAU_S (IMPOSED)   |   source file:
+C:\\Users\\Quinn\\Desktop\\claudecodetest\\OwnersrentersDSRI-rentproc\\combined_owner.mat
+Dollar scale: 1 model unit = $1.   Merton fraction \\pi^{*}=0.31
+] 
+Wrote C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\fig_dashboard_full_owner_glide.png
+Skipping renter-vs-owner comparison: need both scenarios loaded.
+
+All figures written.
+  wrote fig_dashboard_prod_old_simplex.png
+
+4 dashboard(s):
+  fig_dashboard_prod_old_simplex.png
+  fig_dashboard_prod_old_simplex.png
+  fig_dashboard_prod_old_simplex.png
+  fig_dashboard_prod_old_simplex.png

@@ -1,14 +1,14 @@
 function sim = paths(p, profile, sol, ann_price, N, seed, X0_frac)
 %PATHS  Forward Monte-Carlo simulation, combined pension+housing model.
 %
-%   Initial state at age 20: X = X0_frac*Y_0, A = 0, H = h_mult * Y_0, Y = Y_0.
+%   Initial state at p.age0: X = X0_frac*Y_0, A = 0, H = h_mult*Y_0, Y = Y_0.
 %   X0_frac (optional, default 0) endows the household with an initial liquid
 %   buffer of X0_frac years of income -- used for buffered-benchmark welfare.
 %
 %   Working transitions:
 %     X_{t+1} = R_X * X_post
 %     A_{t+1} = R_A_with * (A_t + kappa * Y_t)
-%     H_{t+1} = R_H * H_t
+%     H_{t+1} = R_H * H_t          (house-price return / rent increase by tenure)
 %     Y_{t+1} = Y_t * exp(mu_g + sigma_l * eps_Y)
 %   Retirement transition (t = t_ret - 1): Y_{t+1} = replacement * Y_t,
 %     A_{t+1} = R_A_with * (A_t + kappa*Y_t)  (one last contribution).
@@ -30,12 +30,23 @@ is_owner = p.is_owner;
 
 % Tax parameters (guarded so legacy p-structs => no tax). Must match the
 % solver: income tax (EET) on wages/AOW/annuity, accrual CGT (no loss offset)
-% on the liquid account, DC fund sheltered.
+% plus the box-3 wealth tax (tau_wealth on the end-of-period balance) on the
+% liquid account, DC fund and housing sheltered/exempt.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
 tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
+tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
 net_inc = 1 - tau_inc;
-Rf_at   = 1 + p.r * (1 - tau_b);
+Rf_at   = (1 + p.r * (1 - tau_b)) * (1 - tau_w);
+
+% Free DC investment choice: interpolate the solver's per-state tau policy;
+% glide regime replicates p.tau_S. Either way the APPLIED DC equity share is
+% recorded in sim.tau_A (N x T-1; share applies to the t -> t+1 transition).
+choose_tau = isfield(p, 'choose_tau_S') && p.choose_tau_S;
+if choose_tau
+    assert(isfield(sol, 'tau_pol'), ...
+           'paths:no_tau_pol', 'choose_tau_S is set but sol has no tau_pol.');
+end
 
 Y_path  = zeros(N, T);
 X_path  = zeros(N, T);
@@ -53,10 +64,16 @@ m_path  = zeros(N, T);
 ann_pay_path = zeros(N, T);
 disp_inc = zeros(N, T);
 bequest_path = zeros(N, 1);
+tau_A_path = zeros(N, T-1);
 
 n_clamp_c  = 0;
 n_clamp_pi = 0;
 n_negLW    = 0;
+n_floored  = 0;
+
+% Consumption floor as a fraction of gross income (config.params). Absent
+% field => no floor, reproducing the pre-floor model exactly.
+phi_floor = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
 
 % Nearest-feasible-neighbor map depends only on the fixed simplex grid, not
 % on t or on which policy array -- build it once and reuse it, instead of
@@ -64,19 +81,26 @@ n_negLW    = 0;
 mask_ok = ~isnan(sol.c_pol(:,:,:,1));
 [bad_lin, nn_lin] = build_nan_fill_map(mask_ok);
 
-pp_c  = cell(T, 1);  pp_pi = cell(T, 1);
+pp_c  = cell(T, 1);  pp_pi = cell(T, 1);  pp_tau = cell(T, 1);
 for t = 1:T
     Cpol = sol.c_pol(:,:,:,t);  Ppol = sol.pi_pol(:,:,:,t);
     Cf = apply_nan_fill(Cpol, bad_lin, nn_lin);
     Pf = apply_nan_fill(Ppol, bad_lin, nn_lin);
     pp_c{t}  = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, Cf, 'linear', 'nearest');
     pp_pi{t} = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, Pf, 'linear', 'nearest');
+    if choose_tau && t < T
+        Tf = apply_nan_fill(sol.tau_pol(:,:,:,t), bad_lin, nn_lin);
+        pp_tau{t} = griddedInterpolant({p.lambda_grid, p.sA_grid, p.sH_grid}, Tf, 'linear', 'nearest');
+    end
 end
 
 logY_canon = config.income_profile(p);
 Y0 = exp(logY_canon(1));
 Y_path(:,1) = Y0;
 H_path(:,1) = p.h_mult * Y0;
+% House-price return for owners, rent increase for renters -- the same pair
+% grids.shock_grid quadratures over, so solver and simulator cannot disagree.
+[mu_HR, sigma_HR] = config.h_process(p);
 X_path(:,1) = X0_frac * Y0;
 A_path(:,1) = 0;
 W_path(:,1) = X_path(:,1) + A_path(:,1) + H_path(:,1) + Y_path(:,1);
@@ -87,9 +111,28 @@ sH_path(:,1)  = H_path(:,1) ./ W_path(:,1);
 % Independent standard-normal draws, then Cholesky-correlated (income L,
 % stock S, housing H) with the same Sigma used by grids.shock_grid -- no
 % resampling, just a linear transform of the same three draws.
-eps_S_ind = randn(N, T-1);
-eps_Y_ind = randn(N, T-1);
-eps_H_ind = randn(N, T-1);
+% Shock source. The default draws continuous standard normals, which is the
+% right thing for reporting: it is the process the calibration describes.
+%
+% p.gh_shocks = true instead samples the Gauss-Hermite abscissas with their
+% quadrature weights -- the discrete distribution the SOLVER integrates over.
+% The two differ: GH nodes have bounded support, so the continuous draws reach
+% states the solver never contemplates, and with utility unbounded below that
+% shows up as an arbitrarily large gap between simulated E[U] and the value
+% function. Setting this true removes that difference, so any remaining gap is
+% interpolation and Monte Carlo error alone. It is a validation switch, not a
+% modelling choice -- see tests/smoke_consumption_floor.
+gh_shocks = isfield(p, 'gh_shocks') && p.gh_shocks;
+if gh_shocks
+    sg = grids.shock_grid(p);
+    eps_S_ind = gh_sample(N, T-1, sg.z, sg.wz);
+    eps_Y_ind = gh_sample(N, T-1, sg.z, sg.wz);
+    eps_H_ind = gh_sample(N, T-1, sg.z, sg.wz);
+else
+    eps_S_ind = randn(N, T-1);
+    eps_Y_ind = randn(N, T-1);
+    eps_H_ind = randn(N, T-1);
+end
 
 Sigma_shock = [1,           p.corr_SL, p.corr_HL; ...
                p.corr_SL,   1,         p.corr_SH; ...
@@ -102,8 +145,16 @@ eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
 eps_S = reshape(Zcorr_shock(2, :), N, T-1);
 eps_H = reshape(Zcorr_shock(3, :), N, T-1);
 
+% Bequeathed housing value as a fraction of H: owners' estates sell the house
+% and pay p.sell_cost. Must match the solver (solver.bellman_step).
+sell_cost = 0; if isfield(p, 'sell_cost'), sell_cost = p.sell_cost; end
+h_beq_fac = is_owner * (1 - sell_cost);
+
 for t = 1:T
     is_retired = (t >= p.t_ret);
+    % Franchise-based DC contribution rate at this age (T x 1 profile; min()
+    % keeps legacy scalar-kappa p-structs working). See config.params.
+    kappa_t = p.kappa(min(t, numel(p.kappa)));
 
     if is_owner
         if t <= numel(p.m_rate_path)
@@ -124,7 +175,7 @@ for t = 1:T
         LW = X_path(:,t) + contrib_factor .* Y_path(:,t) + ann_pay_net ...
              - h_cost_rate .* H_path(:,t);
     else
-        contrib_factor = (1 - p.delta) * (1 - p.kappa) * net_inc;  % deductible contrib; rest taxed
+        contrib_factor = (1 - p.delta) * (1 - kappa_t) * net_inc;  % deductible contrib; rest taxed
         ann_pay     = zeros(N, 1);
         ann_pay_net = zeros(N, 1);
         LW = X_path(:,t) + contrib_factor .* Y_path(:,t) ...
@@ -143,39 +194,53 @@ for t = 1:T
     n_clamp_pi = n_clamp_pi + sum(abs(pi_ - pi_raw) > 1e-10);
     c_path(:,t)  = cf;
     pi_path(:,t) = pi_;
+    % Consumption floor, the same rule solver.bellman_step optimises against.
+    % It is a guarantee, not a mandate: a household whose own liquid wealth
+    % already covers the floor chooses freely and may consume below it. Only
+    % when own resources fall short does the state top consumption up to the
+    % floor, and then nothing is saved -- so the transfer cannot be banked.
+    F_t          = phi_floor * Y_path(:,t);
     C_path(:,t)  = cf .* max(LW, 0);
+    short        = LW < F_t;
+    C_path(short, t) = F_t(short);
+    n_floored    = n_floored + sum(short);
 
     if t == T
-        % Bequest: liquid wealth post-consumption + housing (if owner).
-        % Pension A is forfeited at death (annuity convention).
-        if is_owner
-            bequest_path = max(0, (1 - cf) .* LW) + H_path(:,t);
-        else
-            bequest_path = max(0, (1 - cf) .* LW);
-        end
+        % Bequest: liquid wealth post-consumption + housing net of the
+        % seller transaction cost (if owner). Pension A is forfeited at
+        % death (annuity convention).
+        bequest_path = max(LW - C_path(:,t), 0) + h_beq_fac * H_path(:,t);
         break
     end
 
     % No-borrow safety clamp on liquid post-saving
-    X_post = max((1 - cf) .* LW, 0);
+    X_post = max(LW - C_path(:,t), 0);
     n_negLW = n_negLW + sum(LW < 0);
 
     % Returns
     R_S_draw = exp(p.mu_S + p.sigma_S * eps_S(:,t));
-    R_H_draw = exp(p.mu_H + p.sigma_H * eps_H(:,t));
-    R_S_at_draw = R_S_draw - tau_s .* max(R_S_draw - 1, 0);   % after-tax equity (no loss offset)
-    R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT
+    R_H_draw = exp(mu_HR + sigma_HR * eps_H(:,t));
+    R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
+    R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
 
-    % Pension return for transition t -> t+1: tau_S applies on the t-side.
-    tau_t      = p.tau_S(t);
+    % DC equity share for transition t -> t+1 (applies on the t-side):
+    % glide regime uses the plan's tau_S(t); free regime interpolates the
+    % solver's per-state tau policy. Applied share recorded in sim.tau_A.
+    if choose_tau
+        tau_raw = pp_tau{t}(lam_path(:,t), sA_path(:,t), sH_path(:,t));
+        tau_ht  = max(min(tau_raw, 1), 0);
+    else
+        tau_ht  = repmat(p.tau_S(t), N, 1);
+    end
+    tau_A_path(:,t) = tau_ht;
     pt_surv    = profile.p_surv(t);
-    R_A_with   = ((1 - tau_t) * p.Rf + tau_t .* R_S_draw) ./ max(pt_surv, 1e-8);
+    R_A_with   = ((1 - tau_ht) .* p.Rf + tau_ht .* R_S_draw) ./ max(pt_surv, 1e-8);
 
     % Pension account dynamics
     if is_retired
         A_pre = A_path(:,t) - ann_pay;            % stock after payout
     else
-        A_pre = A_path(:,t) + p.kappa .* Y_path(:,t);   % stock after contribution
+        A_pre = A_path(:,t) + kappa_t .* Y_path(:,t);   % stock after contribution
     end
 
     X_path(:,t+1) = R_X .* X_post;
@@ -211,11 +276,12 @@ sim.m_pay = m_path;
 sim.ann_pay = ann_pay_path;
 sim.disp_inc = disp_inc;
 sim.bequest = bequest_path;
+sim.tau_A = tau_A_path;      % applied DC equity share on the t -> t+1 transition (N x T-1)
 sim.ages = (p.age0 : p.age0 + p.T - 1);
 sim.N = N;
 sim.is_owner = is_owner;
 sim.diagnostics = struct('n_clamp_c', n_clamp_c, 'n_clamp_pi', n_clamp_pi, ...
-                         'n_negLW', n_negLW);
+                         'n_negLW', n_negLW, 'n_floored', n_floored);
 end
 
 function [bad_lin, nn_lin] = build_nan_fill_map(mask_ok)
@@ -243,4 +309,16 @@ function Z = apply_nan_fill(M, bad_lin, nn_lin)
 Z = M;
 if isempty(bad_lin), return; end
 Z(bad_lin) = M(nn_lin);
+end
+
+function Z = gh_sample(n_row, n_col, z, w)
+%GH_SAMPLE  Draw from the discrete Gauss-Hermite standard-normal distribution.
+%   Inverse-CDF sampling of the abscissas z with probabilities w (which sum to
+%   1). Toolbox-free by design, matching the rest of the package.
+edges = [0, cumsum(w(:).')];
+edges(end) = 1;
+u = rand(n_row, n_col);
+[~, idx] = histc(u, edges);              %#ok<HISTC> -- discretize needs a toolbox
+idx = min(max(idx, 1), numel(z));
+Z = reshape(z(idx), n_row, n_col);
 end
