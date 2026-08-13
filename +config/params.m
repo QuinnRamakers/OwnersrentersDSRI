@@ -166,6 +166,14 @@ p.grid_type = 'simplex';
 % rate as welfare-comparable even though they agree.
 p.polish_ver = 2;
 
+% Seed search for the polish. 'none' drops the NC x NP tensor entirely and
+% relies on the warm start plus two fixed points, which is the architecture the
+% coauthor's solver uses -- one fmincon per state from a guess, no grid search.
+% 'full' keeps the tensor. Only the glide branch honours this; free-tau always
+% keeps the tensor, since its dominance guarantee rests on the glide slice's
+% grid maximum.
+p.grid_mode = 'none';
+
 % Numerical: 3D state grid (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1.
 % gh_n^3 = 343 joint Gauss-Hermite shock nodes per state.
 p.gh_n     = 7;

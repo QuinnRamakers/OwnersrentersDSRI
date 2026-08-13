@@ -1,0 +1,76 @@
+﻿Starting parallel pool (parpool) using the 'Processes' profile ...
+Connected to parallel pool with 16 workers.
+smoke_polish_v2
+       median |V| = 0.8633 -> obj_scale = 1.158
+  ok   (d) scaling moves the objective onto an O(1) scale
+  ok   (a) polish_ver=1 ignores warm starts entirely
+       no warm start: max rel gain 0.487, worst rel loss -5.48e-05
+  ok   (b) scaling alone stays within 1e-3 rel of v1
+       with warm start: max rel gain 0.487, worst rel loss -5.35e-16, improved at 92/323 states
+  ok   (c) complete v2 weakly dominates v1 (tol 1e-9 rel)
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.7929, pi=0.9361  [0.9 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.6091, pi=1.0000  [0.3 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4808, pi=0.9990  [0.3 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4211, pi=0.9914  [0.3 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1994, pi=1.0000  [0.3 s]
+  t=30 (age 54): c@(lam=0.2,sA=0.2,sH=0.4)=0.2007, pi=1.0000  [0.3 s]
+  t=20 (age 44): c@(lam=0.2,sA=0.2,sH=0.4)=0.2353, pi=1.0000  [0.3 s]
+  t=10 (age 34): c@(lam=0.2,sA=0.2,sH=0.4)=0.2775, pi=1.0000  [0.3 s]
+  t= 1 (age 25): c@(lam=0.2,sA=0.2,sH=0.4)=0.3389, pi=0.9757  [0.3 s]
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.7929, pi=0.9361  [0.5 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.6091, pi=1.0000  [0.5 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4808, pi=0.9990  [0.6 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4211, pi=0.9913  [0.6 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1994, pi=1.0000  [0.5 s]
+  t=30 (age 54): c@(lam=0.2,sA=0.2,sH=0.4)=0.2007, pi=1.0000  [0.5 s]
+  t=20 (age 44): c@(lam=0.2,sA=0.2,sH=0.4)=0.2353, pi=1.0000  [0.5 s]
+  t=10 (age 34): c@(lam=0.2,sA=0.2,sH=0.4)=0.2775, pi=1.0000  [0.5 s]
+  t= 1 (age 25): c@(lam=0.2,sA=0.2,sH=0.4)=0.3389, pi=0.9757  [0.5 s]
+       full solve: v1 Vt0_b0=-231351  v2 Vt0_b0=-231347  CEV +0.0004%
+  ok   (e) both versions solve and V is finite
+  ok   polish_ver is in the fingerprint
+smoke_polish_v2: all checks passed
+smoke_consumption_floor
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.8273, pi=0.9516  [0.3 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.7046, pi=0.9991  [0.3 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4924, pi=0.9994  [0.4 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4159, pi=0.9843  [0.4 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1767, pi=1.0000  [0.3 s]
+  t=30 (age 54): c@(lam=0.2,sA=0.2,sH=0.4)=0.1852, pi=0.9991  [0.3 s]
+  t=20 (age 44): c@(lam=0.2,sA=0.2,sH=0.4)=0.2109, pi=0.9995  [0.3 s]
+  t=10 (age 34): c@(lam=0.2,sA=0.2,sH=0.4)=0.2387, pi=0.9979  [0.3 s]
+  t= 1 (age 25): c@(lam=0.2,sA=0.2,sH=0.4)=0.2900, pi=0.9968  [0.3 s]
+  ok   phi_floor=0 leaves V finite on the feasible set
+  ok   phi_floor=0 still reaches C=0 (pre-floor behaviour)
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.8273, pi=0.9516  [0.3 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.7046, pi=0.9991  [0.3 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4924, pi=0.9994  [0.4 s]
+  t=50 (age 74): c@(lam=0.2,sA=0.2,sH=0.4)=0.4159, pi=0.9875  [0.3 s]
+  t=40 (age 64): c@(lam=0.2,sA=0.2,sH=0.4)=0.1763, pi=1.0000  [0.3 s]
+  t=30 (age 54): c@(lam=0.2,sA=0.2,sH=0.4)=0.1846, pi=0.9989  [0.3 s]
+  t=20 (age 44): c@(lam=0.2,sA=0.2,sH=0.4)=0.2101, pi=0.9995  [0.4 s]
+  t=10 (age 34): c@(lam=0.2,sA=0.2,sH=0.4)=0.2379, pi=0.9979  [0.3 s]
+  t= 1 (age 25): c@(lam=0.2,sA=0.2,sH=0.4)=0.2893, pi=0.9968  [0.3 s]
+  ok   no simulated household-year consumes zero
+  ok   no -1e15 sentinel left in V
+  ok   previously-sentinel states now take distinct values
+       (1116 such states, 908 distinct values under the floor)
+  ok   C equals max(own consumption, floor)
+  ok   nothing is saved out of the top-up
+       floor binds in 2.52% of household-years
+       V_tilde(anchor)   = -3.9363e-16
+       continuous draws: E[sum u] = -3.41746e+07  CE gap  -100.00%  (discretisation)
+       GH-sampled draws: E[sum u] = -2.58214e+07  CE gap  -100.00%  (implementation)
+       (gap is reported, not asserted -- see the note in this file)
+smoke_consumption_floor: all checks passed
+smoke_rent_process
+  ok   renter uses the rent pair
+  ok   owner uses the housing pair
+  ok   legacy p-struct falls back to housing
+  ok   calibrated rent process differs from the house process
+  ok   equating the two calibrations collapses them onto one process
+  ok   rent parameters move the renter
+  ok   rent parameters leave the owner alone
+  t=75 (age 99): c@(lam=0.2,sA=0.2,sH=0.4)=0.8266, pi=0.9476  [0.3 s]
+  t=70 (age 94): c@(lam=0.2,sA=0.2,sH=0.4)=0.7068, pi=1.0000  [0.3 s]
+  t=60 (age 84): c@(lam=0.2,sA=0.2,sH=0.4)=0.4899, pi=0.9973  [0.4 s]
