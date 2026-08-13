@@ -150,6 +150,22 @@ p.phi_floor = 1e-6;
 % solvers assert it.
 p.grid_type = 'simplex';
 
+% Polish version in solver.bellman_step. 2 scales the fmincon objective by a
+% per-period factor and seeds it from the t+1 policy at the same node; 1 is the
+% original polish and is bit-identical to every solve before this.
+%
+% Adopted knowing it is a null result on output: measured over full solves at
+% [25 15 15]/gh_n=5, both tenures, version 2 reproduced version 1 on every
+% digit of Vt0, floor incidence, consumption and the equity share. What it buys
+% is a polish that actually moves (unscaled, the objective sat nine orders
+% below fmincon's FunctionTolerance, so it converged without iterating), the
+% derivative-free refinement that the glide branch never had, and an end to the
+% singular-KKT warnings. What it costs is runtime.
+%
+% It is in param_fingerprint, so files solved under the two versions do not
+% rate as welfare-comparable even though they agree.
+p.polish_ver = 2;
+
 % Numerical: 3D state grid (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1.
 % gh_n^3 = 343 joint Gauss-Hermite shock nodes per state.
 p.gh_n     = 7;
