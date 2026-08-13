@@ -21,3 +21,6 @@ v2_dash2.txt
 dash_configs_log.txt
 confirm_default_log.txt
 verify_continuation_log.txt
+
+confirm_no_tensor_log.txt
+grid_mode_log.txt
