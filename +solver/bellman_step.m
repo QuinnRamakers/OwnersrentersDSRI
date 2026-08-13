@@ -317,6 +317,24 @@ end
 % pi, but production runs keep both at 41 (see config.params).
 NC = 41; if isfield(p, 'N_c'),  NC = p.N_c;  end
 NP = 41; if isfield(p, 'N_pi'), NP = p.N_pi; end
+
+% Seed-search mode. The tensor search is the dominant per-state cost, and with
+% a polish that actually works plus a t+1 warm start it may no longer need to
+% be this fine -- the coauthor's code has no tensor at all, one fmincon from a
+% warm start per state.
+%   'full'   (default) the NC x NP tensor -- unchanged behaviour
+%   'coarse' the same tensor at 9 x 9, as a cheap bracket for the polish
+%   'none'   no tensor: candidates are the t+1 policy plus two fixed points,
+%            evaluated directly, and the polish does the rest
+% Only the GLIDE branch honours this. Free-tau keeps the full tensor: its
+% dominance guarantee is built on the glide slice's grid maximum, and weakening
+% the seed would put that at risk for no measured benefit yet.
+grid_mode = 'full'; if isfield(p, 'grid_mode'), grid_mode = char(p.grid_mode); end
+if strcmp(grid_mode, 'coarse') && ~optimise_tau
+    NC = 9; NP = 9;
+end
+skip_tensor = strcmp(grid_mode, 'none') && ~optimise_tau;
+
 pi_grid = linspace(0, 1, NP).';
 R_X_all = (1 - pi_grid) * Rf_at + pi_grid * R_S_at.';     % NP x n_shock (after-tax)
 
@@ -438,13 +456,37 @@ parfor k = 1:n_feas
     % using the factorisation X_{t+1}/W = R_X(pi) * [(1-c)*LW_W]. X_next is
     % tau-independent and hoisted out of the slice loop. NTg = 1 (glide
     % regime) reproduces the pre-choose_tau_S single-tensor search exactly.
+    maxval = -inf; ic_max = 1; ip_max = 1; it_max = 1;
+    maxval_g = -inf; ic_g = 1; ip_g = 1;
+    rhs_g = [];
+    % Seed values as CONTINUOUS points, so the two modes share the downstream
+    % code: with a tensor they are the argmax, without one they come from the
+    % candidate scan below.
+    c_seed = c_grid(1); pi_seed = 0;
+
+    if skip_tensor
+        % No tensor. Evaluate the t+1 policy at this node plus two fixed
+        % points -- one central, one high-equity/low-consumption -- and take
+        % the best as the polish seed and the fallback value.
+        cand = [0.5, 0.5; 0.15, 1.0];
+        if isfinite(c_warm) && isfinite(pi_warm)
+            cand = [min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1); cand];
+        end
+        for s = 1:size(cand, 1)
+            v = bellman_rhs_z3(cand(s,1), cand(s,2), tau, LW_W, Rf_at, R_S_at, ...
+                    p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+                    w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+            if v > maxval
+                maxval = v; c_seed = cand(s,1); pi_seed = cand(s,2);
+            end
+        end
+        maxval_g = maxval;
+    else
+
     sav    = (1 - c_grid).' * LW_W;                   % 1 x NC (saved liquid wealth)
     RX     = reshape(R_X_all.', n_shock, 1, NP);      % n_shock x 1 x NP
     X_next = RX .* sav;                               % n_shock x NC x NP
 
-    maxval = -inf; ic_max = 1; ip_max = 1; it_max = 1;
-    maxval_g = -inf; ic_g = 1; ip_g = 1;
-    rhs_g = [];
     for j = 1:NTg
         A_next_W_j = R_A_all(:, j) * A_next_pre_return;   % n_shock x 1
         base_W = A_next_W_j + H_next_W + Y_next_W;         % n_shock x 1
@@ -483,6 +525,8 @@ parfor k = 1:n_feas
             end
         end
     end
+    c_seed = c_grid(ic_max); pi_seed = pi_grid(ip_max);
+    end   % if skip_tensor
 
     if optimise_tau
         % Free-tau polish: best of three candidates (each may fail; the grid
@@ -619,8 +663,9 @@ parfor k = 1:n_feas
                                           A_next_W, H_next_W, Y_next_W, ...
                                           w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
 
-        % Grid argmax, plus the t+1 policy at this node when it is available.
-        starts = [c_grid(ic_max), pi_grid(ip_max)];
+        % Best seed (tensor argmax, or the candidate scan when the tensor is
+        % off), plus the t+1 policy at this node when it is available.
+        starts = [c_seed, pi_seed];
         if isfinite(c_warm) && isfinite(pi_warm)
             starts = [starts; min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
         end
@@ -650,7 +695,7 @@ parfor k = 1:n_feas
             if V_polish > maxval
                 cb0 = x_opt(1); pb0 = x_opt(2); vb0 = V_polish;
             else
-                cb0 = c_grid(ic_max); pb0 = pi_grid(ip_max); vb0 = maxval;
+                cb0 = c_seed; pb0 = pi_seed; vb0 = maxval;
             end
             [c_r, p_r, v_r] = refine_cpi(cb0, pb0, tau, vb0, LW_W, Rf_at, R_S_at, ...
                 p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
@@ -663,7 +708,7 @@ parfor k = 1:n_feas
         if V_polish > maxval
             V_flat(k) = V_polish; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2);
         else
-            V_flat(k) = maxval; c_flat(k) = c_grid(ic_max); pi_flat(k) = pi_grid(ip_max);
+            V_flat(k) = maxval; c_flat(k) = c_seed; pi_flat(k) = pi_seed;
         end
         tau_flat(k) = tau;
     end
