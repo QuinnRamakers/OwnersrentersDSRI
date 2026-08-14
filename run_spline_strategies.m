@@ -222,7 +222,7 @@ for j = 1:numel(jobs)
     sol = solver.solve(p, profile, shocks, ann_price);
     lprintf(LOG_FILE, '    Solver: %.1f s\n', sol.elapsed);
 
-    %% Welfare summary at the initial state (see welfare_dc_strategies.m):
+    %% Welfare summary at the initial state (see utility.welfare_summary):
     %% V(W,state) = W^(1-gamma) * V_tilde(state); all strategies share the
     %% same initial state, so V_tilde there is the exact welfare ranking.
     %% Saved top-level so comparison can matfile-read it without touching sol.

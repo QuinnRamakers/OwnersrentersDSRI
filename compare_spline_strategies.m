@@ -26,7 +26,7 @@ function compare_spline_strategies(results_dir, opts)
 %   produced. Combining instances = download every instance's output dir
 %   into ONE folder and point this function at it.
 %
-%   Welfare metric (see welfare_dc_strategies.m): homotheticity gives
+%   Welfare metric (see utility.welfare_summary): homotheticity gives
 %   V(W,state) = W^(1-gamma) * V_tilde(state); every arm starts from the
 %   same initial state, so ranking V_tilde there is exact -- no Monte Carlo
 %   noise. Arms are RANKED by V_tilde (best first), but the reported CEV is

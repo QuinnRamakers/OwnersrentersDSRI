@@ -135,7 +135,7 @@ for k = 1:numel(scenarios)
     fprintf('  Solver: %.1f s  (pool: %s, %d workers, host: %s)\n', ...
         sol.elapsed, sol.timing.pool.type, sol.timing.pool.num_workers, sol.timing.hostname);
 
-    % Welfare summary at the initial state (see welfare_dc_strategies.m):
+    % Welfare summary at the initial state (see utility.welfare_summary):
     % V(W,state) = W^(1-gamma) * V_tilde(state); saved top-level so
     % compare_spline_strategies.m (and similar) can read Vt0 via matfile
     % without loading the big sol/sim arrays -- same convention as

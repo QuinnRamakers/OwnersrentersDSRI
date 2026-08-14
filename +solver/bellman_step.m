@@ -139,7 +139,7 @@ end
 
 % Effective DC contribution rate at this age. p.kappa is a T x 1 franchise-
 % based profile (config.params); min() keeps legacy scalar-kappa p-structs
-% and the p.kappa = 0 overrides in run_nodc / run_dc_strategies working.
+% and the p.kappa = 0 overrides in run_nodc working.
 kappa_t = p.kappa(min(t, numel(p.kappa)));
 
 % Bequeathed housing value as a fraction of H: owners' estates sell the

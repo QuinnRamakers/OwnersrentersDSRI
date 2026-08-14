@@ -63,7 +63,7 @@ p.corr_SH       = 0.0;     % corr(stock return, housing return)
 %   so the effective rate on gross income is an AGE PROFILE, not a scalar.
 %   p.kappa is built below as a T x 1 vector; solver and simulator index it as
 %   p.kappa(min(t, numel(p.kappa))), which keeps legacy scalar-kappa p-structs
-%   and the p.kappa = 0 overrides in run_nodc / run_dc_strategies working.
+%   and the p.kappa = 0 overrides in run_nodc working.
 %
 %   kappa_t is evaluated on the DETERMINISTIC income profile, not realised Y_t:
 %   the model is homothetic in W (only lambda = Y/W is a state), so a rate

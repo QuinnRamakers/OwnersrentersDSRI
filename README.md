@@ -208,20 +208,40 @@ directly, and they dispatch on `p.grid_type`.
 
 ### Scripts
 
+Solve:
+
 | Script | Purpose |
 |---|---|
 | `run_combined` | Baseline four scenarios |
 | `run_nodc` | No-DC benchmark |
 | `run_spline_strategies` | Glide-path sweep |
-| `run_dc_strategies` | Older fixed-rule sweep, superseded by the spline sweep |
+
+Rank and report:
+
+| Script | Purpose |
+|---|---|
 | `compare_spline_strategies` | Rank all arms by welfare |
 | `compare_strategy_vs_nopension` | Best glide path vs no pension, 12-panel check |
+| `welfare_by_wealth` | Welfare across the initial-buffer sweep, with a resolution check |
+| `welfare_dc_vs_nodc`, `plot_welfare_vs_buffer` | Welfare against the initial buffer |
+
+Figures:
+
+| Script | Purpose |
+|---|---|
 | `make_plots` | Per-scenario and renter-vs-owner dashboards |
 | `final_summary_plots` | Review figures at a one-year buffer |
-| `welfare_dc_vs_nodc`, `plot_welfare_vs_buffer` | Welfare against the initial buffer |
-| `test_freetau_dominance_prod` | Free DC choice must weakly dominate the glide, per state |
+| `plot_dc_equity_share` | Chosen DC equity share by age, both tenures |
+
+Checks (`tests/`, all runnable standalone):
+
+| Script | Purpose |
+|---|---|
 | `tests/smoke_fill_fix` | Acceptance checks for the continuation-fill behaviour |
-| `verify_income_profile` | Checks the BKV income table path against expected values |
+| `tests/smoke_spline_tau` | `strategy.spline_tau` hits its knots, stays in [0,1], stays monotone |
+| `tests/smoke_freetau_dominance_lna` | Free-choice dominance at the cube's Bellman step |
+| `tests/test_freetau_dominance_prod` | Free DC choice must weakly dominate the glide, per state, on solved production files |
+| `tests/verify_income_profile` | Checks the BKV income table path against expected values |
 
 ### Data
 

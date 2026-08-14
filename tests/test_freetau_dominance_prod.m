@@ -5,18 +5,18 @@
 %   individually optimal value (choose_tau_S=true) must weakly DOMINATE the
 %   mechanical glide path -- at every state, free choice can replicate the
 %   glide slice, so it can never do worse. This checks that property on the
-%   actual PRODUCTION solves (25x15x15, gh_n=5), per-state across the whole
-%   value function (not just the initial node), and reports the CEV of the
-%   welfare change. PASS if no state loses more than 1e-4 CEV.
+%   actual PRODUCTION solves (utility.production_grid), per-state across the
+%   whole value function (not just the initial node), and reports the CEV of
+%   the welfare change. PASS if no state loses more than 1e-4 CEV.
 %
 %   cev(state,t) = (V_free / V_glide)^(1/(1-gamma)) - 1
 %   > 0 : free choice raises welfare;  ~0 : indifferent;  < 0 : loss.
 
-% Repo = the checkout this script lives in (see final_summary_plots.m): an
-% absolute path here tested another checkout's .mat files.
-repo = fileparts(which('test_freetau_dominance_prod'));
-if isempty(repo), repo = pwd; end
-addpath(repo);
+% Read the arms from wherever the runners wrote them. This used to derive the
+% directory from the script's own location, which meant it ignored
+% CGM_OUTPUT_DIR and tested nothing on a cluster run whose outputs went to the
+% mounted volume -- and it broke outright once this file moved into tests/.
+res_dir = utility.output_dir();
 
 % Dominance is a property of BOTH coordinate systems -- the cube's free-tau
 % branch keeps the glide value in its seed grid and polishes from it pinned,
@@ -30,8 +30,8 @@ pairs = {'renter', sprintf('combined_renter%s.mat', gs), ...
                    sprintf('combined_owner_freetau%s.mat', gs)};
 
 for i = 1:size(pairs, 1)
-    G = load(fullfile(repo, pairs{i, 2}), 'sol', 'p');
-    F = load(fullfile(repo, pairs{i, 3}), 'sol', 'p');
+    G = load(fullfile(res_dir, pairs{i, 2}), 'sol', 'p');
+    F = load(fullfile(res_dir, pairs{i, 3}), 'sol', 'p');
     gamma = G.p.gamma;
     Vg = G.sol.V; Vf = F.sol.V;
 

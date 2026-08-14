@@ -7,7 +7,7 @@ function w = welfare_summary(p, V0)
 %   welfare metric without loading the big sol/sim arrays. Homotheticity gives
 %   V(W, state) = W^(1-gamma) * V_tilde(state), so runs that start from the
 %   same initial state are ranked exactly by V_tilde there -- no Monte Carlo
-%   noise (see welfare_dc_strategies.m).
+%   noise; README's "Where welfare is read" has the reasoning.
 %
 %   Fields:
 %     Vt0        V_tilde at the ZERO-buffer corner (b = 0). Unchanged legacy
