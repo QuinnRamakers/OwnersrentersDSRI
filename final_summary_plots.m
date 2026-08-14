@@ -25,6 +25,8 @@
 repo = fileparts(which('final_summary_plots'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
+% dc_equity_share_figure lives in the freetau extension folder.
+addpath(fullfile(repo, 'freetau'));
 X0_FRAC = 1.0;               % initial liquid buffer, in years of income
 N_sim   = 10000;
 

@@ -14,8 +14,9 @@
 
 % Repo = the checkout this script lives in (see final_summary_plots.m): an
 % absolute path here tested another checkout's .mat files.
-repo = fileparts(which('test_freetau_dominance_prod'));
-if isempty(repo), repo = pwd; end
+% This file lives in freetau/, so the repo root is one level up.
+repo = fileparts(fileparts(which('test_freetau_dominance_prod')));
+if isempty(repo), repo = fileparts(pwd); end
 addpath(repo);
 
 pairs = {'renter', 'combined_renter.mat', 'combined_renter_freetau.mat'; ...

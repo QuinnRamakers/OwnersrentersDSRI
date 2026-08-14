@@ -8,8 +8,9 @@
 %   Both arms are simulated here at the same buffer, so the panels differ only
 %   in the DC strategy.
 
-repo = fileparts(which('plot_private_savings_response'));
-if isempty(repo), repo = pwd; end
+% This file lives in freetau/, so the repo root is one level up.
+repo = fileparts(fileparts(which('plot_private_savings_response')));
+if isempty(repo), repo = fileparts(pwd); end
 addpath(repo);
 
 X0_FRAC = 1.0;               % initial liquid buffer, in years of income

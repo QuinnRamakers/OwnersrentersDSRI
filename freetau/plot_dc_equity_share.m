@@ -20,8 +20,9 @@
 %   The cache exists so the figures can be restyled without re-loading the
 %   solutions: delete it (or set REBUILD = true) when the solutions change.
 
-repo = fileparts(which('plot_dc_equity_share'));
-if isempty(repo), repo = pwd; end
+% This file lives in freetau/, so the repo root is one level up.
+repo = fileparts(fileparts(which('plot_dc_equity_share')));
+if isempty(repo), repo = fileparts(pwd); end
 addpath(repo);
 
 % 'simplex' is the default: the ovnf 'lna' port grid-searches tau with no
