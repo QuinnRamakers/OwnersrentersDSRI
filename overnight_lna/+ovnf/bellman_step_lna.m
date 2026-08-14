@@ -1,11 +1,12 @@
 function [V_t, c_pol, pi_pol, tau_pol] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price)
-%   FREE-TAU PORT (ovnf). Adds the p.choose_tau_S option that
-%   solver.bellman_step_lna asserts against: while WORKING, the DC equity share
-%   is a per-state choice searched on a grid of p.N_tau points (plus the glide
-%   value, so the free search can never lose to the glide on the grid). From
-%   t_ret on the share is fixed at config.tau_effective, exactly as in
-%   solver.bellman_step -- that is what keeps pension.annuity_price honest
-%   without a fourth state variable.
+%BELLMAN_STEP_LNA  One backward-induction step on (u1, u2, u3) = (lambda, n-tilde, a).
+%
+%   FREE-TAU PORT (ovnf). Adds the p.choose_tau_S option: while WORKING, the DC
+%   equity share is a per-state choice searched on a grid of p.N_tau points
+%   (plus the glide value, so the free search can never lose to the glide on
+%   the grid). From t_ret on the share is fixed at config.tau_effective,
+%   exactly as in solver.bellman_step -- that is what keeps
+%   pension.annuity_price honest without a fourth state variable.
 %
 %   Search is GRID ONLY over (c, pi, tau); no fmincon polish on the tau axis.
 %   That matches how these LNA runs already operate (skip_polish = true) and
@@ -14,7 +15,11 @@ function [V_t, c_pol, pi_pol, tau_pol] = bellman_step_lna(t, V_next, p, profile,
 %   NOT VALIDATED against solver.bellman_step's free-tau branch. With
 %   choose_tau_S off it collapses to the single glide slice and reproduces
 %   solver.bellman_step_lna.
-%BELLMAN_STEP_LNA  One backward-induction step on (u1, u2, u3) = (lambda, n-tilde, a).
+%
+%   This port predates free tau on the maintained cube solver, which has since
+%   gained it WITH the polish (see solver.bellman_step_lna). What ovnf still
+%   has and the maintained path does not is the simulator half:
+%   ovnf.paths_lna reads sol.tau_pol, simulate.paths_lna does not.
 %
 %   Reparametrization of the (lambda, s_A, s_H) simplex onto the full cube
 %   [0,1]^3 (paper Sec. 3 "Redefining variables", plus a renormalization of
@@ -64,15 +69,12 @@ inv_omg = 1 / one_m_g;
 is_owner   = p.is_owner;
 is_retired = (t >= p.t_ret);
 
-% Free DC investment choice is a simplex-solver-only feature by design; the
-% lna path has no tau_pol machinery.
+% Free DC investment choice: searched on the tau grid while working, fixed at
+% config.tau_effective once retired. This is the feature the port exists for.
 choose_tau   = isfield(p,'choose_tau_S') && p.choose_tau_S;
 optimise_tau = choose_tau && (t < p.t_ret);   % accumulation only
 tau_pol = [];
 if choose_tau, tau_pol = nan(N1, N2, N3); end
-assert(true || ~(isfield(p, 'choose_tau_S') && p.choose_tau_S), ...
-       'bellman_step_lna:choose_tau_S', ...
-       'choose_tau_S is not supported on the lna grid; use solver.bellman_step.');
 
 skip_polish = false; if isfield(p, 'skip_polish'), skip_polish = logical(p.skip_polish); end
 

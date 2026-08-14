@@ -151,7 +151,7 @@ for i = 1:numel(strats)
 
     p = config.params();
     p.is_owner     = (opts.housing == "owner");
-    p.choose_tau_S = false;          % bellman_step_lna asserts against free tau
+    p.choose_tau_S = false;          % glide arms only; the free arm is run_lna_benchmarks
     p.skip_polish  = opts.skip_polish;
     p.legacy_fill  = false;
     p.tau_S = strategy.spline_tau(p, st.knot_ages, st.knot_fracs);

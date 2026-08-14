@@ -14,11 +14,30 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %
 %   sol must come from solver.solve_lifecycle_lna (policies on
 %   {p.u1_grid, p.u2_grid, p.u3_grid}).
+%
+%   GLIDE ONLY. The DC equity share applied below is p.tau_S(t), the fund's
+%   glide path. solver.bellman_step_lna can solve the free-choice problem
+%   (p.choose_tau_S) and solve_lifecycle_lna returns sol.tau_pol, but this
+%   simulator has no tau_pol lookup, so simulating such a solution here would
+%   apply the glide to households the solver gave a free choice -- a sim that
+%   silently contradicts its own sol. The guard below refuses instead.
+%   ovnf.paths_lna (overnight_lna/) has the missing lookup and is the
+%   reference if this is ever ported; simulate.paths does the same thing on
+%   the simplex.
 
 if nargin < 5 || isempty(N), N = 5000; end
 if nargin < 6 || isempty(seed), seed = 20260511; end
 if nargin < 7 || isempty(X0_frac), X0_frac = 0; end   % initial liquid buffer = X0_frac * Y0
 rng(seed);
+
+% Mirror of the simulate.paths:no_tau_pol guard, in the opposite direction:
+% there a free-tau run without a policy is the error, here a free-tau policy
+% this simulator cannot read is. Both turn a silently wrong sim into a stop.
+assert(~(isfield(p, 'choose_tau_S') && p.choose_tau_S) && ~isfield(sol, 'tau_pol'), ...
+       'paths_lna:choose_tau_S', ...
+       ['This solution was solved with free DC choice, but simulate.paths_lna ' ...
+        'applies the tau_S glide and would misreport it. Port the tau_pol ' ...
+        'lookup from ovnf.paths_lna, or simulate on the simplex.']);
 
 T = p.T;
 is_owner = p.is_owner;

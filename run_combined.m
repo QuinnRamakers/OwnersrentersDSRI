@@ -10,8 +10,12 @@
 %                        per-state choice, benchmarking the value of free
 %                        pension investment choice against the glide plan.
 %     4) owner_freetau   same, owner tenure.
-%   The freetau scenarios are skipped under CGM_GRID=lna -- choose_tau_S is a
-%   simplex-solver feature and bellman_step_lna asserts against it.
+%   The freetau scenarios are skipped under CGM_GRID=lna. The cube SOLVER
+%   handles free choice (solver.bellman_step_lna gained it, and
+%   tests/smoke_freetau_dominance_lna checks the dominance property); what is
+%   missing is the simulator -- simulate.paths_lna applies the tau_S glide and
+%   never reads sol.tau_pol, so the arm would save a sim contradicting its own
+%   sol. paths_lna asserts on this, so the skip is belt-and-braces.
 %
 %   Saves combined_{renter,owner}[_freetau].mat here, with an _lna suffix on
 %   the cube grid so the two grid systems never overwrite each other.
@@ -79,7 +83,8 @@ N_sim = 10000;
 for k = 1:numel(scenarios)
     sc = scenarios(k);
     if use_lna && sc.choose_tau
-        fprintf('\n=== Scenario: %s SKIPPED (choose_tau_S unsupported on the lna grid) ===\n', sc.name);
+        fprintf(['\n=== Scenario: %s SKIPPED (simulate.paths_lna has no tau_pol ' ...
+                 'lookup; the cube solver itself supports free choice) ===\n'], sc.name);
         continue
     end
     fprintf('\n=== Scenario: %s (grid: %s) ===\n', sc.name, grid_type);

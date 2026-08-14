@@ -14,9 +14,11 @@ function run_lna_benchmarks(which, opts)
 %   factor. Cut p.N_tau (e.g. 5) if that will not fit; the tau grid always
 %   includes the glide value so a coarse grid still cannot lose to the glide.
 %
-%   WARNING -- the free arm uses ovnf.*, a PORT. solver.bellman_step_lna
-%   asserts against choose_tau_S; ovnf adds it as a pure grid sweep over
-%   (c, pi, tau) with no fmincon polish on the tau axis. It has NOT been
+%   WARNING -- the free arm uses ovnf.*, a PORT. It adds choose_tau_S as a pure
+%   grid sweep over (c, pi, tau) with no fmincon polish on the tau axis. (When
+%   this was written solver.bellman_step_lna had no free-tau branch at all; it
+%   has one now, with the polish, but no matching simulator -- see
+%   simulate.paths_lna.) It has NOT been
 %   validated against solver.bellman_step's free-tau branch, which additionally
 %   runs a 3-var polish and a derivative-free ridge refinement. Expect the ovnf
 %   free arm to be a LOWER BOUND on the true free-choice value, so the gap it
