@@ -92,7 +92,7 @@ for k = 1:numel(idx)
         % is the script path and feval the function one, so pick by reading
         % the file rather than by remembering which is which.
         target = which(char(name));
-        if is_script(target), run(target); else, feval(char(name)); end
+        if is_script(target), run_script(target); else, feval(char(name)); end
         status(k) = "PASS";
         secs(k)   = toc(t0);
     catch err
@@ -137,6 +137,17 @@ end
 
 function out = ternary(c, a, b)
 if c, out = a; else, out = b; end
+end
+
+function run_script(script_path)
+% run() evaluates a script in its CALLER's workspace, so calling it directly
+% from the loop above would hand the script run_all's own variables. The two
+% script checks are not written to be hosted -- smoke_spline_tau opens with
+% `clear`, which wiped idx/k/status/secs mid-iteration and made the very first
+% fast check die on "Reference to a cleared variable t0". This frame is that
+% disposable workspace: the script gets a scratch caller of its own, and
+% whatever it clears or leaves behind dies with the frame.
+run(script_path);
 end
 
 function tf = is_script(path)

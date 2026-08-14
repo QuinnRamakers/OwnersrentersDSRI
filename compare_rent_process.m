@@ -67,9 +67,16 @@ for a = 1:numel(arms)
 end
 
 report(R);
-save('rent_process_comparison.mat', 'R', 'GRID', 'GH_N', 'N_SIM', 'SEED', '-v7.3');
+% Through utility.output_dir, like every other writer: a bare filename lands in
+% whatever the cwd happens to be, which on the cluster is the pod's ephemeral
+% filesystem rather than the mounted volume. This script was missed by the
+% pass that routed the other figure writers.
+out_dir = utility.output_dir();
+mat_file = fullfile(out_dir, 'rent_process_comparison.mat');
+save(mat_file, 'R', 'GRID', 'GH_N', 'N_SIM', 'SEED', '-v7.3');
 make_figure(R, GRID, GH_N, N_SIM);
-fprintf('\nwrote rent_process_comparison.mat and fig_rent_process_comparison.png\n');
+fprintf('\nwrote %s and %s\n', mat_file, ...
+    fullfile(out_dir, 'fig_rent_process_comparison.png'));
 end
 
 % ---------------------------------------------------------------- reporting
@@ -181,6 +188,7 @@ title('Median balances'); xlabel('age'); ylabel('2025 EUR');
 
 title(tl, sprintf(['Renter under the old and new rent processes  |  grid [%d %d %d], ' ...
                    'gh_n = %d, %d paths'], GRID(1), GRID(2), GRID(3), GH_N, N_SIM));
-exportgraphics(f, 'fig_rent_process_comparison.png', 'Resolution', 150);
+exportgraphics(f, fullfile(utility.output_dir(), 'fig_rent_process_comparison.png'), ...
+    'Resolution', 150);
 close(f);
 end

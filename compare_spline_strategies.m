@@ -344,7 +344,26 @@ e = struct( ...
     'b0',         field_or_nan(pk, 'b0'), ...
     'b_alt',      field_or_nan(pk, 'b_alt'), ...
     'fp',         fp, ...
-    'grid_str',   sprintf('%dx%dx%d, gh_n=%d', pk.N_lambda, pk.N_sA, pk.N_sH, pk.gh_n));
+    'grid_str',   grid_str_of(pk));
+end
+
+function s = grid_str_of(pk)
+%GRID_STR_OF  "N1xN2xN3, gh_n=G" for whichever coordinate system pk is on.
+%   Reading N_lambda/N_sA/N_sH unconditionally reported the SIMPLEX sizes for a
+%   cube run, and silently: config.params sets both sets of grid fields, so a
+%   cube p carries stale 40s there while the sizes it actually solved on live
+%   in u1_grid/u2_grid/u3_grid. The header at the top of the ranking would have
+%   claimed 40x40x40 for every cube sweep.
+%
+%   Counts come off the axis vectors, not the N_* fields, so they are right
+%   after build_state_grids re-inserts the anchors. An absent grid_type means
+%   simplex, the same reading solver.solve and simulate.forward take.
+if isfield(pk, 'grid_type') && strcmp(char(pk.grid_type), 'lna')
+    n = [numel(pk.u1_grid), numel(pk.u2_grid), numel(pk.u3_grid)];
+else
+    n = [numel(pk.lambda_grid), numel(pk.sA_grid), numel(pk.sH_grid)];
+end
+s = sprintf('%dx%dx%d, gh_n=%d', n(1), n(2), n(3), pk.gh_n);
 end
 
 function [Vt0, used] = pick_anchor(R, want)

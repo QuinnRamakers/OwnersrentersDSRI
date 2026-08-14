@@ -19,13 +19,20 @@ ages = (p.age0 : p.age0 + p.T - 2).';
 n_fail = 0;
 
 %% Representative 4-knot strategies {name, knot_ages, knot_fracs}
+%  A_LO / A_HI are the first and last ages strategy.spline_tau accepts. They
+%  are read off p, never written as literals: these cases carried a hardcoded
+%  20 from when age0 was 20, and the BKV recalibration to age0 = 25 turned the
+%  second case into an uncaught "knot ages must lie in [age0, age0+T-2]" that
+%  aborted this whole check. Same landmine as the one in run_spline_strategies.
+A_LO = p.age0;                  % 25
+A_HI = p.age0 + p.T - 2;        % 99, the last age with a transition
 CASES = {
-    'aggressive_glide', [25 45 60 65], [1.00 0.90 0.30 0.00];
-    'classic_glide',    [20 40 55 65], [0.90 0.70 0.40 0.20];
-    'flat_ish',         [20 40 60 80], [0.50 0.50 0.50 0.50];
-    'late_derisk',      [20 55 62 67], [1.00 1.00 0.50 0.00];
-    'hump',             [25 40 55 70], [0.40 0.90 0.60 0.10];  % non-monotone knots
-    'edge_knots',       [20 35 50 99], [0.80 0.60 0.30 0.00];  % full horizon span
+    'aggressive_glide', [25   45 60 65], [1.00 0.90 0.30 0.00];
+    'classic_glide',    [A_LO 40 55 65], [0.90 0.70 0.40 0.20];
+    'flat_ish',         [A_LO 40 60 80], [0.50 0.50 0.50 0.50];
+    'late_derisk',      [A_LO 55 62 67], [1.00 1.00 0.50 0.00];
+    'hump',             [25   40 55 70], [0.40 0.90 0.60 0.10];  % non-monotone knots
+    'edge_knots',       [A_LO 35 50 A_HI], [0.80 0.60 0.30 0.00];  % full horizon span
 };
 
 fprintf('=== strategy.spline_tau verification ===\n\n');
@@ -61,8 +68,8 @@ for k = 1:size(CASES,1)
         ok = false; fprintf('  FAIL %-16s knots decreasing but path increases\n', name);
     end
 
-    if ok, fprintf('  PASS %-16s  tau(20)=%.3f  tau(45)=%.3f  tau(64)=%.3f  tau(75)=%.3f\n', ...
-            name, tau(1), tau(45-p.age0+1), tau(64-p.age0+1), tau(75-p.age0+1));
+    if ok, fprintf('  PASS %-16s  tau(%d)=%.3f  tau(45)=%.3f  tau(64)=%.3f  tau(75)=%.3f\n', ...
+            name, A_LO, tau(1), tau(45-p.age0+1), tau(64-p.age0+1), tau(75-p.age0+1));
     else,  n_fail = n_fail + 1;
     end
 end
@@ -87,10 +94,14 @@ for k = 1:size(BAD,1)
 end
 
 %% 7. strategy.make_grid / strategy.menu generation (production collection)
-M = strategy.menu();                          % 3 knots x 5 levels, monotone
-if numel(M) ~= 35                             % multisets: C(5+3-1, 3) = 35
-    n_fail = n_fail + 1; fprintf('  FAIL menu default count = %d (want 35)\n', numel(M));
-else, fprintf('  PASS menu default -> 35 monotone strategies\n');
+% The default level set widened from 0:0.25:1 to 0:0.125:1 (9 levels) when the
+% menu was sized to fill a 12h cluster window, so the default count is 165 --
+% C(9+3-1, 3) -- not the 35 this check was written against. See strategy.menu.
+M = strategy.menu();                          % 3 knots x 9 levels, monotone
+N_MENU = 165;                                 % multisets: C(9+3-1, 3) = 165
+if numel(M) ~= N_MENU
+    n_fail = n_fail + 1; fprintf('  FAIL menu default count = %d (want %d)\n', numel(M), N_MENU);
+else, fprintf('  PASS menu default -> %d monotone strategies\n', N_MENU);
 end
 if numel(strategy.menu([0 .5 1])) ~= 10       % C(3+3-1, 3) = 10
     n_fail = n_fail + 1; fprintf('  FAIL menu 3-level count != 10\n');
@@ -100,19 +111,21 @@ if numel(strategy.menu(0:0.25:1, false)) ~= 125
     n_fail = n_fail + 1; fprintf('  FAIL menu non-monotone count != 125\n');
 else, fprintf('  PASS menu monotone_only=false -> 125\n');
 end
-if numel(strategy.make_grid(p, [20 42.5 65 99], 0:0.25:1, true)) ~= 70  % C(8,4)
+if numel(strategy.make_grid(p, [A_LO 42.5 p.retirement_age A_HI], 0:0.25:1, true)) ~= 70  % C(8,4)
     n_fail = n_fail + 1; fprintf('  FAIL make_grid 4-knot count != 70\n');
 else, fprintf('  PASS make_grid generalises to 4 knots -> 70\n');
 end
+MENU_AGES = [A_LO, p.retirement_age, A_HI];                       % what menu builds
 names = {M.name};
 ok7 = numel(unique(names)) == numel(names);                       % unique names
-ok7 = ok7 && isequal(M(1).knot_ages, [20 65 99]);                 % the 3 ages
+ok7 = ok7 && isequal(M(1).knot_ages, MENU_AGES);                  % the 3 ages
 ok7 = ok7 && all(arrayfun(@(g) all(diff(g.knot_fracs) <= 0), M)); % non-increasing
 for k = 1:numel(M)                                                % every one builds
     tau = strategy.spline_tau(p, M(k).knot_ages, M(k).knot_fracs);
     ok7 = ok7 && all(tau >= 0 & tau <= 1) && all(diff(tau) <= 1e-12);
 end
-if ok7, fprintf('  PASS menu names unique, ages [20 65 99], all 35 paths monotone in [0,1]\n');
+if ok7, fprintf('  PASS menu names unique, ages [%d %d %d], all %d paths monotone in [0,1]\n', ...
+            MENU_AGES(1), MENU_AGES(2), MENU_AGES(3), numel(M));
 else,   n_fail = n_fail + 1; fprintf('  FAIL menu structure/path checks\n');
 end
 
