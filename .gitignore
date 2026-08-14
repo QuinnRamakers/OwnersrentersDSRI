@@ -1,27 +1,19 @@
+# Solver state, simulated paths, and MATLAB scratch. A production solve writes
+# tens of megabytes per scenario; none of it belongs in git.
 *.mat
 *.asv
-*.log
-slurm-*.out
 *.mex*
 
-# MATLAB batch logs with parfor worker warning spam
-floor_sweep_log.txt
-floor_test_log.txt
-prod_floor_log.txt
+# Captured run output. Every batch log and console capture in this project is
+# a .txt (parfor worker warnings, suite runs, verification output); prose is
+# .md, so nothing worth keeping is caught here.
+*.txt
+slurm-*.out
 
-# solver-v2 run logs
-suite_final.txt
-suite_v2default.txt
-eval_no_tensor_log.txt
-eval_final_log.txt
-polish_v2_test.txt
-freetau_lna_test.txt
-v2_pair_log.txt
-v2_dash2.txt
-dash_configs_log.txt
-confirm_default_log.txt
-verify_continuation_log.txt
-
-confirm_no_tensor_log.txt
-grid_mode_log.txt
-main_verify.txt
+# Generated figures and tables. Every .png/.pdf/.csv the scripts emit is
+# regenerable from a solved .mat; the CBS mortality table is an input, not an
+# output, so it is the one exception.
+*.png
+*.pdf
+*.csv
+!CBSunisexmortality21-26.csv
