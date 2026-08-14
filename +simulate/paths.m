@@ -121,7 +121,8 @@ sH_path(:,1)  = H_path(:,1) ./ W_path(:,1);
 % shows up as an arbitrarily large gap between simulated E[U] and the value
 % function. Setting this true removes that difference, so any remaining gap is
 % interpolation and Monte Carlo error alone. It is a validation switch, not a
-% modelling choice -- see tests/smoke_consumption_floor.
+% modelling choice: it exists so the solver and the simulator can be held to
+% the same shock support when validating one against the other.
 gh_shocks = isfield(p, 'gh_shocks') && p.gh_shocks;
 if gh_shocks
     sg = grids.shock_grid(p);

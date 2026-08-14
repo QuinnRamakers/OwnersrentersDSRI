@@ -29,6 +29,9 @@ pairs = {'renter', sprintf('combined_renter%s.mat', gs), ...
          'owner',  sprintf('combined_owner%s.mat', gs), ...
                    sprintf('combined_owner_freetau%s.mat', gs)};
 
+n_fail = 0;   % accumulated across tenures; raised as an error at the end so
+              % tests/run_all sees the failure instead of only the printout
+
 for i = 1:size(pairs, 1)
     G = load(fullfile(res_dir, pairs{i, 2}), 'sol', 'p');
     F = load(fullfile(res_dir, pairs{i, 3}), 'sol', 'p');
@@ -52,5 +55,11 @@ for i = 1:size(pairs, 1)
         fprintf('  RESULT: FAIL -- %d states with a welfare loss (optimizer shortfall).\n', n_bad);
         cs = sort(cev);
         fprintf('  worst 5 cev: '); fprintf('%+.3e ', cs(1:min(5,end))); fprintf('\n');
+        n_fail = n_fail + 1;
     end
+end
+
+if n_fail > 0
+    error('test_freetau_dominance_prod:fail', ...
+          '%d tenure(s) show a welfare loss from free tau choice.', n_fail);
 end

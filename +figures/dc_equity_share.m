@@ -1,8 +1,8 @@
-function f = dc_equity_share_figure(S, p, X0_FRAC)
-%DC_EQUITY_SHARE_FIGURE  Presentation figure: equity share by account over the
+function f = dc_equity_share(S, p, X0_FRAC)
+%DC_EQUITY_SHARE  Presentation figure: equity share by account over the
 %accumulation phase, under free DC choice.
 %
-%   f = DC_EQUITY_SHARE_FIGURE(S, p, X0_FRAC) draws the mean applied equity
+%   f = figures.dc_equity_share(S, p, X0_FRAC) draws the mean applied equity
 %   share by age for the DC account (tau_A) and the private liquid account
 %   (pi), one panel per tenure. Only working-age transitions are shown: after
 %   retirement the DC fund is annuitised and every tau_A is zero, so the

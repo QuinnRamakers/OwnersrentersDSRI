@@ -41,8 +41,8 @@ function smoke_fill_fix()
 %         fires during those solves.
 %     (c) The calibrated welfare anchors (b0, b_alt) are exact grid members
 %         after config.params, and remain so when a run script overrides N.
-%     (d) welfare_dc_vs_nodc.m runs against the committed .mat files and
-%         prints rows at b0 and b_alt.
+%     (d) Welfare at the calibrated anchors b0 and b_alt resolves to finite
+%         values on every solved arm.
 %
 %   Usage:  cd <repo>; tests/smoke_fill_fix   (or run tests.smoke_fill_fix)
 
@@ -319,28 +319,39 @@ p.N_c = 11; p.N_pi = 11;
 end
 
 % -------------------------------------------------------------------------
-function check_d(repo)
-fprintf('\n--- (d) welfare_dc_vs_nodc.m on the committed .mat files ---\n');
-need = {'combined_renter_nodc.mat', 'combined_renter_freetau.mat', ...
-        'combined_owner_nodc.mat',  'combined_owner_freetau.mat'};
-for i = 1:numel(need)
-    if ~isfile(fullfile(repo, need{i}))
-        warning('smoke_fill_fix:no_mat', ...
-            '%s missing -- skipping (d).', need{i});
+function check_d(~)
+% Welfare is READABLE at both calibrated anchors on the solved files.
+%
+% This used to run welfare_dc_vs_nodc.m in a subshell and count occurrences of
+% two label strings in its printed output. That coupled a solver test to one
+% reporting script's wording, and it broke the moment that script was folded
+% into final_summary_plots. The property it was really checking is that the
+% anchors survive into a solved file and resolve to finite welfare -- which
+% utility.welfare_summary answers directly, without parsing anyone's printf.
+fprintf('\n--- (d) welfare readable at b0 and b_alt on the solved files ---\n');
+
+gs   = utility.grid_suffix();
+dir_ = utility.output_dir();
+arms = {'renter_nodc', 'renter_freetau', 'owner_nodc', 'owner_freetau'};
+
+for i = 1:numel(arms)
+    fn = fullfile(dir_, sprintf('combined_%s%s.mat', arms{i}, gs));
+    if ~isfile(fn)
+        warning('smoke_fill_fix:no_mat', '%s missing -- skipping (d).', fn);
         return
     end
 end
-out = run_isolated(fullfile(repo, 'welfare_dc_vs_nodc.m'));
-disp(out);
-n_cal = numel(strfind(out, 'calibrated (b0)'));
-n_sen = numel(strfind(out, 'sensitivity (b_alt)'));
-assert(n_cal == 2 && n_sen == 2, 'smoke_fill_fix:no_anchor_rows', ...
-    'expected one b0 and one b_alt row per tenure, got %d and %d', n_cal, n_sen);
-fprintf('(d) PASS -- b0 and b_alt rows printed for both tenures\n');
-end
 
-function out = run_isolated(script_path)
-% run() executes the script in the CALLER's workspace; keep that pollution
-% inside this one-variable helper rather than in check_d.
-out = evalc('run(script_path)');
+for i = 1:numel(arms)
+    fn = fullfile(dir_, sprintf('combined_%s%s.mat', arms{i}, gs));
+    S  = load(fn, 'p', 'sol');
+    w  = utility.welfare_summary(S.p, S.sol.V(:,:,:,1));
+    assert(isfinite(w.Vt0_b0) && isfinite(w.Vt0_b_alt), ...
+        'smoke_fill_fix:no_anchor_rows', ...
+        '%s: welfare at b0/b_alt is not finite (%g, %g)', ...
+        arms{i}, w.Vt0_b0, w.Vt0_b_alt);
+    fprintf('    %-16s b0=%.4f -> %+.6e   b_alt=%.4f -> %+.6e\n', ...
+        arms{i}, w.b0, w.Vt0_b0, w.b_alt, w.Vt0_b_alt);
+end
+fprintf('(d) PASS -- both anchors resolve to finite welfare on every arm\n');
 end

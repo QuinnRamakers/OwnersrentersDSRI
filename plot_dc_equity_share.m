@@ -89,8 +89,8 @@ else
     fprintf('Loaded cached age profiles from %s\n', cache);
 end
 
-figs = {@dc_equity_share_figure,      ['fig_dc_equity_share' suffix]; ...
-        @dc_equity_dispersion_figure, ['fig_dc_equity_dispersion' suffix]};
+figs = {@figures.dc_equity_share,      ['fig_dc_equity_share' suffix]; ...
+        @figures.dc_equity_dispersion, ['fig_dc_equity_dispersion' suffix]};
 for i = 1:size(figs, 1)
     f = figs{i,1}(S, p, buffer);
     exportgraphics(f, fullfile(out_dir, [figs{i,2} '.png']), 'Resolution', 300);

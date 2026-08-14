@@ -199,7 +199,9 @@ comparisons vary.
 +strategy/   spline glide paths and the strategy menu
 +utility/    welfare anchor and summary, fingerprint, grid helpers
              (active_grid, production_grid, grid_suffix, grid_sizes)
-tests/       acceptance checks
++figures/    figure renderers: take prepared data, return a figure handle,
+             save nothing. Drivers decide what to draw and where it lands
+tests/       acceptance checks, plus run_all
 ```
 
 Anything ending `_lna` is the cube implementation; the unsuffixed twin is the
@@ -222,26 +224,49 @@ Rank and report:
 |---|---|
 | `compare_spline_strategies` | Rank all arms by welfare |
 | `compare_strategy_vs_nopension` | Best glide path vs no pension, 12-panel check |
-| `welfare_by_wealth` | Welfare across the initial-buffer sweep, with a resolution check |
-| `welfare_dc_vs_nodc`, `plot_welfare_vs_buffer` | Welfare against the initial buffer |
+| `welfare_by_wealth` | Welfare across the initial-buffer sweep, with the resolution check that says which points are solved rather than interpolated |
 
 Figures:
 
 | Script | Purpose |
 |---|---|
 | `make_plots` | Per-scenario and renter-vs-owner dashboards |
-| `final_summary_plots` | Review figures at a one-year buffer |
-| `plot_dc_equity_share` | Chosen DC equity share by age, both tenures |
+| `final_summary_plots` | Life-cycle panels, DC equity share, and the welfare-vs-buffer curve, at a buffer you choose |
+| `plot_dc_equity_share` | Chosen DC equity share by age, both tenures, presentation format |
 
-Checks (`tests/`, all runnable standalone):
+The drawing itself lives in `+figures/`, not in the drivers. `final_summary_plots`
+takes the two things its three predecessor scripts disagreed about — which
+buffer, and which reference lines — as arguments:
 
-| Script | Purpose |
-|---|---|
-| `tests/smoke_fill_fix` | Acceptance checks for the continuation-fill behaviour |
-| `tests/smoke_spline_tau` | `strategy.spline_tau` hits its knots, stays in [0,1], stays monotone |
-| `tests/smoke_freetau_dominance_lna` | Free-choice dominance at the cube's Bellman step |
-| `tests/test_freetau_dominance_prod` | Free DC choice must weakly dominate the glide, per state, on solved production files |
-| `tests/verify_income_profile` | Checks the BKV income table path against expected values |
+```matlab
+final_summary_plots                      % 1-year buffer, both markers
+final_summary_plots(buffer=0.5)
+final_summary_plots(resimulate=false)    % the runs' own sims, at the corner
+final_summary_plots(marks="anchors")     % mark b0/b_alt instead
+final_summary_plots(figs=["lifecycle"])  % one figure only
+```
+
+### Checks
+
+```matlab
+addpath tests; run_all              % the fast checks, seconds
+addpath tests; run_all(slow=true)   % everything, including the solving ones
+```
+
+Failure is an error, so `matlab -batch "addpath tests; run_all(slow=true)"`
+exits non-zero on a regression.
+
+| Check | Slow | Purpose |
+|---|---|---|
+| `smoke_spline_tau` | | `strategy.spline_tau` hits its knots, stays in [0,1], stays monotone |
+| `verify_income_profile` | | The BKV income table path against expected values |
+| `smoke_rent_process` | yes | Tenure-conditional housing growth: renters get the rent pair, owners the housing pair, and changing one leaves the other alone |
+| `smoke_fill_fix` | yes | The continuation-fill behaviour, and that the welfare anchors survive into solved files |
+| `smoke_freetau_dominance_lna` | yes | Free-choice dominance at the cube's Bellman step |
+| `test_freetau_dominance_prod` | yes | The same, per state, on solved production files — skipped when they are absent |
+
+`tests/grid_study` is not part of the suite: it is the convergence-and-node-placement
+study behind `TODO.md` section 8, and it solves each scheme at three resolutions.
 
 ### Data
 

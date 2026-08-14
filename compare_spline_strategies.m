@@ -48,7 +48,8 @@ function compare_spline_strategies(results_dir, opts)
 %     "b_alt"  the upper sensitivity buffer.
 %     "corner" b = 0. What every pre-2026-08 welfare0.Vt0 means, and a
 %              near-zero-consumption corner where CRRA(gamma=5) marginal
-%              utility dominates the verdict -- see welfare_dc_vs_nodc.m.
+%              utility dominates the verdict. README's "Where welfare is
+%              read" has the reasoning.
 %   The anchor is chosen ONCE and applied to every file in the ranking; a
 %   file missing the requested anchor is an error, never a silent fallback.
 %

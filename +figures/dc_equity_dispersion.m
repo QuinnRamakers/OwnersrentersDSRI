@@ -1,8 +1,8 @@
-function f = dc_equity_dispersion_figure(S, p, X0_FRAC)
-%DC_EQUITY_DISPERSION_FIGURE  Presentation figure: the spread of individually
+function f = dc_equity_dispersion(S, p, X0_FRAC)
+%DC_EQUITY_DISPERSION  Presentation figure: the spread of individually
 %optimal DC equity shares against the plan's single default.
 %
-%   f = DC_EQUITY_DISPERSION_FIGURE(S, p, X0_FRAC) shades the 10th-90th
+%   f = figures.dc_equity_dispersion(S, p, X0_FRAC) shades the 10th-90th
 %   percentile of the chosen DC equity share across simulated households, draws
 %   the median through it, and overlays the plan's glide path. One panel per
 %   tenure, accumulation phase only.

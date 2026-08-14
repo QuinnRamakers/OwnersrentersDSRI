@@ -67,7 +67,7 @@ base.N_c = 9; base.N_pi = 9;
 
 % Distress is measured as how often the consumption floor binds. C = 0 is
 % extinct once the floor is on, so the old zero-consumption count no longer
-% separates anything -- see tests/smoke_consumption_floor.
+% separates anything.
 [rent_hi, ruin_hi] = solve_and_sim(set_rent(base, 0.027, 0.037));  % house-price drift
 [rent_lo, ruin_lo] = solve_and_sim(set_rent(base, 0.005, 0.02));   % lower drift
 

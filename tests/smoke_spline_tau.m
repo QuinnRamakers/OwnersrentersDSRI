@@ -1,4 +1,4 @@
-% PROTO_SPLINE_STRATEGY  Local verification of strategy.spline_tau.
+% SMOKE_SPLINE_TAU  Local verification of strategy.spline_tau.
 %
 %   Checks, for a set of representative 4-knot parameterizations:
 %     1. the path passes through every knot exactly,
@@ -140,9 +140,16 @@ xlabel('age'); ylabel('\tau_S');
 title('Why PCHIP: no overshoot between knots'); legend('Location','southwest');
 ylim([-0.15 1.15]); grid on;
 
-print(fig, 'fig_spline_strategies.png', '-dpng', '-r140');
-fprintf('\nFigure saved: fig_spline_strategies.png\n');
+% exportgraphics, not print(...,'-dpng',...): print needs a display and hangs
+% headless, which is exactly where this now runs from (tests/run_all under
+% matlab -batch). Same reasoning as compare_spline_strategies.
+fig_file = fullfile(utility.output_dir(), 'fig_spline_strategies.png');
+exportgraphics(fig, fig_file, 'Resolution', 140);
+fprintf('\nFigure saved: %s\n', fig_file);
 
-if n_fail == 0, fprintf('\nALL CHECKS PASSED\n');
-else,           fprintf('\n%d CHECK(S) FAILED\n', n_fail);
+if n_fail == 0
+    fprintf('\nALL CHECKS PASSED\n');
+else
+    fprintf('\n%d CHECK(S) FAILED\n', n_fail);
+    error('smoke_spline_tau:fail', '%d check(s) failed', n_fail);
 end

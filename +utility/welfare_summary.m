@@ -22,8 +22,8 @@ function w = welfare_summary(p, V0)
 %     gamma      CRRA coefficient, so a CEV can be formed without loading p
 %
 %   b_grid exists so downstream scripts never have to reload the multi-GB sol
-%   just to draw a sensitivity curve. plot_welfare_vs_buffer still does, for
-%   its finer 41-point version.
+%   just to draw a sensitivity curve. final_summary_plots still reloads it, for
+%   its finer 41-point version of that curve.
 %
 %   All values come from utility.welfare_anchor, which builds the NaN-filled
 %   interpolant once and queries every buffer off it.

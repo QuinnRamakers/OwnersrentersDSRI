@@ -105,7 +105,7 @@ for k = 1:numel(cfg)
     R(k).minutes  = toc(t0)/60;
     fprintf('    %d states, %.1f min, Vt0_b0=%.6g, z=%.5g, floor=%.2f%%\n\n', ...
             nst, R(k).minutes, R(k).Vt0_b0, R(k).z, 100*R(k).floor);
-    save('grid_study.mat', 'R', 'cfg', 'AGES', 'GH_N', 'N_SIM', 'SEED');
+    save(fullfile(utility.output_dir(), 'grid_study.mat'), 'R', 'cfg', 'AGES', 'GH_N', 'N_SIM', 'SEED');
 end
 
 fprintf('\n===== SUMMARY =====\n');
