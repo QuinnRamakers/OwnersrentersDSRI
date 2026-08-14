@@ -49,32 +49,38 @@ if isempty(RES_DIR), RES_DIR = utility.output_dir(); end
 assert(isfolder(RES_DIR), 'compare_strategy_vs_nopension:nodir', 'Not a folder: %s', RES_DIR);
 HOUSING = {'renter', 'owner'};
 
+% Compare within ONE coordinate system, selected by CGM_GRID -- see
+% utility.grid_suffix. '' matches simplex files only (a cube file ends in
+% _lna.mat and cannot match), '_lna' matches cube files only.
+GRID_SUFFIX = utility.grid_suffix();
+
 for hi = 1:numel(HOUSING)
     housing = HOUSING{hi};
     fprintf('\n%s\n-- %s --\n%s\n', repmat('=',1,66), housing, repmat('=',1,66));
 
     %% Find the best-ranked spline strategy (by V_tilde0, fast matfile read)
-    files = dir(fullfile(RES_DIR, sprintf('spl_*_%s.mat', housing)));
+    files = dir(fullfile(RES_DIR, sprintf('spl_*_%s%s.mat', housing, GRID_SUFFIX)));
     if isempty(files)
-        fprintf('  No spl_*_%s.mat files in %s -- run run_spline_strategies first. Skipping.\n', ...
-            housing, RES_DIR);
+        fprintf('  No spl_*_%s%s.mat files in %s -- run run_spline_strategies first. Skipping.\n', ...
+            housing, GRID_SUFFIX, RES_DIR);
         continue
     end
     % No-pension benchmark: run_nodc.m's file, with a fallback to the name
     % run_combined.m used before its kappa=0 scenarios were removed
     % (2026-07-16). Same discovery order as compare_spline_strategies.
     nopension_file = first_existing(RES_DIR, ...
-        {sprintf('combined_%s_nodc.mat', housing), ...
-         sprintf('combined_%s_kappa0.mat', housing)});
+        {sprintf('combined_%s_nodc%s.mat', housing, GRID_SUFFIX), ...
+         sprintf('combined_%s_kappa0%s.mat', housing, GRID_SUFFIX)});
     if isempty(nopension_file)
-        fprintf(['  combined_%s_nodc.mat not found in %s -- run run_nodc first ' ...
-                 '(combined_%s_kappa0.mat, the retired name, is also accepted). Skipping.\n'], ...
-                 housing, RES_DIR, housing);
+        fprintf(['  combined_%s_nodc%s.mat not found in %s -- run run_nodc first ' ...
+                 '(combined_%s_kappa0%s.mat, the retired name, is also accepted). Skipping.\n'], ...
+                 housing, GRID_SUFFIX, RES_DIR, housing, GRID_SUFFIX);
         continue
     end
     % Third arm: free DC investment choice. Optional -- reported numerically
     % when present, never required for the two-line dashboard.
-    freetau_file = first_existing(RES_DIR, {sprintf('combined_%s_freetau.mat', housing)});
+    freetau_file = first_existing(RES_DIR, ...
+        {sprintf('combined_%s_freetau%s.mat', housing, GRID_SUFFIX)});
 
     % Read every candidate's anchors first, then pick ONE anchor for all of
     % them (never a per-file fallback -- that would compare two different
@@ -99,7 +105,8 @@ for hi = 1:numel(HOUSING)
     if ~isempty(freetau_file)
         fprintf('  Free DC:       %s\n', freetau_file);
     else
-        fprintf('  Free DC:       combined_%s_freetau.mat not found -- third arm omitted.\n', housing);
+        fprintf('  Free DC:       combined_%s_freetau%s.mat not found -- third arm omitted.\n', ...
+            housing, GRID_SUFFIX);
     end
     fprintf('  Welfare read at anchor: %s\n', anchor_used);
     best = load(best_file, 'p', 'profile', 'sim', 'strat_info');
@@ -403,7 +410,11 @@ text(0.02, 0.97, box_txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
 title('(l)  Summary', 'FontSize', FT);
 
 hide_axes_toolbars(fig);
-out = fullfile(out_dir, sprintf('fig_strategy_vs_nopension_%s.png', housing));
+% Suffix off the solved file's own p, not the environment: this names a figure
+% drawn FROM those arms, so its provenance is theirs. Same reason sol carries
+% grid_type at all.
+out = fullfile(out_dir, sprintf('fig_strategy_vs_nopension_%s%s.png', ...
+    housing, utility.grid_suffix(best.p)));
 exportgraphics(fig, out, 'Resolution', 150);
 fprintf('  Wrote %s\n', out);
 close(fig);

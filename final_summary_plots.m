@@ -33,15 +33,16 @@ tenures = {'renter', 'owner'};
 fprintf('=== Welfare with X0 = %.2f yr initial liquid buffer (gamma=5) ===\n', X0_FRAC);
 for i = 1:numel(tenures)
     ten = tenures{i};
-    B = load(fullfile(repo, sprintf('combined_%s_nodc.mat',    ten)));   % no DC
-    G = load(fullfile(repo, sprintf('combined_%s.mat',         ten)));   % DC glide
-    D = load(fullfile(repo, sprintf('combined_%s_freetau.mat', ten)));   % DC free choice
+    gs = utility.grid_suffix();   % '' simplex, '_lna' cube; see utility.active_grid
+    B = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat',    ten, gs)));   % no DC
+    G = load(fullfile(repo, sprintf('combined_%s%s.mat',         ten, gs)));   % DC glide
+    D = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, gs)));   % DC free choice
     p = D.p; gamma = p.gamma; hm = p.h_mult;
 
     % Re-simulate all three regimes with the initial buffer.
-    simB = simulate.paths(B.p, B.profile, B.sol, B.ann_price, N_sim, [], X0_FRAC);
-    simG = simulate.paths(G.p, G.profile, G.sol, G.ann_price, N_sim, [], X0_FRAC);
-    simD = simulate.paths(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
+    simB = simulate.forward(B.p, B.profile, B.sol, B.ann_price, N_sim, [], X0_FRAC);
+    simG = simulate.forward(G.p, G.profile, G.sol, G.ann_price, N_sim, [], X0_FRAC);
+    simD = simulate.forward(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
 
     ages = double(D.sim.ages); ages_tr = ages(1:end-1);
     mB = @(F) mean(F, 1);
@@ -90,11 +91,12 @@ for i = 1:numel(tenures)
     close(f);
 
     % ---- welfare CEV at this buffer (V_tilde at buffered initial node) ----
-    den = X0_FRAC + hm + 1; lam0 = 1/den; sH0 = hm/den;
-    FvB = mk_interp(B.sol.V(:,:,:,1), p);
-    FvG = mk_interp(G.sol.V(:,:,:,1), p);
-    FvD = mk_interp(D.sol.V(:,:,:,1), p);
-    vB = FvB(lam0,0,sH0); vG = FvG(lam0,0,sH0); vD = FvD(lam0,0,sH0);
+    % utility.welfare_anchor rather than a local interpolant: it knows both
+    % coordinate systems, converts the buffer to whichever one each file was
+    % solved on, and NaN-fills the simplex's infeasible corners on the way.
+    vB = utility.welfare_anchor(B.p, B.sol.V(:,:,:,1), X0_FRAC);
+    vG = utility.welfare_anchor(G.p, G.sol.V(:,:,:,1), X0_FRAC);
+    vD = utility.welfare_anchor(D.p, D.sol.V(:,:,:,1), X0_FRAC);
     cev = @(vf,vg) (vf/vg)^(1/(1-gamma)) - 1;
     fprintf('  %-7s: DC-free vs no-DC = %+6.2f%% | DC-glide vs no-DC = %+6.2f%% | free vs glide = %+5.2f%%\n', ...
         ten, 100*cev(vD,vB), 100*cev(vG,vB), 100*cev(vD,vG));
@@ -121,13 +123,15 @@ f = figure('Visible','off','Position',[100 100 820 500]); hold on; grid on;
 cols = [0 0.45 0.74; 0.85 0.33 0.10];
 for i = 1:numel(tenures)
     ten = tenures{i};
-    Bs = load(fullfile(repo, sprintf('combined_%s_nodc.mat',    ten)), 'sol','p');
-    Ds = load(fullfile(repo, sprintf('combined_%s_freetau.mat', ten)), 'sol','p');
-    p = Ds.p; gamma = p.gamma; hm = p.h_mult;
-    FvB = mk_interp(Bs.sol.V(:,:,:,1), p);
-    FvD = mk_interp(Ds.sol.V(:,:,:,1), p);
-    cv = arrayfun(@(b) (FvD(1/(b+hm+1),0,hm/(b+hm+1)) / ...
-                        FvB(1/(b+hm+1),0,hm/(b+hm+1)))^(1/(1-gamma))-1, buffers);
+    gs = utility.grid_suffix();
+    Bs = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat',    ten, gs)), 'sol','p');
+    Ds = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, gs)), 'sol','p');
+    gamma = Ds.p.gamma;
+    % welfare_anchor takes the whole buffer vector at once and builds its
+    % interpolant (and the simplex NaN fill, the expensive part) only once.
+    vB = utility.welfare_anchor(Bs.p, Bs.sol.V(:,:,:,1), buffers);
+    vD = utility.welfare_anchor(Ds.p, Ds.sol.V(:,:,:,1), buffers);
+    cv = (vD ./ vB).^(1/(1-gamma)) - 1;
     plot(buffers, 100*cv, '-', 'LineWidth',1.8, 'Color', cols(i,:));
 end
 yline(0, ':k','LineWidth',1.1); xline(X0_FRAC, '-.', 'LineWidth',1.2, 'Color',[0.4 0.4 0.4]);
@@ -141,17 +145,8 @@ close(f);
 
 fprintf('Saved: summary_lifecycle_{renter,owner}.png, summary_dc_equity_share.png, summary_welfare_by_buffer.png\n');
 
-function F = mk_interp(V0, p)
-    Z = V0;
-    if any(isnan(Z(:)))
-        [NL,NA,NH]=size(Z); mo=~isnan(Z);
-        [Ig,Jg,Kg]=ndgrid(1:NL,1:NA,1:NH);
-        Io=Ig(mo);Jo=Jg(mo);Ko=Kg(mo);Vo=Z(mo);
-        Ib=Ig(~mo);Jb=Jg(~mo);Kb=Kg(~mo);
-        for k=1:numel(Ib)
-            d2=(Ib(k)-Io).^2+(Jb(k)-Jo).^2+(Kb(k)-Ko).^2;
-            [~,q]=min(d2); Z(Ib(k),Jb(k),Kb(k))=Vo(q);
-        end
-    end
-    F = griddedInterpolant({p.lambda_grid,p.sA_grid,p.sH_grid}, Z, 'linear','nearest');
-end
+% mk_interp used to live here: a local nearest-neighbour NaN fill plus a
+% griddedInterpolant hardcoded to {lambda_grid, sA_grid, sH_grid}. It was a
+% second copy of utility.welfare_anchor's machinery that only understood the
+% simplex, so it silently could not read a cube solve. Both call sites now use
+% welfare_anchor, which is the one implementation and knows both grids.

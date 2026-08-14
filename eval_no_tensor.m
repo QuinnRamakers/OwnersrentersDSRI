@@ -37,6 +37,9 @@ for s = 1:numel(SCALES)
         ver = cfg{1}{1}; mode = cfg{1}{2};
         n = n + 1; t0 = tic;
         p = config.params();
+        % Pinned to the simplex: this file drives the simplex solver/simulator
+        % directly, and config.params now defaults to the cube (utility.active_grid).
+        p.grid_type = 'simplex';
         p.is_owner = false; p.legacy_fill = false;
         p.polish_ver = ver; p.grid_mode = mode; p.phi_floor = PHI;
         p = utility.build_state_grids(p, SCALES(s).dims, SCALES(s).gh);
@@ -72,6 +75,9 @@ end
 % ---- per-step, REAL continuation: does 'full' dominate 'none' as theory says?
 fprintf('\n===== per step, real solved continuation =====\n');
 p = config.params(); p.is_owner=false; p.legacy_fill=false; p.phi_floor=PHI;
+% Pinned to the simplex: this file drives the simplex solver/simulator
+% directly, and config.params now defaults to the cube (utility.active_grid).
+p.grid_type = 'simplex';
 p.polish_ver = 2;
 p = utility.build_state_grids(p, [16 12 12], 3); p.N_c=21; p.N_pi=21;
 [~,mg,sl] = config.income_profile(p);

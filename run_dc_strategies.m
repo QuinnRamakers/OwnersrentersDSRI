@@ -103,6 +103,9 @@ for si = 1:size(STRATS,1)
 
         %% Build params and tau_S override
         p = config.params();
+        % Pinned to the simplex: this file drives the simplex solver/simulator
+        % directly, and config.params now defaults to the cube (utility.active_grid).
+        p.grid_type = 'simplex';
         p.is_owner = strcmp(housing, 'owner');
 
         ages = (p.age0 : p.age0 + p.T - 2).';   % length T-1, one entry per transition

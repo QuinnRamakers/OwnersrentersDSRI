@@ -77,14 +77,23 @@ assert(isfolder(RES_DIR), 'compare_spline_strategies:nodir', 'Not a folder: %s',
 prefix  = ternary(opts.smoke, 'smoke_spl', 'spl');
 HOUSING = {'renter', 'owner'};
 
+% Rank within ONE coordinate system. The suffix is what selects it, and it
+% partitions the folder cleanly: '_lna' matches only cube files, and '' cannot
+% match a cube file because those end in _lna.mat. So a directory holding both
+% sweeps ranks either one on demand and never mixes them. Even if the glob did
+% mix them, the fingerprint gate below carries grid_type and would refuse the
+% comparison -- this just means the refusal never has to fire.
+GRID_SUFFIX = utility.grid_suffix();
+
 fig = figure('Visible','off', 'Position',[80 80 1150 440]);
 n_found_tot = 0;
 
 for hi = 1:numel(HOUSING)
     housing = HOUSING{hi};
-    files = dir(fullfile(RES_DIR, sprintf('%s_*_%s.mat', prefix, housing)));
+    files = dir(fullfile(RES_DIR, sprintf('%s_*_%s%s.mat', prefix, housing, GRID_SUFFIX)));
     if isempty(files)
-        fprintf('\n-- %s: no %s_*_%s.mat files in %s --\n', housing, prefix, housing, RES_DIR);
+        fprintf('\n-- %s: no %s_*_%s%s.mat files in %s --\n', ...
+            housing, prefix, housing, GRID_SUFFIX, RES_DIR);
         continue
     end
 
@@ -108,9 +117,9 @@ for hi = 1:numel(HOUSING)
     % they are read exactly like a strategy file (welfare0 fast path, sol.V
     % fallback for legacy files).
     ARMS = { ...
-        {sprintf('combined_%s_nodc.mat',    housing), ...
-         sprintf('combined_%s_kappa0.mat',  housing)}, 'NO_PENSION (no DC)',  true ; ...
-        {sprintf('combined_%s_freetau.mat', housing)}, 'FREE_DC (free tau)',  false };
+        {sprintf('combined_%s_nodc%s.mat',    housing, GRID_SUFFIX), ...
+         sprintf('combined_%s_kappa0%s.mat',  housing, GRID_SUFFIX)}, 'NO_PENSION (no DC)',  true ; ...
+        {sprintf('combined_%s_freetau%s.mat', housing, GRID_SUFFIX)}, 'FREE_DC (free tau)',  false };
 
     missing = {};
     for a = 1:size(ARMS, 1)
@@ -241,7 +250,8 @@ for hi = 1:numel(HOUSING)
               'VariableNames', [{'rank','strategy','file','kappa','choose_tau_S'}, ...
                                 frac_names, {'V_tilde0', 'V_tilde0_corner', ...
                                 'V_tilde0_b0', 'V_tilde0_b_alt', col_name}]);
-    csv_file = fullfile(RES_DIR, sprintf('%s_comparison_%s.csv', prefix, housing));
+    csv_file = fullfile(RES_DIR, ...
+        sprintf('%s_comparison_%s%s.csv', prefix, housing, GRID_SUFFIX));
     writetable(T, csv_file);
     fprintf('  CSV written: %s  (V_tilde0 column = anchor %s)\n', csv_file, anchor_used);
 
@@ -269,7 +279,8 @@ end
 
 if n_found_tot > 0
     fig_file = fullfile(RES_DIR, ternary(opts.smoke, ...
-        'smoke_fig_spline_comparison.png', 'fig_spline_comparison.png'));
+        sprintf('smoke_fig_spline_comparison%s.png', GRID_SUFFIX), ...
+        sprintf('fig_spline_comparison%s.png', GRID_SUFFIX)));
     % exportgraphics, not the legacy print(...,'-dpng',...) -- print's
     % rasterization path can hang/timeout on headless machines with no
     % display (e.g. the cluster pod); exportgraphics is what every other

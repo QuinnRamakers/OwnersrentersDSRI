@@ -146,9 +146,23 @@ p.phi_floor = 1e-6;
 % different discretisations of one model and a p-struct carries both sets of
 % grid vectors, so nothing else distinguishes them and
 % utility.param_fingerprint would rate a simplex file and a cube file
-% comparable. Scripts solving on the cube must set this to 'lna'; the LNA
-% solvers assert it.
-p.grid_type = 'simplex';
+% comparable. The tag is what keeps them apart, and the LNA solvers assert it.
+%
+% The cube is the default (utility.active_grid); the simplex is selected with
+% CGM_GRID=simplex and is maintained, not deprecated -- solver.solve_lifecycle,
+% simulate.paths and the simplex branch of utility.build_state_grids are all
+% live, and solver.solve / simulate.forward dispatch to whichever this names.
+%
+% OPEN GATE on the cube for a full production sweep. The cube's accuracy comes
+% from every point being feasible, but its u2 axis is uniform, and the
+% convergence ladder found that uniform u2 cells interpolate across the value
+% cliff as liquid wealth goes to zero and overstate continuation values there.
+% That was measured on the coarse [14 11 11] sweep cube; the [28 20 20]
+% default below has far more resolution but the same defect in kind. The fix
+% is p.grid_pow > 1, which grades u2 toward the cliff (utility.build_state_grids),
+% and it is NOT on by default because turning it on moves every number and the
+% ladder has not been re-run since. See TODO section 8.
+p.grid_type = utility.active_grid();
 
 % Polish version in solver.bellman_step. 2 scales the fmincon objective by a
 % per-period factor and seeds it from the t+1 policy at the same node; 1 is the
@@ -172,8 +186,12 @@ p.polish_ver = 2;
 % polish_ver >= 2, since without a warm start there is nothing to start from.
 p.grid_mode = 'none';
 
-% Numerical: 3D state grid (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1.
-% gh_n^3 = 343 joint Gauss-Hermite shock nodes per state.
+% ALTERNATIVE state grid: (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1,
+% live under CGM_GRID=simplex. Roughly a sixth of these nodes are feasible; the
+% rest are masked and filled from their nearest feasible neighbour
+% (solver.build_fill_map), which is the machinery the cube does without.
+% gh_n^3 = 343 joint Gauss-Hermite shock nodes per state. gh_n is shared by
+% both coordinate systems.
 p.gh_n     = 7;
 p.N_lambda = 40;
 p.N_sA     = 40;
@@ -200,11 +218,14 @@ p.b_alt = 9800 / (33000 * 1.3031);    % = 0.2279
 p.N_c  = 41;
 p.N_pi = 41;
 
-% Alternative cube state grid (lambda, n-tilde, a) -- see bellman_step_lna:
+% PRODUCTION cube state grid (lambda, n-tilde, a) -- see bellman_step_lna:
 % u1 = lambda, u2 = (A+H)/(W-Y), u3 = A/(A+H). Every point of [0,1]^3 is
 % feasible, so 28x20x20 matches the 40^3 grid's feasible-point count at much
-% less memory. lambda gets the extra resolution because it is empirically the
-% steepest policy axis. Selected via CGM_GRID=lna; simplex stays production.
+% less memory, and no feasibility mask or fill map is needed at all. lambda
+% gets the extra resolution because it is empirically the steepest policy
+% axis. utility.production_grid is what the runners read; these are its
+% defaults, and the note there on sweep cost is worth reading before launching
+% one.
 p.N_u1 = 28; p.N_u2 = 20; p.N_u3 = 20;
 p.u1_grid = linspace(0, 1, p.N_u1).';
 p.u2_grid = linspace(0, 1, p.N_u2).';

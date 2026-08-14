@@ -4,18 +4,23 @@
 %   caches them, and renders fig_dc_equity_share.{png,pdf} and
 %   fig_dc_equity_dispersion.{png,pdf}.
 %
-%   SOURCE picks the coordinate system:
-%     'simplex'  combined_<ten>_freetau.mat, solved by solver.bellman_step on
-%                the (lambda, s_A, s_H) simplex. The validated free-tau branch
-%                (3-var polish + ridge refinement). Simulated here, so the
-%                buffer X0_FRAC is ours to choose.
-%     'lna'      ovn_lna_free_<ten>.mat, solved by ovnf.* on the (u1,u2,u3)
-%                cube. An UNVALIDATED grid-only port: no polish on the tau
-%                axis, tau resolved on p.N_tau levels, and its author's note
-%                says to treat the value as a lower bound and not to quote its
-%                level.
-%   Both sources are re-simulated here at the same X0_FRAC, so the two figures
-%   differ only in the coordinate system, not in the initial condition.
+%   Reads combined_<ten>_freetau[_lna].mat -- run_combined's free-DC arm on
+%   whichever coordinate system CGM_GRID selects (the cube by default). Both
+%   coordinate systems now solve free tau through the same validated route: the
+%   glide value stays in the seed grid and is polished from pinned, so free
+%   choice cannot score below the glide.
+%
+%   This used to offer a second 'lna' source backed by ovnf.*, an unvalidated
+%   grid-only port with no polish on the tau axis. It pinned 82% of renters to
+%   the tau = 1 corner at age 30 against 18% on the simplex, flattening away
+%   both the dispersion and the owner/renter contrast this figure exists to
+%   show. That port is gone; the cube arm now comes from the same solver the
+%   simplex arm does.
+%
+%   The solution is re-simulated here at X0_FRAC rather than reused from the
+%   run, whose own sim sits at the much poorer p.b0 anchor (~0.08 yr). A
+%   household with a 0.08-year buffer holds a different portfolio than one with
+%   a 1-year buffer, so reusing it would confound the buffer with the arm.
 %
 %   The cache exists so the figures can be restyled without re-loading the
 %   solutions: delete it (or set REBUILD = true) when the solutions change.
@@ -24,17 +29,12 @@ repo = fileparts(which('plot_dc_equity_share'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
 
-% 'simplex' is the default: the ovnf 'lna' port grid-searches tau with no
-% polish and pins most households to the tau = 1 corner in early-to-mid life
-% (82% of renters at age 30, vs 18% on simplex), which flattens away both the
-% cross-household dispersion and the owner/renter contrast.
-SOURCE  = 'simplex';         % 'simplex' | 'lna'
 X0_FRAC = 1.0;               % initial liquid buffer, in years of income
 N_sim   = 10000;
 REBUILD = false;             % force a rebuild even if the cache is there
 
 tenures = {'renter', 'owner'};
-suffix  = '';  if strcmp(SOURCE,'lna'), suffix = '_lna'; end
+suffix  = utility.grid_suffix();   % '' simplex, '_lna' cube
 
 % Rebuild if the cache predates a field the figures now need, so an old cache
 % cannot silently break the plot.
@@ -49,25 +49,12 @@ end
 if stale
     for i = 1:numel(tenures)
         ten = tenures{i};
-        switch SOURCE
-            case 'simplex'
-                D   = load(fullfile(repo, sprintf('combined_%s_freetau.mat', ten)));
-                sim = simulate.paths(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
-                p   = D.p;
-                buffer = X0_FRAC;
-            case 'lna'
-                % Re-simulate at X0_FRAC rather than reusing the run's own sim,
-                % which sits at the much poorer p.b0 anchor (~0.08 yr). A
-                % household with a 0.08-year buffer holds a different portfolio
-                % than one with a 1-year buffer, so reusing it would confound
-                % the coordinate systems with the initial condition.
-                D   = load(fullfile(repo, sprintf('ovn_lna_free_%s.mat', ten)));
-                sim = ovnf.paths_lna(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
-                p   = D.p;
-                buffer = X0_FRAC;
-            otherwise
-                error('plot_dc_equity_share:source', 'unknown SOURCE "%s"', SOURCE);
-        end
+        % simulate.forward dispatches on D.p.grid_type, so the arm is
+        % simulated in the coordinates it was solved in whatever the file is.
+        D   = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, suffix)));
+        sim = simulate.forward(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
+        p   = D.p;
+        buffer = X0_FRAC;
 
         % pi is recorded for every period, tau_A only for the T-1 transitions;
         % both are the share chosen at t, so drop pi's last column to align.
@@ -86,8 +73,11 @@ if stale
         % The plan's glide path is a rule, not another solution's outcome.
         S.(ten).tau_glide = p.tau_S(:).';
     end
-    save(cache, 'S', 'p', 'buffer', 'SOURCE');
-    fprintf('Cached %s age profiles to %s\n', SOURCE, cache);
+    % Record the coordinate system from the solved p, not from the session, so
+    % a stale cache cannot be mistaken for the other grid's.
+    grid_used = char(p.grid_type);
+    save(cache, 'S', 'p', 'buffer', 'grid_used');
+    fprintf('Cached %s age profiles to %s\n', grid_used, cache);
 else
     load(cache, 'S', 'p', 'buffer');
     fprintf('Loaded cached age profiles from %s\n', cache);

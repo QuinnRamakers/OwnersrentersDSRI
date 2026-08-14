@@ -29,7 +29,10 @@ copyfile(fullfile(repo, src), fullfile(scratch, 'combined_renter.mat'));
 
 setenv('CGM_OUTPUT_DIR', scratch);
 setenv('CGM_ARM',  'glide');    % choose_tau_S is false throughout these runs
-setenv('CGM_GRID', '');         % the tag is cosmetic here; the file is staged
+% 'simplex', not '': the file above is staged under the BARE name, which is the
+% simplex convention (utility.grid_suffix). Empty means the session default,
+% now the cube, and make_plots would look for combined_renter_lna.mat instead.
+setenv('CGM_GRID', 'simplex');
 
 fprintf('=== %s  <-  %s ===\n', label, src);
 try

@@ -27,7 +27,7 @@ for i = 1:size(arms,1)
     for j = 1:numel(tenures)
         ten = tenures{j};
         D   = load(fullfile(repo, sprintf('%s_%s.mat', arms{i,1}, ten)));
-        sim = simulate.paths(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
+        sim = simulate.forward(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
 
         R.(arms{i,1}).(ten).X = mean(sim.X ./ sim.Y, 1);
 

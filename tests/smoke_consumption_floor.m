@@ -24,6 +24,9 @@ fprintf('smoke_consumption_floor\n');
 n_fail = 0;
 
 base = config.params();
+% Pinned to the simplex: this file drives the simplex solver/simulator
+% directly, and config.params now defaults to the cube (utility.active_grid).
+base.grid_type = 'simplex';
 base.is_owner    = false;
 base.legacy_fill = false;
 base = utility.build_state_grids(base, [10 8 8], 3);

@@ -104,6 +104,9 @@ end
 
 function p = base_params()
 p = config.params();
+% Pinned to the simplex: this file drives the simplex solver/simulator
+% directly, and config.params now defaults to the cube (utility.active_grid).
+p.grid_type = 'simplex';
 p.is_owner    = false;
 p.legacy_fill = false;
 % Pinned to the grid search deliberately. This file tests the SCALING and WARM

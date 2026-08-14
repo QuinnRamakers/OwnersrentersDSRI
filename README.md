@@ -57,21 +57,49 @@ One consequence worth remembering when writing up results: `W` includes the
 rented house for renters, so it is a normaliser, not "wealth". Do not label it
 as wealth in the paper or in plots.
 
+### Two coordinate systems
+
+The model is solved on one of two discretisations of the same state space,
+selected by `CGM_GRID` and recorded on every solved file as `p.grid_type`:
+
+| | |
+|---|---|
+| **LNA cube** (default) | `(u1,u2,u3) = (lambda, (A+H)/(W-Y), A/(A+H))` on `[0,1]^3`. Every point maps to a feasible simplex point by construction, so there is no feasibility mask and no fill map. |
+| **Simplex** (`CGM_GRID=simplex`) | `(lambda, s_A, s_H)` on `lambda + s_A + s_H <= 1`. Roughly a sixth of the bounding cube is feasible; the rest is masked and filled from nearest feasible neighbours. |
+
+Both are maintained. `solver.solve` and `simulate.forward` dispatch on
+`p.grid_type`, so run scripts never branch on the grid themselves, and the two
+implementations stay genuinely separate — the cube is a second discretisation
+with its own Bellman step and interpolant, not a wrapper over the simplex.
+
+Cube output carries an `_lna` filename suffix and simplex output does not
+(`utility.grid_suffix`). The suffix stays on the cube even though the cube is
+now the default, because the alternative would make `combined_renter.mat` mean
+a cube file here and a simplex file in every folder written before the switch.
+`utility.param_fingerprint` records the coordinate system too, so the two can
+never be welfare-ranked against each other.
+
+**Open gate.** The convergence ladder found the cube's uniform `u2` axis
+interpolates across the value cliff as liquid wealth goes to zero, overstating
+continuation values there. The fix is `p.grid_pow > 1`, which grades `u2`
+toward the cliff; it is off by default because switching it on moves every
+number and the ladder has not been re-run. See `TODO.md`.
+
 ### Solution method
 
-Backward induction on the simplex grid. Each period:
+Backward induction. Each period:
 
 1. Take the `z`-transform of the next period's value function,
-   `z = ((1-gamma) V_tilde)^(1/(1-gamma))`, and build a trilinear interpolant
-   on the full cube. Infeasible cube nodes are filled from their nearest
-   feasible neighbour (`solver.build_fill_map`).
+   `z = ((1-gamma) V_tilde)^(1/(1-gamma))`, and build a trilinear interpolant.
+   On the simplex, infeasible nodes are filled from their nearest feasible
+   neighbour (`solver.build_fill_map`); on the cube there are none to fill.
 2. Grid-search consumption and equity share on a 41x41 grid over the joint
    Gauss-Hermite shock nodes, then polish with `fmincon` from the grid optimum.
 3. Under free DC choice, the equity share becomes a third choice variable and
    the polish also runs pinned at the glide value, so free choice can never
-   score below the glide.
+   score below the glide. Both coordinate systems implement this.
 
-The state loop is parallelised over feasible states.
+The state loop is parallelised over states.
 
 ## Running it
 
@@ -82,17 +110,21 @@ run_combined       % baseline: renter/owner x glide/free-DC, 4 solves
 run_nodc           % kappa = 0 benchmark, same grid and calibration
 ```
 
-`run_combined` writes `combined_{renter,owner}[_freetau].mat`; `run_nodc`
-writes `combined_{renter,owner}_nodc.mat`. Each file carries the calibration
-`p`, the profiles, the solved `sol`, 10,000 simulated paths `sim`, and a small
-top-level `welfare0` struct so comparison scripts can read welfare without
-loading the large arrays.
+`run_combined` writes `combined_{renter,owner}[_freetau][_lna].mat`; `run_nodc`
+writes `combined_{renter,owner}_nodc[_lna].mat`. Each file carries the
+calibration `p`, the profiles, the solved `sol`, 10,000 simulated paths `sim`,
+and a small top-level `welfare0` struct so comparison scripts can read welfare
+without loading the large arrays.
 
-Both runners solve on a 25x15x15 state grid with `gh_n = 5`, deliberately
-matching `run_spline_strategies` rather than the 40^3 / `gh_n = 7` grid in
-`config.params`. Welfare values are only comparable across files solved on the
-same grid at the same calibration, and this is the grid the strategy sweep
-uses. Expect roughly ten minutes per scenario on 16 cores.
+All three runners take their grid from `utility.production_grid`, so the
+benchmarks and the strategy sweep land on the same grid without three copies of
+the numbers. Welfare values are only comparable across files solved on the same
+grid, in the same coordinate system, at the same calibration; the fingerprint
+enforces all three. On the simplex that grid is 25x15x15 with `gh_n = 5` and a
+scenario takes roughly ten minutes on 16 cores. The cube's production grid has
+an order of magnitude more live states, because none of them are wasted on
+infeasible territory — read the sizing note in `utility.production_grid` before
+launching a full sweep on it.
 
 ### Environment variables
 
@@ -101,7 +133,7 @@ uses. Expect roughly ten minutes per scenario on 16 cores.
 | `CGM_OUTPUT_DIR` | Where `.mat`/`.png` outputs go. Defaults to `pwd`. Point it at a mounted volume on the cluster. |
 | `CGM_N_WORKERS` | Force an n-worker process pool. Useful where the Threads profile is capped. |
 | `CGM_STATE_GRID`, `CGM_GH_N` | Shrink the grid for smoke runs, e.g. `"12 10 12"` and `"3"`. Never set these for a production solve — the output is not welfare-comparable and the fingerprint will correctly refuse to rank it. |
-| `CGM_GRID=lna` | Solve on the alternative `(u1,u2,u3)` cube grid instead of the simplex. Kept for cross-validation; the simplex grid is production. |
+| `CGM_GRID` | `lna` (default) or `simplex` — which coordinate system to solve, name output for, and read back. See "Two coordinate systems" above. |
 
 ### Strategy sweeps
 
@@ -161,14 +193,18 @@ comparisons vary.
              decumulation paths, grid anchors
 +grids/      Gauss-Hermite shock nodes
 +pension/    unit-annuity price
-+solver/     Bellman step, backward induction, infeasible-node fill map
-+simulate/   forward Monte-Carlo paths
++solver/     grid dispatch (solve), Bellman step, backward induction,
+             simplex infeasible-node fill map
++simulate/   grid dispatch (forward), forward Monte-Carlo paths
 +strategy/   spline glide paths and the strategy menu
 +utility/    welfare anchor and summary, fingerprint, grid helpers
+             (active_grid, production_grid, grid_suffix, grid_sizes)
 tests/       acceptance checks
 ```
 
-Anything ending `_lna` is the alternative cube-grid implementation.
+Anything ending `_lna` is the cube implementation; the unsuffixed twin is the
+simplex one. Call `solver.solve` and `simulate.forward` rather than either
+directly, and they dispatch on `p.grid_type`.
 
 ### Scripts
 

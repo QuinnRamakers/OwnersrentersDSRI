@@ -196,6 +196,9 @@ end
 % ---------------------------------------------------------------------------
 function D = get_solves(~)
 p = config.params();
+% Pinned to the simplex: this file drives the simplex solver/simulator
+% directly, and config.params now defaults to the cube (utility.active_grid).
+p.grid_type = 'simplex';
 p.kappa = 0; p.choose_tau_S = false; p.gh_n = 3;
 p.N_lambda = 10; p.N_sA = 10; p.N_sH = 10;
 p.lambda_grid = linspace(0, 1, p.N_lambda).';

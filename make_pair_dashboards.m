@@ -24,7 +24,11 @@ copyfile(fullfile(repo, owner_mat),  fullfile(scratch, 'combined_owner.mat'));
 
 setenv('CGM_OUTPUT_DIR', scratch);
 setenv('CGM_ARM',  'glide');
-setenv('CGM_GRID', '');
+% 'simplex', not '': the files above are staged under the BARE names, and bare
+% is the simplex convention (utility.grid_suffix). Empty would mean "whatever
+% the session default is", which is the cube, and make_plots would then look
+% for combined_*_lna.mat and find nothing.
+setenv('CGM_GRID', 'simplex');
 
 fprintf('=== dashboards for %s ===\n', label);
 try

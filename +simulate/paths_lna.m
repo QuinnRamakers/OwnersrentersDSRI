@@ -15,29 +15,24 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %   sol must come from solver.solve_lifecycle_lna (policies on
 %   {p.u1_grid, p.u2_grid, p.u3_grid}).
 %
-%   GLIDE ONLY. The DC equity share applied below is p.tau_S(t), the fund's
-%   glide path. solver.bellman_step_lna can solve the free-choice problem
-%   (p.choose_tau_S) and solve_lifecycle_lna returns sol.tau_pol, but this
-%   simulator has no tau_pol lookup, so simulating such a solution here would
-%   apply the glide to households the solver gave a free choice -- a sim that
-%   silently contradicts its own sol. The guard below refuses instead.
-%   ovnf.paths_lna (overnight_lna/) has the missing lookup and is the
-%   reference if this is ever ported; simulate.paths does the same thing on
-%   the simplex.
+%   Free DC choice (p.choose_tau_S) is supported: when sol carries tau_pol the
+%   applied DC equity share is interpolated per household per period from that
+%   policy instead of read off the p.tau_S glide, and either way the applied
+%   share is reported as sim.tau_A. Same contract as simulate.paths on the
+%   simplex, so plotting code is shared.
 
 if nargin < 5 || isempty(N), N = 5000; end
 if nargin < 6 || isempty(seed), seed = 20260511; end
 if nargin < 7 || isempty(X0_frac), X0_frac = 0; end   % initial liquid buffer = X0_frac * Y0
 rng(seed);
 
-% Mirror of the simulate.paths:no_tau_pol guard, in the opposite direction:
-% there a free-tau run without a policy is the error, here a free-tau policy
-% this simulator cannot read is. Both turn a silently wrong sim into a stop.
-assert(~(isfield(p, 'choose_tau_S') && p.choose_tau_S) && ~isfield(sol, 'tau_pol'), ...
-       'paths_lna:choose_tau_S', ...
-       ['This solution was solved with free DC choice, but simulate.paths_lna ' ...
-        'applies the tau_S glide and would misreport it. Port the tau_pol ' ...
-        'lookup from ovnf.paths_lna, or simulate on the simplex.']);
+% Mirror of the simulate.paths:no_tau_pol guard: a run that asked for free
+% choice but arrived without a policy would be silently simulated on the
+% glide, which is the failure this catches.
+if isfield(p, 'choose_tau_S') && p.choose_tau_S
+    assert(isfield(sol, 'tau_pol'), 'paths_lna:no_tau_pol', ...
+           'choose_tau_S is set but sol has no tau_pol.');
+end
 
 T = p.T;
 is_owner = p.is_owner;
@@ -73,15 +68,23 @@ bequest_path = zeros(N, 1);
 n_clamp_c  = 0;
 n_clamp_pi = 0;
 n_negLW    = 0;
+n_floored  = 0;
 phi_floor  = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
+tau_A_path = zeros(N, T-1);   % applied DC equity share on the t -> t+1 transition
 
 % Policy interpolants directly on the cube grid -- all nodes are feasible.
-pp_c  = cell(T, 1);  pp_pi = cell(T, 1);
+% tau_pol only exists under free DC choice, and only for the T-1 transitions.
+use_taupol = isfield(sol, 'tau_pol');
+pp_c  = cell(T, 1);  pp_pi = cell(T, 1);  pp_tau = cell(T, 1);
 for t = 1:T
     pp_c{t}  = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
                                   sol.c_pol(:,:,:,t), 'linear', 'nearest');
     pp_pi{t} = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
                                   sol.pi_pol(:,:,:,t), 'linear', 'nearest');
+    if use_taupol && t < T
+        pp_tau{t} = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
+                                       sol.tau_pol(:,:,:,t), 'linear', 'nearest');
+    end
 end
 
 logY_canon = config.income_profile(p);
@@ -173,6 +176,7 @@ for t = 1:T
     C_path(:,t)  = cf .* max(LW, 0);
     short        = LW < F_t;
     C_path(short, t) = F_t(short);
+    n_floored    = n_floored + sum(short);
 
     if t == T
         % Bequest: liquid wealth post-consumption + housing net of the
@@ -192,8 +196,17 @@ for t = 1:T
     R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
     R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
 
-    % Pension return for transition t -> t+1: tau_S applies on the t-side.
-    tau_t      = p.tau_S(t);
+    % Pension return for transition t -> t+1: the share applies on the t-side.
+    % Under free choice it is the household's own interpolated policy, clamped
+    % to [0,1] because a linear blend of node values can overshoot; otherwise
+    % the fund's glide. Scalar under the glide, N x 1 under free choice --
+    % every use below is elementwise, so both shapes work unchanged.
+    if use_taupol && t < T
+        tau_t = min(max(pp_tau{t}(u1q, u2q, u3q), 0), 1);
+    else
+        tau_t = p.tau_S(t);
+    end
+    tau_A_path(:,t) = tau_t;
     pt_surv    = profile.p_surv(t);
     R_A_with   = ((1 - tau_t) * p.Rf + tau_t .* R_S_draw) ./ max(pt_surv, 1e-8);
 
@@ -237,9 +250,10 @@ sim.m_pay = m_path;
 sim.ann_pay = ann_pay_path;
 sim.disp_inc = disp_inc;
 sim.bequest = bequest_path;
+sim.tau_A = tau_A_path;      % applied DC equity share on the t -> t+1 transition (N x T-1)
 sim.ages = (p.age0 : p.age0 + p.T - 1);
 sim.N = N;
 sim.is_owner = is_owner;
 sim.diagnostics = struct('n_clamp_c', n_clamp_c, 'n_clamp_pi', n_clamp_pi, ...
-                         'n_negLW', n_negLW);
+                         'n_negLW', n_negLW, 'n_floored', n_floored);
 end

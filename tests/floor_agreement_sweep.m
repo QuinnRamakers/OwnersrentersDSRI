@@ -21,6 +21,9 @@ fprintf('%10s | %10s %10s | %12s %12s | %9s\n', ...
 
 for phi = PHIS
     q = config.params();
+    % Pinned to the simplex: this file drives the simplex solver/simulator
+    % directly, and config.params now defaults to the cube (utility.active_grid).
+    q.grid_type = 'simplex';
     q.is_owner = false; q.legacy_fill = false;
     q = utility.build_state_grids(q, [10 8 8], 3);
     q.N_c = 9; q.N_pi = 9;

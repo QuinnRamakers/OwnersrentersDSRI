@@ -10,44 +10,37 @@
 %                        per-state choice, benchmarking the value of free
 %                        pension investment choice against the glide plan.
 %     4) owner_freetau   same, owner tenure.
-%   The freetau scenarios are skipped under CGM_GRID=lna. The cube SOLVER
-%   handles free choice (solver.bellman_step_lna gained it, and
-%   tests/smoke_freetau_dominance_lna checks the dominance property); what is
-%   missing is the simulator -- simulate.paths_lna applies the tau_S glide and
-%   never reads sol.tau_pol, so the arm would save a sim contradicting its own
-%   sol. paths_lna asserts on this, so the skip is belt-and-braces.
+%   All four scenarios solve on both coordinate systems. The cube grew free DC
+%   choice in the solver, and simulate.paths_lna now reads sol.tau_pol, so the
+%   freetau arms no longer have to be skipped there.
 %
-%   Saves combined_{renter,owner}[_freetau].mat here, with an _lna suffix on
-%   the cube grid so the two grid systems never overwrite each other.
-%   Simplex saves carry a small top-level `welfare0` struct (V_tilde at the
+%   Saves combined_{renter,owner}[_freetau].mat, with an _lna suffix on the
+%   cube so the two coordinate systems never overwrite each other -- see
+%   utility.grid_suffix for why the cube keeps the suffix even as the default.
+%   Every save carries a small top-level `welfare0` struct (V_tilde at the
 %   initial state) so scenarios can be welfare-ranked without loading sol/sim.
 %
-%   Grid system (CGM_GRID):
-%     simplex (default) : (lambda, s_A, s_H), sized to MATCH
-%                         run_spline_strategies' default sweep grid
-%                         (25x15x15, gh_n=5) rather than the full 40^3/gh_n=7
-%                         production grid, so welfare numbers from the two
-%                         scripts are directly comparable. Remove the
-%                         grid-override block below if you want production.
-%     lna               : (u1,u2,u3) cube grid, every point feasible -- see
-%                         solver.bellman_step_lna. CGM_SKIP_POLISH=1 also
-%                         skips the fmincon polish. Not matched to
-%                         run_spline_strategies, so lna output is not
-%                         welfare-comparable to the sweep at any grid size.
+%   Grid system (CGM_GRID), via utility.active_grid:
+%     lna (default) : (u1,u2,u3) cube, every point feasible -- see
+%                     solver.bellman_step_lna. CGM_SKIP_POLISH=1 also skips
+%                     the fmincon polish.
+%     simplex       : (lambda, s_A, s_H), the maintained alternative.
+%   Either way the grid comes from utility.production_grid, which is also what
+%   run_nodc and run_spline_strategies read, so all three stay welfare-
+%   comparable within a coordinate system. Across the two they are not, and
+%   utility.param_fingerprint enforces that.
 %
 %   Set CGM_N_WORKERS to force an n-worker process pool -- useful on the
 %   cluster pod, and where the Threads profile is capped at 2.
 %
-%   Requires the Optimization and Parallel Computing toolboxes. At this grid,
-%   budget roughly ten minutes per scenario on 16 cores.
+%   Requires the Optimization and Parallel Computing toolboxes. Budget roughly
+%   ten minutes per scenario on 16 cores on the simplex sweep grid; the cube
+%   default carries many more live states, so see utility.production_grid.
 
 clear; clc;
 
-grid_type = getenv('CGM_GRID');
-if isempty(grid_type), grid_type = 'simplex'; end
-assert(any(strcmp(grid_type, {'simplex', 'lna'})), ...
-       'CGM_GRID must be ''simplex'' or ''lna'', got ''%s''', grid_type);
-use_lna = strcmp(grid_type, 'lna');
+grid_type = utility.active_grid();
+use_lna   = strcmp(grid_type, 'lna');
 
 nw = str2double(getenv('CGM_N_WORKERS'));
 if ~isnan(nw) && nw >= 1
@@ -82,30 +75,24 @@ N_sim = 10000;
 
 for k = 1:numel(scenarios)
     sc = scenarios(k);
-    if use_lna && sc.choose_tau
-        fprintf(['\n=== Scenario: %s SKIPPED (simulate.paths_lna has no tau_pol ' ...
-                 'lookup; the cube solver itself supports free choice) ===\n'], sc.name);
-        continue
-    end
     fprintf('\n=== Scenario: %s (grid: %s) ===\n', sc.name, grid_type);
     p = config.params();
     p.is_owner = sc.is_owner;
     p.choose_tau_S = sc.choose_tau;
 
-    % Match run_spline_strategies.m's default sweep grid (state 25x15x15,
-    % gh_n=5) instead of config.params()'s full 40^3/gh_n=7 production
-    % grid, so V_tilde welfare numbers from this script are directly
-    % comparable to the spline-strategy sweep. Only applies to the simplex
-    % path -- lna has no equivalent in run_spline_strategies to match.
-    if ~use_lna
-        % build_state_grids rebuilds the linspaces AND re-inserts the welfare
-        % anchors, so N_lambda/N_sH come back +2 -- read them off p, never off
-        % the requested dims.
-        % CGM_STATE_GRID / CGM_GH_N override the sweep grid for smoke runs
-        % only; unset (the production path) they are a no-op. See
-        % utility.grid_override.
-        [dims_sweep, gh_sweep] = utility.grid_override([25 15 15], 5);
-        p = utility.build_state_grids(p, dims_sweep, gh_sweep);
+    % The one grid definition run_nodc and run_spline_strategies also read, so
+    % all three stay welfare-comparable within a coordinate system.
+    % build_state_grids rebuilds the axis vectors AND re-inserts the welfare
+    % anchors, so two of the three come back up to +2 larger -- read the sizes
+    % off p, never off the requested dims. CGM_STATE_GRID / CGM_GH_N override
+    % for smoke runs only; unset (the production path) they are a no-op.
+    [dims_sweep, gh_sweep] = utility.production_grid(p);
+    p = utility.build_state_grids(p, dims_sweep, gh_sweep);
+    if use_lna
+        fprintf('  grid: requested [%d %d %d] gh_n=%d -> N_u1=%d N_u2=%d N_u3=%d\n', ...
+            dims_sweep(1), dims_sweep(2), dims_sweep(3), gh_sweep, ...
+            p.N_u1, p.N_u2, p.N_u3);
+    else
         fprintf('  grid: requested [%d %d %d] gh_n=%d -> N_lambda=%d N_sA=%d N_sH=%d\n', ...
             dims_sweep(1), dims_sweep(2), dims_sweep(3), gh_sweep, ...
             p.N_lambda, p.N_sA, p.N_sH);
@@ -143,11 +130,8 @@ for k = 1:numel(scenarios)
     if use_lna
         fprintf('  lna grid %dx%dx%d (%d states, all feasible), skip_polish=%d\n', ...
             p.N_u1, p.N_u2, p.N_u3, p.N_u1*p.N_u2*p.N_u3, p.skip_polish);
-        p.grid_type = 'lna';    % cube solve; asserted by the solver
-        sol = solver.solve_lifecycle_lna(p, profile, shocks, ann_price);
-    else
-        sol = solver.solve_lifecycle(p, profile, shocks, ann_price);
     end
+    sol = solver.solve(p, profile, shocks, ann_price);
     fprintf('  Solver: %.1f s  (pool: %s, %d workers, host: %s)\n', ...
         sol.elapsed, sol.timing.pool.type, sol.timing.pool.num_workers, sol.timing.hostname);
 
@@ -155,20 +139,15 @@ for k = 1:numel(scenarios)
     % V(W,state) = W^(1-gamma) * V_tilde(state); saved top-level so
     % compare_spline_strategies.m (and similar) can read Vt0 via matfile
     % without loading the big sol/sim arrays -- same convention as
-    % run_spline_strategies.m. Simplex path only: lna uses different state
-    % coordinates (u1,u2,u3) with no equivalent consumer to match today.
-    if ~use_lna
-        welfare0 = utility.welfare_summary(p, sol.V(:,:,:,1));
-        fprintf('  V_tilde0 = %.6g (corner, b=0) | %.6g at b0=%.4f | %.6g at b_alt=%.4f\n', ...
-            welfare0.Vt0, welfare0.Vt0_b0, welfare0.b0, welfare0.Vt0_b_alt, welfare0.b_alt);
-    end
+    % run_spline_strategies.m. Both coordinate systems now: utility.welfare_anchor
+    % reads the cube's (u1,u2) anchor as an exact node exactly as it reads the
+    % simplex's (lambda,s_H), so Vt0 means the same thing on either grid.
+    welfare0 = utility.welfare_summary(p, sol.V(:,:,:,1));
+    fprintf('  V_tilde0 = %.6g (corner, b=0) | %.6g at b0=%.4f | %.6g at b_alt=%.4f\n', ...
+        welfare0.Vt0, welfare0.Vt0_b0, welfare0.b0, welfare0.Vt0_b_alt, welfare0.b_alt);
 
     t_sim = tic;
-    if use_lna
-        sim = simulate.paths_lna(p, profile, sol, ann_price, N_sim);
-    else
-        sim = simulate.paths(p, profile, sol, ann_price, N_sim);
-    end
+    sim = simulate.forward(p, profile, sol, ann_price, N_sim);
     sim_elapsed = toc(t_sim);
     fprintf('  Simulated %d households in %.1f s\n', N_sim, sim_elapsed);
 
@@ -185,13 +164,9 @@ for k = 1:numel(scenarios)
     timing = sol.timing;
     timing.sim_sec = sim_elapsed;
 
-    suffix = ''; if use_lna, suffix = '_lna'; end
-    fname = fullfile(utility.output_dir(), sprintf('combined_%s%s.mat', sc.name, suffix));
-    if ~use_lna
-        save(fname, 'p', 'profile', 'shocks', 'ann_price', 'sol', 'sim', 'sc', 'timing', 'welfare0');
-    else
-        save(fname, 'p', 'profile', 'shocks', 'ann_price', 'sol', 'sim', 'sc', 'timing');
-    end
+    fname = fullfile(utility.output_dir(), ...
+        sprintf('combined_%s%s.mat', sc.name, utility.grid_suffix(p)));
+    save(fname, 'p', 'profile', 'shocks', 'ann_price', 'sol', 'sim', 'sc', 'timing', 'welfare0');
     fprintf('  Saved %s\n', fname);
 end
 

@@ -25,7 +25,7 @@ X_MIN   = 0.05;
 
 for ten = {'renter','owner'}
     D   = load(fullfile(repo, sprintf('%s_%s.mat', REF, ten{1})));
-    sim = simulate.paths(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
+    sim = simulate.forward(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
     act = (sim.X ./ sim.Y) > X_MIN;
     pi_ = sim.pi;  pi_(~act) = NaN;
     PI.(ten{1}) = 100 * mean(pi_, 1, 'omitnan');

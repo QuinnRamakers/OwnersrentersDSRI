@@ -13,8 +13,9 @@ h  = gobjects(1, numel(tenures));
 
 f = figure('Visible','off','Position',[100 100 780 500]); hold on; grid on;
 for i = 1:numel(tenures)
-    D = load(fullfile(repo, sprintf('combined_%s_freetau.mat', tenures{i})), 'sol','p');
-    B = load(fullfile(repo, sprintf('combined_%s_nodc.mat',    tenures{i})), 'sol','p');
+    gs = utility.grid_suffix();   % '' simplex, '_lna' cube; see utility.active_grid
+    D = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', tenures{i}, gs)), 'sol','p');
+    B = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat',    tenures{i}, gs)), 'sol','p');
     p = D.p; gamma = p.gamma;
     % Calibrated buffer anchors (config.params). Pre-anchor .mat vintages have
     % no b0/b_alt on their stored p -- fall back to the same expressions.

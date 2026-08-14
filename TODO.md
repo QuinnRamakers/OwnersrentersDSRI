@@ -198,14 +198,40 @@ Small and mostly cosmetic, but worth clearing.
 - **`verify_income_profile.m`** still warns that it has never been run against
   the real MATLAB code. It has, and it passes.
 
-## 8. Optional
+## 8. Grid bias on the cube — the open gate
 
-The alternative `(u1, u2, u3)` cube grid converges down onto the simplex
-values, so the simplex results stand and are independently verified by a second
-discretisation. At production size the cube grid is biased — uniform `u2` cells
-interpolate across the value cliff as liquid wealth goes to zero, overstating
-near-boundary continuation values.
+**This is now blocking, not optional.** The `(u1, u2, u3)` cube is the default
+coordinate system (`utility.active_grid`), so it is the arm the headline
+numbers come off.
 
-Grading the `u2` grid toward 1 (`u2 = 1-(1-v)^2`) is a one-line change and
-would test that explanation directly. Worth it only for the memory saving; not
-needed for results.
+The cube converges down onto the simplex values, and the simplex results are
+independently verified by it — that much stands. But the coarse cube is biased:
+uniform `u2` cells interpolate across the value cliff as liquid wealth goes to
+zero, overstating near-boundary continuation values. That was measured on the
+`[14 11 11]` sweep cube. The `[28 20 20]` production cube has far more
+resolution but the same defect in kind, and nobody has measured how much of it
+survives at that size.
+
+Grading the `u2` grid toward 1 is no longer a code change — it is already
+implemented as `p.grid_pow`, which feeds `cluster_hi` in
+`utility.build_state_grids` and applies to both coordinate systems.
+`p.grid_pow = 2` gives exactly the `1-(1-v)^2` spacing this item used to
+propose. It defaults to 1 (uniform), so nothing has changed yet, and only
+`grid_study.m` ever sets it.
+
+What is left is measurement, in this order:
+
+- **Re-run the convergence ladder at `[28 20 20]`** and quantify the residual
+  near-boundary bias against the simplex at the anchors that matter.
+- **Sweep `grid_pow`** and pick a value on evidence, not taste.
+- **Decide the sweep grid.** A full spline sweep at `[28 20 20]` is an order of
+  magnitude more live states than the simplex sweep grid, because the cube
+  wastes none on infeasible territory. The affordable alternative is a coarser
+  cube, which is the arm this section says is biased — so coarsening to fit the
+  budget is exactly the move to avoid until the grading is validated. See the
+  sizing note in `utility.production_grid`.
+
+Until that is done, treat cube welfare *levels* near the liquid-wealth boundary
+as provisional, and read arm-versus-arm differences at a fixed buffer, where
+the interpolation error is common-mode — the same advice item 1 gives for the
+anchor.

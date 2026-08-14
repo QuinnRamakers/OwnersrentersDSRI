@@ -6,11 +6,12 @@
 %   balance.
 %     renter_nodc (is_owner = false), owner_nodc (is_owner = true).
 %
-%   Solved on the same simplex grid as run_combined (25x15x15, gh_n=5) and at
+%   Solved on the same grid as run_combined (utility.production_grid, for
+%   whichever coordinate system CGM_GRID selects -- the cube by default) and at
 %   the same calibration, so welfare0 is directly comparable to
-%   combined_{renter,owner}{,_freetau}.mat. Saves
-%   combined_{renter,owner}_nodc.mat with the welfare0 convention: corner Vt0,
-%   the calibrated b0 / b_alt anchors, and the b_grid sensitivity curve.
+%   combined_{renter,owner}{,_freetau}[_lna].mat. Saves
+%   combined_{renter,owner}_nodc[_lna].mat with the welfare0 convention: corner
+%   Vt0, the calibrated b0 / b_alt anchors, and the b_grid sensitivity curve.
 %
 %   This is the no-pension benchmark the comparison scripts look for. The
 %   older combined_*_kappa0.mat name is a pre-tax-change vintage and is not
@@ -34,16 +35,16 @@ for k = 1:numel(scenarios)
     p.kappa        = 0;
     p.choose_tau_S = false;
 
-    % Match run_combined's production sweep grid. build_state_grids rebuilds
-    % the linspaces AND re-inserts the welfare anchors, so N_lambda/N_sH come
-    % back +2 -- read them off p, never off the requested dims.
-    % CGM_STATE_GRID / CGM_GH_N override it for smoke runs only; unset (the
-    % production path) they are a no-op. See utility.grid_override.
-    [dims_sweep, gh_sweep] = utility.grid_override([25 15 15], 5);
+    % The one grid definition run_combined and run_spline_strategies also read.
+    % build_state_grids rebuilds the axis vectors AND re-inserts the welfare
+    % anchors, so two of the three come back up to +2 larger -- read the sizes
+    % off p, never off the requested dims. CGM_STATE_GRID / CGM_GH_N override
+    % for smoke runs only; unset (the production path) they are a no-op.
+    [dims_sweep, gh_sweep] = utility.production_grid(p);
     p = utility.build_state_grids(p, dims_sweep, gh_sweep);
-    fprintf('  grid: requested [%d %d %d] gh_n=%d -> N_lambda=%d N_sA=%d N_sH=%d\n', ...
-        dims_sweep(1), dims_sweep(2), dims_sweep(3), gh_sweep, ...
-        p.N_lambda, p.N_sA, p.N_sH);
+    fprintf('  grid: %s, requested [%d %d %d] gh_n=%d -> [%d %d %d]\n', ...
+        p.grid_type, dims_sweep(1), dims_sweep(2), dims_sweep(3), gh_sweep, ...
+        utility.grid_sizes(p));
     p = assert_production_fill(p);
 
     [~, mu_growth, sigma_l_log] = config.income_profile(p);
@@ -56,17 +57,18 @@ for k = 1:numel(scenarios)
     fprintf('  kappa=%.3f (DC off), alpha=%.3f, theta=%.3f, h_mult=%.1f, tau_inc=%.3f, tau_wealth=%.4f\n', ...
         max(p.kappa), p.alpha, p.theta, p.h_mult, p.tau_inc, p.tau_wealth);
 
-    sol = solver.solve_lifecycle(p, profile, shocks, ann_price);
+    sol = solver.solve(p, profile, shocks, ann_price);
     fprintf('  Solver: %.1f s (%d workers)\n', sol.elapsed, sol.timing.pool.num_workers);
 
     welfare0 = utility.welfare_summary(p, sol.V(:,:,:,1));
     fprintf('  V_tilde0 = %.6g (corner, b=0) | %.6g at b0=%.4f | %.6g at b_alt=%.4f\n', ...
         welfare0.Vt0, welfare0.Vt0_b0, welfare0.b0, welfare0.Vt0_b_alt, welfare0.b_alt);
 
-    sim = simulate.paths(p, profile, sol, ann_price, N_sim);
+    sim = simulate.forward(p, profile, sol, ann_price, N_sim);
     timing = sol.timing;
 
-    fname = fullfile(utility.output_dir(), sprintf('combined_%s.mat', sc.name));
+    fname = fullfile(utility.output_dir(), ...
+        sprintf('combined_%s%s.mat', sc.name, utility.grid_suffix(p)));
     save(fname, 'p', 'profile', 'shocks', 'ann_price', 'sol', 'sim', 'sc', 'timing', 'welfare0');
     fprintf('  Saved %s\n', fname);
 end

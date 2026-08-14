@@ -79,15 +79,18 @@ else
     % (fig_renter_vs_owner), or they would overwrite each other across arms.
     fig_tag      = ['_' arm];
     dash_tag     = '';
-    % CGM_GRID=lna reads the cube-grid outputs of run_combined
-    % (combined_<name>_lna.mat) and tags figures _lna so the two grid
-    % systems can be plotted side by side. Only this 2-file branch is
-    % lna-aware: the diag_* pipeline and the 3D policy-surface section
-    % assume the simplex (lambda, s_A, s_H) grid layout.
-    if strcmp(getenv('CGM_GRID'), 'lna')
-        files   = strrep(files, '.mat', '_lna.mat');
+    % Read whichever coordinate system is active (utility.active_grid, cube by
+    % default) and tag the figures to match, so the two can be plotted side by
+    % side. Resolve it through active_grid rather than testing getenv directly:
+    % an UNSET CGM_GRID means the cube now, and a bare getenv comparison would
+    % silently read simplex filenames for a cube session.
+    % Only this 2-file branch is grid-aware: the diag_* pipeline and the 3D
+    % policy-surface section assume the simplex (lambda, s_A, s_H) layout.
+    grid_sfx = utility.grid_suffix();
+    if ~isempty(grid_sfx)
+        files   = strrep(files, '.mat', [grid_sfx '.mat']);
         labels  = cellfun(@(s) [s '  [lna grid]'], labels, 'UniformOutput', false);
-        fig_tag = [fig_tag '_lna'];   % keep the arm tag: both identify the file
+        fig_tag = [fig_tag grid_sfx];   % keep the arm tag: both identify the file
     end
 end
 

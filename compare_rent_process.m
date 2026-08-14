@@ -38,6 +38,9 @@ for a = 1:numel(arms)
     t0 = tic;
 
     p = config.params();
+    % Pinned to the simplex: this file drives the simplex solver/simulator
+    % directly, and config.params now defaults to the cube (utility.active_grid).
+    p.grid_type = 'simplex';
     p.is_owner    = false;
     p.legacy_fill = false;
     p = utility.build_state_grids(p, GRID, GH_N);

@@ -21,19 +21,31 @@ function run_spline_strategies(strats, opts)
 %   Options:
 %     housing    : "renter" | "owner" | "both" (default "both")
 %     n_sim      : simulated households per scenario (default 5000)
-%     gh_n       : Gauss-Hermite nodes per shock dimension (default 5 ->
-%                  125 joint nodes; the full-model production value is 7)
-%     state_grid : [N_lambda N_sA N_sH] (default [25 15 15]; lambda is
-%                  empirically the steepest policy axis, hence upweighted --
-%                  same reasoning as the lna grid design in config.params).
-%                  The full-model production grid is [40 40 40].
+%     gh_n       : Gauss-Hermite nodes per shock dimension. Default comes from
+%                  utility.production_grid for the active coordinate system.
+%     state_grid : three state-grid sizes -- [N_u1 N_u2 N_u3] on the cube,
+%                  [N_lambda N_sA N_sH] on the simplex. Default likewise from
+%                  utility.production_grid, which is also what run_combined and
+%                  run_nodc read, so the sweep and the benchmarks land on the
+%                  same grid without three copies of the numbers. lambda gets
+%                  the extra resolution on both grids: it is empirically the
+%                  steepest policy axis.
 %     smoke      : true -> even coarser grids + 200 households, smoke_ file
 %                  prefix; end-to-end plumbing check in minutes, NOT results.
 %   All sweep runs must share gh_n/state_grid -- welfare rankings are only
 %   comparable across runs solved on identical grids (compare with the
 %   defaults everywhere, or pass the same overrides everywhere).
 %
-%   Output files:  {strategy}_{renter|owner}.mat, e.g. spl_100_050_000_owner.mat.
+%   Coordinate system follows CGM_GRID (utility.active_grid): the cube by
+%   default, the simplex with CGM_GRID=simplex. Cube output carries an _lna
+%   suffix, so both sweeps can live in one output dir and resume independently.
+%   Before launching a cube sweep read the sizing note in
+%   utility.production_grid -- the cube has no infeasible nodes, so its
+%   production grid holds an order of magnitude more live states than the
+%   simplex sweep grid does.
+%
+%   Output files:  {strategy}_{renter|owner}[_lna].mat,
+%                  e.g. spl_100_050_000_owner_lna.mat.
 %   Each file carries a small top-level `welfare0` summary (V_tilde at the
 %   initial state -- corner, the calibrated b0/b_alt anchors, and a buffer
 %   sensitivity curve; see utility.welfare_summary) so
@@ -57,10 +69,23 @@ arguments
     strats
     opts.housing (1,1) string {mustBeMember(opts.housing, ["renter","owner","both"])} = "both"
     opts.n_sim   (1,1) double {mustBePositive} = 5000
-    opts.gh_n    (1,1) double {mustBeInteger, mustBePositive} = 5
-    opts.state_grid (1,3) double {mustBeInteger, mustBePositive} = [25 15 15]
+    % Empty means "take the production grid for whichever coordinate system is
+    % active" -- resolved below, because that default depends on CGM_GRID and
+    % an arguments block cannot express one default in terms of another.
+    % Passing either explicitly still overrides, and still has to be passed
+    % identically to every run in a sweep for the rankings to mean anything.
+    opts.gh_n    (1,:) double {mustBeInteger, mustBePositive} = []
+    opts.state_grid (1,:) double {mustBeInteger, mustBePositive} = []
     opts.smoke   (1,1) logical = false
 end
+
+[dims_default, gh_default] = utility.production_grid();
+if isempty(opts.state_grid), opts.state_grid = dims_default; end
+if isempty(opts.gh_n),       opts.gh_n       = gh_default;   end
+assert(numel(opts.state_grid) == 3, 'run_spline_strategies:state_grid', ...
+    'state_grid must be three integers, got %s.', mat2str(opts.state_grid));
+assert(isscalar(opts.gh_n), 'run_spline_strategies:gh_n', ...
+    'gh_n must be a scalar, got %s.', mat2str(opts.gh_n));
 
 %% Resolve the strategy list
 if iscellstr(strats) || isstring(strats)  %#ok<ISCLSTR>  names -> menu lookup
@@ -84,6 +109,7 @@ N_SIM    = opts.n_sim;
 if SMOKE, N_SIM = 200; end
 LOG_FILE = fullfile(utility.output_dir(), 'spline_strategies_log.txt');
 prefix   = ternary(SMOKE, 'smoke_', '');
+GRID_SUFFIX = utility.grid_suffix();   % '' simplex, '_lna' cube
 
 %% Job list: housing-major
 jobs = struct('strat', {}, 'housing', {});
@@ -125,7 +151,8 @@ lprintf(LOG_FILE, 'run_spline_strategies  start: %s%s\n', ...
 lprintf(LOG_FILE, 'This call: %d strategies x %s = %d jobs  (%s ... %s)\n', ...
     numel(strats), strjoin(HOUSING, '+'), numel(jobs), ...
     strats(1).name, strats(end).name);
-lprintf(LOG_FILE, 'Grids: state %dx%dx%d, gh_n=%d (%d joint nodes)\n', ...
+lprintf(LOG_FILE, 'Grids: %s, state %dx%dx%d, gh_n=%d (%d joint nodes)\n', ...
+    utility.active_grid(), ...
     opts.state_grid(1), opts.state_grid(2), opts.state_grid(3), ...
     opts.gh_n, opts.gh_n^3);
 lprintf(LOG_FILE, '%s\n\n', repmat('-',1,65));
@@ -137,7 +164,12 @@ manifest = {};
 for j = 1:numel(jobs)
     st      = jobs(j).strat;
     housing = jobs(j).housing;
-    out_file = fullfile(utility.output_dir(), sprintf('%s%s_%s.mat', prefix, st.name, housing));
+    % Grid suffix from the active coordinate system, not from p -- p does not
+    % exist yet, and this name is what the resume check below tests. That also
+    % means a cube sweep and a simplex sweep resume independently of each
+    % other in one output dir, which is the point.
+    out_file = fullfile(utility.output_dir(), ...
+        sprintf('%s%s_%s%s.mat', prefix, st.name, housing, GRID_SUFFIX));
 
     if isfile(out_file)
         lprintf(LOG_FILE, 'SKIP   %s  (file exists)\n', out_file);
@@ -187,7 +219,7 @@ for j = 1:numel(jobs)
     ann_price = pension.annuity_price(p, profile, shocks);
 
     %% Solve
-    sol = solver.solve_lifecycle(p, profile, shocks, ann_price);
+    sol = solver.solve(p, profile, shocks, ann_price);
     lprintf(LOG_FILE, '    Solver: %.1f s\n', sol.elapsed);
 
     %% Welfare summary at the initial state (see welfare_dc_strategies.m):
@@ -200,7 +232,7 @@ for j = 1:numel(jobs)
 
     %% Simulate
     t_sim = tic;
-    sim = simulate.paths(p, profile, sol, ann_price, N_SIM);
+    sim = simulate.forward(p, profile, sol, ann_price, N_SIM);
     sim_elapsed = toc(t_sim);
     lprintf(LOG_FILE, '    Simulated %d households in %.1f s\n', N_SIM, sim_elapsed);
 

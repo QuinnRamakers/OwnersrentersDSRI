@@ -28,7 +28,7 @@ for i = 1:size(arms,1)
             fn = sprintf('combined_%s.mat', ten);
         end
         D = load(fullfile(repo, fn));
-        sim = simulate.paths(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
+        sim = simulate.forward(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
         % Liquid wealth relative to current income: "how many years of income
         % is this household holding outside the pension".
         R.(arms{i,1}).(ten) = mean(sim.X ./ sim.Y, 1);

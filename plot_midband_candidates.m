@@ -27,7 +27,7 @@ for i = 1:size(arms,1)
     for j = 1:numel(tenures)
         ten = tenures{j};
         D   = load(fullfile(repo, sprintf('%s_%s.mat', arms{i,1}, ten)));
-        sim = simulate.paths(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
+        sim = simulate.forward(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
         act = (sim.X ./ sim.Y) > X_MIN;
         pi_ = sim.pi;  pi_(~act) = NaN;
         R.(arms{i,3}).(ten) = 100 * mean(pi_, 1, 'omitnan');

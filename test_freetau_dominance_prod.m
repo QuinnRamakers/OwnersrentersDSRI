@@ -18,8 +18,16 @@ repo = fileparts(which('test_freetau_dominance_prod'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
 
-pairs = {'renter', 'combined_renter.mat', 'combined_renter_freetau.mat'; ...
-         'owner',  'combined_owner.mat',  'combined_owner_freetau.mat'};
+% Dominance is a property of BOTH coordinate systems -- the cube's free-tau
+% branch keeps the glide value in its seed grid and polishes from it pinned,
+% exactly as the simplex does, and tests/smoke_freetau_dominance_lna checks
+% that at the Bellman-step level. This checks it on whichever pair of solved
+% production files the active grid names.
+gs = utility.grid_suffix();
+pairs = {'renter', sprintf('combined_renter%s.mat', gs), ...
+                   sprintf('combined_renter_freetau%s.mat', gs); ...
+         'owner',  sprintf('combined_owner%s.mat', gs), ...
+                   sprintf('combined_owner_freetau%s.mat', gs)};
 
 for i = 1:size(pairs, 1)
     G = load(fullfile(repo, pairs{i, 2}), 'sol', 'p');

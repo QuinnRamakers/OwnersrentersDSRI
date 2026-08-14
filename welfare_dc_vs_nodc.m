@@ -32,8 +32,9 @@ buffers = [0 0.25 0.5 1 2 3 5 10];
 
 for i = 1:numel(tenures)
     ten = tenures{i};
-    B = load(fullfile(repo, sprintf('combined_%s_nodc.mat', ten)),    'sol','p');
-    D = load(fullfile(repo, sprintf('combined_%s_freetau.mat', ten)), 'sol','p');
+    gs = utility.grid_suffix();   % '' simplex, '_lna' cube; see utility.active_grid
+    B = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat', ten, gs)),    'sol','p');
+    D = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, gs)), 'sol','p');
     p = D.p; gamma = p.gamma;
 
     % Pre-anchor .mat vintages have no b0/b_alt on their stored p; fall back

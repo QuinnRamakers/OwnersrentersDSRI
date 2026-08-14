@@ -95,6 +95,9 @@ end
 function check_c(~)
 fprintf('\n--- (c) welfare anchors are exact grid members ---\n');
 p = config.params();
+% Pinned to the simplex: this file drives the simplex solver/simulator
+% directly, and config.params now defaults to the cube (utility.active_grid).
+p.grid_type = 'simplex';
 assert_anchor(p, 'config.params defaults');
 fprintf('    config.params: N_lambda=%d N_sA=%d N_sH=%d\n', p.N_lambda, p.N_sA, p.N_sH);
 
@@ -299,6 +302,9 @@ function p = smoke_params(is_owner)
 % barely move it. Raise N to 12+ on the cluster for a sharper reading; the
 % monotonicity property being tested is grid-independent.
 p = config.params();
+% Pinned to the simplex: this file drives the simplex solver/simulator
+% directly, and config.params now defaults to the cube (utility.active_grid).
+p.grid_type = 'simplex';
 p.phi_floor    = 0;        % the fill fix is a phi_floor = 0 result; see the header
 p.is_owner     = is_owner;
 p.kappa        = 0;        % nodc regime: fastest, and the Task-4 benchmark

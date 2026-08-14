@@ -48,7 +48,8 @@ np  = 0;
 
 for hi = 1:numel(HOUSING)
     h = HOUSING{hi};
-    f = fullfile(RES_DIR, sprintf('combined_%s_freetau.mat', h));
+    f = fullfile(RES_DIR, ...
+        sprintf('combined_%s_freetau%s.mat', h, utility.grid_suffix()));
     if ~isfile(f)
         fprintf('\n-- %s: %s not found -- skipping.\n', h, f); continue
     end

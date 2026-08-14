@@ -21,8 +21,9 @@ tenures = {'renter', 'owner'};
 
 for i = 1:numel(tenures)
     ten = tenures{i};
-    B = load(fullfile(repo, sprintf('combined_%s_nodc.mat', ten)));      % no DC
-    D = load(fullfile(repo, sprintf('combined_%s_freetau.mat', ten)));   % DC free choice
+    gs = utility.grid_suffix();   % '' simplex, '_lna' cube; see utility.active_grid
+    B = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat', ten, gs)));      % no DC
+    D = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, gs)));   % DC free choice
     p = D.p; ages = double(D.sim.ages);
     ages_tr = ages(1:end-1);
 

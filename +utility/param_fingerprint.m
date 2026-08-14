@@ -77,7 +77,7 @@ function g = grid_tag(p)
 %   comparability gate against each other.
 %
 %   Callers declare it as p.grid_type. config.params defaults it to 'simplex';
-%   solver.solve_lifecycle_lna and ovnf.solve_lifecycle_lna assert it is 'lna',
+%   solver.solve_lifecycle_lna asserts it is 'lna',
 %   so a cube solve that forgot to declare itself fails rather than being
 %   silently labelled a simplex run. A p-struct predating the tag reads
 %   'unset', which matches neither.

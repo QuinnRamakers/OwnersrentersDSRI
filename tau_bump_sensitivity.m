@@ -66,6 +66,9 @@ else,                      HOUSING = {char(opts.housing)};
 end
 
 p_probe = config.params();
+% Pinned to the simplex: this file drives the simplex solver/simulator
+% directly, and config.params now defaults to the cube (utility.active_grid).
+p_probe.grid_type = 'simplex';
 ages    = opts.ages;
 if isempty(ages), ages = p_probe.age0 : 5 : p_probe.retirement_age - 1; end
 age_max = p_probe.age0 + p_probe.T - 2;
@@ -117,6 +120,9 @@ for j = 1:numel(jobs)
     end
 
     p = config.params();
+    % Pinned to the simplex: this file drives the simplex solver/simulator
+    % directly, and config.params now defaults to the cube (utility.active_grid).
+    p.grid_type = 'simplex';
     p.is_owner = strcmp(job.housing, 'owner');
 
     tau_base = baseline_path(p, opts);

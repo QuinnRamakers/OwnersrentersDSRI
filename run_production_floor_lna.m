@@ -12,9 +12,11 @@ function run_production_floor_lna()
 %   The point is the discretisation itself. The two coordinate systems are
 %   approximations of one model, so any welfare difference between them is
 %   discretisation error, and the repo has an open disagreement about the sign
-%   of the DC equity effect that splits along exactly this line (see the header
-%   of overnight_lna/run_overnight_lna). Running both under the consumption
-%   floor tests whether the floor changes that.
+%   of the DC equity effect that splits along exactly this line (recorded in
+%   TODO section 8; the overnight cube sweep that measured it lived in
+%   overnight_lna/ and was removed once the cube became production -- see git
+%   history). Running both under the consumption floor tests whether the floor
+%   changes that.
 %
 %   Note on comparability: utility.param_fingerprint keys on N_lambda/N_sA/N_sH
 %   and does not record the cube dimensions or which coordinate system was

@@ -81,10 +81,11 @@ for hi = 1:numel(HOUSING)
     h = HOUSING{hi};
     fprintf('\n%s\n#  %s\n%s\n', repmat('#',1,100), upper(h), repmat('#',1,100));
 
-    ref_file  = fullfile(RES_DIR, sprintf('combined_%s_nodc.mat',    h));
-    free_file = fullfile(RES_DIR, sprintf('combined_%s_freetau.mat', h));
+    gs = utility.grid_suffix();   % '' simplex, '_lna' cube; see utility.active_grid
+    ref_file  = fullfile(RES_DIR, sprintf('combined_%s_nodc%s.mat',    h, gs));
+    free_file = fullfile(RES_DIR, sprintf('combined_%s_freetau%s.mat', h, gs));
     if ~isfile(ref_file)
-        legacy = fullfile(RES_DIR, sprintf('combined_%s_kappa0.mat', h));
+        legacy = fullfile(RES_DIR, sprintf('combined_%s_kappa0%s.mat', h, gs));
         if isfile(legacy), ref_file = legacy; end
     end
     if ~isfile(ref_file)
@@ -171,14 +172,28 @@ for hi = 1:numel(HOUSING)
     end
 
     % --------------------------------------------------- [3] resolution check
-    lam = 1 ./ (opts.b_fine + p0.h_mult + 1);
-    sH  = p0.h_mult ./ (opts.b_fine + p0.h_mult + 1);
-    fprintf('\n[3] GRID RESOLUTION OF THE BUFFER SWEEP  (b = %.1f .. %.1f)\n', ...
-        opts.b_fine(1), opts.b_fine(end));
-    fprintf('    lam0 spans %.4f .. %.4f  = %.2f cells of the %d-node lambda grid\n', ...
-        min(lam), max(lam), span_cells(p0.lambda_grid, lam), numel(p0.lambda_grid));
-    fprintf('    sH0  spans %.4f .. %.4f  = %.2f cells of the %d-node sH grid\n', ...
-        min(sH),  max(sH),  span_cells(p0.sH_grid, sH),  numel(p0.sH_grid));
+    % Report the two axes the buffer actually moves along, in the coordinates
+    % the arms were solved in -- see utility.welfare_anchor for the same two
+    % mappings. On the cube the buffer moves u1 and u2; on the simplex, lambda
+    % and s_H. The third axis is untouched either way: the anchor sits at zero
+    % pension assets, already node 1.
+    if strcmp(char(p0.grid_type), 'lna')
+        a1 = 1 ./ (opts.b_fine + p0.h_mult + 1);        % u1 = lambda
+        a2 = p0.h_mult ./ (p0.h_mult + opts.b_fine);    % u2 = (A+H)/(W-Y)
+        g1 = p0.u1_grid;  g2 = p0.u2_grid;
+        n1 = 'u1';        n2 = 'u2';
+    else
+        a1 = 1 ./ (opts.b_fine + p0.h_mult + 1);        % lambda
+        a2 = p0.h_mult ./ (opts.b_fine + p0.h_mult + 1);% s_H
+        g1 = p0.lambda_grid;  g2 = p0.sH_grid;
+        n1 = 'lambda';        n2 = 'sH';
+    end
+    fprintf('\n[3] GRID RESOLUTION OF THE BUFFER SWEEP  (b = %.1f .. %.1f, %s grid)\n', ...
+        opts.b_fine(1), opts.b_fine(end), p0.grid_type);
+    fprintf('    %-6s spans %.4f .. %.4f  = %.2f cells of the %d-node %s grid\n', ...
+        n1, min(a1), max(a1), span_cells(g1, a1), numel(g1), n1);
+    fprintf('    %-6s spans %.4f .. %.4f  = %.2f cells of the %d-node %s grid\n', ...
+        n2, min(a2), max(a2), span_cells(g2, a2), numel(g2), n2);
     fprintf('    -> every buffer except b0/b_alt is INTERPOLATED across those cells.\n');
 
     if ~opts.fine
