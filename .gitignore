@@ -1,27 +1,24 @@
+# Solver output and MATLAB scratch
 *.mat
 *.asv
-*.log
-slurm-*.out
 *.mex*
+slurm-*.out
 
-# MATLAB batch logs with parfor worker warning spam
-floor_sweep_log.txt
-floor_test_log.txt
-prod_floor_log.txt
-
-# solver-v2 run logs
-suite_final.txt
-suite_v2default.txt
-eval_no_tensor_log.txt
-eval_final_log.txt
-polish_v2_test.txt
-freetau_lna_test.txt
-v2_pair_log.txt
-v2_dash2.txt
-dash_configs_log.txt
-confirm_default_log.txt
-verify_continuation_log.txt
-
-confirm_no_tensor_log.txt
-grid_mode_log.txt
+# Run logs and console capture
+*.log
+*_log.txt
+*_log2.txt
+*_test.txt
+*_tests.txt
+suite_*.txt
 main_verify.txt
+v2_dash2.txt
+
+# Generated figures
+*.png
+
+# Generated CSV exports. Calibration inputs (CBSunisexmortality21-26.csv,
+# Coefficients_probability_survival.xlsx) are tracked and must stay tracked.
+spl_comparison_*.csv
+tau_policy_profile_*.csv
+welfare_by_wealth_*.csv
