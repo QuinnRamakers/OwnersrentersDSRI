@@ -29,6 +29,12 @@ repo = fileparts(which('plot_dc_equity_share'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
 
+% repo locates the CODE; out_dir locates the DATA. They are the same folder
+% in the documented workflow (cwd = repo, CGM_OUTPUT_DIR unset), and differ on
+% the cluster, where outputs go to the mounted volume. Reading .mat files from
+% repo meant this script found nothing there.
+out_dir = utility.output_dir();
+
 X0_FRAC = 1.0;               % initial liquid buffer, in years of income
 N_sim   = 10000;
 REBUILD = false;             % force a rebuild even if the cache is there
@@ -39,7 +45,7 @@ suffix  = utility.grid_suffix();   % '' simplex, '_lna' cube
 % Rebuild if the cache predates a field the figures now need, so an old cache
 % cannot silently break the plot.
 needed = {'ages_tr', 'tau_free', 'pi_free', 'tau_p10', 'tau_p50', 'tau_p90', 'tau_glide'};
-cache  = fullfile(repo, sprintf('dc_equity_share_data%s.mat', suffix));
+cache  = fullfile(out_dir, sprintf('dc_equity_share_data%s.mat', suffix));
 stale  = REBUILD || ~isfile(cache);
 if ~stale
     Q = load(cache, 'S');
@@ -51,7 +57,7 @@ if stale
         ten = tenures{i};
         % simulate.forward dispatches on D.p.grid_type, so the arm is
         % simulated in the coordinates it was solved in whatever the file is.
-        D   = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, suffix)));
+        D   = load(fullfile(out_dir, sprintf('combined_%s_freetau%s.mat', ten, suffix)));
         sim = simulate.forward(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
         p   = D.p;
         buffer = X0_FRAC;
@@ -87,8 +93,8 @@ figs = {@dc_equity_share_figure,      ['fig_dc_equity_share' suffix]; ...
         @dc_equity_dispersion_figure, ['fig_dc_equity_dispersion' suffix]};
 for i = 1:size(figs, 1)
     f = figs{i,1}(S, p, buffer);
-    exportgraphics(f, fullfile(repo, [figs{i,2} '.png']), 'Resolution', 300);
-    exportgraphics(f, fullfile(repo, [figs{i,2} '.pdf']), 'ContentType', 'vector');
+    exportgraphics(f, fullfile(out_dir, [figs{i,2} '.png']), 'Resolution', 300);
+    exportgraphics(f, fullfile(out_dir, [figs{i,2} '.pdf']), 'ContentType', 'vector');
     close(f);
     fprintf('Saved: %s.png, %s.pdf\n', figs{i,2}, figs{i,2});
 end

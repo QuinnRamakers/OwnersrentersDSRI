@@ -14,6 +14,12 @@ repo = fileparts(which('plot_mandated_strategy_response'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
 
+% repo locates the CODE; out_dir locates the DATA. They are the same folder
+% in the documented workflow (cwd = repo, CGM_OUTPUT_DIR unset), and differ on
+% the cluster, where outputs go to the mounted volume. Reading .mat files from
+% repo meant this script found nothing there.
+out_dir = utility.output_dir();
+
 X0_FRAC = 1.0;               % initial liquid buffer, in years of income
 N_sim   = 6000;
 X_MIN   = 0.05;              % skip near-ruin paths: the equity share is
@@ -26,7 +32,10 @@ tenures = {'renter', 'owner'};
 for i = 1:size(arms,1)
     for j = 1:numel(tenures)
         ten = tenures{j};
-        D   = load(fullfile(repo, sprintf('%s_%s.mat', arms{i,1}, ten)));
+        % Sweep arms come from utility.output_dir with the active grid's
+        % suffix, same as compare_spline_strategies discovers them.
+        D   = load(fullfile(utility.output_dir(), ...
+            sprintf('%s_%s%s.mat', arms{i,1}, ten, utility.grid_suffix())));
         sim = simulate.forward(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
 
         R.(arms{i,1}).(ten).X = mean(sim.X ./ sim.Y, 1);
@@ -75,7 +84,7 @@ for i = 1:size(arms,1)
     xlabel(ax, 'Age', 'FontSize',13);
     ylabel(ax, 'Equity share of the account (%)', 'FontSize',13);
 
-    stem = fullfile(repo, sprintf('fig_response_%s', arms{i,3}));
+    stem = fullfile(out_dir, sprintf('fig_response_%s', arms{i,3}));
     exportgraphics(f, [stem '.png'], 'Resolution', 300);
     exportgraphics(f, [stem '.pdf'], 'ContentType','vector');
     close(f);
@@ -92,8 +101,8 @@ lg = legend(ax, [h1 h2 h3], ...
     'Orientation','horizontal', 'FontSize',13, 'Box','off');
 lg.ItemTokenSize = [34 18];
 lg.Position = [0 0.15 1 0.7];
-exportgraphics(f, fullfile(repo,'fig_response_legend.png'), 'Resolution', 300);
-exportgraphics(f, fullfile(repo,'fig_response_legend.pdf'), 'ContentType','vector');
+exportgraphics(f, fullfile(out_dir,'fig_response_legend.png'), 'Resolution', 300);
+exportgraphics(f, fullfile(out_dir,'fig_response_legend.pdf'), 'ContentType','vector');
 close(f);
 
 fprintf('Saved: fig_response_full_equity, fig_response_glide, fig_response_legend {.png,.pdf}\n');

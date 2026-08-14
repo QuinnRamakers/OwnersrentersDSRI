@@ -25,6 +25,12 @@
 repo = fileparts(which('final_summary_plots'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
+
+% repo locates the CODE; out_dir locates the DATA. They are the same folder
+% in the documented workflow (cwd = repo, CGM_OUTPUT_DIR unset), and differ on
+% the cluster, where outputs go to the mounted volume. Reading .mat files from
+% repo meant this script found nothing there.
+out_dir = utility.output_dir();
 X0_FRAC = 1.0;               % initial liquid buffer, in years of income
 N_sim   = 10000;
 
@@ -34,9 +40,9 @@ fprintf('=== Welfare with X0 = %.2f yr initial liquid buffer (gamma=5) ===\n', X
 for i = 1:numel(tenures)
     ten = tenures{i};
     gs = utility.grid_suffix();   % '' simplex, '_lna' cube; see utility.active_grid
-    B = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat',    ten, gs)));   % no DC
-    G = load(fullfile(repo, sprintf('combined_%s%s.mat',         ten, gs)));   % DC glide
-    D = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, gs)));   % DC free choice
+    B = load(fullfile(out_dir, sprintf('combined_%s_nodc%s.mat',    ten, gs)));   % no DC
+    G = load(fullfile(out_dir, sprintf('combined_%s%s.mat',         ten, gs)));   % DC glide
+    D = load(fullfile(out_dir, sprintf('combined_%s_freetau%s.mat', ten, gs)));   % DC free choice
     p = D.p; gamma = p.gamma; hm = p.h_mult;
 
     % Re-simulate all three regimes with the initial buffer.
@@ -87,7 +93,7 @@ for i = 1:numel(tenures)
 
     title(tl, sprintf('%s: no-DC vs DC + free choice  (X_0 = %.1f yr buffer, production grid)', ...
           ten, X0_FRAC));
-    saveas(f, fullfile(repo, sprintf('summary_lifecycle_%s.png', ten)));
+    saveas(f, fullfile(out_dir, sprintf('summary_lifecycle_%s.png', ten)));
     close(f);
 
     % ---- welfare CEV at this buffer (V_tilde at buffered initial node) ----
@@ -114,7 +120,7 @@ end
 % run cannot drift apart.
 f = dc_equity_share_figure(S, D.p, X0_FRAC);
 set(f, 'Visible', 'off');
-exportgraphics(f, fullfile(repo, 'summary_dc_equity_share.png'), 'Resolution', 300);
+exportgraphics(f, fullfile(out_dir, 'summary_dc_equity_share.png'), 'Resolution', 300);
 close(f);
 
 % ---- welfare vs buffer sweep, anchor marked ----
@@ -124,8 +130,8 @@ cols = [0 0.45 0.74; 0.85 0.33 0.10];
 for i = 1:numel(tenures)
     ten = tenures{i};
     gs = utility.grid_suffix();
-    Bs = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat',    ten, gs)), 'sol','p');
-    Ds = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, gs)), 'sol','p');
+    Bs = load(fullfile(out_dir, sprintf('combined_%s_nodc%s.mat',    ten, gs)), 'sol','p');
+    Ds = load(fullfile(out_dir, sprintf('combined_%s_freetau%s.mat', ten, gs)), 'sol','p');
     gamma = Ds.p.gamma;
     % welfare_anchor takes the whole buffer vector at once and builds its
     % interpolant (and the simplex NaN fill, the expensive part) only once.
@@ -140,7 +146,7 @@ xlabel('initial liquid buffer X_0 (years of income)');
 ylabel('welfare gain of DC + free choice vs no DC  (% CEV)');
 title('DC-pension welfare gain rises with initial liquidity');
 legend(tenures, 'Location','southeast');
-saveas(f, fullfile(repo, 'summary_welfare_by_buffer.png'));
+saveas(f, fullfile(out_dir, 'summary_welfare_by_buffer.png'));
 close(f);
 
 fprintf('Saved: summary_lifecycle_{renter,owner}.png, summary_dc_equity_share.png, summary_welfare_by_buffer.png\n');

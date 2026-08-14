@@ -6,6 +6,12 @@
 repo = fileparts(which('plot_welfare_vs_buffer'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
+
+% repo locates the CODE; out_dir locates the DATA. They are the same folder
+% in the documented workflow (cwd = repo, CGM_OUTPUT_DIR unset), and differ on
+% the cluster, where outputs go to the mounted volume. Reading .mat files from
+% repo meant this script found nothing there.
+out_dir = utility.output_dir();
 tenures = {'renter','owner'};
 buffers = linspace(0, 10, 41);
 b0 = []; balt = [];
@@ -14,8 +20,8 @@ h  = gobjects(1, numel(tenures));
 f = figure('Visible','off','Position',[100 100 780 500]); hold on; grid on;
 for i = 1:numel(tenures)
     gs = utility.grid_suffix();   % '' simplex, '_lna' cube; see utility.active_grid
-    D = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', tenures{i}, gs)), 'sol','p');
-    B = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat',    tenures{i}, gs)), 'sol','p');
+    D = load(fullfile(out_dir, sprintf('combined_%s_freetau%s.mat', tenures{i}, gs)), 'sol','p');
+    B = load(fullfile(out_dir, sprintf('combined_%s_nodc%s.mat',    tenures{i}, gs)), 'sol','p');
     p = D.p; gamma = p.gamma;
     % Calibrated buffer anchors (config.params). Pre-anchor .mat vintages have
     % no b0/b_alt on their stored p -- fall back to the same expressions.
@@ -42,6 +48,6 @@ xlabel('initial liquid buffer X_0 (years of income)');
 ylabel('welfare gain of DC + free choice vs no DC  (% CEV)');
 title('Value of the mandatory DC pension depends on initial liquidity');
 legend(h, tenures, 'Location','southeast');   % explicit handles: the y/xlines are not series
-saveas(f, fullfile(repo, 'welfare_dc_vs_nodc_by_buffer.png'));
+saveas(f, fullfile(out_dir, 'welfare_dc_vs_nodc_by_buffer.png'));
 close(f);
 fprintf('Saved welfare_dc_vs_nodc_by_buffer.png\n');

@@ -17,13 +17,19 @@
 repo = fileparts(which('plot_nodc_vs_dcchoice'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
+
+% repo locates the CODE; out_dir locates the DATA. They are the same folder
+% in the documented workflow (cwd = repo, CGM_OUTPUT_DIR unset), and differ on
+% the cluster, where outputs go to the mounted volume. Reading .mat files from
+% repo meant this script found nothing there.
+out_dir = utility.output_dir();
 tenures = {'renter', 'owner'};
 
 for i = 1:numel(tenures)
     ten = tenures{i};
     gs = utility.grid_suffix();   % '' simplex, '_lna' cube; see utility.active_grid
-    B = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat', ten, gs)));      % no DC
-    D = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, gs)));   % DC free choice
+    B = load(fullfile(out_dir, sprintf('combined_%s_nodc%s.mat', ten, gs)));      % no DC
+    D = load(fullfile(out_dir, sprintf('combined_%s_freetau%s.mat', ten, gs)));   % DC free choice
     p = D.p; ages = double(D.sim.ages);
     ages_tr = ages(1:end-1);
 
@@ -70,7 +76,7 @@ for i = 1:numel(tenures)
            'Location','northeast');
 
     title(tl, sprintf('%s: no-DC-account vs DC + free investment choice (production grid)', ten));
-    saveas(f, fullfile(repo, sprintf('nodc_vs_dcchoice_%s.png', ten)));
+    saveas(f, fullfile(out_dir, sprintf('nodc_vs_dcchoice_%s.png', ten)));
     close(f);
 
     gamma = p.gamma;

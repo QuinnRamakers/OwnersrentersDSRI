@@ -12,6 +12,12 @@ repo = fileparts(which('plot_private_savings_response'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
 
+% repo locates the CODE; out_dir locates the DATA. They are the same folder
+% in the documented workflow (cwd = repo, CGM_OUTPUT_DIR unset), and differ on
+% the cluster, where outputs go to the mounted volume. Reading .mat files from
+% repo meant this script found nothing there.
+out_dir = utility.output_dir();
+
 X0_FRAC = 1.0;               % initial liquid buffer, in years of income
 N_sim   = 10000;
 
@@ -22,12 +28,13 @@ tenures = {'renter', 'owner'};
 for i = 1:size(arms,1)
     for j = 1:numel(tenures)
         ten = tenures{j};
+        gs = utility.grid_suffix();   % '' simplex, '_lna' cube
         if strcmp(arms{i,1}, 'freetau')
-            fn = sprintf('combined_%s_freetau.mat', ten);
+            fn = sprintf('combined_%s_freetau%s.mat', ten, gs);
         else
-            fn = sprintf('combined_%s.mat', ten);
+            fn = sprintf('combined_%s%s.mat', ten, gs);
         end
-        D = load(fullfile(repo, fn));
+        D = load(fullfile(utility.output_dir(), fn));
         sim = simulate.forward(D.p, D.profile, D.sol, D.ann_price, N_sim, [], X0_FRAC);
         % Liquid wealth relative to current income: "how many years of income
         % is this household holding outside the pension".
@@ -90,8 +97,8 @@ subtitle(tl, sprintf(['mean liquid wealth outside the pension, accumulation phas
                       '\\gamma = %g, X_0 = %.1f yr of income'], p.gamma, X0_FRAC), ...
          'FontSize',12, 'Color',faint);
 
-exportgraphics(f, fullfile(repo, 'fig_private_savings_response.png'), 'Resolution', 300);
-exportgraphics(f, fullfile(repo, 'fig_private_savings_response.pdf'), 'ContentType', 'vector');
+exportgraphics(f, fullfile(out_dir, 'fig_private_savings_response.png'), 'Resolution', 300);
+exportgraphics(f, fullfile(out_dir, 'fig_private_savings_response.pdf'), 'ContentType', 'vector');
 close(f);
 fprintf('Saved: fig_private_savings_response.{png,pdf}\n');
 

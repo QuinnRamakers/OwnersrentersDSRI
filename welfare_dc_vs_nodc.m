@@ -23,6 +23,12 @@ repo = fileparts(which('welfare_dc_vs_nodc'));
 if isempty(repo), repo = pwd; end
 addpath(repo);
 
+% repo locates the CODE; out_dir locates the DATA. They are the same folder
+% in the documented workflow (cwd = repo, CGM_OUTPUT_DIR unset), and differ on
+% the cluster, where outputs go to the mounted volume. Reading .mat files from
+% repo meant this script found nothing there.
+out_dir = utility.output_dir();
+
 tenures = {'renter', 'owner'};
 % Sweep values, unchanged. The two CALIBRATED buffers (config.params: b0 =
 % median deposits of under-25 households / age-25 wage; b_alt = the 25-35
@@ -33,8 +39,8 @@ buffers = [0 0.25 0.5 1 2 3 5 10];
 for i = 1:numel(tenures)
     ten = tenures{i};
     gs = utility.grid_suffix();   % '' simplex, '_lna' cube; see utility.active_grid
-    B = load(fullfile(repo, sprintf('combined_%s_nodc%s.mat', ten, gs)),    'sol','p');
-    D = load(fullfile(repo, sprintf('combined_%s_freetau%s.mat', ten, gs)), 'sol','p');
+    B = load(fullfile(out_dir, sprintf('combined_%s_nodc%s.mat', ten, gs)),    'sol','p');
+    D = load(fullfile(out_dir, sprintf('combined_%s_freetau%s.mat', ten, gs)), 'sol','p');
     p = D.p; gamma = p.gamma;
 
     % Pre-anchor .mat vintages have no b0/b_alt on their stored p; fall back
