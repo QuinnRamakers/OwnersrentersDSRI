@@ -234,15 +234,14 @@ p.skip_polish = false;      % lna only: grid-search without the fmincon polish
 
 % Taxes
 %   EET pension treatment: contributions are deductible, the fund grows
-%   tax-free, and both the annuity payout and AOW are taxed on receipt, so
-%   working take-home is (1-kappa)*(1-tau_inc)*Y. With both CGT legs and the
-%   wealth tax at zero, EET is the whole of the DC account's tax advantage.
-%   Both instruments stay wired in rather than collapsed into one -- they
-%   represent different regimes, so switching is a calibration change.
-p.tau_inc      = 0.382;    % CBS, average tax burden on income, 2019 -- this IS the paper's delta
-p.tau_cg_bond  = 0.0;      % accrual CGT on the liquid account, no loss offset; DC fund sheltered
-p.tau_cg_stock = 0.0;
-p.tau_wealth   = 0.0;      % box-3-style levy on the liquid balance; calibrated value 0.0197, currently off
+%   tax-free, and the annuity payout and AOW are taxed as income on receipt.
+%   The private account is taxed on its returns each period at the box-3 rate,
+%   while the DC fund is sheltered -- that shelter is the DC account's tax
+%   advantage.
+p.tau_inc      = 0.382;    % income tax on wages, AOW and annuity payout (CBS, 2019)
+p.tau_cg_bond  = 0.36;     % box-3 rate on the private account's bond return; DC fund sheltered
+p.tau_cg_stock = 0.36;     % box-3 rate on the private account's stock gains (no loss offset)
+p.tau_wealth   = 0.0;      % alternative box-3 levy on the balance; off (calibrated value 0.0197)
 
 % Derived
 p.Rf      = 1 + p.r;
