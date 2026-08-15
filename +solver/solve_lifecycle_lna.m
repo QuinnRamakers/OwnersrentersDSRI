@@ -1,24 +1,17 @@
 function sol = solve_lifecycle_lna(p, profile, shocks, ann_price)
-%SOLVE_LIFECYCLE_LNA  Backward induction on the (u1,u2,u3) cube grid.
-%   Reparametrized state (see solver.bellman_step_lna):
-%       u1 = lambda,  u2 = (A+H)/(W-Y),  u3 = A/(A+H)
-%   Arrays are N1 x N2 x N3 x T on {p.u1_grid, p.u2_grid, p.u3_grid}.
-%   Every cube point is feasible, so unlike solve_lifecycle there is no
-%   NaN-filling for the probe interpolants.
+%SOLVE_LIFECYCLE_LNA  Solve the model by backward induction on the cube grid.
 %
-%   Records per-period wall time and pool/machine metadata in sol.timing.
+%   Steps solver.bellman_step_lna back from the terminal age to age 25 on the
+%   (u1, u2, u3) cube, carrying each period's policy forward as the warm start
+%   for the previous one. Returns the value function and policies over the full
+%   life cycle in sol, with per-period timing.
 %
-%   The caller must declare p.grid_type = 'lna'. config.params defaults it to
-%   'simplex' and utility.param_fingerprint records it, so a cube solve that
-%   left the default in place would be labelled a simplex run and would pass
-%   the comparability gate against one. Asserted rather than stamped, because
-%   p is passed by value and the caller is what gets saved.
+%   The caller must set p.grid_type = 'lna'; the fingerprint records it so cube
+%   and simplex runs are never compared against each other.
 
 assert(isfield(p, 'grid_type') && strcmp(char(p.grid_type), 'lna'), ...
     'solve_lifecycle_lna:grid_type', ...
-    ['p.grid_type must be ''lna'' to solve on the cube (got ''%s''). It is ' ...
-     'what utility.param_fingerprint uses to keep cube runs from rating as ' ...
-     'welfare-comparable to simplex runs.'], ...
+    'p.grid_type must be ''lna'' to solve on the cube (got ''%s'').', ...
     char(string(getfield_default(p, 'grid_type', 'unset'))));
 
 N1 = numel(p.u1_grid); N2 = numel(p.u2_grid); N3 = numel(p.u3_grid); T = p.T;
@@ -29,8 +22,8 @@ period_sec = zeros(T, 1);
 
 t0 = tic;
 
-% Free DC investment choice: store the per-state tau policy only in that
-% regime (the glide regime has no per-state tau to record -- it is p.tau_S).
+% Under free DC choice the pension equity share is a per-state policy; under
+% the glide it is just the fund's fixed path, so there is nothing to store.
 choose_tau = isfield(p, 'choose_tau_S') && p.choose_tau_S;
 if choose_tau
     tau_pol = zeros(N1, N2, N3, T);
@@ -47,18 +40,20 @@ else
 end
 period_sec(T) = toc(t_step);
 
-% Probe: same mid-life simplex point as solve_lifecycle, converted to u:
-% (lam, sA, sH) = (0.2, 0.2, 0.4)  ->  u1 = 0.2, u2 = 0.6/0.8, u3 = 0.2/0.6
+% A fixed mid-life state printed as a progress probe during the solve.
 probe_u1 = 0.2; probe_u2 = 0.75; probe_u3 = 1/3;
 
 for t = T-1 : -1 : 1
     t_step = tic;
+    % The next period's policy is this step's warm start.
+    pol_next = struct('c', c_pol(:,:,:,t+1), 'pi', pi_pol(:,:,:,t+1), 'tau', []);
     if choose_tau
+        pol_next.tau = tau_pol(:,:,:,t+1);
         [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t), tau_pol(:,:,:,t)] = ...
-            solver.bellman_step_lna(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+            solver.bellman_step_lna(t, V(:,:,:,t+1), p, profile, shocks, ann_price, pol_next);
     else
         [V(:,:,:,t), c_pol(:,:,:,t), pi_pol(:,:,:,t)] = ...
-            solver.bellman_step_lna(t, V(:,:,:,t+1), p, profile, shocks, ann_price);
+            solver.bellman_step_lna(t, V(:,:,:,t+1), p, profile, shocks, ann_price, pol_next);
     end
     period_sec(t) = toc(t_step);
     if mod(t, 10) == 0 || t == T-1 || t == 1

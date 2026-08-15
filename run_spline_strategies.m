@@ -46,11 +46,13 @@ function run_spline_strategies(strats, opts)
 %
 %   Output files:  {strategy}_{renter|owner}[_lna].mat,
 %                  e.g. spl_100_050_000_owner_lna.mat.
-%   Each file carries a small top-level `welfare0` summary (V_tilde at the
-%   initial state -- corner, the calibrated b0/b_alt anchors, and a buffer
-%   sensitivity curve; see utility.welfare_summary) so
-%   compare_spline_strategies can rank runs, at any of those anchors, without
-%   loading the big sol/sim arrays.
+%   By default each file is lean: the calibration `p`, the `welfare0` summary
+%   (V_tilde at the initial state -- corner, the b0/b_alt anchors and a buffer
+%   curve; see utility.welfare_summary), the strategy definition, timing, and a
+%   `sim_summary` of life-cycle means. That is everything the comparison and
+%   plots read; the value function and full simulated paths are dropped to keep
+%   a large sweep to a manageable size. Pass full_output=true to keep them for a
+%   single strategy you want to examine in detail.
 %   Log file:      spline_strategies_log.txt  (appended, not overwritten)
 %
 %   Resume-safe: any scenario whose .mat file already exists is skipped, so
@@ -77,6 +79,11 @@ arguments
     opts.gh_n    (1,:) double {mustBeInteger, mustBePositive} = []
     opts.state_grid (1,:) double {mustBeInteger, mustBePositive} = []
     opts.smoke   (1,1) logical = false
+    % A sweep only needs each strategy's welfare and a life-cycle summary, not
+    % the full value function and every simulated path -- those are tens of MB
+    % per file. Default to the lean save; set full_output=true for a single
+    % strategy you want to inspect or plot in detail.
+    opts.full_output (1,1) logical = false
 end
 
 [dims_default, gh_default] = utility.production_grid();
@@ -201,10 +208,8 @@ for j = 1:numel(jobs)
     p = assert_production_fill(p);
 
     idx = @(a) a - p.age0 + 1;  % age -> 1-based index into tau_S
-    % Diagnostic ages derived from p.age0/p.retirement_age (not hardcoded
-    % literals) so this never again goes out of range if those shift --
-    % this exact line broke with a negative index after age0 moved 20->25
-    % (age20 fell before the modeled range) until caught here.
+    % A few ages to print the glide value at, derived from p so they stay in
+    % range if age0 or the retirement age change.
     diag_ages = unique(max(p.age0, min(p.age0 + p.T - 2, ...
         round([p.age0, (p.age0 + p.retirement_age)/2, p.retirement_age - 1, p.retirement_age]))));
     lprintf(LOG_FILE, '    tau_S: %s\n', strjoin(arrayfun(@(a) ...
@@ -252,8 +257,16 @@ for j = 1:numel(jobs)
     timing.sim_sec  = sim_elapsed;
     timing.strategy = st.name;
     timing.housing  = housing;
-    save(out_file, 'p','profile','shocks','ann_price','sol','sim', ...
-         'strat_info','timing','welfare0', '-v7.3');
+    sim_summary     = summarise_sim(sim);
+    if opts.full_output
+        save(out_file, 'p','profile','shocks','ann_price','sol','sim', ...
+             'strat_info','timing','welfare0','sim_summary', '-v7.3');
+    else
+        % Lean: welfare for the ranking, p for the fingerprint and grid, and a
+        % life-cycle summary for plotting -- everything compare_spline_strategies
+        % reads, without the sol/sim arrays.
+        save(out_file, 'p','strat_info','timing','welfare0','sim_summary', '-v7.3');
+    end
     elapsed_sc = toc(t_sc);
     lprintf(LOG_FILE, '    Saved %-38s  (%.1f min)\n', out_file, elapsed_sc/60);
 
@@ -289,15 +302,30 @@ function out = ternary(cond, a, b)
     if cond, out = a; else, out = b; end
 end
 
+function s = summarise_sim(sim)
+% Compact life-cycle summary: the cross-household mean at each age for the main
+% variables, plus a 10/90 band on consumption and equity share. A few vectors
+% of length T instead of every simulated path, so a swept strategy can still be
+% plotted without carrying the full simulation.
+s.ages = sim.ages;
+s.N    = size(sim.C, 1);
+mean_of = @(f) mean(sim.(f), 1);
+for f = ["C","pi","A","H","LW","lambda","disp_inc"]
+    if isfield(sim, f), s.("mean_" + f) = mean_of(f); end
+end
+if isfield(sim, 'tau_A'), s.mean_tau_A = mean(sim.tau_A, 1); end
+s.p10_C  = quantile(sim.C,  0.10, 1);
+s.p90_C  = quantile(sim.C,  0.90, 1);
+s.p10_pi = quantile(sim.pi, 0.10, 1);
+s.p90_pi = quantile(sim.pi, 0.90, 1);
+end
+
 function p = assert_production_fill(p)
-% PRODUCTION GUARD -- see run_nodc.m for the full rationale. Short version:
-% p.legacy_fill restores the pre-fix continuation fill (a ruin-blended
-% penalty one interpolation cell wide along the sX = 0 face, which is where
-% the welfare anchor sits) and is test-only. Stamping false explicitly is
-% what makes utility.param_fingerprint fence pre-fix files off from post-fix
-% ones -- an absent field fingerprints as NaN on BOTH vintages.
+% p.legacy_fill selects an old continuation-fill rule kept only for tests; it
+% must be off for a production run. Setting it to false explicitly (rather than
+% leaving it absent) is what the fingerprint records.
 assert(~(isfield(p, 'legacy_fill') && p.legacy_fill), ...
     'run_spline_strategies:legacy_fill', ...
-    'p.legacy_fill is set -- that is the pre-fix phantom-penalty fill, test-only.');
+    'p.legacy_fill is set, which is a test-only continuation fill.');
 p.legacy_fill = false;
 end

@@ -94,38 +94,32 @@ for k = 1:size(BAD,1)
 end
 
 %% 7. strategy.make_grid / strategy.menu generation (production collection)
-% The default level set widened from 0:0.25:1 to 0:0.125:1 (9 levels) when the
-% menu was sized to fill a 12h cluster window, so the default count is 165 --
-% C(9+3-1, 3) -- not the 35 this check was written against. See strategy.menu.
-M = strategy.menu();                          % 3 knots x 9 levels, monotone
-N_MENU = 165;                                 % multisets: C(9+3-1, 3) = 165
+% Four knots on the default 9-level fraction grid, monotone: C(9+4-1, 4) = 495.
+M = strategy.menu();                          % 4 knots x 9 levels, monotone
+N_MENU = 495;                                 % multisets: C(9+4-1, 4) = 495
 if numel(M) ~= N_MENU
     n_fail = n_fail + 1; fprintf('  FAIL menu default count = %d (want %d)\n', numel(M), N_MENU);
 else, fprintf('  PASS menu default -> %d monotone strategies\n', N_MENU);
 end
-if numel(strategy.menu([0 .5 1])) ~= 10       % C(3+3-1, 3) = 10
-    n_fail = n_fail + 1; fprintf('  FAIL menu 3-level count != 10\n');
-else, fprintf('  PASS menu 3 levels -> 10\n');
+if numel(strategy.menu([0 .5 1])) ~= 15       % C(3+4-1, 4) = 15
+    n_fail = n_fail + 1; fprintf('  FAIL menu 3-level count != 15\n');
+else, fprintf('  PASS menu 3 levels -> 15\n');
 end
-if numel(strategy.menu(0:0.25:1, false)) ~= 125
-    n_fail = n_fail + 1; fprintf('  FAIL menu non-monotone count != 125\n');
-else, fprintf('  PASS menu monotone_only=false -> 125\n');
+if numel(strategy.menu(0:0.25:1, false)) ~= 625   % 5 levels ^ 4 knots
+    n_fail = n_fail + 1; fprintf('  FAIL menu non-monotone count != 625\n');
+else, fprintf('  PASS menu monotone_only=false -> 625\n');
 end
-if numel(strategy.make_grid(p, [A_LO 42.5 p.retirement_age A_HI], 0:0.25:1, true)) ~= 70  % C(8,4)
-    n_fail = n_fail + 1; fprintf('  FAIL make_grid 4-knot count != 70\n');
-else, fprintf('  PASS make_grid generalises to 4 knots -> 70\n');
-end
-MENU_AGES = [A_LO, p.retirement_age, A_HI];                       % what menu builds
+MENU_AGES = [A_LO, round((A_LO + p.retirement_age)/2), p.retirement_age, A_HI];  % what menu builds
 names = {M.name};
 ok7 = numel(unique(names)) == numel(names);                       % unique names
-ok7 = ok7 && isequal(M(1).knot_ages, MENU_AGES);                  % the 3 ages
+ok7 = ok7 && isequal(M(1).knot_ages, MENU_AGES);                  % the 4 ages
 ok7 = ok7 && all(arrayfun(@(g) all(diff(g.knot_fracs) <= 0), M)); % non-increasing
 for k = 1:numel(M)                                                % every one builds
     tau = strategy.spline_tau(p, M(k).knot_ages, M(k).knot_fracs);
     ok7 = ok7 && all(tau >= 0 & tau <= 1) && all(diff(tau) <= 1e-12);
 end
-if ok7, fprintf('  PASS menu names unique, ages [%d %d %d], all %d paths monotone in [0,1]\n', ...
-            MENU_AGES(1), MENU_AGES(2), MENU_AGES(3), numel(M));
+if ok7, fprintf('  PASS menu names unique, ages [%d %d %d %d], all %d paths monotone in [0,1]\n', ...
+            MENU_AGES(1), MENU_AGES(2), MENU_AGES(3), MENU_AGES(4), numel(M));
 else,   n_fail = n_fail + 1; fprintf('  FAIL menu structure/path checks\n');
 end
 

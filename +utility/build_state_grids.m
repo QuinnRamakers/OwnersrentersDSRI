@@ -41,6 +41,15 @@ if ~isempty(dims)
         'dims must be three integers >= 2 (got %s).', mat2str(dims));
 end
 
+% Income share lambda = Y/W is bounded away from both ends. It never reaches 0
+% (income is always positive, and lambda = 0 is an absorbing no-income state
+% that the solver cannot leave), and it is capped from above by housing wealth:
+% W >= H + Y, so lambda <= 1/(1 + h_mult). We span [lam_lo, lam_hi] with margin
+% for the housing and income shocks that push it around over the life cycle,
+% rather than a full [0, 1] axis whose low end is unreachable and numerically
+% unstable. Both coordinate systems use the same bounds.
+[lam_lo, lam_hi] = lambda_bounds(p);
+
 if is_lna
     if ~isempty(dims)
         p.N_u1 = dims(1); p.N_u2 = dims(2); p.N_u3 = dims(3);
@@ -52,7 +61,7 @@ if is_lna
     % wealth concentrates at the HIGH end, because u2 -> 1 is no liquid wealth,
     % which is where the floor binds and where the two coordinate systems were
     % measured to disagree. u3 is used fairly evenly and stays uniform.
-    p.u1_grid = cluster_lo(p.N_u1, spacing_pow(p));
+    p.u1_grid = cluster_lo(p.N_u1, spacing_pow(p), lam_lo, lam_hi);
     p.u2_grid = cluster_hi(p.N_u2, spacing_pow(p));
     p.u3_grid = linspace(0, 1, p.N_u3).';
     p = config.insert_anchor_nodes(p);
@@ -66,13 +75,32 @@ else
         'p has no N_lambda/N_sA/N_sH and no dims were supplied.');
     % Same idea on the simplex: lambda concentrates low, s_H high (large s_H
     % with small lambda is the small-s_X corner). s_A stays uniform.
-    p.lambda_grid = cluster_lo(p.N_lambda, spacing_pow(p));
+    p.lambda_grid = cluster_lo(p.N_lambda, spacing_pow(p), lam_lo, lam_hi);
     p.sA_grid     = linspace(0, 1, p.N_sA).';
     p.sH_grid     = cluster_hi(p.N_sH, spacing_pow(p));
     p = config.insert_anchor_nodes(p);
     check_anchors(p, 'lambda_grid', 'sH_grid', @(b, hm) 1 ./ (1 + hm + b), ...
                   @(b, hm) hm ./ (1 + hm + b), 'lambda', 's_H');
 end
+end
+
+function [lo, hi] = lambda_bounds(p)
+%LAMBDA_BOUNDS  Reachable range of the income share lambda = Y/W.
+%   lo: a small positive floor, below the smallest income share a wealthy old
+%       household reaches, but strictly above the absorbing lambda = 0 node.
+%   hi: the largest income share, set by housing wealth (W >= H + Y gives
+%       lambda <= 1/(1+h_mult) at entry) with headroom for the housing-price
+%       and income shocks that raise it over the life cycle.
+lo = 0.002;
+if isfield(p, 'h_mult') && isscalar(p.h_mult) && p.h_mult > 0
+    hi = min(0.9, 3 / (1 + p.h_mult));
+else
+    hi = 0.6;
+end
+if isfield(p, 'lambda_lo') && isscalar(p.lambda_lo), lo = p.lambda_lo; end
+if isfield(p, 'lambda_hi') && isscalar(p.lambda_hi), hi = p.lambda_hi; end
+assert(lo > 0 && hi > lo, 'build_state_grids:lambda_bounds', ...
+    'need 0 < lambda_lo (%.4g) < lambda_hi (%.4g).', lo, hi);
 end
 
 function check_anchors(p, f1, f2, a1_fun, a2_fun, n1, n2)
@@ -102,9 +130,11 @@ if isfield(p, 'grid_pow') && isnumeric(p.grid_pow) && isscalar(p.grid_pow)
 end
 end
 
-function g = cluster_lo(n, q)
-% Nodes on [0,1] bunched toward 0. q = 1 reproduces linspace exactly.
-g = linspace(0, 1, n).' .^ q;
+function g = cluster_lo(n, q, lo, hi)
+% Nodes on [lo, hi] bunched toward lo. q = 1 spaces them uniformly.
+if nargin < 3, lo = 0; end
+if nargin < 4, hi = 1; end
+g = lo + (hi - lo) * (linspace(0, 1, n).' .^ q);
 end
 
 function g = cluster_hi(n, q)

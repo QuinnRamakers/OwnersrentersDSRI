@@ -8,21 +8,12 @@ function f = lifecycle_panels(simA, simB, p, ttl, labels)
 %   DC pension assets, financial wealth (X + A), gross annuity payout, and the
 %   equity shares -- both arms' liquid share plus arm B's applied DC share.
 %
-%   Returns an INVISIBLE figure handle; the caller saves and closes it. Same
-%   contract as figures.dc_equity_share, so a driver can mix them freely.
+%   Returns an invisible figure handle; the caller saves and closes it.
 %
-%   This drawing code had two copies. One read each arm's stored simulation
-%   (the run's own, at a zero initial buffer); the other re-simulated at a
-%   chosen buffer. Everything else about them -- panels, order, titles, layout,
-%   line weights -- was identical, so they could and did drift apart on
-%   everything except the one difference that mattered. Taking two sims as
-%   arguments makes that difference the caller's, which is where it belongs.
-%
-%   simA and simB need C, X, A, ann_pay, pi, tau_A and ages -- the fields both
-%   simulate.paths and simulate.paths_lna return, so either coordinate system
-%   works. tau_A is read from simB only: it is the free-choice arm's applied DC
-%   share, and on a glide arm it is the plan's path repeated, which the figure
-%   does not claim to show.
+%   The two simulations are passed in so the caller controls which initial
+%   buffer they were drawn at. Each needs the fields C, X, A, ann_pay, pi,
+%   tau_A and ages, which both simulate.paths and simulate.paths_lna return.
+%   tau_A (the chosen pension equity share) is drawn for arm B only.
 
 if nargin < 5 || isempty(labels)
     labels = {'arm A', 'arm B'};
@@ -40,39 +31,39 @@ tl = tiledlayout(f, 2, 3, 'TileSpacing','compact', 'Padding','compact');
 nexttile; hold on; grid on;
 plot(ages, m(simA.C), '-', 'LineWidth',1.6);
 plot(ages, m(simB.C), '-', 'LineWidth',1.6);
-xline(p.retirement_age, ':k'); title('mean consumption C'); xlabel('age');
-legend({cA, cB}, 'Location','northwest'); ylabel('level (Y_0 units)');
+xline(p.retirement_age, ':k'); title('Mean consumption'); xlabel('age');
+legend({cA, cB}, 'Location','northwest'); ylabel('level (age-25 income = 1)');
 
 nexttile; hold on; grid on;
 plot(ages, m(simA.X), '-', 'LineWidth',1.6);
 plot(ages, m(simB.X), '-', 'LineWidth',1.6);
-xline(p.retirement_age, ':k'); title('mean liquid wealth X'); xlabel('age');
+xline(p.retirement_age, ':k'); title('Mean liquid savings (X)'); xlabel('age');
 
 nexttile; hold on; grid on;
 plot(ages, m(simA.A), '-', 'LineWidth',1.6);
 plot(ages, m(simB.A), '-', 'LineWidth',1.6);
-xline(p.retirement_age, ':k'); title('mean DC pension assets A'); xlabel('age');
+xline(p.retirement_age, ':k'); title('Mean pension balance (A)'); xlabel('age');
 
-% Financial wealth only -- liquid plus DC. Housing is assigned rather than
-% chosen in this model, so folding it in would add a term neither arm controls.
+% Financial wealth is liquid plus pension only. Housing is assigned rather than
+% chosen here, so including it would add a term neither arm controls.
 nexttile; hold on; grid on;
 plot(ages, m(simA.X + simA.A), '-', 'LineWidth',1.6);
 plot(ages, m(simB.X + simB.A), '-', 'LineWidth',1.6);
-xline(p.retirement_age, ':k'); title('mean financial wealth (X + A)'); xlabel('age');
+xline(p.retirement_age, ':k'); title('Mean financial wealth (liquid + pension)'); xlabel('age');
 
 nexttile; hold on; grid on;
 plot(ages, m(simA.ann_pay), '-', 'LineWidth',1.6);
 plot(ages, m(simB.ann_pay), '-', 'LineWidth',1.6);
-xline(p.retirement_age, ':k'); title('mean annuity payout (gross)'); xlabel('age');
+xline(p.retirement_age, ':k'); title('Mean annuity income'); xlabel('age');
 
-% pi is recorded every period, tau_A only for the T-1 transitions; both are
-% the share chosen at t, so tau_A is drawn against the transition ages.
+% The liquid share pi is recorded every period; the pension share tau_A only at
+% the transitions between periods, so it is drawn against the transition ages.
 nexttile; hold on; grid on;
 plot(ages, m(simA.pi), '-', 'LineWidth',1.4);
 plot(ages, m(simB.pi), '-', 'LineWidth',1.4);
 plot(ages_tr, m(simB.tau_A), '--', 'LineWidth',1.6);
-xline(p.retirement_age, ':k'); title('equity shares'); xlabel('age'); ylim([0 1.02]);
-legend({[cA ': liquid \pi'], [cB ': liquid \pi'], [cB ': DC \tau_A']}, ...
+xline(p.retirement_age, ':k'); title('Equity shares'); xlabel('age'); ylim([0 1.02]);
+legend({[cA ': liquid share \pi'], [cB ': liquid share \pi'], [cB ': pension share \tau']}, ...
        'Location','northeast');
 
 title(tl, ttl);

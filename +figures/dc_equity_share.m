@@ -8,13 +8,9 @@ function f = dc_equity_share(S, p, X0_FRAC)
 %   retirement the DC fund is annuitised and every tau_A is zero, so the
 %   retired stretch is flat at zero and carries no information.
 %
-%   Both arms come from the free-choice solution, so the plan's glide path is
-%   not on the figure -- it belongs to the imposed-glide arm, and drawing it
-%   here would put two different regimes on one set of axes.
-%
-%   One panel per tenure rather than four lines on shared axes: the DC and
-%   private profiles cross repeatedly between tenures, and the DC-vs-private
-%   gap is the comparison worth reading, so it gets its own axes.
+%   Both lines come from the free-choice solution; the fund's glide path is not
+%   shown (it belongs to the imposed-glide arm). One panel per tenure, so the
+%   DC-versus-private gap within a tenure is easy to read.
 %
 %   S must have fields .renter and .owner, each with
 %     ages_tr    1 x (T-1) age of each transition

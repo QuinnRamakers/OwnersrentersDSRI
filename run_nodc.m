@@ -35,11 +35,10 @@ for k = 1:numel(scenarios)
     p.kappa        = 0;
     p.choose_tau_S = false;
 
-    % The one grid definition run_combined and run_spline_strategies also read.
-    % build_state_grids rebuilds the axis vectors AND re-inserts the welfare
-    % anchors, so two of the three come back up to +2 larger -- read the sizes
-    % off p, never off the requested dims. CGM_STATE_GRID / CGM_GH_N override
-    % for smoke runs only; unset (the production path) they are a no-op.
+    % Same production grid as run_combined and run_spline_strategies.
+    % build_state_grids also inserts the welfare anchors, so the realised axis
+    % sizes can exceed the requested dims -- read them off p. CGM_STATE_GRID /
+    % CGM_GH_N override only for smoke runs.
     [dims_sweep, gh_sweep] = utility.production_grid(p);
     p = utility.build_state_grids(p, dims_sweep, gh_sweep);
     fprintf('  grid: %s, requested [%d %d %d] gh_n=%d -> [%d %d %d]\n', ...
@@ -75,20 +74,11 @@ end
 fprintf('\nNo-DC benchmark done.\n');
 
 function p = assert_production_fill(p)
-% PRODUCTION GUARD. p.legacy_fill is a TEST-ONLY switch in
-% solver.bellman_step that restores the pre-fix continuation fill (infeasible
-% cube nodes filled with the global minimum feasible z, i.e. the z-image of
-% the -1e15 ruin assignment) so tests/smoke_fill_fix.m can A/B it. It puts a
-% ruin-blended penalty one interpolation cell wide along the entire sX = 0
-% face -- which is exactly where the welfare anchor sits. Nothing solved with
-% it may be presented as a result.
-%
-% Setting the field to false explicitly (rather than leaving it absent) is
-% load-bearing: utility.param_fingerprint reads absent fields as NaN, so a
-% stamped post-fix file ("legacy_fill=0") fingerprints differently from a
-% pre-fix file that never had the field ("legacy_fill=NaN") and the two can
-% never be ranked together. Leave the field absent and both read NaN.
+% p.legacy_fill selects an old continuation-fill rule (used by
+% tests/smoke_fill_fix) and must be off for a production run. Setting it to
+% false explicitly, rather than leaving it absent, is what the fingerprint
+% records so this run is never ranked against one made with the old rule.
 assert(~(isfield(p, 'legacy_fill') && p.legacy_fill), 'run_nodc:legacy_fill', ...
-    'p.legacy_fill is set -- that is the pre-fix phantom-penalty fill, test-only.');
+    'p.legacy_fill is set, which is a test-only continuation fill.');
 p.legacy_fill = false;
 end

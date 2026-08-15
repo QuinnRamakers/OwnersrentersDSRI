@@ -1,42 +1,28 @@
-function [V_t, c_pol, pi_pol, tau_pol] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price)
-%BELLMAN_STEP_LNA  One backward-induction step on (u1, u2, u3) = (lambda, n-tilde, a).
+function [V_t, c_pol, pi_pol, tau_pol] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
+%BELLMAN_STEP_LNA  One backward-induction step on the (u1, u2, u3) cube.
 %
-%   Reparametrization of the (lambda, s_A, s_H) simplex onto the full cube
-%   [0,1]^3 (paper Sec. 3 "Redefining variables", plus a renormalization of
-%   the illiquid block):
-%       u1 = lambda = Y / W
-%       u2 = (A + H) / (W - Y)      illiquid share of non-income wealth
-%       u3 = A / (A + H)            pension share of the illiquid block
-%   Inverse map:
-%       lambda = u1
-%       s_A    = u2 * (1 - u1) * u3
-%       s_H    = u2 * (1 - u1) * (1 - u3)
-%       s_X    = (1 - u1) * (1 - u2)
-%   Every u in [0,1]^3 maps to a feasible simplex point (lambda+s_A+s_H <= 1
-%   holds by construction), so there is NO feasibility mask and
-%   griddedInterpolant works directly on the rectangular u-grid.
+%   Solves the household's problem at age t on the cube coordinates
+%       u1 = Y / W                 income share of total wealth
+%       u2 = (A + H) / (W - Y)     illiquid share of non-income wealth
+%       u3 = A / (A + H)           pension share of the illiquid block
+%   which map back to the wealth shares by
+%       lambda = u1,   s_A = u2 (1-u1) u3,   s_H = u2 (1-u1)(1-u3),
+%       s_X    = (1-u1)(1-u2).
+%   Every point of the cube is a valid state, so the value function is
+%   interpolated directly on the grid, with no feasibility mask.
 %
-%   Degenerate lines: at u2 = 0 the state is independent of u3 (s_A=s_H=0),
-%   and at u1 = 1 it is independent of (u2,u3). The per-state solve then
-%   produces identical values along those directions automatically, so the
-%   interpolant stays consistent. Next-period coordinates guard the
-%   corresponding 0/0 divisions with max(., 1e-12) and clamp to [0,1].
+%   Given next period's value function V_next (and, under free DC choice, the
+%   next period's policy pol_next used to warm-start the search), it returns
+%   this period's value V_t and the optimal policies: consumption c, liquid
+%   equity share pi, and the pension equity share tau.
 %
-%   Grids: p.u1_grid, p.u2_grid, p.u3_grid (column vectors on [0,1]).
-%   Set p.skip_polish = true to skip the fmincon polish (grid-search only,
-%   ~5-10x faster; policies then accurate to the N_c x N_pi inner grid
-%   spacing, ~0.025 at 41x41).
-%
-%   Model logic -- budget, EET income tax, accrual CGT on the liquid legs,
-%   survival-credit DC return, bequest, z-transform, batched (c,pi) grid
-%   search -- is IDENTICAL to solver.bellman_step; only the state
-%   coordinates change.
+%   The economics -- budget, income tax, capital-gains tax, the pension
+%   return, and bequests -- match solver.bellman_step exactly; only the state
+%   coordinates differ.
 
-% Free DC investment choice, same contract as solver.bellman_step: (c, pi, tau)
-% while working, tau fixed at config.tau_effective once retired, and the glide
-% value is always in the seed grid AND polished from separately, so the free
-% arm cannot fall below the glide arm for the same continuation. That dominance
-% is what tests/smoke_freetau_dominance_lna checks.
+% The pension equity share tau is a free choice while working when the fund
+% lets the household pick it (p.choose_tau_S); otherwise it follows the fund's
+% glide path. After retirement it is always the fund's decumulation setting.
 choose_tau   = isfield(p, 'choose_tau_S') && p.choose_tau_S;
 optimise_tau = choose_tau && (t < p.t_ret);
 
@@ -61,13 +47,26 @@ is_retired = (t >= p.t_ret);
 
 skip_polish = false; if isfield(p, 'skip_polish'), skip_polish = logical(p.skip_polish); end
 
-% Tax parameters (guarded so legacy p-structs without tax fields => no tax).
-%   tau_inc : income tax on wages, AOW and annuity payout (EET treatment).
-%   tau_b/tau_s : accrual capital-gains tax (no loss offset) on the liquid
-%   bond/stock legs. The DC fund return R_A below stays PRE-TAX (sheltered).
-%   tau_w : box-3-style wealth tax on the LIQUID account's end-of-period
-%   balance (after-CGT return factors scaled by 1-tau_w); housing and the
-%   DC fund are exempt.
+% How the per-state optimum is found (both settings come from config.params):
+%   grid_mode = 'full'  search a (c, pi) grid, then refine the best point with
+%                       fmincon.
+%   grid_mode = 'none'  skip the grid and run fmincon from the warm start --
+%                       next period's policy at this node -- which is faster and
+%                       is the default. Requires polish_ver >= 2.
+% The glide arm uses whichever mode is set; the free-tau arm always keeps the
+% grid, so its value can never fall below the fixed glide path.
+if nargin < 7, pol_next = []; end
+polish_ver = 1; if isfield(p, 'polish_ver'), polish_ver = p.polish_ver; end
+use_scaling = polish_ver >= 2;
+use_warm    = polish_ver >= 2;
+grid_mode   = 'full'; if isfield(p, 'grid_mode'), grid_mode = char(p.grid_mode); end
+skip_tensor = strcmp(grid_mode, 'none') && ~optimise_tau && use_warm;
+
+% Tax rates (default to zero if the field is absent):
+%   tau_inc       income tax on wages, state pension and annuity payments.
+%   tau_b, tau_s  capital-gains tax on the bond and stock legs of liquid saving.
+%   tau_w         wealth tax on the liquid balance.
+% The pension fund is tax-sheltered, so its return stays pre-tax.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
 tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
@@ -145,10 +144,9 @@ if t == p.T
     return
 end
 
-% --- Non-terminal: build z-space interpolant then optimise per state.
-% config.tau_effective, not p.tau_S: the accumulation glide before retirement
-% and p.tau_decum after it. Reading p.tau_S directly here silently ignored the
-% decumulation strategy, which solver.bellman_step has always honoured.
+% --- Non-terminal step: build the continuation interpolant, then optimise each
+% state. The fund's equity share this period is the accumulation glide before
+% retirement and the decumulation setting after it.
 tau_eff_path = config.tau_effective(p);
 tau      = tau_eff_path(t);
 pt       = profile.p_surv(t);
@@ -164,10 +162,9 @@ n_shock = numel(w_join);
 mu_g   = profile.mu_growth(t);
 sig_l  = profile.sigma_l_log(t);
 G_next = exp(mu_g + sig_l .* eps_Y);
-% DC equity-share grid. Glide regime (or any retired age): the single fixed
-% value, so the slice loop below collapses to the original one-slice search
-% bit-identically. Free choice: linspace seed with the glide value appended,
-% so the free search always contains the glide slice on the grid.
+% Candidate pension equity shares. Under the glide (or once retired) there is
+% just the fund's value; under free choice, an even grid with the glide value
+% added so the search always includes it.
 if optimise_tau
     NT = 11; if isfield(p, 'N_tau'), NT = p.N_tau; end
     tau_grid = unique([linspace(0, 1, NT).'; tau]);
@@ -179,16 +176,14 @@ j_glide = find(tau_grid == tau, 1);
 % Survival-credit DC returns per tau slice (PRE-TAX, sheltered), n_shock x NTg
 R_A_all = ((1 - tau_grid.') * p.Rf + R_S * tau_grid.') / pt;
 
-% After-tax returns on the LIQUID (taxable) account: accrual CGT, no loss
-% offset, then the box-3 wealth tax on the end-of-period balance. Bonds pay
-% tax on the (always positive) interest; stocks pay tax only on positive
-% gains.
-Rf_at  = (1 + p.r * (1 - tau_b)) * (1 - tau_w);            % bond leg, after tax
-R_S_at = (R_S - tau_s .* max(R_S - 1, 0)) .* (1 - tau_w);  % stock leg, after tax (no loss offset)
+% After-tax returns on the liquid account: capital-gains tax on each leg
+% (stocks taxed only on gains), then the wealth tax on the end-of-period balance.
+Rf_at  = (1 + p.r * (1 - tau_b)) * (1 - tau_w);            % bond leg
+R_S_at = (R_S - tau_s .* max(R_S - 1, 0)) .* (1 - tau_w);  % stock leg
 
-% Z-transform of V_next on the u-grid. No feasibility mask, but keep the
-% arg<=0 guard (cash-infeasible states carry V = -1e15, which for gamma < 1
-% would make arg negative) and fill any NaN with z_min as before.
+% Certainty-equivalent (z) transform of next period's value; the interpolation
+% is done in z. States with a non-positive argument are set to the smallest
+% valid z rather than left undefined.
 arg = one_m_g * V_next; arg(arg <= 0) = NaN;
 z_next = arg .^ inv_omg;
 z_finite = z_next(isfinite(z_next));
@@ -197,12 +192,26 @@ if isempty(z_finite)
 end
 z_min = min(z_finite);
 z_next(isnan(z_next)) = z_min;
+% Linear inside the grid; clamp to the nearest boundary value outside it. A
+% continuation query can land just past the lambda bounds (a very wealthy or a
+% near-ruin household), and holding the boundary value there is safe, whereas
+% linear extrapolation off the edge can run away.
 pp_z = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
-                          z_next, 'linear', 'linear');
+                          z_next, 'linear', 'nearest');
 
-% Inner (c, pi) seed grid for the fmincon polish. NC stays fine because the
-% objective is multimodal in c; NP can be coarsened because it is concave in
-% pi, but production runs keep both at 41 (see config.params).
+% Scale the fmincon objective by the inverse median |V| so it sits within the
+% solver's tolerances (divided back out below). A positive scalar leaves the
+% optimum unchanged.
+obj_scale = 1;
+if use_scaling
+    absV = abs(V_next(isfinite(V_next) & V_next ~= 0));
+    if ~isempty(absV)
+        obj_scale = 1 / median(absV);
+        if ~isfinite(obj_scale) || obj_scale <= 0, obj_scale = 1; end
+    end
+end
+
+% Grid of consumption and equity-share candidates that seeds the search.
 NC = 41; if isfield(p, 'N_c'),  NC = p.N_c;  end
 NP = 41; if isfield(p, 'N_pi'), NP = p.N_pi; end
 pi_grid = linspace(0, 1, NP).';
@@ -228,6 +237,18 @@ lam_pts = Lam_all(:);
 sA_pts  = SA_all(:);
 sH_pts  = SH_all(:);
 
+% Warm start for each state: next period's policy at the same node, used only by
+% the glide arm. NaN where there is none (handled per state below).
+have_warm = use_warm && ~isempty(pol_next) && isstruct(pol_next) ...
+            && isfield(pol_next, 'c') && isequal(size(pol_next.c), [N1 N2 N3]);
+if have_warm
+    cw_pts = pol_next.c(:);
+    pw_pts = pol_next.pi(:);
+else
+    cw_pts = nan(n_states, 1);
+    pw_pts = nan(n_states, 1);
+end
+
 % Annuity payout factor for retired branch (constants outside parfor)
 if is_retired
     ann_t      = ann_price(t);
@@ -240,6 +261,7 @@ end
 parfor k = 1:n_states
     lam = lam_pts(k); sA = sA_pts(k); sH = sH_pts(k);
     sX  = 1 - lam - sA - sH;
+    c_warm = cw_pts(k); pi_warm = pw_pts(k);   % t+1 policy at this node (glide seed)
 
     if is_retired
         LW_W              = sX + contrib_factor * lam + net_inc * sA / ann_t ...
@@ -284,27 +306,46 @@ parfor k = 1:n_states
         continue
     end
 
-    % Scale-aware c lower bound. The floor is a guarantee, not a mandate, so
-    % it is not imposed here -- see solver.bellman_step.
+    % Lower bound on the consumption search (a small share of resources).
     c_floor = max(1e-3, 0.01 / LW_W);
     c_floor = min(c_floor, 0.5);
     c_grid  = linspace(c_floor, 1 - 1e-6, NC).';
     u_now   = (c_grid * LW_W) .^ one_m_g / one_m_g;
 
-    % Batched grid search over the (shock x c x pi) tensor, as in
-    % bellman_step; only the next-period state coordinates differ:
-    %   u1 = Y/W_g,  u2 = (A+H)/(W_g - Y) = (A+H)/(X+A+H),  u3 = A/(A+H)
-    % each clamped to [0,1] (guards the degenerate lines u2=0 and u1=1).
-    % X_next is tau-independent, so it is hoisted out of the slice loop; only
-    % the DC position and the u2/u3 coordinates move with tau. NTg = 1 (glide)
-    % reproduces the original single-tensor search exactly.
+    % Seed the polish as CONTINUOUS points (c_seed, pi_seed), so the two modes
+    % share the downstream code: from the tensor argmax with a grid search, or
+    % from the warm start when the tensor is off.
+    maxval = -inf; ic_max = 1; ip_max = 1; it_max = 1;
+    maxval_g = -inf; ic_g = 1; ip_g = 1;
+    rhs_g = [];
+    c_seed = c_grid(1); pi_seed = 0;
+
+    if skip_tensor
+        % No tensor (glide + warm start): the t+1 policy at this node is the
+        % seed; two fixed fallbacks when there is none, so the polish always has
+        % somewhere to start. Mirror of solver.bellman_step's skip_tensor branch.
+        A_next_W_g = R_A_all(:, 1) * A_next_pre_return;
+        if isfinite(c_warm) && isfinite(pi_warm)
+            cand = [min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
+        else
+            cand = [0.5, 0.5; 0.15, 1.0];
+        end
+        for s = 1:size(cand, 1)
+            v = bellman_rhs_z_u(cand(s,1), cand(s,2), LW_W, Rf_at, R_S_at, ...
+                    A_next_W_g, H_next_W, Y_next_W, ...
+                    w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+            if v > maxval, maxval = v; c_seed = cand(s,1); pi_seed = cand(s,2); end
+        end
+        maxval_g = maxval;
+    else
+    % Grid search over consumption and equity share for each candidate pension
+    % share. The next-period cube coordinates (u1, u2, u3) are formed from the
+    % resulting wealth and clamped to the grid. The liquid balance does not
+    % depend on the pension share, so it is computed once outside the loop.
     sav    = (1 - c_grid).' * LW_W;                   % 1 x NC (saved liquid wealth)
     RX     = reshape(R_X_all.', n_shock, 1, NP);      % n_shock x 1 x NP
     X_next = RX .* sav;                               % n_shock x NC x NP
 
-    maxval = -inf; ic_max = 1; ip_max = 1; it_max = 1;
-    maxval_g = -inf; ic_g = 1; ip_g = 1;
-    rhs_g = [];
     for j = 1:NTg
         A_next_W_j = R_A_all(:, j) * A_next_pre_return;   % n_shock x 1
         denAH  = A_next_W_j + H_next_W;                   % n_shock x 1
@@ -336,9 +377,11 @@ parfor k = 1:n_states
             if optimise_tau, rhs_g = rhs; end
         end
     end
+    c_seed = c_grid(ic_max); pi_seed = pi_grid(ip_max);
+    end   % if skip_tensor
 
     if skip_polish
-        V_flat(k) = maxval; c_flat(k) = c_grid(ic_max); pi_flat(k) = pi_grid(ip_max);
+        V_flat(k) = maxval; c_flat(k) = c_seed; pi_flat(k) = pi_seed;
         tau_flat(k) = tau_grid(it_max);
         continue
     end
@@ -347,13 +390,11 @@ parfor k = 1:n_states
     ub2 = [1 - 1e-6; 1];
 
     if optimise_tau
-        % Best of: (A) 3-var (c,pi,tau) from the global grid best; (B) 2-var
-        % pinned at the best grid tau; (C) 2-var pinned at the GLIDE tau from
-        % the glide slice's own best, plus its top interior local maxima. (C)
-        % is what makes the free value unable to fall below the glide value
-        % for the same continuation -- the interior-point barrier keeps tau
-        % strictly inside (0,1), so (A) alone under-performs on a tau bound.
-        obj3 = @(x) -bellman_rhs_z3_u(x(1), x(2), x(3), LW_W, Rf_at, R_S_at, ...
+        % Free choice: optimise (c, pi, tau) jointly from the grid's best point,
+        % then also run the search with tau pinned to the fund's glide value.
+        % Pinning at the glide guarantees the free arm can always reproduce it,
+        % so its value never falls below the glide arm's.
+        obj3 = @(x) -obj_scale * bellman_rhs_z3_u(x(1), x(2), x(3), LW_W, Rf_at, R_S_at, ...
                                        p.Rf, R_S, pt, A_next_pre_return, ...
                                        H_next_W, Y_next_W, ...
                                        w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
@@ -362,8 +403,8 @@ parfor k = 1:n_states
             [x_try, neg_V_try, exitflag] = fmincon(obj3, ...
                 [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)], ...
                 [], [], [], [], [c_floor; 0; 0], [1 - 1e-6; 1; 1], [], opts_polish);
-            if (exitflag > 0 || exitflag == 0) && -neg_V_try > V_polish
-                V_polish = -neg_V_try; x_opt = x_try;
+            if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_polish
+                V_polish = -neg_V_try/obj_scale; x_opt = x_try;
             end
         catch
         end
@@ -373,9 +414,8 @@ parfor k = 1:n_states
             pin_starts = [pin_starts; c_grid(ic_g), pi_grid(ip_g), tau];
         end
         v_gl = maxval_g; c_gl = c_grid(ic_g); p_gl = pi_grid(ip_g);
-        % The rhs surface is multimodal in c and the basin a single argmax
-        % start reaches shifts with small continuation changes, so anchor
-        % against every basin the glide step could land in.
+        % The objective has several local optima in c, so seed the pinned runs
+        % from each local maximum of the glide slice, not just its best point.
         if ~isempty(rhs_g)
             is_lmax = true(NC, NP);
             is_lmax(2:NC,   :) = is_lmax(2:NC,   :) & (rhs_g(2:NC,:)   >= rhs_g(1:NC-1,:));
@@ -394,7 +434,7 @@ parfor k = 1:n_states
         end
         for s = 1:size(pin_starts, 1)
             tau_fix = pin_starts(s, 3);
-            obj2 = @(x) -bellman_rhs_z3_u(x(1), x(2), tau_fix, LW_W, Rf_at, R_S_at, ...
+            obj2 = @(x) -obj_scale * bellman_rhs_z3_u(x(1), x(2), tau_fix, LW_W, Rf_at, R_S_at, ...
                                            p.Rf, R_S, pt, A_next_pre_return, ...
                                            H_next_W, Y_next_W, ...
                                            w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
@@ -402,21 +442,20 @@ parfor k = 1:n_states
                 [x_try, neg_V_try, exitflag] = fmincon(obj2, pin_starts(s, 1:2).', ...
                     [], [], [], [], lb2, ub2, [], opts_polish);
                 if exitflag > 0 || exitflag == 0
-                    if -neg_V_try > V_polish
-                        V_polish = -neg_V_try; x_opt = [x_try; tau_fix];
+                    if -neg_V_try/obj_scale > V_polish
+                        V_polish = -neg_V_try/obj_scale; x_opt = [x_try; tau_fix];
                     end
-                    if tau_fix == tau && -neg_V_try > v_gl
-                        v_gl = -neg_V_try; c_gl = x_try(1); p_gl = x_try(2);
+                    if tau_fix == tau && -neg_V_try/obj_scale > v_gl
+                        v_gl = -neg_V_try/obj_scale; c_gl = x_try(1); p_gl = x_try(2);
                     end
                 end
             catch
             end
         end
 
-        % Derivative-free refinement. The coarse z-interpolant puts narrow
-        % kink ridges in the surface and fmincon's finite differences step
-        % over them; a shrinking-radius scan is ridge-proof. Refine at the
-        % glide tau (the dominance anchor) and at the current best tau.
+        % A short derivative-free search around the best point, which resolves
+        % narrow ridges in the interpolated surface that fmincon can step over.
+        % Run it at the glide tau and at the current best tau.
         dc0 = c_grid(2) - c_grid(1);
         dp0 = pi_grid(min(2, NP)) - pi_grid(1);
         if isfinite(v_gl)
@@ -443,24 +482,50 @@ parfor k = 1:n_states
         end
     else
         A_next_W = R_A_all(:, 1) * A_next_pre_return;   % glide-slice DC position
-        x0 = [c_grid(ic_max); pi_grid(ip_max)];
-        polish_obj = @(x) -bellman_rhs_z_u(x(1), x(2), LW_W, Rf_at, R_S_at, ...
+        polish_obj = @(x) -obj_scale * bellman_rhs_z_u(x(1), x(2), LW_W, Rf_at, R_S_at, ...
                                             A_next_W, H_next_W, Y_next_W, ...
                                             w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
 
-        V_polish = -inf; x_opt = x0;
-        try
-            [x_try, neg_V_try, exitflag] = fmincon(polish_obj, x0, [], [], [], [], lb2, ub2, [], opts_polish);
-            if exitflag > 0 || exitflag == 0
-                V_polish = -neg_V_try; x_opt = x_try;
+        % Best seed: the tensor argmax, or the warm start when the tensor is off.
+        % With the tensor on, add the t+1 policy as a second start.
+        starts = [c_seed, pi_seed];
+        if ~skip_tensor && isfinite(c_warm) && isfinite(pi_warm)
+            starts = [starts; min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
+        end
+        starts(:,1) = min(max(starts(:,1), c_floor), 1 - 1e-6);
+        starts(:,2) = min(max(starts(:,2), 0), 1);
+
+        V_polish = -inf; x_opt = starts(1, :).';
+        for s = 1:size(starts, 1)
+            try
+                [x_try, neg_V_try, exitflag] = fmincon(polish_obj, starts(s, :).', ...
+                    [], [], [], [], lb2, ub2, [], opts_polish);
+                if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_polish
+                    V_polish = -neg_V_try/obj_scale; x_opt = x_try;
+                end
+            catch
             end
-        catch
+        end
+
+        % Same derivative-free refinement as the free-tau branch.
+        if use_scaling
+            dc0 = c_grid(2) - c_grid(1);
+            dp0 = pi_grid(min(2, NP)) - pi_grid(1);
+            if V_polish > maxval
+                cb0 = x_opt(1); pb0 = x_opt(2); vb0 = V_polish;
+            else
+                cb0 = c_seed; pb0 = pi_seed; vb0 = maxval;
+            end
+            [c_r, p_r, v_r] = refine_cpi_u(cb0, pb0, tau, vb0, LW_W, Rf_at, R_S_at, ...
+                p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+                w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
+            if v_r > V_polish, V_polish = v_r; x_opt = [c_r; p_r]; end
         end
 
         if V_polish > maxval
             V_flat(k) = V_polish; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2);
         else
-            V_flat(k) = maxval; c_flat(k) = c_grid(ic_max); pi_flat(k) = pi_grid(ip_max);
+            V_flat(k) = maxval; c_flat(k) = c_seed; pi_flat(k) = pi_seed;
         end
         tau_flat(k) = tau;
     end

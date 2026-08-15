@@ -6,25 +6,16 @@ function f = welfare_buffer(buffers, curves, marks, ttl)
 %   buffers  1 x N, initial liquid buffer in years of income.
 %   curves   struct array, one per line, with
 %              .label  legend entry
-%              .cev    1 x N consumption-equivalent variation, as a FRACTION
-%                      (0.05 = +5%); scaled to per cent here so every caller
-%                      cannot disagree about whether it already multiplied.
-%   marks    struct array of vertical reference lines, possibly empty, with
+%              .cev    1 x N consumption-equivalent variation, as a fraction
+%                      (0.05 = +5%); converted to per cent here.
+%   marks    struct array of vertical reference lines (possibly empty), with
 %              .x      buffer value
 %              .label  text drawn on the line
 %              .style  optional line style, default '-.'
 %   ttl      figure title.
 %
-%   Returns an INVISIBLE figure handle; the caller saves and closes it.
-%
-%   Why the markers are an argument. Two copies of this figure existed and
-%   differed in exactly one respect: one marked the calibrated anchor b0 and
-%   its sensitivity b_alt, the other marked whichever buffer the driver had
-%   re-simulated at. That is a caption, not a figure -- so it is passed in.
-%
-%   The arm lines get explicit handles and the legend is built from those, so
-%   the zero rule and the markers are never mistaken for series. That bug is
-%   easy to reintroduce by calling legend() with a cell array of names.
+%   Returns an invisible figure handle; the caller saves and closes it. The
+%   reference markers are passed in so the caller chooses which buffers to flag.
 
 if nargin < 3, marks = struct('x', {}, 'label', {}, 'style', {}); end
 if nargin < 4 || isempty(ttl), ttl = 'Welfare gain against the initial liquid buffer'; end

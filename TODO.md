@@ -34,8 +34,8 @@ To decide:
   level of any single curve. The write-up should say so.
 
 Until this is settled, do not fold the free-DC arm into
-`compare_spline_strategies` or `compare_strategy_vs_nopension` — they read the
-same anchor and would inherit the problem.
+`compare_spline_strategies` — it reads the same anchor and would inherit the
+problem.
 
 ## 2. Annuity pricing under free DC choice
 
@@ -176,11 +176,10 @@ Small and mostly cosmetic, but worth clearing.
   at every other age uses `beta * (1 - p_t) * chi` on *next*-period wealth.
   Inert at `chi = 0`, wrong when it is turned on. `simulate.paths` matches the
   terminal step, so the two are at least consistent with each other.
-- **LTV fallback contradicts the model.** `make_plots.m:128` and
-  `compare_strategy_vs_nopension.m:418` backfill `p.LTV = 0.80` for files
-  lacking the field, but `config.params` asserts `LTV == 1.00`. Legacy files
-  get home-equity panels drawn against a mortgage the model never had. Change
-  the fallback to 1.00.
+- **LTV fallback contradicts the model.** `make_plots.m:128` backfills
+  `p.LTV = 0.80` for files lacking the field, but `config.params` asserts
+  `LTV == 1.00`. Legacy files get home-equity panels drawn against a mortgage
+  the model never had. Change the fallback to 1.00.
 - **Dead helpers.** `+utility/crra.m` and `+utility/bequest.m` are not called
   from anywhere. Delete or wire them into the solver, which currently inlines
   both.

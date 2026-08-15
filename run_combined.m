@@ -80,12 +80,10 @@ for k = 1:numel(scenarios)
     p.is_owner = sc.is_owner;
     p.choose_tau_S = sc.choose_tau;
 
-    % The one grid definition run_nodc and run_spline_strategies also read, so
-    % all three stay welfare-comparable within a coordinate system.
-    % build_state_grids rebuilds the axis vectors AND re-inserts the welfare
-    % anchors, so two of the three come back up to +2 larger -- read the sizes
-    % off p, never off the requested dims. CGM_STATE_GRID / CGM_GH_N override
-    % for smoke runs only; unset (the production path) they are a no-op.
+    % Same production grid as run_nodc and run_spline_strategies, so all three
+    % stay welfare-comparable. build_state_grids also inserts the welfare
+    % anchors, so the realised axis sizes can exceed the requested dims -- read
+    % them off p. CGM_STATE_GRID / CGM_GH_N override only for smoke runs.
     [dims_sweep, gh_sweep] = utility.production_grid(p);
     p = utility.build_state_grids(p, dims_sweep, gh_sweep);
     if use_lna
@@ -174,13 +172,10 @@ fprintf('\nAll scenarios done.\n');
 
 %% =======================================================================
 function p = assert_production_fill(p)
-% PRODUCTION GUARD -- see run_nodc.m for the full rationale. Short version:
-% p.legacy_fill restores the pre-fix continuation fill (a ruin-blended
-% penalty one interpolation cell wide along the sX = 0 face, which is where
-% the welfare anchor sits) and is test-only. Stamping false explicitly is
-% what makes utility.param_fingerprint fence pre-fix files off from post-fix
-% ones -- an absent field fingerprints as NaN on BOTH vintages.
+% p.legacy_fill selects an old continuation-fill rule kept only for tests; it
+% must be off for a production run. Setting it to false explicitly (rather than
+% leaving it absent) is what the fingerprint records.
 assert(~(isfield(p, 'legacy_fill') && p.legacy_fill), 'run_combined:legacy_fill', ...
-    'p.legacy_fill is set -- that is the pre-fix phantom-penalty fill, test-only.');
+    'p.legacy_fill is set, which is a test-only continuation fill.');
 p.legacy_fill = false;
 end

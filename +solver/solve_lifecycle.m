@@ -16,12 +16,9 @@ end
 
 NL = p.N_lambda; NA = p.N_sA; NH = p.N_sH; T = p.T;
 
-% Welfare-anchor guard. The calibrated (b0) and sensitivity (b_alt) initial
-% nodes must be EXACT grid members or the headline welfare number becomes a
-% trilinear blend that moves with grid resolution. config.params installs them
-% via config.insert_anchor_nodes; a run script that rebuilds the grid vectors
-% afterwards must call it again. Skipped for legacy p-structs (loaded from an
-% old .mat) that predate the anchors.
+% The welfare anchors (the b0 and b_alt initial states) must be exact grid nodes
+% so the headline welfare number is read at a solved point rather than
+% interpolated. config.insert_anchor_nodes puts them there; this checks it held.
 if all(isfield(p, {'b0', 'b_alt', 'h_mult'}))
     b_a  = [p.b0, p.b_alt];
     name = {'b0', 'b_alt'};
@@ -40,9 +37,8 @@ if all(isfield(p, {'b0', 'b_alt', 'h_mult'}))
     end
 end
 
-% Nearest-feasible fill map for the continuation interpolant's infeasible cube
-% nodes (solver.build_fill_map: replaces the old global-minimum fill, which put
-% a phantom ruin penalty one cell wide along the sX = 0 face). Grid-only, so it
+% Fill rule for the continuation interpolant's infeasible cube nodes: each is
+% taken from its nearest feasible neighbour. It depends only on the grid, so it
 % is built once here and reused by every Bellman step.
 p.fill_map = solver.build_fill_map(p.lambda_grid, p.sA_grid, p.sH_grid);
 

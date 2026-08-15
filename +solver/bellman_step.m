@@ -1,63 +1,34 @@
 function [V_t, c_pol, pi_pol, feas, tau_pol] = bellman_step(t, V_next, p, profile, shocks, ann_price, pol_next)
 %BELLMAN_STEP  One backward-induction step on (lambda, s_A, s_H).
 %
-%   State variables:
-%       lambda = Y / W
-%       s_A    = A / W   (DC pension share)
-%       s_H    = H / W   (housing share)
-%       s_X    = 1 - lambda - s_A - s_H  (liquid wealth share, derived)
-%   Feasibility: lambda + s_A + s_H <= 1.
+%   State variables (shares of total wealth W = X + A + H + Y):
+%       lambda = Y / W      income share
+%       s_A    = A / W       pension share
+%       s_H    = H / W       housing share
+%       s_X    = 1 - lambda - s_A - s_H   liquid share
+%   with lambda + s_A + s_H <= 1.
 %
-%   Period budget (LW = X-plus-disposable, normalised by W):
-%     Working:
-%       LW/W = s_X + (1-delta)*(1-kappa)*lambda - h_cost_rate * s_H
-%     Retired:
-%       LW/W = s_X + (1-delta)*lambda + s_A/ann_price(t) - h_cost_rate * s_H
+%   Period resources (liquid wealth plus disposable income, over W):
+%       working   s_X + (1-delta)(1-kappa) lambda - h_cost_rate s_H
+%       retired   s_X + (1-delta) lambda + s_A/ann_price(t) - h_cost_rate s_H
+%   with h_cost_rate = alpha (renter) or theta + m_rate_t (owner).
 %
-%   h_cost_rate = alpha (renter) or theta + m_rate_t (owner).
+%   Pension next period, with survival-credit return R_A = ((1-tau)Rf + tau R_S)/p_t:
+%       working   A_next = R_A (A + kappa Y)
+%       retired   A_next = R_A (A - A/ann_price(t))
 %
-%   Pension account next-period:
-%     Working:  A_next = R_A * (A + kappa*Y)            -> A_next_W = R_A*(s_A + kappa*lam)
-%     Retired:  A_next = R_A * (A - A/ann_price(t))     -> A_next_W = R_A*s_A*(1-1/ann_price(t))
-%   R_A = ((1 - tau)*Rf + tau*R_S) / p_t   (survival-credit return)
+%   Bequest base at death (weighted by beta (1-p_t) chi): renter X_next,
+%   owner X_next + H_next.
 %
-%   Bequest base (paid at death; weighted by beta*(1-p_t)*chi):
-%     Renter: X_next       (A is annuitised -- not bequeathable)
-%     Owner:  X_next + H_next
+%   Choices are consumption c and the liquid equity share pi. Under free DC
+%   choice (p.choose_tau_S), and only while working, the pension equity share
+%   tau is chosen too; otherwise it follows the fund's glide path. After
+%   retirement tau is always the fund's decumulation setting, so the free and
+%   glide arms differ only through accumulation.
 %
-%   Choices:
-%     Default (p.choose_tau_S false/absent): (c, pi) -- consumption fraction
-%       and liquid equity share; the DC share tau is the fixed tau_S glide
-%       path. 41x41 grid search + 2-var fmincon polish.
-%     Free DC choice (p.choose_tau_S true): (c, pi, tau), but only while
-%       WORKING (t < t_ret). The tau seed grid is linspace(0,1,p.N_tau) with
-%       the glide value appended, so the free search always contains the glide
-%       slice and cannot lose to it on the grid; the polish then runs from the
-%       best grid point and, separately, pinned at the glide value.
-%       tau_pol (5th output) is the DC share in force, [] when the option is
-%       off. With a single tau slice the tensor collapses to the glide-path
-%       grid search bit-identically.
-%
-%   Retirement (t >= t_ret) is never a tau choice in either regime: the share
-%   comes from config.tau_effective(p). That restriction is what keeps the
-%   annuity price honest without a fourth state variable, and it means both
-%   arms behave identically after t_ret, so the whole free-vs-glide difference
-%   is attributable to accumulation. See config.tau_effective.
-%
-%   The continuation interpolant works on the z-transform of V_next and is
-%   built over the whole cube; infeasible nodes are filled from their nearest
-%   feasible neighbour (solver.build_fill_map). Every continuation query
-%   asserts lambda+sA+sH <= 1. Negative liquid wealth is unreachable in this
-%   model, and the assert makes that assumption fail loudly rather than
-%   silently if leverage, additive returns, post-return cost deduction or a
-%   mortgage stock is ever added.
-%
-%   pol_next (optional 7th argument) carries the t+1 policies on this grid,
-%   struct with fields c / pi / tau ([] allowed), supplied by solve_lifecycle.
-%   Under p.polish_ver >= 2 they seed extra fmincon starts -- see below --
-%   and the polish objective runs on the certainty-equivalent scale. With
-%   polish_ver < 2 (or the field absent) both are off and this function is
-%   bit-identical to the original, warm starts ignored.
+%   The continuation value is interpolated on the z-transform of V_next, with
+%   infeasible cube nodes filled from their nearest feasible neighbour. pol_next
+%   (optional) is the next period's policy on this grid, used as a warm start.
 
 if nargin < 7, pol_next = []; end
 
@@ -78,26 +49,11 @@ if choose_tau
     tau_pol = nan(NL, NA, NH);
 end
 
-% Solver version, recorded in the fingerprint so files solved under different
-% polish versions never rate as welfare-comparable. polish_ver >= 2 turns on
-% two things taken from the coauthor's main_jmp.m:
-%
-%   OBJECTIVE SCALING (their main_jmp.m:403 + the scaling_factor in every
-%   obj_*.m). They multiply the objective handed to fmincon by a scalar
-%   recomputed each period from the previous period's value function, and
-%   divide it back out when storing the result. Same structure here. It
-%   matters because at gamma = 5 our raw rhs is O(1e-19) or smaller -- far
-%   below fmincon's FunctionTolerance of 1e-10, so the polish declared
-%   convergence immediately without moving, while its KKT systems logged
-%   hundreds of singular-matrix warnings. Multiplying by a positive scalar is
-%   monotone, so every argmax is unchanged; only the optimiser's notion of
-%   "small" moves.
-%
-%   WARM STARTS. The t+1 policy at the same node seeds extra polish starts.
-%   Policies are smooth in t, so it is usually a better guess than the grid
-%   argmax, and as an ADDITIONAL candidate it can only improve the result.
-%
-% polish_ver < 2 or absent reproduces the original polish exactly.
+% polish_ver >= 2 turns on two refinements to the fmincon polish: scaling the
+% objective so it sits within the solver's tolerances, and seeding it from the
+% warm start (next period's policy). Both leave the optimum unchanged. The
+% version is recorded in the fingerprint so runs made under different settings
+% are not compared; polish_ver < 2 reproduces the original polish.
 polish_ver = 1; if isfield(p, 'polish_ver'), polish_ver = p.polish_ver; end
 use_scaling = polish_ver >= 2;
 use_warm    = polish_ver >= 2;
