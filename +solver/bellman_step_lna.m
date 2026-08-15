@@ -1,31 +1,27 @@
 function [V_t, c_pol, pi_pol, tau_pol] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
-%BELLMAN_STEP_LNA  One backward-induction step on the (u1, u2, u3) cube.
+%BELLMAN_STEP_LNA  One backward-induction step on the new coordinate system.
 %
 %   Solves the household's problem at age t on the cube coordinates
-%       u1 = Y / W                 income share of total wealth
+%       u1 = Y / W                 income share of  wealth
 %       u2 = (A + H) / (W - Y)     illiquid share of non-income wealth
 %       u3 = A / (A + H)           pension share of the illiquid block
 %   which map back to the wealth shares by
 %       lambda = u1,   s_A = u2 (1-u1) u3,   s_H = u2 (1-u1)(1-u3),
 %       s_X    = (1-u1)(1-u2).
-%   Every point of the cube is a valid state, so the value function is
-%   interpolated directly on the grid, with no feasibility mask.
 %
 %   Given next period's value function V_next (and, under free DC choice, the
 %   next period's policy pol_next used to warm-start the search), it returns
 %   this period's value V_t and the optimal policies: consumption c, liquid
-%   equity share pi, and the pension equity share tau.
+%   equity share pi, and the pension equity share tau if turned on.
 %
-%   The economics -- budget, income tax, capital-gains tax, the pension
-%   return, and bequests -- match solver.bellman_step exactly; only the state
-%   coordinates differ.
 
 % The pension equity share tau is a free choice while working when the fund
-% lets the household pick it (p.choose_tau_S); otherwise it follows the fund's
-% glide path. After retirement it is always the fund's decumulation setting.
+% lets the household pick it (p.choose_tau_S); otherwise it follows the fund.
+% After retirement it is always the fund's decumulation setting.
 choose_tau   = isfield(p, 'choose_tau_S') && p.choose_tau_S;
 optimise_tau = choose_tau && (t < p.t_ret);
 
+%storage construction
 N1 = numel(p.u1_grid); N2 = numel(p.u2_grid); N3 = numel(p.u3_grid);
 V_t    = nan(N1, N2, N3);
 c_pol  = nan(N1, N2, N3);
@@ -33,28 +29,33 @@ pi_pol = nan(N1, N2, N3);
 tau_pol = [];
 if choose_tau, tau_pol = nan(N1, N2, N3); end
 
+%grid construction
 [U1, U2, U3] = ndgrid(p.u1_grid, p.u2_grid, p.u3_grid);
 Lam_all = U1;
 SA_all  = U2 .* (1 - U1) .* U3;
 SH_all  = U2 .* (1 - U1) .* (1 - U3);
 
+%storage of common calculations
 gamma   = p.gamma;
 one_m_g = 1 - gamma;
 inv_omg = 1 / one_m_g;
 
+% set booleans for type and working status
 is_owner   = p.is_owner;
 is_retired = (t >= p.t_ret);
 
+% legacy code tag from an old version that uses a more extensive optimisation (not required anymore after other code fixes but kept for legacy purposes)
+
 skip_polish = false; if isfield(p, 'skip_polish'), skip_polish = logical(p.skip_polish); end
 
-% How the per-state optimum is found (both settings come from config.params):
-%   grid_mode = 'full'  search a (c, pi) grid, then refine the best point with
-%                       fmincon.
+% Optimisation routine 
+%   grid_mode = 'full'  search a (c, pi) grid of guesses, then refine the best point with
+%                       fmincon. (legacy)
 %   grid_mode = 'none'  skip the grid and run fmincon from the warm start --
 %                       next period's policy at this node -- which is faster and
 %                       is the default. Requires polish_ver >= 2.
-% The glide arm uses whichever mode is set; the free-tau arm always keeps the
-% grid, so its value can never fall below the fixed glide path.
+% For normal runs it takes whatever is chosen, for free DC choice it still uses the grid as a backup that hasn't been rewritten yet with the new optimisation routine
+%some setup of boolean that assings what legacy parts of the optimisation routine need to run
 if nargin < 7, pol_next = []; end
 polish_ver = 1; if isfield(p, 'polish_ver'), polish_ver = p.polish_ver; end
 use_scaling = polish_ver >= 2;
@@ -64,7 +65,7 @@ skip_tensor = strcmp(grid_mode, 'none') && ~optimise_tau && use_warm;
 
 % Tax rates (default to zero if the field is absent):
 %   tau_inc       income tax on wages, state pension and annuity payments.
-%   tau_b, tau_s  capital-gains tax on the bond and stock legs of liquid saving.
+%   tau_b, tau_s  capital-gains tax on  liquid saving.
 %   tau_w         wealth tax on the liquid balance.
 % The pension fund is tax-sheltered, so its return stays pre-tax.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
@@ -86,16 +87,16 @@ else
 end
 
 % Effective DC contribution rate at this age (franchise-based T x 1 profile;
-% min() keeps legacy scalar-kappa p-structs working). See config.params.
+% min() is for legacy bugs
 kappa_t = p.kappa(min(t, numel(p.kappa)));
 
-% Bequeathed housing value as a fraction of H: owners' estates sell the house
+% Bequeathed housing value as a fraction of H: owners'  sell the house at death
 % and pay p.sell_cost; renters bequeath no housing.
 sell_cost = 0; if isfield(p, 'sell_cost'), sell_cost = p.sell_cost; end
 h_beq_fac = is_owner * (1 - sell_cost);
 
 % Consumption floor as a share of W: phi_floor * lambda (config.params).
-% FLOOR_EPS guards the lambda = 0 grid nodes, which are not reachable states.
+% Numerical protection against very low consumption
 phi_floor = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
 use_floor = phi_floor > 0;
 FLOOR_EPS = 1e-12;
@@ -144,9 +145,8 @@ if t == p.T
     return
 end
 
-% --- Non-terminal step: build the continuation interpolant, then optimise each
-% state. The fund's equity share this period is the accumulation glide before
-% retirement and the decumulation setting after it.
+% Build the interpolation space of the continuations and optimie the current state
+
 tau_eff_path = config.tau_effective(p);
 tau      = tau_eff_path(t);
 pt       = profile.p_surv(t);
@@ -162,9 +162,7 @@ n_shock = numel(w_join);
 mu_g   = profile.mu_growth(t);
 sig_l  = profile.sigma_l_log(t);
 G_next = exp(mu_g + sig_l .* eps_Y);
-% Candidate pension equity shares. Under the glide (or once retired) there is
-% just the fund's value; under free choice, an even grid with the glide value
-% added so the search always includes it.
+% Candidate pension equity shares. With no choice this defaults to the assigned strategy, with free choice it creates a grid to search
 if optimise_tau
     NT = 11; if isfield(p, 'N_tau'), NT = p.N_tau; end
     tau_grid = unique([linspace(0, 1, NT).'; tau]);
@@ -173,17 +171,15 @@ else
 end
 NTg     = numel(tau_grid);
 j_glide = find(tau_grid == tau, 1);
-% Survival-credit DC returns per tau slice (PRE-TAX, sheltered), n_shock x NTg
+% Rate of returns per realisation of the Markov process
 R_A_all = ((1 - tau_grid.') * p.Rf + R_S * tau_grid.') / pt;
 
-% After-tax returns on the liquid account: capital-gains tax on each leg
+% After-tax returns on the liquid account
 % (stocks taxed only on gains), then the wealth tax on the end-of-period balance.
 Rf_at  = (1 + p.r * (1 - tau_b)) * (1 - tau_w);            % bond leg
 R_S_at = (R_S - tau_s .* max(R_S - 1, 0)) .* (1 - tau_w);  % stock leg
 
-% Certainty-equivalent (z) transform of next period's value; the interpolation
-% is done in z. States with a non-positive argument are set to the smallest
-% valid z rather than left undefined.
+% Transform of the continuitions to the inverse
 arg = one_m_g * V_next; arg(arg <= 0) = NaN;
 z_next = arg .^ inv_omg;
 z_finite = z_next(isfinite(z_next));
@@ -192,16 +188,11 @@ if isempty(z_finite)
 end
 z_min = min(z_finite);
 z_next(isnan(z_next)) = z_min;
-% Linear inside the grid; clamp to the nearest boundary value outside it. A
-% continuation query can land just past the lambda bounds (a very wealthy or a
-% near-ruin household), and holding the boundary value there is safe, whereas
-% linear extrapolation off the edge can run away.
+% Linear inside, gets clamped to the space if a value is outside the grid
 pp_z = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
                           z_next, 'linear', 'nearest');
 
-% Scale the fmincon objective by the inverse median |V| so it sits within the
-% solver's tolerances (divided back out below). A positive scalar leaves the
-% optimum unchanged.
+% Scale the fmincon objective by the median of the next period
 obj_scale = 1;
 if use_scaling
     absV = abs(V_next(isfinite(V_next) & V_next ~= 0));
@@ -211,12 +202,13 @@ if use_scaling
     end
 end
 
-% Grid of consumption and equity-share candidates that seeds the search.
+% Grid of consumption and equity-share candidates that seeds the search. (legacy optimisation)
 NC = 41; if isfield(p, 'N_c'),  NC = p.N_c;  end
 NP = 41; if isfield(p, 'N_pi'), NP = p.N_pi; end
 pi_grid = linspace(0, 1, NP).';
 R_X_all = (1 - pi_grid) * Rf_at + pi_grid * R_S_at.';     % NP x n_shock (after-tax)
 
+%fmincon settings
 opts_polish = optimoptions('fmincon', ...
     'Algorithm', 'interior-point', ...
     'Display', 'off', ...
@@ -237,8 +229,7 @@ lam_pts = Lam_all(:);
 sA_pts  = SA_all(:);
 sH_pts  = SH_all(:);
 
-% Warm start for each state: next period's policy at the same node, used only by
-% the glide arm. NaN where there is none (handled per state below).
+% Warm start for each state: next period's policy at the same node
 have_warm = use_warm && ~isempty(pol_next) && isstruct(pol_next) ...
             && isfield(pol_next, 'c') && isequal(size(pol_next.c), [N1 N2 N3]);
 if have_warm
@@ -258,6 +249,8 @@ else
     A_keep_fac = 1;
 end
 
+
+%the actual loop
 parfor k = 1:n_states
     lam = lam_pts(k); sA = sA_pts(k); sH = sH_pts(k);
     sX  = 1 - lam - sA - sH;
@@ -282,9 +275,7 @@ parfor k = 1:n_states
             continue
         end
     elseif LW_W <= F_W
-        % Floor absorbs everything: consume the floor, save nothing, enter
-        % next period with X = 0. See solver.bellman_step for the rationale.
-        % Only tau is still worth choosing here.
+        % Consume the minimum amount and set savings to zero (implied call option)
         u_f = F_W ^ one_m_g / one_m_g;
         best = -inf; j_best = 1;
         for j = 1:NTg
@@ -305,7 +296,7 @@ parfor k = 1:n_states
         V_flat(k) = best; c_flat(k) = 1; pi_flat(k) = 0; tau_flat(k) = tau_grid(j_best);
         continue
     end
-
+   
     % Lower bound on the consumption search (a small share of resources).
     c_floor = max(1e-3, 0.01 / LW_W);
     c_floor = min(c_floor, 0.5);
