@@ -127,27 +127,46 @@ for hi = 1:numel(HOUSING)
 end
 
 %% Parallel pool (start once, reused across all runs)
-nw = str2double(getenv('CGM_N_WORKERS'));
-if ~isnan(nw) && nw >= 1
-    pool = gcp('nocreate');
-    if isempty(pool) || pool.NumWorkers < nw
-        if ~isempty(pool), delete(pool); end
+% Size the pool to the cores the pod may actually use, not what MATLAB detects.
+% feature('numcores') sees the whole node inside a container (e.g. 128) while
+% the cgroup caps the pod far lower (e.g. 32); a pool sized to the node
+% oversubscribes -- 128 fmincon workers, each with multithreaded BLAS, on 32
+% real cores -- and ran the cube step ~7x slower than a right-sized laptop
+% pool. utility.cpu_quota reads the cgroup quota (or CGM_N_WORKERS when set);
+% maxNumCompThreads(1) stops each fmincon's BLAS from oversubscribing on top of
+% the parfor. Both are the fix for that slowdown; keep them together.
+n_target = utility.cpu_quota();
+maxNumCompThreads(1);
+
+want_process = ~isnan(str2double(getenv('CGM_N_WORKERS')));  % explicit -> process pool (laptop)
+
+pool = gcp('nocreate');
+if ~isempty(pool) && pool.NumWorkers ~= n_target
+    delete(pool); pool = [];   % wrong size (e.g. a stale 128-wide pool) -> rebuild
+end
+if isempty(pool)
+    started = false;
+    if want_process
         try
             clus = parcluster('local');
-            clus.NumWorkers = max(clus.NumWorkers, nw);
-            parpool(clus, nw);
+            clus.NumWorkers = max(clus.NumWorkers, n_target);
+            parpool(clus, n_target);
+            % Client maxNumCompThreads does not reach separate worker
+            % processes, so pin BLAS on each one explicitly.
+            parfevalOnAll(@() maxNumCompThreads(1), 0);
+            started = true;
         catch err
-            % Cluster pods can fail to start process workers; Threads spans
-            % all cores in one process and handles fmincon fine.
+            % Cluster pods routinely fail to start process workers; the
+            % Threads pool shares the client process (and its 1 BLAS thread).
             fprintf('Process pool failed (%s); falling back to Threads.\n', err.message);
-            parpool('Threads');
         end
     end
-elseif isempty(gcp('nocreate'))
-    try
-        parpool('Threads');
-    catch
-        try, parpool('local'); catch, warning('parpool failed; running serial'); end
+    if ~started
+        try
+            parpool('Threads', n_target);
+        catch
+            try, parpool('Threads'); catch, warning('parpool failed; running serial'); end
+        end
     end
 end
 
