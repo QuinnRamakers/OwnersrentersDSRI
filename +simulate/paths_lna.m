@@ -1,97 +1,75 @@
 function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
-%PATHS_LNA  Forward Monte-Carlo simulation for the (u1,u2,u3) cube solver.
+%PATHS_LNA  Simulate N households forward under the solved policies.
 %
-%   Identical to simulate.paths -- same shock construction, same default
-%   seed, same budget/tax logic, same reported fields -- EXCEPT that the
-%   policy lookup converts the simulated simplex state (lambda, s_A, s_H)
-%   into the reparametrized coordinates of solver.bellman_step_lna:
-%       u1 = lambda
-%       u2 = (s_A + s_H) / (1 - lambda)
-%       u3 = s_A / (s_A + s_H)
-%   each clamped to [0,1] (guards the degenerate lines u2=0 and u1=1).
-%   Every cube point is feasible, so no nearest-feasible NaN-fill is needed
-%   when building the policy interpolants.
+%   sim = simulate.paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %
-%   sol must come from solver.solve_lifecycle_lna (policies on
-%   {p.u1_grid, p.u2_grid, p.u3_grid}).
+%   Households enter at age p.age0 with income Y0 from the deterministic
+%   profile, liquid wealth X0_frac * Y0, H0 = h_mult * Y0 and no DC pot. Each
+%   period the policies are read off the cube at the household's coordinates
+%       u1 = lambda,  u2 = (s_A + s_H)/(1 - lambda),  u3 = s_A/(s_A + s_H)
+%   and the budget, taxes, floor and returns are applied exactly as in
+%   solver.bellman_step_lna. Shocks are continuous draws, correlated through
+%   the same Cholesky factor as grids.shock_grid.
 %
-%   Free DC choice (p.choose_tau_S) is supported: when sol carries tau_pol the
-%   applied DC equity share is interpolated per household per period from that
-%   policy instead of read off the p.tau_S glide, and either way the applied
-%   share is reported as sim.tau_A. Same contract as simulate.paths on the
-%   simplex, so plotting code is shared.
+%   Fields, N x T unless noted: Y, X, A, H, W, lambda, sA, sH; c_frac and pi
+%   (the policies applied); C (consumption), LW (liquid resources before
+%   consumption), disp_inc (net income after housing cost), m_pay (mortgage
+%   payment), ann_pay (gross annuity payout), c_bound (the lower bound of the
+%   consumption search at the household's state), floored (resources topped up
+%   to the floor); tau_A and reit_A (N x T-1, the DC fund's stock and REIT
+%   shares); bequest (N x 1); diagnostics, including policy lookups that fell
+%   outside the grid.
 
 if nargin < 5 || isempty(N), N = 5000; end
 if nargin < 6 || isempty(seed), seed = 20260511; end
-if nargin < 7 || isempty(X0_frac), X0_frac = 0; end   % initial liquid buffer = X0_frac * Y0
+if nargin < 7 || isempty(X0_frac), X0_frac = 0; end
 rng(seed);
-
-% Mirror of the simulate.paths:no_tau_pol guard: a run that asked for free
-% choice but arrived without a policy would be silently simulated on the
-% glide, which is the failure this catches.
-if isfield(p, 'choose_tau_S') && p.choose_tau_S
-    assert(isfield(sol, 'tau_pol'), 'paths_lna:no_tau_pol', ...
-           'choose_tau_S is set but sol has no tau_pol.');
-end
 
 T = p.T;
 is_owner = p.is_owner;
 
-% Tax parameters (guarded so legacy p-structs => no tax). Must match the
-% solver: income tax (EET) on wages/AOW/annuity, accrual CGT (no loss offset)
-% plus the box-3 wealth tax (tau_wealth on the end-of-period balance) on the
-% liquid account, DC fund and housing sheltered/exempt.
-tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
-tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
-tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
-tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
-net_inc = 1 - tau_inc;
+tau_b   = p.tau_cg_bond;
+tau_w   = p.tau_wealth;
+net_inc = 1 - p.tau_inc;
 Rf_at   = (1 + p.r * (1 - tau_b)) * (1 - tau_w);
 
-Y_path  = zeros(N, T);
-X_path  = zeros(N, T);
-A_path  = zeros(N, T);
-H_path  = zeros(N, T);
-W_path  = zeros(N, T);
+Y_path   = zeros(N, T);
+X_path   = zeros(N, T);
+A_path   = zeros(N, T);
+H_path   = zeros(N, T);
+W_path   = zeros(N, T);
 lam_path = zeros(N, T);
 sA_path  = zeros(N, T);
 sH_path  = zeros(N, T);
-c_path  = zeros(N, T);
-pi_path = zeros(N, T);
-C_path  = zeros(N, T);
-LW_path = zeros(N, T);
-m_path  = zeros(N, T);
+c_path   = zeros(N, T);
+pi_path  = zeros(N, T);
+C_path   = zeros(N, T);
+LW_path  = zeros(N, T);
+m_path   = zeros(N, T);
 ann_pay_path = zeros(N, T);
 disp_inc = zeros(N, T);
+cb_path  = zeros(N, T);
+fl_path  = false(N, T);
 bequest_path = zeros(N, 1);
+tau_A_path  = zeros(N, T-1);
+reit_A_path = zeros(N, T-1);
 
-n_clamp_c  = 0;
-n_clamp_pi = 0;
-n_negLW    = 0;
-n_floored  = 0;
-phi_floor  = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
-tau_A_path = zeros(N, T-1);   % applied DC equity share on the t -> t+1 transition
+n_clamp_c = 0; n_clamp_pi = 0; n_negLW = 0; n_floored = 0;
+n_off = zeros(1, 3);
 
-% Policy interpolants directly on the cube grid -- all nodes are feasible.
-% tau_pol only exists under free DC choice, and only for the T-1 transitions.
-use_taupol = isfield(sol, 'tau_pol');
-pp_c  = cell(T, 1);  pp_pi = cell(T, 1);  pp_tau = cell(T, 1);
+pp_c  = cell(T, 1);
+pp_pi = cell(T, 1);
 for t = 1:T
     pp_c{t}  = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
                                   sol.c_pol(:,:,:,t), 'linear', 'nearest');
     pp_pi{t} = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
                                   sol.pi_pol(:,:,:,t), 'linear', 'nearest');
-    if use_taupol && t < T
-        pp_tau{t} = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
-                                       sol.tau_pol(:,:,:,t), 'linear', 'nearest');
-    end
 end
 
 logY_canon = config.income_profile(p);
 Y0 = exp(logY_canon(1));
 Y_path(:,1) = Y0;
 H_path(:,1) = p.h_mult * Y0;
-[mu_HR, sigma_HR] = config.h_process(p);   % house return / rent increase by tenure
 X_path(:,1) = X0_frac * Y0;
 A_path(:,1) = 0;
 W_path(:,1) = X_path(:,1) + A_path(:,1) + H_path(:,1) + Y_path(:,1);
@@ -99,41 +77,45 @@ lam_path(:,1) = Y_path(:,1) ./ W_path(:,1);
 sA_path(:,1)  = A_path(:,1) ./ W_path(:,1);
 sH_path(:,1)  = H_path(:,1) ./ W_path(:,1);
 
-% Independent standard-normal draws, then Cholesky-correlated (income L,
-% stock S, housing H) with the same Sigma used by grids.shock_grid -- no
-% resampling, just a linear transform of the same three draws.
+[mu_HR, sigma_HR]     = config.h_process(p);   % house price (owner) or rent index (renter)
+[mu_REIT, sigma_REIT] = config.reit_process(p);
+tau_e   = config.tau_effective(p);             % fund stock share, (T-1) x 1
+reit_e  = config.reit_effective(p);            % fund REIT share, (T-1) x 1
+reit_on = config.reit_active(p);
+
+% Independent normals, then correlated. The REIT draw comes last and only
+% when the leg is active, so switching it off leaves the other streams as
+% they were.
 eps_S_ind = randn(N, T-1);
 eps_Y_ind = randn(N, T-1);
 eps_H_ind = randn(N, T-1);
+if reit_on
+    eps_R_ind = randn(N, T-1);
+    Sigma = [1,         p.corr_SL, p.corr_HL, p.corr_RL; ...
+             p.corr_SL, 1,         p.corr_SH, p.corr_RS; ...
+             p.corr_HL, p.corr_SH, 1,         p.corr_RH; ...
+             p.corr_RL, p.corr_RS, p.corr_RH, 1        ];
+    Zc = chol(Sigma, 'lower') * [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'; eps_R_ind(:).'];
+    eps_R = reshape(Zc(4, :), N, T-1);
+else
+    Sigma = [1,         p.corr_SL, p.corr_HL; ...
+             p.corr_SL, 1,         p.corr_SH; ...
+             p.corr_HL, p.corr_SH, 1        ];
+    Zc = chol(Sigma, 'lower') * [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'];
+    eps_R = [];
+end
+eps_Y = reshape(Zc(1, :), N, T-1);
+eps_S = reshape(Zc(2, :), N, T-1);
+eps_H = reshape(Zc(3, :), N, T-1);
 
-Sigma_shock = [1,           p.corr_SL, p.corr_HL; ...
-               p.corr_SL,   1,         p.corr_SH; ...
-               p.corr_HL,   p.corr_SH, 1        ];
-Lc_shock = chol(Sigma_shock, 'lower');
-
-Zind_shock  = [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'];  % 3 x N*(T-1)
-Zcorr_shock = Lc_shock * Zind_shock;
-eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
-eps_S = reshape(Zcorr_shock(2, :), N, T-1);
-eps_H = reshape(Zcorr_shock(3, :), N, T-1);
-
-% Bequeathed housing value as a fraction of H: owners' estates sell the house
-% and pay p.sell_cost. Must match the solver.
-sell_cost = 0; if isfield(p, 'sell_cost'), sell_cost = p.sell_cost; end
-h_beq_fac = is_owner * (1 - sell_cost);
+h_beq_fac = is_owner * (1 - p.sell_cost);
 
 for t = 1:T
     is_retired = (t >= p.t_ret);
-    % Franchise-based DC contribution rate at this age (T x 1 profile; min()
-    % keeps legacy scalar-kappa p-structs working). See config.params.
     kappa_t = p.kappa(min(t, numel(p.kappa)));
 
     if is_owner
-        if t <= numel(p.m_rate_path)
-            m_rate_t = p.m_rate_path(t);
-        else
-            m_rate_t = 0;
-        end
+        if t <= numel(p.m_rate_path), m_rate_t = p.m_rate_path(t); else, m_rate_t = 0; end
         h_cost_rate = p.theta + m_rate_t;
     else
         m_rate_t = 0;
@@ -141,13 +123,13 @@ for t = 1:T
     end
 
     if is_retired
-        contrib_factor = (1 - p.delta) * net_inc;            % AOW taxed as income
-        ann_pay     = A_path(:,t) ./ ann_price(t);           % GROSS payout (reduces A stock)
-        ann_pay_net = ann_pay .* net_inc;                    % NET payout (spendable)
+        contrib_factor = net_inc;                     % AOW, taxed as income
+        ann_pay     = A_path(:,t) ./ ann_price(t);    % gross payout, leaves the pot
+        ann_pay_net = ann_pay .* net_inc;             % taxed on receipt
         LW = X_path(:,t) + contrib_factor .* Y_path(:,t) + ann_pay_net ...
              - h_cost_rate .* H_path(:,t);
     else
-        contrib_factor = (1 - p.delta) * (1 - kappa_t) * net_inc;  % deductible contrib; rest taxed
+        contrib_factor = (1 - kappa_t) * net_inc;     % contribution deducted before tax
         ann_pay     = zeros(N, 1);
         ann_pay_net = zeros(N, 1);
         LW = X_path(:,t) + contrib_factor .* Y_path(:,t) ...
@@ -155,14 +137,23 @@ for t = 1:T
     end
     LW_path(:,t) = LW;
     m_path(:,t)  = m_rate_t .* H_path(:,t);
-    ann_pay_path(:,t) = ann_pay;          % report GROSS payout from the fund
+    ann_pay_path(:,t) = ann_pay;
     disp_inc(:,t) = contrib_factor .* Y_path(:,t) + ann_pay_net - h_cost_rate .* H_path(:,t);
 
-    % Convert simulated simplex state to cube coordinates for the lookup
-    u1q = min(max(lam_path(:,t), 0), 1);
-    sAH = sA_path(:,t) + sH_path(:,t);
-    u2q = min(max(sAH ./ max(1 - lam_path(:,t), 1e-12), 0), 1);
-    u3q = min(max(sA_path(:,t) ./ max(sAH, 1e-12), 0), 1);
+    % Cube coordinates. Off-grid lookups are counted on the raw coordinates:
+    % past the last node the policy is extrapolated flat, so such a household
+    % gets the policy of a different state.
+    sAH    = sA_path(:,t) + sH_path(:,t);
+    u1_raw = lam_path(:,t);
+    u2_raw = sAH ./ max(1 - lam_path(:,t), 1e-12);
+    u3_raw = min(max(sA_path(:,t) ./ max(sAH, 1e-12), 0), 1);
+    n_off(1) = n_off(1) + sum(u1_raw < p.u1_grid(1) - 1e-12 | u1_raw > p.u1_grid(end) + 1e-12);
+    n_off(2) = n_off(2) + sum(u2_raw < p.u2_grid(1) - 1e-12 | u2_raw > p.u2_grid(end) + 1e-12);
+    n_off(3) = n_off(3) + sum(u3_raw < p.u3_grid(1) - 1e-12 | u3_raw > p.u3_grid(end) + 1e-12);
+
+    u1q = min(max(u1_raw, p.u1_grid(1)), p.u1_grid(end));
+    u2q = min(max(u2_raw, p.u2_grid(1)), p.u2_grid(end));
+    u3q = u3_raw;
 
     cf_raw = pp_c{t}(u1q, u2q, u3q);
     pi_raw = pp_pi{t}(u1q, u2q, u3q);
@@ -172,49 +163,45 @@ for t = 1:T
     n_clamp_pi = n_clamp_pi + sum(abs(pi_ - pi_raw) > 1e-10);
     c_path(:,t)  = cf;
     pi_path(:,t) = pi_;
-    F_t          = phi_floor * Y_path(:,t);
+    F_t          = p.phi_floor * Y_path(:,t);
     C_path(:,t)  = cf .* max(LW, 0);
     short        = LW < F_t;
     C_path(short, t) = F_t(short);
+    fl_path(:,t) = short;
     n_floored    = n_floored + sum(short);
+    cb_path(:,t) = min(max(1e-3, p.c_floor_frac ./ (LW ./ W_path(:,t))), 0.5);
 
     if t == T
-        % Bequest: liquid wealth post-consumption + housing net of the
-        % seller transaction cost (if owner). Pension A is forfeited at
-        % death (annuity convention).
+        % Liquid wealth left after consumption plus the house net of the sale
+        % cost (owners). The DC pot is not bequeathable.
         bequest_path = max(LW - C_path(:,t), 0) + h_beq_fac * H_path(:,t);
         break
     end
 
-    % No-borrow safety clamp on liquid post-saving
-    X_post = max(LW - C_path(:,t), 0);
+    X_post  = max(LW - C_path(:,t), 0);
     n_negLW = n_negLW + sum(LW < 0);
 
-    % Returns
-    R_S_draw = exp(p.mu_S + p.sigma_S * eps_S(:,t));
-    R_H_draw = exp(mu_HR + sigma_HR * eps_H(:,t));
-    R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
-    R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
+    R_S_draw    = exp(p.mu_S + p.sigma_S * eps_S(:,t));
+    R_H_draw    = exp(mu_HR + sigma_HR * eps_H(:,t));
+    R_S_at_draw = config.after_tax_stock(p, R_S_draw);
+    R_X         = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;
 
-    % Pension return for transition t -> t+1: the share applies on the t-side.
-    % Under free choice it is the household's own interpolated policy, clamped
-    % to [0,1] because a linear blend of node values can overshoot; otherwise
-    % the fund's glide. Scalar under the glide, N x 1 under free choice --
-    % every use below is elementwise, so both shapes work unchanged.
-    if use_taupol && t < T
-        tau_t = min(max(pp_tau{t}(u1q, u2q, u3q), 0), 1);
+    tau_t   = tau_e(t);
+    tau_R_t = reit_e(t);
+    tau_A_path(:,t)  = tau_t;
+    reit_A_path(:,t) = tau_R_t;
+    if reit_on
+        R_REIT_draw = exp(mu_REIT + sigma_REIT * eps_R(:,t));
     else
-        tau_t = p.tau_S(t);
+        R_REIT_draw = ones(N, 1);
     end
-    tau_A_path(:,t) = tau_t;
-    pt_surv    = profile.p_surv(t);
-    R_A_with   = ((1 - tau_t) * p.Rf + tau_t .* R_S_draw) ./ max(pt_surv, 1e-8);
+    R_A_with = ((1 - tau_t - tau_R_t) .* p.Rf + tau_t .* R_S_draw ...
+                + tau_R_t .* R_REIT_draw) ./ max(profile.p_surv(t), 1e-8);
 
-    % Pension account dynamics
     if is_retired
-        A_pre = A_path(:,t) - ann_pay;            % stock after payout
+        A_pre = A_path(:,t) - ann_pay;
     else
-        A_pre = A_path(:,t) + kappa_t .* Y_path(:,t);   % stock after contribution
+        A_pre = A_path(:,t) + kappa_t .* Y_path(:,t);
     end
 
     X_path(:,t+1) = R_X .* X_post;
@@ -229,7 +216,7 @@ for t = 1:T
         Y_path(:,t+1) = Y_path(:,t);
     end
 
-    W_path(:,t+1) = X_path(:,t+1) + A_path(:,t+1) + H_path(:,t+1) + Y_path(:,t+1);
+    W_path(:,t+1)   = X_path(:,t+1) + A_path(:,t+1) + H_path(:,t+1) + Y_path(:,t+1);
     lam_path(:,t+1) = Y_path(:,t+1) ./ W_path(:,t+1);
     sA_path(:,t+1)  = A_path(:,t+1) ./ W_path(:,t+1);
     sH_path(:,t+1)  = H_path(:,t+1) ./ W_path(:,t+1);
@@ -249,11 +236,24 @@ sim.C = C_path;  sim.LW = LW_path;
 sim.m_pay = m_path;
 sim.ann_pay = ann_pay_path;
 sim.disp_inc = disp_inc;
+sim.c_bound = cb_path;
+sim.floored = fl_path;
 sim.bequest = bequest_path;
-sim.tau_A = tau_A_path;      % applied DC equity share on the t -> t+1 transition (N x T-1)
+sim.tau_A  = tau_A_path;
+sim.reit_A = reit_A_path;
 sim.ages = (p.age0 : p.age0 + p.T - 1);
 sim.N = N;
 sim.is_owner = is_owner;
+sim.X0_frac = X0_frac;
 sim.diagnostics = struct('n_clamp_c', n_clamp_c, 'n_clamp_pi', n_clamp_pi, ...
-                         'n_negLW', n_negLW, 'n_floored', n_floored);
+                         'n_negLW', n_negLW, 'n_floored', n_floored, ...
+                         'n_offgrid_u1', n_off(1), 'n_offgrid_u2', n_off(2), ...
+                         'n_offgrid_u3', n_off(3));
+
+if any(n_off > 0)
+    warning('paths_lna:offgrid', ...
+        ['%d of %d household-year policy lookups fell outside the state grid ' ...
+         '(u1: %d, u2: %d, u3: %d) and were extrapolated flat from the edge. ' ...
+         'Widen the affected axis; see GRIDS.md.'], sum(n_off), N * T, n_off);
+end
 end

@@ -12,47 +12,31 @@ function p_surv = survival(p, table_path)
 %   The CBS export is a semicolon-delimited, quoted CSV with Dutch decimal
 %   commas, a multi-line header, and age labels like "42 jaar" /
 %   "99 jaar of ouder", so it is parsed by regexp rather than readmatrix.
-%
-%   Passing an .xlsx path keeps the legacy sex-specific reader
-%   (Coefficients_probability_survival.xlsx, column p.sex + 1) for
-%   reproducing pre-2026-07 runs.
+%   The default file is found next to the +config folder, so the model runs
+%   from any working directory.
 %
 %   Coverage: ages age0 .. age0+T-2 must be present in the source; the
 %   terminal age age0+T-1 needs no q_x because p_surv(T) is forced to 0.
 
 if nargin < 2 || isempty(table_path)
-    table_path = 'CBSunisexmortality21-26.csv';
+    repo_root  = fileparts(fileparts(mfilename('fullpath')));
+    table_path = fullfile(repo_root, 'CBSunisexmortality21-26.csv');
 end
 
 expected_ages = (p.age0 : p.age0 + p.T - 1).';
 needed_ages   = expected_ages(1 : end - 1);      % terminal age is forced to p_surv = 0
 
-[~, ~, ext] = fileparts(table_path);
-
-if strcmpi(ext, '.csv')
-    [ages_in_file, q_death] = read_cbs_csv(table_path);
-    [tf, loc] = ismember(needed_ages, ages_in_file);
-    if ~all(tf)
-        error('survival:ageMismatch', ...
-            'CBS life table %s does not cover ages %d-%d (T=%d, age0=%d); missing e.g. age %d', ...
-            table_path, needed_ages(1), needed_ages(end), p.T, p.age0, ...
-            needed_ages(find(~tf, 1)));
-    end
-    p_surv               = zeros(p.T, 1);
-    p_surv(1 : end - 1)  = 1 - q_death(loc);
-    p_surv(p.T)          = 0;
-else
-    raw = readmatrix(table_path);
-    ages_in_sheet = raw(:, 1);
-    [tf, loc] = ismember(expected_ages, ages_in_sheet);
-    if ~all(tf)
-        error('survival:ageMismatch', ...
-            'Survival sheet does not cover ages %d-%d (T=%d, age0=%d)', ...
-            expected_ages(1), expected_ages(end), p.T, p.age0);
-    end
-    p_surv      = raw(loc, p.sex + 1);
-    p_surv(p.T) = 0;
+[ages_in_file, q_death] = read_cbs_csv(table_path);
+[tf, loc] = ismember(needed_ages, ages_in_file);
+if ~all(tf)
+    error('survival:ageMismatch', ...
+        'CBS life table %s does not cover ages %d-%d (T=%d, age0=%d); missing e.g. age %d', ...
+        table_path, needed_ages(1), needed_ages(end), p.T, p.age0, ...
+        needed_ages(find(~tf, 1)));
 end
+p_surv               = zeros(p.T, 1);
+p_surv(1 : end - 1)  = 1 - q_death(loc);
+p_surv(p.T)          = 0;
 
 if any(p_surv(1 : end - 1) <= 0 | p_surv(1 : end - 1) >= 1)
     error('survival:range', 'Survival probabilities outside (0,1) at t = %s', ...

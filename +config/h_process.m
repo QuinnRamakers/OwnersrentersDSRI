@@ -9,7 +9,7 @@ function [mu, sigma] = h_process(p)
 %   Owner:  H is the house. H_{t+1}/H_t is the house-price return, and H also
 %           carries resale value into the bequest. Uses (mu_H, sigma_H).
 %   Renter: H is a rent index. It has no resale or bequest value there
-%           (h_beq_fac = 0 in solver.bellman_step), and its only role is to set
+%           (h_beq_fac = 0 in solver.bellman_step_lna), and its only role is to set
 %           the rent alpha*H_t, so H_{t+1}/H_t is the rent increase. Uses
 %           (mu_R, sigma_R).
 %

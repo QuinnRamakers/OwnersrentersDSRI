@@ -1,307 +1,113 @@
-function p = params()
-%PARAMS  Calibration for the CGM life-cycle model with DC pension and housing.
+function p = params(do_derive)
+%PARAMS  Production calibration: the primitive inputs of the model.
 %
-%   Sources, derivations and open questions for every value here are in
-%   CALIBRATION.md. This file keeps one-line comments.
+%   p = config.params()          % primitives plus everything derived from them
+%   p = config.params(false)     % primitives only
 %
-%   State (lambda, s_A, s_H) with:
-%     W      = X + A + H + Y         (total wealth incl. income, always > 0)
-%     lambda = Y / W                       in [0, 1]
-%     s_A    = A / W                       in [0, 1]   (DC pension share)
-%     s_H    = H / W                       in [0, 1]   (housing share)
-%     s_X    = X / W = 1 - lambda - s_A - s_H          (liquid wealth share)
-%   Feasibility: lambda + s_A + s_H <= 1.
+%   Everything set here is an input. What follows from the inputs -- the
+%   log-return moments, the retirement period, the DC glide path, the
+%   contribution-rate profile, the mortgage schedule and the state grid -- is
+%   built by config.derive, which this calls last. To change the calibration,
+%   override fields on p and call config.derive(p) again; the calibration
+%   ladder (+ladder) does exactly that. Sources are in CALIBRATION.md.
 %
-%   Choices: (c, pi)   c  = consumption fraction of liquid wealth
-%                      pi = equity share of saved liquid wealth
-%   Pension equity share tau_S is a (pre-determined) glide path.
+%   The model is solved on a cube of normalised coordinates,
+%       u1 = Y/W,   u2 = (A+H)/(W-Y),   u3 = A/(A+H),   W = X + A + H + Y,
+%   with liquid wealth X, DC pot A, housing (owner) or rent index (renter) H
+%   and income Y. Choices: c, the share of liquid resources consumed, and pi,
+%   the equity share of liquid saving. The DC fund follows a glide path.
 %
-%   Two scenarios via p.is_owner:
-%     Renter (false): pays alpha * H_t per period; bequest base = X.
-%     Owner  (true ): pays (theta + m_rate_t) * H_t per period; bequest = X + H.
-%   (DC pension is never bequeathable -- standard CGM convention.)
-%
-%   Every euro-denominated input is in 2025 prices. Only income_price_factor
-%   and franchise carry a price year and they must move together; see
-%   CALIBRATION.md.
+%   Euro amounts are in 2025 prices.
 
-% Time horizon. age0 = 25 is where the BKV income table starts, so the working
-% profile needs no below-sample extrapolation; T = 76 keeps the terminal age
-% at 100.
-p.T              = 76;
-p.age0           = 25;
-p.retirement_age = 67;      % statutory AOW eligibility age (2026)
-p.sex            = 1;       % INCOME profile only (1=men, 2=women, 3=pooled); mortality is unisex
+% Time
+p.T              = 76;        % periods, ages 25-100
+p.age0           = 25;        % first age of the BKV income table
+p.retirement_age = 67;        % statutory AOW age
+p.sex            = 1;         % income profile: 1 men, 2 women, 3 pooled (mortality is unisex)
 
 % Preferences
-p.gamma = 5;         % risk aversion (CRRA): Cocco, Gomes & Maenhout (2005)
-p.beta  = 0.96;       % time discount factor: Larsen et al. (2023)
-p.chi   = 0.0;        % bequest intensity: off in the baseline
+p.gamma = 5;                  % relative risk aversion
+p.beta  = 0.96;               % time discount factor
+p.chi   = 0;                  % bequest intensity
 
 % Labour income
-%   'table' is the direct Been-Knoef-Vethaak (2026) age-effect lookup
-%   (config.income_table_bkv); 'poly' falls back to the CGM cubic below.
-p.income_source = 'table';
-p.income_coef = [0.530339, 0.16818, -0.323371, 0.19704];   % CGM (2005) HS-group cubic, used only by 'poly'
-p.sigma_l_log = 0.1032;     % CGM (2005) HS-group PERMANENT shock std; the process here is a pure random walk
-p.replacement = 0.307;      % AOW-only first-pillar replacement: DNB "Toereikendheid van pensioenen" Table 3
-p.income_price_factor = 1.3456;   % CPI(2025)/CPI(2015), CBS 83131NED -- rescales the BKV 2015-euro anchor
+p.income_source       = 'table';   % 'table': BKV age effects in euros; 'poly': CGM cubic, not in euros
+p.income_coef         = [0.530339, 0.16818, -0.323371, 0.19704];   % CGM (2005) high-school cubic, 'poly' only
+p.sigma_l_log         = 0.1032;    % permanent income shock std; log income is a random walk
+p.replacement         = 0.307;     % first-pillar (AOW) income as a share of final wage
+p.income_price_factor = 1.3456;    % CPI(2025)/CPI(2015), rescales the BKV euro anchor
 
 % Financial market
-p.r             = 0.011;   % real risk-free rate
-p.mu_S_level    = 0.04;    % equity EXCESS return level (over r_f)
-p.sigma_S_level = 0.16;    % equity return vol
-% Shock correlations (income L, stock S, housing H). Wired through a Cholesky
-% factor in grids.shock_grid and simulate.paths, so setting them costs nothing.
-p.corr_SL       = 0.0;     % corr(stock return, income shock)
-p.corr_HL       = 0.0;     % corr(housing return, income shock)
-p.corr_SH       = 0.0;     % corr(stock return, housing return)
+p.r             = 0.011;      % real risk-free rate
+p.mu_S_level    = 0.04;       % equity excess return
+p.sigma_S_level = 0.16;       % equity return volatility
+p.corr_SL       = 0;          % corr(stock return, income shock)
+p.corr_HL       = 0;          % corr(H growth, income shock)
+p.corr_SH       = 0;          % corr(stock return, H growth)
 
-% Pension parameters
-%   Contributions are levied on gross income above a franchise:
-%       kappa_t = kappa_base * max(Y_t - F, 0) / Y_t
-%   so the effective rate on gross income is an AGE PROFILE, not a scalar.
-%   p.kappa is built below as a T x 1 vector; solver and simulator index it as
-%   p.kappa(min(t, numel(p.kappa))), which keeps legacy scalar-kappa p-structs
-%   and the p.kappa = 0 overrides in run_nodc working.
-%
-%   kappa_t is evaluated on the DETERMINISTIC income profile, not realised Y_t:
-%   the model is homothetic in W (only lambda = Y/W is a state), so a rate
-%   depending on realised Y would break the normalised state space.
-p.kappa_base = 0.186;    % contribution rate above the franchise (OECD)
-p.franchise  = 18475;    % minimum AOW-franchise, 1-1-2025 (Belastingdienst CAP)
-p.delta     = 0.0;       % legacy proportional wedge on gross income; NOT the paper's delta (that is p.tau_inc)
-% tau_S is a glide-path lifecycle fund: 0.8 equity while (retirement_age - age)
-% exceeds 28 years (so flat through age 39), then linear down to 0 at
-% retirement, 0 thereafter. Vector built below, after t_ret.
-%
-% Free DC investment choice: when choose_tau_S is true the DC equity share
-% becomes a THIRD choice variable (c, pi, tau) in solver.bellman_step (simplex
-% solver only). The annuity is still priced off the plan's glide path. N_tau
-% sizes the tau seed grid; the glide value is appended to it.
-p.choose_tau_S = false;
-p.N_tau        = 11;
+% DC pension
+p.kappa_base = 0.186;         % contribution rate on income above the franchise; 0 removes the DC pillar
+p.franchise  = 18475;         % AOW franchise, euros
+p.glide_cap  = 0.8;           % fund equity share far from retirement
+p.glide_span = 35;            % fund equity share = min(glide_cap, years to retirement / glide_span)
+p.tau_decum  = [];            % fund equity share in retirement; [] keeps the glide's zero
 
-% Housing
-p.is_owner      = false;     % flip true for owner scenario
-p.alpha         = 0.06;      % rent-to-price ratio (fraction of H_t / period)
-p.theta         = 0.015;     % maintenance cost fraction
-p.mu_H_level    = 0.027;     % real house-price drift (own return, not excess)
-p.sigma_H_level = 0.037;     % house-price return vol
-p.h_mult        = 4.0;       % H_0 = h_mult * Y_0 -- placeholder, see CALIBRATION.md
-p.r_m           = 0.0136;    % real mortgage rate (>= r_f)
-p.N_mort        = 30;        % mortgage term (years)
-%   LTV: only 1.00 is implemented. The household is endowed with the house at
-%   t=1 (X_0 = 0, H_0 = h_mult*Y_0) and services a mortgage on its full value.
-%   LTV < 1 needs a down-payment endowment (negative initial X) the simulator
-%   does not model, so the assert below fails loudly. The field is wired into
-%   the amortisation rate so the payment scales once that endowment exists.
-p.LTV           = 1.00;
-p.sell_cost     = 0.025;     % seller transaction cost at bequest; inert while chi = 0
+% REIT leg of the DC fund. A zero share and zero correlations remove the fourth shock.
+p.tau_REIT         = 0;       % REIT share of the fund, scalar or T-1 path
+p.reit_decum       = [];      % REIT share in retirement; [] keeps tau_REIT
+p.mu_REIT_level    = 0.03;    % REIT excess return (placeholder)
+p.sigma_REIT_level = 0.12;    % REIT return volatility (placeholder)
+p.corr_RL          = 0;       % corr(REIT return, income shock)
+p.corr_RS          = 0;       % corr(REIT return, stock return)
+p.corr_RH          = 0;       % corr(REIT return, H growth)
 
-% Rent process (renters only). The renter's H state is a rent index rather than
-% a house: it has no resale or bequest value, and its only role is to set the
-% rent alpha*H_t. Rent increases are therefore their own process, calibrated on
-% rent data, not the house-price return. See config.h_process.
-%
-% Both figures must be real (CPI-deflated), on the same footing as
-% mu_H_level -- published Dutch rent-increase series are nominal.
-%
-% Setting these to the housing pair reproduces the pre-split model, which is
-% how the old/new comparison runs are configured.
-p.mu_R_level    = 0.0097;    % real rent growth, mean
-p.sigma_R_level = 0.018;     % real rent growth, vol
+% Housing. Renters pay alpha*H on a rent index H; owners pay (theta + mortgage)*H.
+p.is_owner      = false;      % tenure
+p.h_mult        = 4.0;        % H at entry as a multiple of income (placeholder); 0 removes housing
+p.alpha         = 0.06;       % rent as a share of the rent index
+p.theta         = 0.015;      % owner maintenance, share of H
+p.mu_H_level    = 0.027;      % real house-price growth
+p.sigma_H_level = 0.037;      % house-price volatility
+p.mu_R_level    = 0.0097;     % real rent growth (the renter's H)
+p.sigma_R_level = 0.018;      % rent growth volatility
+p.r_m           = 0.0136;     % real mortgage rate
+p.N_mort        = 30;         % mortgage term, years
+p.LTV           = 1.00;       % only 1.00 is implemented
+p.sell_cost     = 0.025;      % sale cost when the house is bequeathed
 
-% Consumption floor, as a fraction of CURRENT GROSS INCOME Y_t. When a
-% household's own liquid resources fall short of phi_floor * Y_t the shortfall
-% is paid from outside, it consumes the floor and saves nothing that period.
-% It is a guarantee, not a mandate: a household that can already afford the
-% floor is free to consume below it and save the difference.
-%
-% phi_floor = 0 switches the floor off and restores the pre-floor sentinel
-% (V = -1e15 where outgoings exceed resources), so old calibrations rerun
-% unchanged. Any positive value removes the sentinel entirely.
-%
-% Expressed against income rather than as a euro level so the model stays
-% homothetic: normalised, the floor is phi_floor * lambda, a function of the
-% existing state, so no fourth state variable is needed. In retirement Y is
-% constant in real terms, so it is a level floor exactly where it binds.
-%
-% Its job is to make C = 0 unreachable. Utility is unbounded below at
-% gamma > 1, so a state consuming exactly zero carries u = -inf, and any arm
-% that can reach one has E[U] = -inf and cannot be ranked against another.
-%
-% At 1e-6 the floor is barely above zero, which is deliberate: ruin stays
-% catastrophic. Be aware of what that implies for welfare. u(1e-6) exceeds
-% u(30000) by 8e41 while the whole beta-and-survival discount spans 1.5e3, so
-% in double precision a single floored year annihilates an entire lifetime of
-% ordinary consumption. E[U] then ranks arms purely by how often the floor
-% binds. That is a legitimate criterion, and it is the one in force at this
-% value -- it is not a criterion that can separate arms differing only in
-% their consumption paths. Raising phi_floor is the only change needed:
-% phi_floor = 1 puts it at the AOW, the Dutch social minimum.
-p.phi_floor = 1e-6;
+% Taxes. EET on the DC pillar; box 3 on the liquid account only.
+p.tau_inc        = 0.382;     % income tax on wages, AOW and annuity payouts
+p.tau_cg_bond    = 0.36;      % tax on the liquid account's bond return
+p.tau_cg_stock   = 0.36;      % tax on the liquid account's stock gains
+p.cg_loss_offset = false;     % true rebates stock losses at the same rate
+p.tau_wealth     = 0;         % alternative box-3 levy on the liquid balance
 
-% Which coordinate system a run is solved on. The simplex and the LNA cube are
-% different discretisations of one model and a p-struct carries both sets of
-% grid vectors, so nothing else distinguishes them and
-% utility.param_fingerprint would rate a simplex file and a cube file
-% comparable. The tag is what keeps them apart, and the LNA solvers assert it.
-%
-% The cube is the default (utility.active_grid); the simplex is selected with
-% CGM_GRID=simplex and is maintained, not deprecated -- solver.solve_lifecycle,
-% simulate.paths and the simplex branch of utility.build_state_grids are all
-% live, and solver.solve / simulate.forward dispatch to whichever this names.
-%
-% OPEN GATE on the cube for a full production sweep. The cube's accuracy comes
-% from every point being feasible, but its u2 axis is uniform, and the
-% convergence ladder found that uniform u2 cells interpolate across the value
-% cliff as liquid wealth goes to zero and overstate continuation values there.
-% That was measured on the coarse [14 11 11] sweep cube; the [28 20 20]
-% default below has far more resolution but the same defect in kind. The fix
-% is p.grid_pow > 1, which grades u2 toward the cliff (utility.build_state_grids),
-% and it is NOT on by default because turning it on moves every number and the
-% ladder has not been re-run since. See TODO section 8.
-p.grid_type = utility.active_grid();
+% Consumption floor and search guard
+p.phi_floor    = 1e-6;        % resources guaranteed each period, share of current gross income
+p.c_floor_frac = 0.01;        % lower bound of the consumption search, share of W
 
-% Polish version in solver.bellman_step. 2 scales the fmincon objective by a
-% per-period factor and seeds it from the t+1 policy at the same node; 1 is the
-% original polish and is bit-identical to every solve before this.
-%
-% Adopted knowing it is a null result on output: measured over full solves at
-% [25 15 15]/gh_n=5, both tenures, version 2 reproduced version 1 on every
-% digit of Vt0, floor incidence, consumption and the equity share. What it buys
-% is a polish that actually moves (unscaled, the objective sat nine orders
-% below fmincon's FunctionTolerance, so it converged without iterating), the
-% derivative-free refinement that the glide branch never had, and an end to the
-% singular-KKT warnings. What it costs is runtime.
-%
-% It is in param_fingerprint, so files solved under the two versions do not
-% rate as welfare-comparable even though they agree.
-p.polish_ver = 2;
+% Entry state: liquid wealth at 25 in years of income
+p.b0    = 3400 / (33000 * 1.3031);   % median deposits under 25 over the age-25 wage
+p.b_alt = 9800 / (33000 * 1.3031);   % same for ages 25-35
 
-% Seed search for the polish. 'none' drops the NC x NP grid search and starts
-% the optimiser straight from the previous year's policy -- the architecture
-% the coauthor's solver uses. 'full' keeps the grid search. Ignored unless
-% polish_ver >= 2, since without a warm start there is nothing to start from.
-p.grid_mode = 'none';
+% Numerics
+p.grid_dims     = [20 20 12]; % base nodes on (u1, u2, u3); the entry anchors add up to two on u1 and u2
+p.gh_n          = 5;          % Gauss-Hermite nodes per shock
+p.gh_n_reit     = [];         % nodes for the REIT shock; [] uses gh_n
+p.N_c           = 41;         % sets the consumption step of the per-node search
+p.N_pi          = 41;         % sets the equity-share step of the per-node search
+p.use_refine    = true;       % global (c, pi) sweep before fmincon at every node
+p.interp_method = 'linear';   % continuation interpolant: 'linear', 'makima' or 'spline'
+p.lambda_lo     = 0.0008;     % bottom of the u1 axis
+p.lambda_hi     = [];         % top of the u1 axis; [] = min(0.9, 3/(1+h_mult)), or 1 without housing
+p.grid_pow      = 1;          % > 1 bunches u1 nodes toward the bottom
+p.grid_pow_u2   = 1;          % > 1 bunches u2 nodes toward 1
+p.u2_lo         = 0;          % bottom of the u2 axis
+p.u3_lo         = 0;          % bottom of the u3 axis
+p.u3_hi         = 1;          % top of the u3 axis
+p.grid_nodes    = [];         % explicit axis nodes, overriding the rules above
 
-% ALTERNATIVE state grid: (lambda, s_A, s_H) on the simplex lambda+s_A+s_H<=1,
-% live under CGM_GRID=simplex. Roughly a sixth of these nodes are feasible; the
-% rest are masked and filled from their nearest feasible neighbour
-% (solver.build_fill_map), which is the machinery the cube does without.
-% gh_n^3 = 343 joint Gauss-Hermite shock nodes per state. gh_n is shared by
-% both coordinate systems.
-p.gh_n     = 7;
-p.N_lambda = 40;
-p.N_sA     = 40;
-p.N_sH     = 40;
-p.lambda_grid = linspace(0, 1, p.N_lambda).';
-p.sA_grid     = linspace(0, 1, p.N_sA).';
-p.sH_grid     = linspace(0, 1, p.N_sH).';
-
-% Welfare anchors: initial liquid buffer in YEARS of the model's own age-25
-% gross income. b0 is the calibrated value, b_alt an upper sensitivity. Both
-% sides of each ratio are in 2024 euros, so they are price-level-free.
-% config.insert_anchor_nodes (end of this file) puts the corresponding
-% (lambda, s_H) coordinates on the grids as EXACT nodes, so welfare at t=1 is
-% a solved value rather than a trilinear blend.
-p.b0    = 3400 / (33000 * 1.3031);    % = 0.0791 years of entry income
-p.b_alt = 9800 / (33000 * 1.3031);    % = 0.2279
-
-% Inner (choice) grid seeding the per-state fmincon polish in bellman_step.
-%   N_c  : must stay fine -- the objective is multimodal in c and a coarse
-%          grid seeds the wrong basin.
-%   N_pi : keep at 41 -- the objective is flat in pi near the optimum, so
-%          coarsening biases the equity-share policy low and noisy even though
-%          the value function barely moves.
-p.N_c  = 41;
-p.N_pi = 41;
-
-% PRODUCTION cube state grid (lambda, n-tilde, a) -- see bellman_step_lna:
-% u1 = lambda, u2 = (A+H)/(W-Y), u3 = A/(A+H). Every point of [0,1]^3 is
-% feasible, so 28x20x20 matches the 40^3 grid's feasible-point count at much
-% less memory, and no feasibility mask or fill map is needed at all. lambda
-% gets the extra resolution because it is empirically the steepest policy
-% axis. utility.production_grid is what the runners read; these are its
-% defaults, and the note there on sweep cost is worth reading before launching
-% one.
-p.N_u1 = 28; p.N_u2 = 20; p.N_u3 = 20;
-p.u1_grid = linspace(0, 1, p.N_u1).';
-p.u2_grid = linspace(0, 1, p.N_u2).';
-p.u3_grid = linspace(0, 1, p.N_u3).';
-p.skip_polish = false;      % lna only: grid-search without the fmincon polish
-
-% Taxes
-%   EET pension treatment: contributions are deductible, the fund grows
-%   tax-free, and the annuity payout and AOW are taxed as income on receipt.
-%   The private account is taxed on its returns each period at the box-3 rate,
-%   while the DC fund is sheltered -- that shelter is the DC account's tax
-%   advantage.
-p.tau_inc      = 0.382;    % income tax on wages, AOW and annuity payout (CBS, 2019)
-p.tau_cg_bond  = 0.36;     % box-3 rate on the private account's bond return; DC fund sheltered
-p.tau_cg_stock = 0.36;     % box-3 rate on the private account's stock gains (no loss offset)
-p.tau_wealth   = 0.0;      % alternative box-3 levy on the balance; off (calibrated value 0.0197)
-
-% Derived
-p.Rf      = 1 + p.r;
-% mu_S_level is the EXCESS return level (over r_f): ln(R_S) = ln(R_f) + mu_S + eps.
-% Total expected gross level return is (1 + r + mu_S_level).
-p.sigma_S = sqrt(log(1 + (p.sigma_S_level / (1 + p.r + p.mu_S_level))^2));
-p.mu_S    = log(1 + p.r + p.mu_S_level) - 0.5 * p.sigma_S^2;
-% mu_H_level is the house's OWN log return (not excess).
-p.sigma_H = sqrt(log(1 + (p.sigma_H_level / (1 + p.mu_H_level))^2));
-p.mu_H    = log(1 + p.mu_H_level) - 0.5 * p.sigma_H^2;
-% Rent-index growth, same level-to-log conversion as the house.
-p.sigma_R = sqrt(log(1 + (p.sigma_R_level / (1 + p.mu_R_level))^2));
-p.mu_R    = log(1 + p.mu_R_level) - 0.5 * p.sigma_R^2;
-p.t_ret   = p.retirement_age - p.age0 + 1;
-
-% Pension glide path tau_S, length T-1 (transitions).
-ages_grid   = (p.age0 : p.age0 + p.T - 2).';
-glide       = max(0.0, min(0.8, (p.retirement_age - ages_grid) / 35));
-glide(ages_grid >= p.retirement_age) = 0.0;
-p.tau_S_raw = glide;
-p.tau_S     = glide;
-
-% DECUMULATION strategy: the DC equity share held from t_ret onward. Free
-% investment choice is accumulation-only -- the solver never re-picks tau after
-% retirement -- so this is the single knob controlling the retired fund, and
-% config.tau_effective splices it onto the glide above.
-%
-% [] keeps the glide's own retirement values, which are 0 (all-bond fund). Set
-% a scalar for a constant share or a vector for a path; see config.tau_effective
-% for the accepted lengths.
-%
-% Whatever is set here is PRICED: pension.annuity_price reads the same path, so
-% the annuity and the portfolio can never disagree. a_t falls as the share
-% rises, so this materially moves the retired budget.
-p.tau_decum = [];
-
-% Effective DC contribution rate on GROSS income, kappa_t (T x 1), from the
-% franchise rule evaluated on the deterministic income profile. Zero from
-% retirement on (the solver and simulator branch on is_retired anyway).
-assert(p.LTV == 1.00, 'params:LTV', ...
-    ['LTV = %.4f: only 1.00 is implemented. LTV < 1 needs a down-payment ' ...
-     'endowment (negative initial X) that the simulator does not model.'], p.LTV);
-logY_det       = config.income_profile(p);
-Y_det          = exp(logY_det);
-p.kappa        = zeros(p.T, 1);
-work_t         = 1 : (p.t_ret - 1);
-p.kappa(work_t) = p.kappa_base .* max(Y_det(work_t) - p.franchise, 0) ./ Y_det(work_t);
-
-% Mortgage amortisation rate. Homothetic approximation: applied as a rate on
-% the CURRENT H_t for years 1..N_mort, zero thereafter, so the payment tracks
-% the house price rather than staying level. Scaled by LTV -- the annuity
-% payment is on the borrowed fraction.
-amort_rate     = p.LTV * p.r_m * (1 + p.r_m)^p.N_mort / ((1 + p.r_m)^p.N_mort - 1);
-p.m_rate_path  = zeros(p.T - 1, 1);
-p.m_rate_path(1 : min(p.N_mort, p.T - 1)) = amort_rate;
-
-% Put the calibrated welfare anchors on the lambda / s_H grids as exact nodes.
-% Last, because it depends on h_mult, b0, b_alt and the grid vectors all being
-% set. Any script that REBUILDS the grids after this must call
-% config.insert_anchor_nodes again -- solver.solve_lifecycle asserts it.
-p = config.insert_anchor_nodes(p);
-
+if nargin < 1 || do_derive
+    p = config.derive(p);
+end
 end

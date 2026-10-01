@@ -5,20 +5,13 @@ function tau_e = tau_effective(p)
 %
 %   Splices two regimes at retirement:
 %
-%     ACCUMULATION (t < t_ret)   p.tau_S(t), the glide. Under p.choose_tau_S
-%       the solver optimises tau per state and this is only the seed and
-%       fallback, but it is still what the glide arm uses.
-%
+%     ACCUMULATION (t < t_ret)   p.tau_S(t), the glide built by config.derive.
 %     DECUMULATION (t >= t_ret)  p.tau_decum if set, else p.tau_S(t).
 %
-%   Why the split. Free tau choice is accumulation-only, and that restriction
-%   is what keeps the annuity price correct without a new state variable.
-%   a(t) is read only for t >= t_ret and recurses backward from T, so a(t_ret)
-%   depends solely on tau from t_ret onward; make that deterministic and
-%   pension.annuity_price prices exactly the fund the household runs. The
-%   alternatives are worse: letting retirees re-choose tau turns the draw rate
-%   1/a(tau) into a decumulation-speed lever, and pinning it at conversion
-%   means carrying the conversion tau as a fourth state variable.
+%   The annuity price a(t) is read only from t_ret on and recurses backward
+%   from T, so a(t_ret) depends only on the retirement share. Keeping that
+%   share deterministic is what lets pension.annuity_price price exactly the
+%   fund the household holds.
 %
 %   p.tau_decum accepts:
 %     absent / []            keep p.tau_S over retirement too. tau_S is 0
