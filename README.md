@@ -34,7 +34,7 @@ ladder.report('quick')
 `run_model` writes `results_<tenure>.mat` and a dashboard PNG per tenure to
 the output directory: `CGM_OUTPUT_DIR` if set, otherwise the current folder.
 At the default grid (`p.grid_dims = [20 20 12]`, `gh_n = 5`) a tenure takes
-roughly 40 minutes on 16 cores. For a quick look, shrink the grid through the
+about 8 minutes on 16 cores. For a quick look, shrink the grid through the
 environment and clear it afterwards:
 
 ```matlab
@@ -87,14 +87,15 @@ not a primitive is an error.
 `ladder.run` solves a step for each tenure it has, at numerics held fixed
 along the ladder so that differences between steps come from the calibration:
 
-| numerics | grid | gh_n | households | housing step, per tenure |
+| numerics | grid | gh_n | households | step with housing and DC, per tenure (16 cores) |
 |---|---|---|---|---|
-| `quick` | [12 12 8] | 3 | 4,000 | about 5 minutes |
-| `standard` | [16 16 10] | 5 | 10,000 | about 25 minutes |
-| `fine` | [20 20 12] | 5 | 10,000 | about 40 minutes |
+| `quick` | [12 12 8] | 3 | 4,000 | under a minute; the whole ladder in 6 minutes |
+| `standard` | [16 16 10] | 5 | 10,000 | about 4 minutes |
+| `fine` | [20 20 12] | 5 | 10,000 | about 8 minutes |
 
 Steps 1-5 have no housing. Their u2 and u3 axes cannot move, so they collapse
-to two nodes and solve in seconds. Results are saved under
+to two nodes and solve in seconds; step 6 has no DC pillar yet and collapses
+u3. Results are saved under
 `<output dir>/ladder/<numerics>/` as `NN_<name>_<tenure>.mat`, each with a
 dashboard. A saved step is reused until its calibration changes; editing a
 step re-solves it and every step after it on the next `ladder.run`.
