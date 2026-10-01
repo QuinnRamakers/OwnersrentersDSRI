@@ -43,7 +43,6 @@ is_owner = p.is_owner;
 % liquid account, DC fund and housing sheltered/exempt.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
-tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
 tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
 net_inc = 1 - tau_inc;
 Rf_at   = (1 + p.r * (1 - tau_b)) * (1 - tau_w);
@@ -69,8 +68,11 @@ n_clamp_c  = 0;
 n_clamp_pi = 0;
 n_negLW    = 0;
 n_floored  = 0;
+n_offgrid_u1 = 0;
+n_offgrid_u2 = 0;
 phi_floor  = 0; if isfield(p, 'phi_floor'), phi_floor = p.phi_floor; end
-tau_A_path = zeros(N, T-1);   % applied DC equity share on the t -> t+1 transition
+tau_A_path  = zeros(N, T-1);   % applied DC STOCK share on the t -> t+1 transition
+reit_A_path = zeros(N, T-1);   % applied DC REIT  share on the t -> t+1 transition
 
 % Policy interpolants directly on the cube grid -- all nodes are feasible.
 % tau_pol only exists under free DC choice, and only for the T-1 transitions.
@@ -92,6 +94,7 @@ Y0 = exp(logY_canon(1));
 Y_path(:,1) = Y0;
 H_path(:,1) = p.h_mult * Y0;
 [mu_HR, sigma_HR] = config.h_process(p);   % house return / rent increase by tenure
+[mu_REIT, sigma_REIT] = config.reit_process(p);   % DC REIT log-return moments
 X_path(:,1) = X0_frac * Y0;
 A_path(:,1) = 0;
 W_path(:,1) = X_path(:,1) + A_path(:,1) + H_path(:,1) + Y_path(:,1);
@@ -99,23 +102,45 @@ lam_path(:,1) = Y_path(:,1) ./ W_path(:,1);
 sA_path(:,1)  = A_path(:,1) ./ W_path(:,1);
 sH_path(:,1)  = H_path(:,1) ./ W_path(:,1);
 
-% Independent standard-normal draws, then Cholesky-correlated (income L,
-% stock S, housing H) with the same Sigma used by grids.shock_grid -- no
-% resampling, just a linear transform of the same three draws.
+% Independent standard-normal draws, then Cholesky-correlated with the same
+% Sigma used by grids.shock_grid -- no resampling, just a linear transform.
+% The REIT (fourth) shock is drawn only when the leg is active, and always
+% AFTER the first three, so a REIT-off run reproduces the old L/S/H stream
+% exactly. See config.reit_effective / config.reit_active.
+reit_e  = config.reit_effective(p);       % (T-1) x 1 REIT share by transition
+reit_on = config.reit_active(p);
 eps_S_ind = randn(N, T-1);
 eps_Y_ind = randn(N, T-1);
 eps_H_ind = randn(N, T-1);
 
-Sigma_shock = [1,           p.corr_SL, p.corr_HL; ...
-               p.corr_SL,   1,         p.corr_SH; ...
-               p.corr_HL,   p.corr_SH, 1        ];
-Lc_shock = chol(Sigma_shock, 'lower');
-
-Zind_shock  = [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'];  % 3 x N*(T-1)
-Zcorr_shock = Lc_shock * Zind_shock;
-eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
-eps_S = reshape(Zcorr_shock(2, :), N, T-1);
-eps_H = reshape(Zcorr_shock(3, :), N, T-1);
+if reit_on
+    eps_R_ind = randn(N, T-1);
+    corr_RL = getfield_or(p, 'corr_RL', 0);
+    corr_RS = getfield_or(p, 'corr_RS', 0);
+    corr_RH = getfield_or(p, 'corr_RH', 0);
+    Sigma_shock = [1,           p.corr_SL, p.corr_HL, corr_RL; ...
+                   p.corr_SL,   1,         p.corr_SH, corr_RS; ...
+                   p.corr_HL,   p.corr_SH, 1,         corr_RH; ...
+                   corr_RL,     corr_RS,   corr_RH,   1      ];
+    Lc_shock = chol(Sigma_shock, 'lower');
+    Zind_shock  = [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'; eps_R_ind(:).'];
+    Zcorr_shock = Lc_shock * Zind_shock;
+    eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
+    eps_S = reshape(Zcorr_shock(2, :), N, T-1);
+    eps_H = reshape(Zcorr_shock(3, :), N, T-1);
+    eps_R = reshape(Zcorr_shock(4, :), N, T-1);
+else
+    Sigma_shock = [1,           p.corr_SL, p.corr_HL; ...
+                   p.corr_SL,   1,         p.corr_SH; ...
+                   p.corr_HL,   p.corr_SH, 1        ];
+    Lc_shock = chol(Sigma_shock, 'lower');
+    Zind_shock  = [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'];  % 3 x N*(T-1)
+    Zcorr_shock = Lc_shock * Zind_shock;
+    eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
+    eps_S = reshape(Zcorr_shock(2, :), N, T-1);
+    eps_H = reshape(Zcorr_shock(3, :), N, T-1);
+    eps_R = [];
+end
 
 % Bequeathed housing value as a fraction of H: owners' estates sell the house
 % and pay p.sell_cost. Must match the solver.
@@ -158,11 +183,29 @@ for t = 1:T
     ann_pay_path(:,t) = ann_pay;          % report GROSS payout from the fund
     disp_inc(:,t) = contrib_factor .* Y_path(:,t) + ann_pay_net - h_cost_rate .* H_path(:,t);
 
-    % Convert simulated simplex state to cube coordinates for the lookup
-    u1q = min(max(lam_path(:,t), 0), 1);
-    sAH = sA_path(:,t) + sH_path(:,t);
-    u2q = min(max(sAH ./ max(1 - lam_path(:,t), 1e-12), 0), 1);
-    u3q = min(max(sA_path(:,t) ./ max(sAH, 1e-12), 0), 1);
+    % Convert simulated simplex state to cube coordinates for the lookup.
+    % Count against the RAW coordinates, before clamping: a state outside the
+    % grid is extrapolated 'nearest' with no error and no warning, so the
+    % household silently gets a policy solved for a different state. Checking
+    % the clamped value cannot detect this, because the clamp has already moved
+    % it into range. u2 > 1 is the case that matters in production -- it means
+    % negative liquid wealth, which is then read as the zero-wealth policy.
+    sAH    = sA_path(:,t) + sH_path(:,t);
+    u2_raw = sAH ./ max(1 - lam_path(:,t), 1e-12);
+    % The first axis carries lambda only under the default p.coord1; otherwise
+    % the simulated state has to be put on the same axis the policy was solved
+    % on, at THIS age's coefficients. config.coord1 returns the identity for
+    % 'yw', so the default path is unchanged.
+    u3_raw = min(max(sA_path(:,t) ./ max(sAH, 1e-12), 0), 1);
+    u1_raw = config.coord1(p, t, ann_price).fwd(lam_path(:,t), u2_raw, u3_raw);
+    n_offgrid_u1 = n_offgrid_u1 + sum(u1_raw < p.u1_grid(1) - 1e-12 ...
+                                    | u1_raw > p.u1_grid(end) + 1e-12);
+    n_offgrid_u2 = n_offgrid_u2 + sum(u2_raw < p.u2_grid(1) - 1e-12 ...
+                                    | u2_raw > p.u2_grid(end) + 1e-12);
+
+    u1q = min(max(u1_raw, p.u1_grid(1)), p.u1_grid(end));
+    u2q = min(max(u2_raw, p.u2_grid(1)), p.u2_grid(end));
+    u3q = u3_raw;
 
     cf_raw = pp_c{t}(u1q, u2q, u3q);
     pi_raw = pp_pi{t}(u1q, u2q, u3q);
@@ -193,7 +236,7 @@ for t = 1:T
     % Returns
     R_S_draw = exp(p.mu_S + p.sigma_S * eps_S(:,t));
     R_H_draw = exp(mu_HR + sigma_HR * eps_H(:,t));
-    R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
+    R_S_at_draw = config.after_tax_stock(p, R_S_draw);       % after-tax equity (CGT + wealth tax)
     R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
 
     % Pension return for transition t -> t+1: the share applies on the t-side.
@@ -207,8 +250,18 @@ for t = 1:T
         tau_t = p.tau_S(t);
     end
     tau_A_path(:,t) = tau_t;
+    % DC REIT leg for this transition (share is 0 when the REIT is off, so the
+    % unit R_REIT_draw fallback is multiplied out and R_A_with is unchanged).
+    tau_R_t = reit_e(t);
+    reit_A_path(:,t) = tau_R_t;
+    if reit_on
+        R_REIT_draw = exp(mu_REIT + sigma_REIT * eps_R(:,t));
+    else
+        R_REIT_draw = ones(N, 1);
+    end
     pt_surv    = profile.p_surv(t);
-    R_A_with   = ((1 - tau_t) * p.Rf + tau_t .* R_S_draw) ./ max(pt_surv, 1e-8);
+    R_A_with   = ((1 - tau_t - tau_R_t) .* p.Rf + tau_t .* R_S_draw ...
+                  + tau_R_t .* R_REIT_draw) ./ max(pt_surv, 1e-8);
 
     % Pension account dynamics
     if is_retired
@@ -250,10 +303,28 @@ sim.m_pay = m_path;
 sim.ann_pay = ann_pay_path;
 sim.disp_inc = disp_inc;
 sim.bequest = bequest_path;
-sim.tau_A = tau_A_path;      % applied DC equity share on the t -> t+1 transition (N x T-1)
+sim.tau_A  = tau_A_path;     % applied DC STOCK share on the t -> t+1 transition (N x T-1)
+sim.reit_A = reit_A_path;    % applied DC REIT  share on the t -> t+1 transition (N x T-1)
 sim.ages = (p.age0 : p.age0 + p.T - 1);
 sim.N = N;
 sim.is_owner = is_owner;
 sim.diagnostics = struct('n_clamp_c', n_clamp_c, 'n_clamp_pi', n_clamp_pi, ...
-                         'n_negLW', n_negLW, 'n_floored', n_floored);
+                         'n_negLW', n_negLW, 'n_floored', n_floored, ...
+                         'n_offgrid_u1', n_offgrid_u1, 'n_offgrid_u2', n_offgrid_u2);
+
+% Off-grid lookups are not a tolerance issue: those households were assigned a
+% policy solved for a different state. Warn rather than leave it to whoever
+% reads the diagnostics struct.
+n_off = n_offgrid_u1 + n_offgrid_u2;
+if n_off > 0
+    warning('paths_lna:offgrid', ...
+        ['%d of %d household-year policy lookups fell outside the state grid ' ...
+         '(u1: %d, u2: %d) and were extrapolated to the nearest edge. Widen ' ...
+         'the affected axis -- see utility.build_state_grids.'], ...
+        n_off, N * T, n_offgrid_u1, n_offgrid_u2);
+end
+end
+
+function v = getfield_or(p, f, default)
+if isfield(p, f) && ~isempty(p.(f)), v = p.(f); else, v = default; end
 end

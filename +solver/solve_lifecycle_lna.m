@@ -9,6 +9,24 @@ assert(isfield(p, 'grid_type') && strcmp(char(p.grid_type), 'lna'), ...
     'p.grid_type must be ''lna'' to solve on the cube (got ''%s'').', ...
     char(string(getfield_default(p, 'grid_type', 'unset'))));
 
+% DC allocation feasibility: the bond leg 1 - tau_S - tau_REIT must stay
+% non-negative. Re-checked here (config.params also checks it) so a tau_REIT
+% overridden after params is still caught before it becomes a silent short.
+alloc = config.tau_effective(p) + config.reit_effective(p);
+assert(all(alloc <= 1 + 1e-12), 'solve_lifecycle_lna:reit_alloc', ...
+    'tau_S + tau_REIT exceeds 1 (max %.4f): DC bond leg would go negative.', max(alloc));
+
+% skip_polish bypasses the per-node optimiser: the (c, pi) policy is left at the
+% warm-start seed, which freezes pi at the terminal all-bond value. The solve
+% still runs, but its policies/simulations/welfare are not valid -- for smoke
+% tests only. Warn loudly so a real run never ships on it unnoticed.
+if isfield(p, 'skip_polish') && p.skip_polish
+    warning('solve_lifecycle_lna:skip_polish', ...
+        ['p.skip_polish is TRUE: the per-node optimiser is bypassed and pi is ' ...
+         'frozen at the warm-start seed. Policies, simulations and welfare from ' ...
+         'this solve are INVALID -- use only for functionality smoke tests.']);
+end
+
 %create storage objects
 N1 = numel(p.u1_grid); N2 = numel(p.u2_grid); N3 = numel(p.u3_grid); T = p.T;
 V      = zeros(N1, N2, N3, T);

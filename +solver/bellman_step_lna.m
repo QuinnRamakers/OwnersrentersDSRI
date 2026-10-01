@@ -30,10 +30,20 @@ tau_pol = [];
 if choose_tau, tau_pol = nan(N1, N2, N3); end
 
 %grid construction
+%
+% The first axis need not be lambda itself. p.coord1 (config.coord1) chooses what
+% it carries; 'yw' is lambda and is the default and bit-identical. Whatever it
+% carries, the budget below is written in wealth shares, so the axis value is
+% converted back to lambda here once, at THIS age's coefficients, and nothing
+% downstream changes. Going the other way -- next period's shares back onto the
+% axis, at NEXT period's coefficients -- is what coord_fwd does at the
+% interpolation sites.
 [U1, U2, U3] = ndgrid(p.u1_grid, p.u2_grid, p.u3_grid);
-Lam_all = U1;
-SA_all  = U2 .* (1 - U1) .* U3;
-SH_all  = U2 .* (1 - U1) .* (1 - U3);
+cnow    = config.coord1(p, t, ann_price);
+cnext   = config.coord1(p, min(t + 1, p.T), ann_price);
+Lam_all = cnow.inv(U1, U2, U3);
+SA_all  = U2 .* (1 - Lam_all) .* U3;
+SH_all  = U2 .* (1 - Lam_all) .* (1 - U3);
 
 %storage of common calculations
 gamma   = p.gamma;
@@ -44,18 +54,24 @@ inv_omg = 1 / one_m_g;
 is_owner   = p.is_owner;
 is_retired = (t >= p.t_ret);
 
-% legacy code tag from an old version that uses a more extensive optimisation (not required anymore after other code fixes but kept for legacy purposes)
-
+% skip_polish BYPASSES the per-node optimiser (below) and returns the seed
+% unchanged. It is a functionality smoke-test switch ONLY: with grid_mode='none'
+% the seed is next period's policy, so skipping the optimiser freezes pi at the
+% terminal all-bond value at every node -- the resulting policies, simulations,
+% welfare and dashboards are INVALID. Never set it for a run whose output is
+% read; solver.solve_lifecycle_lna warns when it is on. Default false.
 skip_polish = false; if isfield(p, 'skip_polish'), skip_polish = logical(p.skip_polish); end
 
-% Optimisation routine 
-%   grid_mode = 'full'  search a (c, pi) grid of guesses, then refine the best point with
-%                       fmincon. (legacy)
-%   grid_mode = 'none'  skip the grid and run fmincon from the warm start --
-%                       next period's policy at this node -- which is faster and
-%                       is the default. Requires polish_ver >= 2.
-% For normal runs it takes whatever is chosen, for free DC choice it still uses the grid as a backup that hasn't been rewritten yet with the new optimisation routine
-%some setup of boolean that assings what legacy parts of the optimisation routine need to run
+% Per-node optimiser. The household's (c, pi) [and tau under free DC choice]
+% problem at each state is solved by fmincon -- this IS the optimisation, not a
+% cosmetic polish -- started from a seed, then a derivative-free refinement
+% (refine_cpi_u) that clears the interpolation-kink ridges fmincon's finite
+% differences step over. The seed depends on grid_mode:
+%   grid_mode = 'none'  seed = the warm start (next period's policy at this
+%                       node); fmincon optimises from there. The default and
+%                       faster; requires polish_ver >= 2. (skip_tensor path)
+%   grid_mode = 'full'  seed = the argmax of an NC x NP (c, pi) grid search.
+%                       (legacy; free DC choice still uses this path.)
 if nargin < 7, pol_next = []; end
 polish_ver = 1; if isfield(p, 'polish_ver'), polish_ver = p.polish_ver; end
 use_scaling = polish_ver >= 2;
@@ -70,7 +86,6 @@ skip_tensor = strcmp(grid_mode, 'none') && ~optimise_tau && use_warm;
 % The pension fund is tax-sheltered, so its return stays pre-tax.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
-tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
 tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
 net_inc = 1 - tau_inc;     % take-home factor on taxed income
 
@@ -149,6 +164,9 @@ end
 
 tau_eff_path = config.tau_effective(p);
 tau      = tau_eff_path(t);
+% DC REIT share at this age (config.reit_effective; 0 when the REIT is off).
+reit_eff_path = config.reit_effective(p);
+tau_R    = reit_eff_path(t);
 pt       = profile.p_surv(t);
 beta_eff = p.beta * pt;
 chi = 0; if isfield(p, 'chi'), chi = p.chi; end
@@ -157,6 +175,7 @@ beq_eff = p.beta * (1 - pt) * chi;
 R_S    = shocks.joint.R_S(:);
 eps_Y  = shocks.joint.eps_Y_unit(:);
 R_H    = shocks.joint.R_H(:);
+R_REIT = shocks.joint.R_REIT(:);         % DC REIT leg (unit vector when off)
 w_join = shocks.joint.w(:);
 n_shock = numel(w_join);
 mu_g   = profile.mu_growth(t);
@@ -164,20 +183,23 @@ sig_l  = profile.sigma_l_log(t);
 G_next = exp(mu_g + sig_l .* eps_Y);
 % Candidate pension equity shares. With no choice this defaults to the assigned strategy, with free choice it creates a grid to search
 if optimise_tau
+    % Free stock share, capped at 1 - tau_R so the bond leg stays non-negative
+    % alongside the fixed REIT carve-out.
     NT = 11; if isfield(p, 'N_tau'), NT = p.N_tau; end
-    tau_grid = unique([linspace(0, 1, NT).'; tau]);
+    tau_grid = unique([linspace(0, max(1 - tau_R, 0), NT).'; tau]);
 else
     tau_grid = tau;
 end
 NTg     = numel(tau_grid);
 j_glide = find(tau_grid == tau, 1);
-% Rate of returns per realisation of the Markov process
-R_A_all = ((1 - tau_grid.') * p.Rf + R_S * tau_grid.') / pt;
+% Survival-credit DC return per shock realisation and tau slice: three legs,
+% (1-tau-tau_R) in bonds, tau in stock, tau_R in the REIT (PRE-TAX, sheltered).
+R_A_all = ((1 - tau_grid.' - tau_R) * p.Rf + R_S * tau_grid.' + R_REIT * tau_R) / pt;
 
 % After-tax returns on the liquid account
 % (stocks taxed only on gains), then the wealth tax on the end-of-period balance.
 Rf_at  = (1 + p.r * (1 - tau_b)) * (1 - tau_w);            % bond leg
-R_S_at = (R_S - tau_s .* max(R_S - 1, 0)) .* (1 - tau_w);  % stock leg
+R_S_at = config.after_tax_stock(p, R_S);                   % stock leg
 
 % Transform of the continuitions to the inverse
 arg = one_m_g * V_next; arg(arg <= 0) = NaN;
@@ -188,16 +210,147 @@ if isempty(z_finite)
 end
 z_min = min(z_finite);
 z_next(isnan(z_next)) = z_min;
-% Linear inside, gets clamped to the space if a value is outside the grid
-pp_z = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
-                          z_next, 'linear', 'nearest');
+% Linear inside, gets clamped to the space if a value is outside the grid.
+%
+% p.interp_space picks what the rule is linear IN. 'z' (default, and what every
+% solve before this option used) interpolates the certainty equivalent itself.
+% 'logz' interpolates its logarithm, i.e. geometric rather than arithmetic
+% between nodes. Both leave the node values untouched; they differ only between
+% nodes, and they differ most where z spans orders of magnitude inside one cell,
+% which is what the consumption floor does near the ruin region.
+% p.interp_method picks the STRUCTURE, which is a separate choice from the
+% transform. 'linear' (default) is shape-preserving: a value between two nodes
+% can never leave their range, which matters next to the ruin region where one
+% corner of a cell can be orders of magnitude below the others. 'makima' and
+% 'spline' are smoother and more accurate where the function is smooth, but they
+% can overshoot; makima is built to suppress that, spline is not. Extrapolation
+% stays 'nearest' in every case, so nothing runs away outside the grid.
+interp_space = 'z';
+if isfield(p, 'interp_space') && ~isempty(p.interp_space)
+    interp_space = validatestring(p.interp_space, {'z', 'logz'}, ...
+                                  'bellman_step_lna', 'p.interp_space');
+end
+interp_method = 'linear';
+if isfield(p, 'interp_method') && ~isempty(p.interp_method)
+    % 'cubic' is deliberately not offered. config.insert_anchor_nodes splices
+    % the welfare anchors into u1 and u2, so the grid is not uniformly spaced,
+    % and griddedInterpolant silently downgrades 'cubic' to 'spline' in that
+    % case -- asking for one method and getting another.
+    interp_method = validatestring(p.interp_method, ...
+                                   {'linear', 'makima', 'spline'}, ...
+                                   'bellman_step_lna', 'p.interp_method');
+end
+% p.interp_object picks WHAT is interpolated, which is a choice prior to both of
+% the above. 'z' (default, and what every solve before this used) interpolates
+% the certainty equivalent directly. 'kappa' factors the known singularity out
+% first. Next period's liquid resources per unit of wealth,
+%     m(u1,u2,u3) = s_X + cf*lambda + ann*s_A - hc*s_H,
+% are an exact affine function of the cube coordinates, and CRRA forces
+% z -> m as m -> 0: at zero resources the household consumes zero, u(0)
+% dominates the finite continuation, and the certainty equivalent collapses
+% onto current resources. So z = kappa * m with kappa in (0, 1] smooth and
+% bounded, while z itself carries the collapse. Interpolating kappa and
+% multiplying by an exactly evaluated m puts the ruin surface m = 0 where the
+% budget says it is, rather than wherever the cell containing it happens to
+% interpolate to, and keeps the interpolated object O(1) everywhere.
+%
+% p.interp_space applies to the 'z' object only; kappa has no logarithmic
+% variant because it does not span orders of magnitude.
+interp_object = 'z';
+if isfield(p, 'interp_object') && ~isempty(p.interp_object)
+    interp_object = validatestring(p.interp_object, {'z', 'kappa'}, ...
+                                   'bellman_step_lna', 'p.interp_object');
+end
+if strcmp(interp_object, 'kappa')
+    [cf_n, hc_n, ann_n] = budget_coeffs(p, min(t + 1, p.T), ann_price, net_inc);
+    % Written in lambda, then composed with the chart's inverse so that it takes
+    % AXIS coordinates like the interpolant it multiplies. Under 'yw' the inverse
+    % is the identity and this is the expression that was here before.
+    m_of_lam = @(l, b, c) (1 - l) .* (1 - b) + cf_n * l ...
+                          + ann_n * (b .* (1 - l) .* c) ...
+                          - hc_n  * (b .* (1 - l) .* (1 - c));
+    m_of_u  = @(a, b, c) m_of_lam(cnext.inv(a, b, c), b, c);
+    LAM_n   = cnext.inv(U1, U2, U3);
+    M_nodes = m_of_lam(LAM_n, U2, U3);
+    F_nodes = max(phi_floor * LAM_n, FLOOR_EPS);
+    % A node at or below the floor is in the other regime -- the state tops the
+    % household up and it saves nothing -- so z there is the floor rather than a
+    % multiple of its own resources, and kappa would be F/m, unbounded as m
+    % falls. Those nodes are excluded and keep kappa = 1, the m -> 0 limit, so a
+    % cell straddling the boundary blends toward the right asymptote instead of
+    % toward a value belonging to the other regime. The floor itself comes back
+    % through the clamp below.
+    live = M_nodes > F_nodes & isfinite(z_next);
+    assert(any(live(:)), 'bellman_step_lna:no_live_m', ...
+        'No node is above the consumption floor at t=%d.', t);
+    k_nodes = ones(size(z_next));
+    k_nodes(live) = z_next(live) ./ M_nodes(live);
+    % kappa <= 1 wherever the household funds itself, since the certainty
+    % equivalent of a whole remaining lifetime cannot exceed what one period of
+    % it consumes. The clamp is read off the grid rather than imposed at 1.
+    k_hi = max(1, max(k_nodes(live)));
+    k_nodes = min(max(k_nodes, 0), k_hi);
+    pp_k = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
+                              k_nodes, interp_method, 'nearest');
+    pp_z = @(a, b, c) max(min(max(pp_k(a, b, c), 0), k_hi) ...
+                          .* max(m_of_u(a, b, c), 0), ...
+                          max(phi_floor * cnext.inv(a, b, c), FLOOR_EPS));
+else
+    switch interp_space
+        case 'logz'
+            pp_log = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
+                                        log(max(z_next, realmin)), ...
+                                        interp_method, 'nearest');
+            pp_z = @(a, b, c) exp(pp_log(a, b, c));
+        otherwise
+            pp_lin = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
+                                        z_next, interp_method, 'nearest');
+            if strcmp(interp_method, 'linear')
+                pp_z = pp_lin;              % untouched: the original object
+            else
+                % A smooth scheme can undershoot past zero next to the cliff, and a
+                % negative z is not a certainty equivalent. Clamp to the smallest
+                % value the solved grid actually carries.
+                pp_z = @(a, b, c) max(pp_lin(a, b, c), z_min);
+            end
+    end
+end
 
-% Scale the fmincon objective by the median of the next period
+% Everything built above indexes the FIRST AXIS, whatever p.coord1 put there.
+% Every call site downstream computes next period's state as lambda = Y'/W', the
+% budget quantity, and none of them needs to know what the axis carries. One
+% wrapper reconciles the two: take lambda in, put it on the axis, then
+% interpolate. Under 'yw' the map is the identity and pp_z is handed through
+% untouched, so the default path stays bit-identical.
+if ~strcmp(cnext.mode, 'yw')
+    pp_axis = pp_z;
+    pp_z    = @(lam, b, c) pp_axis(cnext.fwd(lam, b, c), b, c);
+end
+
+% Scale the fmincon objective by a summary of next period's value magnitudes.
+% One scalar serves the whole step, but |V| varies by orders of magnitude across
+% the state space, so the scale is right for a typical node and wrong for an
+% extreme one. p.obj_scale_mode exposes the summary for testing whether that
+% matters: 'median' (default, and what every solve before this used), 'min',
+% 'max', or 'none'.
 obj_scale = 1;
 if use_scaling
     absV = abs(V_next(isfinite(V_next) & V_next ~= 0));
     if ~isempty(absV)
-        obj_scale = 1 / median(absV);
+        mode_s = 'median';
+        if isfield(p, 'obj_scale_mode') && ~isempty(p.obj_scale_mode)
+            mode_s = char(p.obj_scale_mode);
+        end
+        switch mode_s
+            case 'median', ref = median(absV);
+            case 'min',    ref = min(absV);
+            case 'max',    ref = max(absV);
+            case 'none',   ref = 1;
+            otherwise
+                error('bellman_step_lna:obj_scale_mode', ...
+                    'p.obj_scale_mode must be median, min, max or none (got %s).', mode_s);
+        end
+        obj_scale = 1 / ref;
         if ~isfinite(obj_scale) || obj_scale <= 0, obj_scale = 1; end
     end
 end
@@ -211,8 +364,14 @@ R_X_all = (1 - pi_grid) * Rf_at + pi_grid * R_S_at.';     % NP x n_shock (after-
 %fmincon settings. active-set reaches the same optimum as interior-point on the
 % flat (c, pi) objective but with a smoother policy across neighbouring states --
 % the interior-point barrier gives a noisy argmax here -- and less runtime.
-opts_polish = optimoptions('fmincon', ...
-    'Algorithm', 'active-set', ...
+% p.polish_algo overrides the algorithm (default 'active-set') for solver
+% comparisons; p.use_refine toggles the derivative-free refinement below.
+polish_algo = 'active-set';
+if isfield(p, 'polish_algo') && ~isempty(p.polish_algo), polish_algo = char(p.polish_algo); end
+use_refine = true;
+if isfield(p, 'use_refine'), use_refine = logical(p.use_refine); end
+opts_opt = optimoptions('fmincon', ...
+    'Algorithm', polish_algo, ...
     'Display', 'off', ...
     'OptimalityTolerance', 1e-8, ...
     'StepTolerance', 1e-9, ...
@@ -220,8 +379,47 @@ opts_polish = optimoptions('fmincon', ...
     'MaxIterations', 200, ...
     'MaxFunctionEvaluations', 500, ...
     'FiniteDifferenceType', 'central');
+% p.fd_step widens fmincon's finite-difference step. The default (~1.5e-8)
+% samples inside a single cell of the piecewise-linear continuation
+% interpolant, so the slope it sees carries no information about the next
+% cell; a step of the order of the grid spacing makes the difference a
+% secant across cells instead. Unset leaves MATLAB's default.
+if isfield(p, 'fd_step') && ~isempty(p.fd_step)
+    opts_opt = optimoptions(opts_opt, 'FiniteDifferenceStepSize', p.fd_step);
+end
+% p.pi_starts adds extra equity-share seeds, each run as its own fmincon from
+% the same consumption seed. Empty keeps the single-start behaviour.
+pi_starts = []; if isfield(p, 'pi_starts'), pi_starts = p.pi_starts(:); end
+% p.refine_c_global widens the refinement's first round so it sweeps consumption
+% across its whole feasible range as well as pi. The shipped refinement sweeps
+% pi globally but keeps c within one grid cell of the seed, so a node whose seed
+% carries a bad c is never reached. Default false keeps the shipped behaviour.
+refine_c_global = false;
+if isfield(p, 'refine_c_global'), refine_c_global = logical(p.refine_c_global); end
+% p.refine_pi_global mirrors it for the equity share; true is what ships.
+refine_pi_global = true;
+if isfield(p, 'refine_pi_global'), refine_pi_global = logical(p.refine_pi_global); end
+% p.refine_stage decides whether the sweep runs after fmincon ('post', the
+% shipped order) or before it, to choose fmincon's seed ('pre'). The sweep is
+% what locates the basin, so running it first lets fmincon converge inside the
+% right one instead of being corrected afterwards.
+refine_stage = 'post';
+if isfield(p, 'refine_stage') && ~isempty(p.refine_stage)
+    refine_stage = char(p.refine_stage);
+end
+refine_pre  = strcmp(refine_stage, 'pre');
+refine_post = ~refine_pre;
 
 n_states = numel(Lam_all);
+% Diagnostic scan selection (see the dump below). scan_node is a plain logical
+% so the parfor body only tests an index.
+scan_on = isfield(p, 'scan') && ~isempty(p.scan) && any(t == p.scan.t);
+scan_node = false(n_states, 1);
+if scan_on
+    nd = p.scan.nodes(:); nd = nd(nd >= 1 & nd <= n_states);
+    scan_node(nd) = true;
+    if ~isfolder(p.scan.dir), mkdir(p.scan.dir); end
+end
 V_flat   = zeros(n_states, 1);
 tau_flat = zeros(n_states, 1);
 c_flat   = zeros(n_states, 1);
@@ -300,7 +498,15 @@ parfor k = 1:n_states
     end
    
     % Lower bound on the consumption search (a small share of resources).
-    c_floor = max(1e-3, 0.01 / LW_W);
+    % Lower bound on the consumption search. c is the share of liquid resources
+    % consumed, so 0.01/LW_W is "consume at least 1% of total wealth W". It
+    % exists to keep the optimiser off c = 0, but where the household would
+    % rather consume less than that -- which is the whole of early life at this
+    % calibration -- it is the bound, not the household, that sets consumption.
+    % p.c_floor_frac exposes it so that can be measured. Default 0.01, bitwise
+    % what every solve before this used.
+    cff = 0.01; if isfield(p, 'c_floor_frac'), cff = p.c_floor_frac; end
+    c_floor = max(1e-3, cff / LW_W);
     c_floor = min(c_floor, 0.5);
     c_grid  = linspace(c_floor, 1 - 1e-6, NC).';
     u_now   = (c_grid * LW_W) .^ one_m_g / one_m_g;
@@ -387,17 +593,17 @@ parfor k = 1:n_states
         % then also run the search with tau pinned to the fund's glide value.
         % Pinning at the glide guarantees the free arm can always reproduce it,
         % so its value never falls below the glide arm's.
-        obj3 = @(x) -obj_scale * bellman_rhs_z3_u(x(1), x(2), x(3), LW_W, Rf_at, R_S_at, ...
-                                       p.Rf, R_S, pt, A_next_pre_return, ...
+        obj3 = @(x) -obj_scale * bellman_rhs_z3_u(x(1), x(2), x(3), tau_R, LW_W, Rf_at, R_S_at, ...
+                                       p.Rf, R_S, R_REIT, pt, A_next_pre_return, ...
                                        H_next_W, Y_next_W, ...
                                        w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
-        V_polish = -inf; x_opt = [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)];
+        V_opt = -inf; x_opt = [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)];
         try
             [x_try, neg_V_try, exitflag] = fmincon(obj3, ...
                 [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)], ...
-                [], [], [], [], [c_floor; 0; 0], [1 - 1e-6; 1; 1], [], opts_polish);
-            if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_polish
-                V_polish = -neg_V_try/obj_scale; x_opt = x_try;
+                [], [], [], [], [c_floor; 0; 0], [1 - 1e-6; 1; max(1 - tau_R, 0)], [], opts_opt);
+            if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_opt
+                V_opt = -neg_V_try/obj_scale; x_opt = x_try;
             end
         catch
         end
@@ -427,16 +633,16 @@ parfor k = 1:n_states
         end
         for s = 1:size(pin_starts, 1)
             tau_fix = pin_starts(s, 3);
-            obj2 = @(x) -obj_scale * bellman_rhs_z3_u(x(1), x(2), tau_fix, LW_W, Rf_at, R_S_at, ...
-                                           p.Rf, R_S, pt, A_next_pre_return, ...
+            obj2 = @(x) -obj_scale * bellman_rhs_z3_u(x(1), x(2), tau_fix, tau_R, LW_W, Rf_at, R_S_at, ...
+                                           p.Rf, R_S, R_REIT, pt, A_next_pre_return, ...
                                            H_next_W, Y_next_W, ...
                                            w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
             try
                 [x_try, neg_V_try, exitflag] = fmincon(obj2, pin_starts(s, 1:2).', ...
-                    [], [], [], [], lb2, ub2, [], opts_polish);
+                    [], [], [], [], lb2, ub2, [], opts_opt);
                 if exitflag > 0 || exitflag == 0
-                    if -neg_V_try/obj_scale > V_polish
-                        V_polish = -neg_V_try/obj_scale; x_opt = [x_try; tau_fix];
+                    if -neg_V_try/obj_scale > V_opt
+                        V_opt = -neg_V_try/obj_scale; x_opt = [x_try; tau_fix];
                     end
                     if tau_fix == tau && -neg_V_try/obj_scale > v_gl
                         v_gl = -neg_V_try/obj_scale; c_gl = x_try(1); p_gl = x_try(2);
@@ -451,33 +657,50 @@ parfor k = 1:n_states
         % Run it at the glide tau and at the current best tau.
         dc0 = c_grid(2) - c_grid(1);
         dp0 = pi_grid(min(2, NP)) - pi_grid(1);
-        if isfinite(v_gl)
-            [c_r, p_r, v_r] = refine_cpi_u(c_gl, p_gl, tau, v_gl, LW_W, Rf_at, R_S_at, ...
-                p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
-                w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
-            if v_r > V_polish, V_polish = v_r; x_opt = [c_r; p_r; tau]; end
+        if use_refine && isfinite(v_gl)
+            [c_r, p_r, v_r] = refine_cpi_u(c_gl, p_gl, tau, tau_R, v_gl, LW_W, Rf_at, R_S_at, ...
+                p.Rf, R_S, R_REIT, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+                w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0, refine_c_global, refine_pi_global);
+            if v_r > V_opt, V_opt = v_r; x_opt = [c_r; p_r; tau]; end
         end
-        if V_polish > maxval
-            cb0 = x_opt(1); pb0 = x_opt(2); tb0 = x_opt(3); vb0 = V_polish;
+        if V_opt > maxval
+            cb0 = x_opt(1); pb0 = x_opt(2); tb0 = x_opt(3); vb0 = V_opt;
         else
             cb0 = c_grid(ic_max); pb0 = pi_grid(ip_max); tb0 = tau_grid(it_max); vb0 = maxval;
         end
-        [c_r, p_r, v_r] = refine_cpi_u(cb0, pb0, tb0, vb0, LW_W, Rf_at, R_S_at, ...
-            p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
-            w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
-        if v_r > V_polish, V_polish = v_r; x_opt = [c_r; p_r; tb0]; end
+        if use_refine
+            [c_r, p_r, v_r] = refine_cpi_u(cb0, pb0, tb0, tau_R, vb0, LW_W, Rf_at, R_S_at, ...
+                p.Rf, R_S, R_REIT, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+                w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0, refine_c_global, refine_pi_global);
+            if v_r > V_opt, V_opt = v_r; x_opt = [c_r; p_r; tb0]; end
+        end
 
-        if V_polish > maxval
-            V_flat(k) = V_polish; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2); tau_flat(k) = x_opt(3);
+        if V_opt > maxval
+            V_flat(k) = V_opt; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2); tau_flat(k) = x_opt(3);
         else
             V_flat(k) = maxval; c_flat(k) = c_grid(ic_max); pi_flat(k) = pi_grid(ip_max);
             tau_flat(k) = tau_grid(it_max);
         end
     else
         A_next_W = R_A_all(:, 1) * A_next_pre_return;   % glide-slice DC position
-        polish_obj = @(x) -obj_scale * bellman_rhs_z_u(x(1), x(2), LW_W, Rf_at, R_S_at, ...
+        obj_cpi = @(x) -obj_scale * bellman_rhs_z_u(x(1), x(2), LW_W, Rf_at, R_S_at, ...
                                             A_next_W, H_next_W, Y_next_W, ...
                                             w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+
+        % Sweep first, when asked: the seed fmincon gets is then the best point
+        % of the sweep rather than the warm start, so the local solve runs
+        % inside the right basin instead of being corrected after the fact.
+        if use_scaling && use_refine && refine_pre
+            dc0p = c_grid(2) - c_grid(1);
+            dp0p = pi_grid(min(2, NP)) - pi_grid(1);
+            [c_pre, p_pre, v_pre] = refine_cpi_u(c_seed, pi_seed, tau, tau_R, maxval, ...
+                LW_W, Rf_at, R_S_at, p.Rf, R_S, R_REIT, pt, A_next_pre_return, ...
+                H_next_W, Y_next_W, w_join, pp_z, one_m_g, beta_eff, beq_eff, ...
+                h_beq_fac, c_floor, dc0p, dp0p, refine_c_global, refine_pi_global);
+            if v_pre > maxval
+                maxval = v_pre; c_seed = c_pre; pi_seed = p_pre;
+            end
+        end
 
         % Best seed: the tensor argmax, or the warm start when the tensor is off.
         % With the tensor on, add the t+1 policy as a second start.
@@ -485,38 +708,63 @@ parfor k = 1:n_states
         if ~skip_tensor && isfinite(c_warm) && isfinite(pi_warm)
             starts = [starts; min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
         end
+        if ~isempty(pi_starts)
+            starts = [starts; repmat(c_seed, numel(pi_starts), 1), pi_starts];
+        end
         starts(:,1) = min(max(starts(:,1), c_floor), 1 - 1e-6);
         starts(:,2) = min(max(starts(:,2), 0), 1);
 
-        V_polish = -inf; x_opt = starts(1, :).';
+        V_opt = -inf; x_opt = starts(1, :).';
         for s = 1:size(starts, 1)
             try
-                [x_try, neg_V_try, exitflag] = fmincon(polish_obj, starts(s, :).', ...
-                    [], [], [], [], lb2, ub2, [], opts_polish);
-                if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_polish
-                    V_polish = -neg_V_try/obj_scale; x_opt = x_try;
+                [x_try, neg_V_try, exitflag] = fmincon(obj_cpi, starts(s, :).', ...
+                    [], [], [], [], lb2, ub2, [], opts_opt);
+                if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_opt
+                    V_opt = -neg_V_try/obj_scale; x_opt = x_try;
                 end
             catch
             end
         end
 
-        % Same derivative-free refinement as the free-tau branch.
-        if use_scaling
+        % Same derivative-free refinement as the free-tau branch, unless the
+        % sweep already ran before fmincon.
+        if use_scaling && use_refine && refine_post
             dc0 = c_grid(2) - c_grid(1);
             dp0 = pi_grid(min(2, NP)) - pi_grid(1);
-            if V_polish > maxval
-                cb0 = x_opt(1); pb0 = x_opt(2); vb0 = V_polish;
+            if V_opt > maxval
+                cb0 = x_opt(1); pb0 = x_opt(2); vb0 = V_opt;
             else
                 cb0 = c_seed; pb0 = pi_seed; vb0 = maxval;
             end
-            [c_r, p_r, v_r] = refine_cpi_u(cb0, pb0, tau, vb0, LW_W, Rf_at, R_S_at, ...
-                p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
-                w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
-            if v_r > V_polish, V_polish = v_r; x_opt = [c_r; p_r]; end
+            [c_r, p_r, v_r] = refine_cpi_u(cb0, pb0, tau, tau_R, vb0, LW_W, Rf_at, R_S_at, ...
+                p.Rf, R_S, R_REIT, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+                w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0, refine_c_global, refine_pi_global);
+            if v_r > V_opt, V_opt = v_r; x_opt = [c_r; p_r]; end
         end
 
-        if V_polish > maxval
-            V_flat(k) = V_polish; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2);
+        % Diagnostic landscape dump. Off unless p.scan is set, and then only at
+        % the requested ages and nodes, so the hot loop is untouched otherwise.
+        % Records the objective on a dense (c, pi) grid together with the seed,
+        % the global grid maximum, and where each optimiser actually lands --
+        % enough to see which of them escape the seed's basin.
+        if scan_on && scan_node(k)
+            % The primitives of the node's budget go with the dump, so the
+            % objective can be taken apart afterwards into the current-utility
+            % term and the continuation term, and the next-period state each
+            % (c, pi) leads to can be recovered exactly rather than rebuilt.
+            prim = struct('LW_W', LW_W, 'Rf_at', Rf_at, 'R_S_at', R_S_at, ...
+                          'A_next_W', A_next_W, 'H_next_W', H_next_W, ...
+                          'Y_next_W', Y_next_W, 'w', w_join, 'one_m_g', one_m_g, ...
+                          'beta_eff', beta_eff, 'beq_eff', beq_eff, ...
+                          'h_beq_fac', h_beq_fac, 'lam', lam, 'sA', sA, 'sH', sH, 'sX', sX);
+            scan_write(fullfile(p.scan.dir, sprintf('scan_t%03d_k%06d.mat', t, k)), ...
+                node_scan(obj_cpi, obj_scale, c_floor, lb2, ub2, ...
+                          c_seed, pi_seed, x_opt, p.scan, ...
+                          c_grid(2) - c_grid(1), pi_grid(min(2,NP)) - pi_grid(1), prim));
+        end
+
+        if V_opt > maxval
+            V_flat(k) = V_opt; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2);
         else
             V_flat(k) = maxval; c_flat(k) = c_seed; pi_flat(k) = pi_seed;
         end
@@ -555,13 +803,14 @@ function rhs_val = bellman_rhs_z_u(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_ne
     end
 end
 
-function rhs_val = bellman_rhs_z3_u(c, pi_eq, tau_dc, LW_W, Rf_at, R_S_at, Rf, R_S, pt, ...
+function rhs_val = bellman_rhs_z3_u(c, pi_eq, tau_dc, tau_R, LW_W, Rf_at, R_S_at, Rf, R_S, R_REIT, pt, ...
                                      A_next_pre_return, H_next_W, Y_next_W, ...
                                      w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac)
     % 3-choice Bellman RHS on the cube: as bellman_rhs_z_u, but the DC position
-    % is rebuilt from the choice variable tau_dc (survival-credit return,
-    % PRE-TAX -- the fund is sheltered; only the liquid legs carry tax).
-    R_A      = ((1 - tau_dc) * Rf + tau_dc .* R_S) / pt;
+    % is rebuilt from the choice variable tau_dc plus the fixed REIT share tau_R
+    % (survival-credit return, PRE-TAX -- the fund is sheltered; only the liquid
+    % legs carry tax).
+    R_A      = ((1 - tau_dc - tau_R) * Rf + tau_dc .* R_S + tau_R .* R_REIT) / pt;
     A_next_W = R_A * A_next_pre_return;
     R_X      = (1 - pi_eq) * Rf_at + pi_eq .* R_S_at;
     X_next_W = R_X * (1 - c) * LW_W;
@@ -579,14 +828,131 @@ function rhs_val = bellman_rhs_z3_u(c, pi_eq, tau_dc, LW_W, Rf_at, R_S_at, Rf, R
     end
 end
 
-function [c_b, p_b, v_b] = refine_cpi_u(c0, p0, tau_fix, v0, LW_W, Rf_at, R_S_at, Rf, R_S, pt, ...
+function Sc = node_scan(obj_cpi, obj_scale, c_floor, lb2, ub2, c_seed, pi_seed, x_opt, scan, dc0, dp0, prim)
+%NODE_SCAN  The per-node objective landscape, plus where each optimiser lands.
+%   Diagnostic only. rhs = -obj_cpi(x)/obj_scale recovers the Bellman right
+%   hand side from the scaled minimisation objective the solver hands fmincon.
+%
+%   prim, when given, carries the node's budget primitives so the objective can
+%   be decomposed afterwards. It is stored and not used here.
+if nargin < 12, prim = []; end
+cg = linspace(c_floor, 1 - 1e-6, scan.c_n);
+pg = linspace(0, 1, scan.pi_n);
+Z  = zeros(numel(cg), numel(pg));
+for ii = 1:numel(cg)
+    for jj = 1:numel(pg)
+        Z(ii, jj) = -obj_cpi([cg(ii); pg(jj)]) / obj_scale;
+    end
+end
+[gmax, im] = max(Z(:));
+[ig, jg]   = ind2sub(size(Z), im);
+
+% Where each method ends up, all from the same seed the solver used.
+algs = {'active-set', 'sqp', 'interior-point'};
+land = nan(numel(algs) + 2, 3);            % [c, pi, value]
+for m = 1:numel(algs)
+    o = optimoptions('fmincon', 'Algorithm', algs{m}, 'Display', 'off', ...
+        'OptimalityTolerance', 1e-8, 'StepTolerance', 1e-9, ...
+        'FunctionTolerance', 1e-10, 'MaxIterations', 200, ...
+        'MaxFunctionEvaluations', 500, 'FiniteDifferenceType', 'central');
+    try
+        xt = fmincon(obj_cpi, [c_seed; pi_seed], [], [], [], [], lb2, ub2, [], o);
+        land(m, :) = [xt(1), xt(2), -obj_cpi(xt)/obj_scale];
+    catch
+    end
+end
+% active-set with a grid-scale finite-difference step
+o = optimoptions('fmincon', 'Algorithm', 'active-set', 'Display', 'off', ...
+    'OptimalityTolerance', 1e-8, 'StepTolerance', 1e-9, ...
+    'FunctionTolerance', 1e-10, 'MaxIterations', 200, ...
+    'MaxFunctionEvaluations', 500, 'FiniteDifferenceType', 'central', ...
+    'FiniteDifferenceStepSize', 1e-2);
+try
+    xt = fmincon(obj_cpi, [c_seed; pi_seed], [], [], [], [], lb2, ub2, [], o);
+    land(numel(algs)+1, :) = [xt(1), xt(2), -obj_cpi(xt)/obj_scale];
+catch
+end
+% multistart over pi, active-set, default step
+best = [nan nan -inf];
+for ps = linspace(0, 1, 5)
+    o = optimoptions('fmincon', 'Algorithm', 'active-set', 'Display', 'off', ...
+        'OptimalityTolerance', 1e-8, 'StepTolerance', 1e-9, ...
+        'FunctionTolerance', 1e-10, 'MaxIterations', 200, ...
+        'MaxFunctionEvaluations', 500, 'FiniteDifferenceType', 'central');
+    try
+        xt = fmincon(obj_cpi, [c_seed; ps], [], [], [], [], lb2, ub2, [], o);
+        vt = -obj_cpi(xt)/obj_scale;
+        if vt > best(3), best = [xt(1), xt(2), vt]; end
+    catch
+    end
+end
+land(numel(algs)+2, :) = best;
+
+Sc.c = cg; Sc.pi = pg; Sc.rhs = Z;
+Sc.prim = prim;
+Sc.seed = [c_seed, pi_seed];
+Sc.gmax = [cg(ig), pg(jg), gmax];
+Sc.solver_opt = [x_opt(1), x_opt(2)];
+Sc.methods = [algs, {'active-set FD 1e-2'}, {'pi multistart x5'}];
+Sc.land = land;
+
+% The refinement's own trajectory, run on this same objective, so the figure
+% shows what it evaluates rather than a description of it. Mirrors
+% refine_cpi_u: round 1 sweeps pi across the whole interval, later rounds
+% shrink around the incumbent.
+% Two traces: the shipped refinement, whose round 1 sweeps pi globally but keeps
+% c near the seed, and a variant that sweeps c globally as well. Comparing them
+% on the same node shows whether the local c window is what limits it.
+Sc.refine    = trace_refine(obj_cpi, obj_scale, c_seed, pi_seed, c_floor, dc0, dp0, false);
+Sc.refine_gc = trace_refine(obj_cpi, obj_scale, c_seed, pi_seed, c_floor, dc0, dp0, true);
+end
+
+% ------------------------------------------------------------------------
+function rc = trace_refine(obj_cpi, obj_scale, c_seed, pi_seed, c_floor, dc0, dp0, c_global)
+%TRACE_REFINE  refine_cpi_u's search, recorded round by round.
+rc = struct('c',{},'pi',{},'best',{});
+cb = c_seed; pb = pi_seed; vb = -obj_cpi([c_seed; pi_seed])/obj_scale;
+dc = dc0/4; dp = max(dp0, 0.05);
+for r = 1:4
+    if r == 1
+        if c_global
+            c_loc = unique([linspace(c_floor, 1-1e-6, 21), c_seed]);
+        else
+            c_loc = unique(min(max(c_seed + dc0*(-1:0.125:1), c_floor), 1-1e-6));
+        end
+        p_loc = unique([linspace(0,1,21), pi_seed]);
+    else
+        c_loc = unique(min(max(cb + dc*(-1:0.25:1), c_floor), 1-1e-6));
+        p_loc = unique(min(max(pb + dp*(-1:0.25:1), 0), 1));
+        dc = dc/4; dp = dp/4;
+    end
+    bv = -inf; bc = cb; bp = pb;
+    for ii = 1:numel(c_loc)
+        for jj = 1:numel(p_loc)
+            v = -obj_cpi([c_loc(ii); p_loc(jj)])/obj_scale;
+            if v > bv, bv = v; bc = c_loc(ii); bp = p_loc(jj); end
+        end
+    end
+    if bv > vb, vb = bv; cb = bc; pb = bp; end
+    rc(r).c = c_loc; rc(r).pi = p_loc; rc(r).best = [cb, pb, vb];
+end
+end
+
+% ------------------------------------------------------------------------
+function scan_write(fn, Sc)
+%SCAN_WRITE  save() wrapped in a function so it is legal inside the parfor.
+save(fn, '-struct', 'Sc');
+end
+
+% ------------------------------------------------------------------------
+function [c_b, p_b, v_b] = refine_cpi_u(c0, p0, tau_fix, tau_R, v0, LW_W, Rf_at, R_S_at, Rf, R_S, R_REIT, pt, ...
                                          A_next_pre_return, H_next_W, Y_next_W, ...
                                          w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
-                                         c_floor, dc0, dp0)
+                                         c_floor, dc0, dp0, c_global, pi_global)
     % Shrinking-radius local grid scan of the (c, pi) surface with tau pinned.
     % Derivative-free, so it resolves the narrow interpolation-kink ridges that
     % defeat fmincon's finite differences. Cube twin of refine_cpi.
-    R_A      = ((1 - tau_fix) * Rf + tau_fix .* R_S) / pt;
+    R_A      = ((1 - tau_fix - tau_R) * Rf + tau_fix .* R_S + tau_R .* R_REIT) / pt;
     A_next_W = R_A * A_next_pre_return;
     denAH    = A_next_W + H_next_W;
     u3_col   = max(min(A_next_W ./ max(denAH, 1e-12), 1), 0);
@@ -596,8 +962,16 @@ function [c_b, p_b, v_b] = refine_cpi_u(c0, p0, tau_fix, v0, LW_W, Rf_at, R_S_at
     dc = dc0 / 4; dp = max(dp0, 0.05);
     for r = 1:4
         if r == 1
-            c_loc = unique(min(max(c0 + dc0 * (-1 : 0.125 : 1), c_floor), 1 - 1e-6));
-            p_loc = unique([linspace(0, 1, 21), p0]);
+            if c_global
+                c_loc = unique([linspace(c_floor, 1 - 1e-6, 21), c0]);
+            else
+                c_loc = unique(min(max(c0 + dc0 * (-1 : 0.125 : 1), c_floor), 1 - 1e-6));
+            end
+            if pi_global
+                p_loc = unique([linspace(0, 1, 21), p0]);
+            else
+                p_loc = unique(min(max(p0 + max(dp0, 0.05) * (-1 : 0.125 : 1), 0), 1));
+            end
         else
             c_loc = unique(min(max(c_b + dc * (-1 : 0.25 : 1), c_floor), 1 - 1e-6));
             p_loc = unique(min(max(p_b + dp * (-1 : 0.25 : 1), 0), 1));
@@ -624,4 +998,26 @@ function [c_b, p_b, v_b] = refine_cpi_u(c0, p0, tau_fix, v0, LW_W, Rf_at, R_S_at
             v_b = mv; c_b = Cm(im); p_b = Pm(im);
         end
     end
+end
+
+function [cf, hc, ann_fac] = budget_coeffs(p, t, ann_price, net_inc)
+%BUDGET_COEFFS  Age-t coefficients of the liquid-resource identity
+%   m = s_X + cf*lambda + ann_fac*s_A - hc*s_H,
+% which is what the main loop computes as LW_W. Factored out so the kappa
+% interpolant can evaluate it at NEXT period's coefficients without
+% duplicating the branch.
+if t >= p.t_ret
+    cf      = (1 - p.delta) * net_inc;
+    ann_fac = net_inc / ann_price(t);
+else
+    kap     = p.kappa(min(t, numel(p.kappa)));
+    cf      = (1 - p.delta) * (1 - kap) * net_inc;
+    ann_fac = 0;
+end
+if p.is_owner
+    if t <= numel(p.m_rate_path), mr = p.m_rate_path(t); else, mr = 0; end
+    hc = p.theta + mr;
+else
+    hc = p.alpha;
+end
 end

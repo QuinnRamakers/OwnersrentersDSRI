@@ -34,7 +34,6 @@ is_owner = p.is_owner;
 % liquid account, DC fund and housing sheltered/exempt.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
-tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
 tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
 net_inc = 1 - tau_inc;
 Rf_at   = (1 + p.r * (1 - tau_b)) * (1 - tau_w);
@@ -64,7 +63,8 @@ m_path  = zeros(N, T);
 ann_pay_path = zeros(N, T);
 disp_inc = zeros(N, T);
 bequest_path = zeros(N, 1);
-tau_A_path = zeros(N, T-1);
+tau_A_path  = zeros(N, T-1);   % applied DC STOCK share
+reit_A_path = zeros(N, T-1);   % applied DC REIT  share
 
 n_clamp_c  = 0;
 n_clamp_pi = 0;
@@ -101,6 +101,7 @@ H_path(:,1) = p.h_mult * Y0;
 % House-price return for owners, rent increase for renters -- the same pair
 % grids.shock_grid quadratures over, so solver and simulator cannot disagree.
 [mu_HR, sigma_HR] = config.h_process(p);
+[mu_REIT, sigma_REIT] = config.reit_process(p);   % DC REIT log-return moments
 X_path(:,1) = X0_frac * Y0;
 A_path(:,1) = 0;
 W_path(:,1) = X_path(:,1) + A_path(:,1) + H_path(:,1) + Y_path(:,1);
@@ -124,27 +125,51 @@ sH_path(:,1)  = H_path(:,1) ./ W_path(:,1);
 % modelling choice: it exists so the solver and the simulator can be held to
 % the same shock support when validating one against the other.
 gh_shocks = isfield(p, 'gh_shocks') && p.gh_shocks;
+% REIT (fourth) shock: drawn only when the leg is active, and always AFTER the
+% first three, so a REIT-off run reproduces the old L/S/H stream (and RNG
+% state) exactly. See config.reit_effective / config.reit_active.
+reit_e  = config.reit_effective(p);       % (T-1) x 1 REIT share by transition
+reit_on = config.reit_active(p);
 if gh_shocks
     sg = grids.shock_grid(p);
     eps_S_ind = gh_sample(N, T-1, sg.z, sg.wz);
     eps_Y_ind = gh_sample(N, T-1, sg.z, sg.wz);
     eps_H_ind = gh_sample(N, T-1, sg.z, sg.wz);
+    if reit_on, eps_R_ind = gh_sample(N, T-1, sg.z, sg.wz); end
 else
     eps_S_ind = randn(N, T-1);
     eps_Y_ind = randn(N, T-1);
     eps_H_ind = randn(N, T-1);
+    if reit_on, eps_R_ind = randn(N, T-1); end
 end
 
-Sigma_shock = [1,           p.corr_SL, p.corr_HL; ...
-               p.corr_SL,   1,         p.corr_SH; ...
-               p.corr_HL,   p.corr_SH, 1        ];
-Lc_shock = chol(Sigma_shock, 'lower');
-
-Zind_shock  = [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'];  % 3 x N*(T-1)
-Zcorr_shock = Lc_shock * Zind_shock;
-eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
-eps_S = reshape(Zcorr_shock(2, :), N, T-1);
-eps_H = reshape(Zcorr_shock(3, :), N, T-1);
+if reit_on
+    corr_RL = getfield_or(p, 'corr_RL', 0);
+    corr_RS = getfield_or(p, 'corr_RS', 0);
+    corr_RH = getfield_or(p, 'corr_RH', 0);
+    Sigma_shock = [1,           p.corr_SL, p.corr_HL, corr_RL; ...
+                   p.corr_SL,   1,         p.corr_SH, corr_RS; ...
+                   p.corr_HL,   p.corr_SH, 1,         corr_RH; ...
+                   corr_RL,     corr_RS,   corr_RH,   1      ];
+    Lc_shock = chol(Sigma_shock, 'lower');
+    Zind_shock  = [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'; eps_R_ind(:).'];
+    Zcorr_shock = Lc_shock * Zind_shock;
+    eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
+    eps_S = reshape(Zcorr_shock(2, :), N, T-1);
+    eps_H = reshape(Zcorr_shock(3, :), N, T-1);
+    eps_R = reshape(Zcorr_shock(4, :), N, T-1);
+else
+    Sigma_shock = [1,           p.corr_SL, p.corr_HL; ...
+                   p.corr_SL,   1,         p.corr_SH; ...
+                   p.corr_HL,   p.corr_SH, 1        ];
+    Lc_shock = chol(Sigma_shock, 'lower');
+    Zind_shock  = [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'];  % 3 x N*(T-1)
+    Zcorr_shock = Lc_shock * Zind_shock;
+    eps_Y = reshape(Zcorr_shock(1, :), N, T-1);
+    eps_S = reshape(Zcorr_shock(2, :), N, T-1);
+    eps_H = reshape(Zcorr_shock(3, :), N, T-1);
+    eps_R = [];
+end
 
 % Bequeathed housing value as a fraction of H: owners' estates sell the house
 % and pay p.sell_cost. Must match the solver (solver.bellman_step).
@@ -221,7 +246,7 @@ for t = 1:T
     % Returns
     R_S_draw = exp(p.mu_S + p.sigma_S * eps_S(:,t));
     R_H_draw = exp(mu_HR + sigma_HR * eps_H(:,t));
-    R_S_at_draw = (R_S_draw - tau_s .* max(R_S_draw - 1, 0)) .* (1 - tau_w);  % after-tax equity (CGT + wealth tax)
+    R_S_at_draw = config.after_tax_stock(p, R_S_draw);       % after-tax equity (CGT + wealth tax)
     R_X      = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;       % liquid acct after CGT + wealth tax
 
     % DC equity share for transition t -> t+1 (applies on the t-side):
@@ -234,8 +259,18 @@ for t = 1:T
         tau_ht  = repmat(p.tau_S(t), N, 1);
     end
     tau_A_path(:,t) = tau_ht;
+    % DC REIT leg for this transition (share 0 when the REIT is off, so the
+    % unit R_REIT_draw fallback is multiplied out and R_A_with is unchanged).
+    tau_R_t = reit_e(t);
+    reit_A_path(:,t) = tau_R_t;
+    if reit_on
+        R_REIT_draw = exp(mu_REIT + sigma_REIT * eps_R(:,t));
+    else
+        R_REIT_draw = ones(N, 1);
+    end
     pt_surv    = profile.p_surv(t);
-    R_A_with   = ((1 - tau_ht) .* p.Rf + tau_ht .* R_S_draw) ./ max(pt_surv, 1e-8);
+    R_A_with   = ((1 - tau_ht - tau_R_t) .* p.Rf + tau_ht .* R_S_draw ...
+                  + tau_R_t .* R_REIT_draw) ./ max(pt_surv, 1e-8);
 
     % Pension account dynamics
     if is_retired
@@ -277,7 +312,8 @@ sim.m_pay = m_path;
 sim.ann_pay = ann_pay_path;
 sim.disp_inc = disp_inc;
 sim.bequest = bequest_path;
-sim.tau_A = tau_A_path;      % applied DC equity share on the t -> t+1 transition (N x T-1)
+sim.tau_A  = tau_A_path;     % applied DC STOCK share on the t -> t+1 transition (N x T-1)
+sim.reit_A = reit_A_path;    % applied DC REIT  share on the t -> t+1 transition (N x T-1)
 sim.ages = (p.age0 : p.age0 + p.T - 1);
 sim.N = N;
 sim.is_owner = is_owner;
@@ -322,4 +358,8 @@ u = rand(n_row, n_col);
 [~, idx] = histc(u, edges);              %#ok<HISTC> -- discretize needs a toolbox
 idx = min(max(idx, 1), numel(z));
 Z = reshape(z(idx), n_row, n_col);
+end
+
+function v = getfield_or(p, f, default)
+if isfield(p, f) && ~isempty(p.(f)), v = p.(f); else, v = default; end
 end

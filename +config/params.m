@@ -57,6 +57,30 @@ p.corr_SL       = 0.0;     % corr(stock return, income shock)
 p.corr_HL       = 0.0;     % corr(housing return, income shock)
 p.corr_SH       = 0.0;     % corr(stock return, housing return)
 
+% Retirement-account REIT. A second risky lognormal asset held ONLY inside the
+% DC fund, alongside the stock and bond legs (there is no REIT in the liquid
+% account). It replicates the stock's process with its own parameters:
+% mu_REIT_level is an EXCESS return over r_f, the same convention as
+% mu_S_level. The correlations wire it to the other three shocks (income L,
+% stock S, housing H); a nonzero one reshapes those draws even at a zero share.
+%
+% These are PLACEHOLDERS -- vary them to test the model's response. Setting
+% p.tau_REIT = 0 with the correlations at 0 restores the pre-REIT model exactly
+% (config.reit_active gates the fourth shock off), at the old solve cost.
+p.mu_REIT_level    = 0.03;    % REIT excess return level (over r_f) [PLACEHOLDER]
+p.sigma_REIT_level = 0.12;    % REIT return vol                     [PLACEHOLDER]
+p.corr_RL          = 0.0;     % corr(REIT return, income shock)
+p.corr_RS          = 0.0;     % corr(REIT return, stock return)
+p.corr_RH          = 0.0;     % corr(REIT return, housing return)
+
+% DC REIT allocation share. Held inside the pension fund on top of the stock
+% glide tau_S; the bond leg is the residual 1 - tau_S - tau_REIT, so
+% tau_S + tau_REIT <= 1 is required (asserted below, after both are built).
+% A scalar is a constant share at every age; a T-1 vector is a full path
+% (config.reit_effective accepts either, mirroring tau_S / tau_decum), so a
+% glide drops in later without touching the solver, simulator or annuity.
+p.tau_REIT = 0.10;            % constant DC REIT share [PLACEHOLDER]
+
 % Pension parameters
 %   Contributions are levied on gross income above a franchise:
 %       kappa_t = kappa_base * max(Y_t - F, 0) / Y_t
@@ -193,6 +217,13 @@ p.grid_mode = 'none';
 % gh_n^3 = 343 joint Gauss-Hermite shock nodes per state. gh_n is shared by
 % both coordinate systems.
 p.gh_n     = 7;
+% GH nodes for the REIT (fourth) shock. The solver integrates over a joint
+% quadrature of gh_n^3 * gh_n_reit nodes when the REIT is active, so this is
+% the lever on the extra cost the fourth shock adds: gh_n_reit = gh_n is full
+% accuracy and the default, a smaller value trades REIT-margin accuracy for
+% speed. Correlated cross-moments with the other shocks are only exact to the
+% lower of the two node counts, so keep it at gh_n when a REIT correlation is on.
+p.gh_n_reit = p.gh_n;
 p.N_lambda = 40;
 p.N_sA     = 40;
 p.N_sH     = 40;
@@ -230,7 +261,12 @@ p.N_u1 = 28; p.N_u2 = 20; p.N_u3 = 20;
 p.u1_grid = linspace(0, 1, p.N_u1).';
 p.u2_grid = linspace(0, 1, p.N_u2).';
 p.u3_grid = linspace(0, 1, p.N_u3).';
-p.skip_polish = false;      % lna only: grid-search without the fmincon polish
+% lna only. skip_polish BYPASSES the per-node (c, pi) optimiser and returns the
+% warm-start seed unchanged -- with grid_mode='none' that freezes pi at the
+% terminal all-bond value, so every policy, simulation, welfare number and
+% dashboard is INVALID. It exists purely to make functionality smoke tests fast;
+% never set it for a run whose output is used. Keep it false.
+p.skip_polish = false;
 
 % Taxes
 %   EET pension treatment: contributions are deductible, the fund grows
@@ -255,6 +291,9 @@ p.mu_H    = log(1 + p.mu_H_level) - 0.5 * p.sigma_H^2;
 % Rent-index growth, same level-to-log conversion as the house.
 p.sigma_R = sqrt(log(1 + (p.sigma_R_level / (1 + p.mu_R_level))^2));
 p.mu_R    = log(1 + p.mu_R_level) - 0.5 * p.sigma_R^2;
+% REIT log-return moments are NOT cached here: config.reit_process derives them
+% from mu_REIT_level / sigma_REIT_level on demand, so overriding either level
+% on a p-struct takes effect without re-running params.
 p.t_ret   = p.retirement_age - p.age0 + 1;
 
 % Pension glide path tau_S, length T-1 (transitions).
@@ -277,6 +316,16 @@ p.tau_S     = glide;
 % the annuity and the portfolio can never disagree. a_t falls as the share
 % rises, so this materially moves the retired budget.
 p.tau_decum = [];
+
+% DC allocation feasibility: the bond leg 1 - tau_S - tau_REIT must be
+% non-negative at every transition. tau_S peaks at 0.8 (the glide cap), so a
+% constant tau_REIT above 0.2 overflows at young ages. Checked on the effective
+% paths so a REIT decumulation override (p.reit_decum) is covered too.
+tau_eff_chk  = config.tau_effective(p);
+reit_eff_chk = config.reit_effective(p);
+assert(all(tau_eff_chk + reit_eff_chk <= 1 + 1e-12), 'params:reit_alloc', ...
+    ['tau_S + tau_REIT exceeds 1 at some age (max %.4f): the DC bond leg would ' ...
+     'go negative. Lower tau_REIT.'], max(tau_eff_chk + reit_eff_chk));
 
 % Effective DC contribution rate on GROSS income, kappa_t (T x 1), from the
 % franchise rule evaluated on the deterministic income profile. Zero from

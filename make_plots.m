@@ -181,13 +181,14 @@ fprintf('Merton benchmark: pi* = %.3f/(%.0f * %.3f^2) = %.4f\n', ...
 % Publication-quality 12-panel dashboard per scenario.
 %   Row 1: (a) Income & housing costs | (b) Consumption | (c) Disposable income breakdown | (d) Net worth
 %   Row 2: (e) Pension balance | (f) Housing detail | (g) Net worth + future income | (h) Consumption share
-%   Row 3: (i) Stocks/liquid savings | (j) Combined stock exposure | (k) Stocks/savings+pension | (l) Calibration
+%   Row 3: (i) Stocks/liquid savings | (j) Combined stock exposure | (k) Private account size & stock content | (l) Calibration
 
 % Shared style constants
 FS  = 10;   % axis tick / label font size
 FT  = 11;   % panel title font size
 LFS = 9;    % legend font size
 LWD = 1.9;  % main line width
+REIT_COL = [0.15 0.60 0.55];   % DC REIT sleeve -- teal, distinct from stock (blue/gold) in every REIT panel
 BAND_NOTE = 'Lines show the average across simulated households; shaded bands show the 10th-90th percentile range';
 
 for k = 1:numel(files)
@@ -196,11 +197,16 @@ for k = 1:numel(files)
     has_pension = any(config.kappa_path(p) > 0);   % kappa is an age profile
     has_housing = p.h_mult > 0;
     is_own      = p.is_owner;
+    % Does this run carry an active DC REIT leg? Gate on the simulated share so
+    % old .mat files (no reit_A) and REIT-off runs render the original panels.
+    reit_on = isfield(sim, 'reit_A') && any(sim.reit_A(:) ~= 0);
 
     % Equity exposure decomposition + human capital (HC) + total wealth W
     % tau_path = pension fund's own stock allocation glide path (plan design,
     % not chosen by the household -- see config.params for the schedule).
-    [eq_priv, eq_pens, eq_frac_W, eq_frac_fin, tau_path, HC, Wtot] = equity_exposure(sim, p, S{k}.profile);
+    % reit_pens / reit_path carry the DC REIT leg for the REIT-aware panels.
+    [eq_priv, eq_pens, eq_frac_W, eq_frac_fin, tau_path, HC, Wtot, reit_pens, reit_path] = ...
+        equity_exposure(sim, p, S{k}.profile);
 
     fig = figure('Position', [30 30 2200 1240], 'Color', 'w');
     tl  = tiledlayout(3, 4, 'Padding', 'compact', 'TileSpacing', 'compact');
@@ -372,9 +378,20 @@ for k = 1:numel(files)
     end
     plot(ages, tau_path, '--', 'Color', [0.75 0.25 0.25], 'LineWidth', LWD, ...
          'DisplayName', tau_name);
+    if reit_on
+        % The DC fund also runs a REIT sleeve on top of its stock glide.
+        plot(ages, reit_path, ':', 'Color', REIT_COL, 'LineWidth', LWD + 0.3, ...
+             'DisplayName', 'Pension fund: REIT share \tau_{REIT} (DC only)');
+    end
     xline(ret_age, 'k--', 'HandleVisibility', 'off');
-    xlabel('Age', 'FontSize', FS); ylabel('Stock share [0–1]', 'FontSize', FS);
-    title('(i)  Stock share: household savings vs. the pension fund', 'FontSize', FT);
+    xlabel('Age', 'FontSize', FS);
+    if reit_on
+        ylabel('Portfolio share [0–1]', 'FontSize', FS);
+        title('(i)  Risky-asset shares: household stock, pension stock & REIT', 'FontSize', FT);
+    else
+        ylabel('Stock share [0–1]', 'FontSize', FS);
+        title('(i)  Stock share: household savings vs. the pension fund', 'FontSize', FT);
+    end
     legend('Location', 'best', 'FontSize', LFS - 1);
     ylim([-0.02 1.02]);
     set(gca, 'FontSize', FS);
@@ -386,30 +403,62 @@ for k = 1:numel(files)
     nexttile; hold on; grid on; box on;
     liq_eqW_m  = mean(eq_priv ./ max(Wtot, 1e-10), 1, 'omitnan');
     pens_eqW_m = mean(eq_pens ./ max(Wtot, 1e-10), 1, 'omitnan');
-    aj = area(ages, [liq_eqW_m; pens_eqW_m].');
+    if reit_on
+        % Third band: the DC REIT sleeve. Stack height is then TOTAL risky-asset
+        % exposure (stocks + REIT) as a share of total wealth.
+        reit_eqW_m = mean(reit_pens ./ max(Wtot, 1e-10), 1, 'omitnan');
+        aj = area(ages, [liq_eqW_m; pens_eqW_m; reit_eqW_m].');
+        aj(3).FaceColor = REIT_COL; aj(3).FaceAlpha = 0.85; aj(3).EdgeColor = 'none';
+        aj(3).DisplayName = 'Pension invested in REIT';
+        total_risky = liq_eqW_m + pens_eqW_m + reit_eqW_m;
+        total_name  = 'Total risky exposure (stocks + REIT)';
+        j_title     = '(j)  Total risky-asset exposure: stocks and the pension REIT';
+    else
+        aj = area(ages, [liq_eqW_m; pens_eqW_m].');
+        total_risky = liq_eqW_m + pens_eqW_m;
+        total_name  = 'Total stock exposure (both combined)';
+        j_title     = '(j)  Total stock exposure: liquid and pension holdings combined';
+    end
     aj(1).FaceColor = [0.30 0.55 0.80]; aj(1).FaceAlpha = 0.85; aj(1).EdgeColor = 'none';
     aj(2).FaceColor = [0.85 0.60 0.20]; aj(2).FaceAlpha = 0.85; aj(2).EdgeColor = 'none';
     aj(1).DisplayName = 'Liquid savings invested in stocks';
     aj(2).DisplayName = 'Pension invested in stocks';
-    plot(ages, liq_eqW_m + pens_eqW_m, 'k-', 'LineWidth', 1.4, ...
-         'DisplayName', 'Total stock exposure (both combined)');
+    plot(ages, total_risky, 'k-', 'LineWidth', 1.4, 'DisplayName', total_name);
     xline(ret_age, 'k--', 'HandleVisibility', 'off');
-    yline(pi_merton, 'r--', 'Merton fraction', ...
+    yline(pi_merton, 'r--', 'Merton stock fraction', ...
           'LabelHorizontalAlignment', 'left', 'LineWidth', 1.5, 'FontSize', FS - 1, ...
           'HandleVisibility', 'off');
     xlabel('Age', 'FontSize', FS); ylabel('Share of total wealth [0–1]', 'FontSize', FS);
-    title('(j)  Total stock exposure: liquid and pension holdings combined', 'FontSize', FT);
+    title(j_title, 'FontSize', FT);
     legend('Location', 'best', 'FontSize', LFS - 1);
     ylim([0 1]);
     set(gca, 'FontSize', FS);
 
-    % ── (k) Stock exposure relative to savings and pension only ───────────
+    % ── (k) Private (liquid) account: its size, in euros, and how much is at risk
+    % Whether the household's liquid stock share pi actually matters depends on
+    % how big the private account is. This shows its LEVEL (the stock euros pi*X
+    % on top of the bond euros (1-pi)*X), and annotates the private stock holding
+    % as a share of ALL the household's risky holdings (liquid stocks + pension
+    % stocks + pension REIT): a small share means pi barely moves total risk.
     nexttile; hold on; grid on; box on;
-    plot_band(ages, eq_frac_fin, [0.55 0.22 0.65], 'Stock share of savings and pension', LWD);
+    Xm_k  = mean(sim.X, 1) * dscale;                 % liquid account size (euros)
+    eqP_k = mean(eq_priv, 1) * dscale;               % private stock euros (pi * X)
+    bnd_k = max(Xm_k - eqP_k, 0);                    % private bond euros ((1-pi) * X)
+    ak = area(ages, [eqP_k; bnd_k].');
+    ak(1).FaceColor = [0.30 0.55 0.80]; ak(1).FaceAlpha = 0.90; ak(1).EdgeColor = 'none';
+    ak(2).FaceColor = [0.72 0.78 0.85]; ak(2).FaceAlpha = 0.90; ak(2).EdgeColor = 'none';
+    ak(1).DisplayName = 'Held in stocks (\pi\cdotX)';
+    ak(2).DisplayName = 'Held in bonds ((1-\pi)\cdotX)';
     xline(ret_age, 'k--', 'HandleVisibility', 'off');
-    xlabel('Age', 'FontSize', FS); ylabel('Stock share [0–1]', 'FontSize', FS);
-    title('(k)  Stock exposure relative to savings and pension only', 'FontSize', FT);
-    ylim([0 1]);
+    % Private stocks as a share of all risky holdings the household carries.
+    risky_all = mean(eq_priv + eq_pens + reit_pens, 1);
+    shr_age   = mean(eq_priv, 1) ./ max(risky_all, eps);
+    max_shr   = max(shr_age(isfinite(shr_age)));
+    xlabel('Age', 'FontSize', FS); ylabel(dlbl, 'FontSize', FS);
+    title('(k)  Private (liquid) account: size and stock content', 'FontSize', FT);
+    legend('Location', 'northwest', 'FontSize', LFS - 1);
+    text(0.03, 0.72, sprintf('Private stocks peak at %.0f%% of the\nhousehold''s risky holdings', 100*max_shr), ...
+         'Units', 'normalized', 'FontSize', FS - 1, 'Color', [0.25 0.25 0.25]);
     set(gca, 'FontSize', FS);
 
     % ── (l) Calibration / parameter box ──────────────────────────────────
@@ -426,17 +475,28 @@ for k = 1:numel(files)
     tau_inc  = NaN; if isfield(p, 'tau_inc'),      tau_inc  = p.tau_inc;      end   % older .mat files predate the tax model
     tau_cg_b = NaN; if isfield(p, 'tau_cg_bond'),  tau_cg_b = p.tau_cg_bond;  end
     tau_cg_s = NaN; if isfield(p, 'tau_cg_stock'), tau_cg_s = p.tau_cg_stock; end
+    % REIT calibration line, only when the DC REIT leg is active (blank otherwise
+    % so the box is unchanged for pre-REIT runs; blanks are filtered out below).
+    if reit_on
+        reit_line = sprintf(['REIT (DC only):  \\tau_{REIT}=%.0f%%   |   ' ...
+            'excess \\mu_{REIT}=%.1f%%   |   vol \\sigma_{REIT}=%.1f%%'], ...
+            100*mean(config.reit_effective(p)), 100*p.mu_REIT_level, 100*p.sigma_REIT_level);
+    else
+        reit_line = '';
+    end
     box_txt = {
         '\bf Calibration \rm';
         sprintf('CRRA coefficient \\gamma=%.0f   |   Discount factor \\beta=%.2f   |   Bequest parameter \\chi=%.2f', p.gamma, p.beta, p.chi);
         kappa_box_line(p);
         sprintf('Risk-free rate r=%.1f%%   |   Equity return \\mu_S=%.1f%%   |   Equity volatility \\sigma_S=%.1f%%', 100*p.r, 100*p.mu_S_level, 100*p.sigma_S_level);
+        reit_line;
         sprintf('Income tax \\tau_{inc}=%.0f%%   |   Capital-gains tax bond/stock=%.0f%%/%.0f%%', 100*tau_inc, 100*tau_cg_b, 100*tau_cg_s);
         house_line;
         sprintf('N=%d households,  ages %d-%d,  retirement age %d', sim.N, p.age0, p.age0+p.T-1, ret_age);
-        sprintf('DC REGIME: %s   |   source file: %s', upper(strrep(labels{k}(strfind(labels{k},'—')+2:end), '\tau_S', 'tau_S')), files{k});
+        sprintf('DC REGIME: %s   |   source file: %s', upper(strrep(labels{k}(strfind(labels{k},'—')+2:end), '\tau_S', 'tau_S')), strrep(files{k}, '\', '/'));
         sprintf('Dollar scale: 1 model unit = $%.0f.   Merton fraction \\pi^{*}=%.2f', Y50_dollars/unit, pi_merton);
     };
+    box_txt = box_txt(~cellfun(@isempty, box_txt));   % drop the REIT line when off
     text(0.02, 0.97, box_txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
          'FontSize', FS, 'Interpreter', 'tex');
     title('(l)  Calibration', 'FontSize', FT);
@@ -966,10 +1026,16 @@ end
 d.disp = d.takehome + d.annuity - (d.rent + d.maintenance + d.mortgage);
 end
 
-function [eq_priv, eq_pens, eq_frac_W, eq_frac_fin, tau_path, HC, W] = equity_exposure(sim, p, profile)
+function [eq_priv, eq_pens, eq_frac_W, eq_frac_fin, tau_path, HC, W, reit_pens, reit_path] = equity_exposure(sim, p, profile)
 % Decompose equity exposure into private (π·X) and pension (τ_S·A) components.
 % Returns N×T matrices for household-level quantities, T-vector tau_path, and
 % the N×T human-capital matrix HC = Y_t * g_t (PV of future income, ex-current).
+%
+% reit_pens / reit_path are the DC REIT leg (τ_REIT·A and the mean share), added
+% for the REIT-aware dashboard panels. They are ZERO for a sim without the REIT
+% field (old .mat files, or a run with the REIT off), and the STOCK outputs
+% eq_priv / eq_pens / eq_frac_W / eq_frac_fin stay stock-only, so every existing
+% caller is unaffected. New outputs sit last so callers requesting fewer still work.
 %
 % Total-wealth denominator W replaces the single-period income flow Y_t with
 % an HC-augmented gross-income wealth:
@@ -1003,11 +1069,24 @@ else
     tau_mat   = repmat(tau_path, N, 1);
 end
 
+% DC REIT share ACTUALLY APPLIED, same padding as the stock share. Zero for a
+% sim that predates the REIT (old .mat) or ran with it off, so the REIT panels
+% simply draw nothing there.
+if isfield(sim, 'reit_A') && ~isempty(sim.reit_A)
+    reit_mat  = [sim.reit_A, zeros(size(sim.reit_A, 1), T - size(sim.reit_A, 2))];  % N x T
+else
+    reit_mat  = zeros(N, T);
+end
+reit_path = mean(reit_mat, 1);       % 1 x T, for plotting
+
 % Private equity: π_t * X_t
 eq_priv = sim.pi .* sim.X;       % N×T
 
 % Pension equity: tau_{i,t} * A_{i,t}, per household under free choice
 eq_pens = tau_mat .* sim.A;      % N×T
+
+% Pension REIT: tau_REIT_{i,t} * A_{i,t} (DC only; no REIT in the liquid account)
+reit_pens = reit_mat .* sim.A;   % N×T
 
 % ---- HC scale factor g_t = E_t[ sum_{s>t} (Y_s/Y_t) * sp_t / Rf^k ] ----
 Rf      = 1 + p.r;

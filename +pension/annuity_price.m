@@ -31,13 +31,19 @@ a_t(T) = 1;
 R_S = shocks.R_S(:).';     % 1 x n_S
 w_S = shocks.w_S(:).';     % 1 x n_S
 
-tau_path = config.tau_effective(p);
+tau_path  = config.tau_effective(p);
+reit_path = config.reit_effective(p);
+% E[R_REIT] over the REIT marginal. The fund return is linear in the leg
+% returns, so only the REIT mean enters here -- no joint tensor is needed.
+E_R_REIT = sum(shocks.w_REIT(:).' .* shocks.R_REIT(:).');
 
 for t = T-1 : -1 : 1
     tau           = tau_path(t);
+    tau_R         = reit_path(t);
     p_t           = profile.p_surv(t);
-    R_A_no_credit = (1 - tau) * p.Rf + tau * R_S;
-    E_R           = sum(w_S .* R_A_no_credit);   % E[R^A_no_credit]
+    % Three-leg fund: (1-tau-tau_R) in bonds, tau in stock, tau_R in the REIT.
+    R_A_no_credit = (1 - tau - tau_R) * p.Rf + tau * R_S;
+    E_R           = sum(w_S .* R_A_no_credit) + tau_R * E_R_REIT;   % E[R^A_no_credit]
     % E[R^A_with] = E[R_no] / p_t  =>  1/E[R_with] = p_t / E[R_no]
     a_t(t) = 1 + p_t * a_t(t+1) / E_R;
 end

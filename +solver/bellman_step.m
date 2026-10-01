@@ -70,14 +70,15 @@ is_retired = (t >= p.t_ret);
 
 % Tax parameters (guarded so legacy p-structs without tax fields => no tax).
 %   tau_inc : income tax on wages, AOW and annuity payout (EET treatment).
-%   tau_b/tau_s : accrual capital-gains tax (no loss offset) on the liquid
-%   bond/stock legs. The DC fund return R_A below stays PRE-TAX (sheltered).
+%   tau_b : accrual capital-gains tax on the liquid bond leg. The stock leg's
+%   after-tax return comes from config.after_tax_stock, which also decides
+%   whether losses are rebated (p.cg_loss_offset). The DC fund return R_A
+%   below stays PRE-TAX (sheltered).
 %   tau_w : box-3-style wealth tax on the LIQUID account's end-of-period
 %   balance (after-CGT return factors scaled by 1-tau_w); housing and the
 %   DC fund are exempt.
 tau_inc = 0; if isfield(p,'tau_inc'),      tau_inc = p.tau_inc;      end
 tau_b   = 0; if isfield(p,'tau_cg_bond'),  tau_b   = p.tau_cg_bond;  end
-tau_s   = 0; if isfield(p,'tau_cg_stock'), tau_s   = p.tau_cg_stock; end
 tau_w   = 0; if isfield(p,'tau_wealth'),   tau_w   = p.tau_wealth;   end
 net_inc = 1 - tau_inc;     % take-home factor on taxed income
 
@@ -177,6 +178,9 @@ end
 % once retired -- see optimise_tau below.
 tau_eff_path = config.tau_effective(p);
 tau      = tau_eff_path(t);
+% DC REIT share at this age (config.reit_effective; 0 when the REIT is off).
+reit_eff_path = config.reit_effective(p);
+tau_R    = reit_eff_path(t);
 pt       = profile.p_surv(t);
 beta_eff = p.beta * pt;
 chi = 0; if isfield(p, 'chi'), chi = p.chi; end
@@ -185,6 +189,7 @@ beq_eff = p.beta * (1 - pt) * chi;
 R_S    = shocks.joint.R_S(:);
 eps_Y  = shocks.joint.eps_Y_unit(:);
 R_H    = shocks.joint.R_H(:);
+R_REIT = shocks.joint.R_REIT(:);         % DC REIT leg (unit vector when off)
 w_join = shocks.joint.w(:);
 n_shock = numel(w_join);
 mu_g   = profile.mu_growth(t);
@@ -197,23 +202,26 @@ G_next = exp(mu_g + sig_l .* eps_Y);
 % keeps it a single copy when it coincides with a seed point), so the free
 % search always weakly dominates the glide slice on the grid.
 if optimise_tau
+    % Free stock share, capped at 1 - tau_R so the bond leg stays non-negative
+    % alongside the fixed REIT carve-out.
     NT = 11; if isfield(p, 'N_tau'), NT = p.N_tau; end
-    tau_grid = unique([linspace(0, 1, NT).'; tau]);
+    tau_grid = unique([linspace(0, max(1 - tau_R, 0), NT).'; tau]);
 else
     tau_grid = tau;   % glide arm, or ANY retired age: one slice, share fixed
 end
 NTg     = numel(tau_grid);
 j_glide = find(tau_grid == tau, 1);
-% Survival-credit DC returns per tau slice (PRE-TAX, sheltered), n_shock x NTg
-R_A_all = ((1 - tau_grid.') * p.Rf + R_S * tau_grid.') / pt;
+% Survival-credit DC returns per tau slice: three legs, (1-tau-tau_R) in bonds,
+% tau in stock, tau_R in the REIT (PRE-TAX, sheltered). n_shock x NTg.
+R_A_all = ((1 - tau_grid.' - tau_R) * p.Rf + R_S * tau_grid.' + R_REIT * tau_R) / pt;
 
 % After-tax returns on the LIQUID (taxable) account: accrual CGT, no loss
 % offset, then the box-3 wealth tax on the end-of-period balance. Bonds pay
 % tax on the (always positive) interest; stocks pay tax only on positive
 % gains. Still strictly positive and linear in X, so the homothetic
 % z-transform machinery is unchanged.
-Rf_at  = (1 + p.r * (1 - tau_b)) * (1 - tau_w);            % bond leg, after tax
-R_S_at = (R_S - tau_s .* max(R_S - 1, 0)) .* (1 - tau_w);  % stock leg, after tax (no loss offset)
+Rf_at  = (1 + p.r * (1 - tau_b)) * (1 - tau_w);   % bond leg, after tax
+R_S_at = config.after_tax_stock(p, R_S);          % stock leg, after tax
 
 % Z-transform on (lambda, s_A, s_H) grid of V_next
 V_filled = V_next; V_filled(~feas) = NaN;
@@ -428,8 +436,8 @@ parfor k = 1:n_feas
             cand = [0.5, 0.5; 0.15, 1.0];
         end
         for s = 1:size(cand, 1)
-            v = bellman_rhs_z3(cand(s,1), cand(s,2), tau, LW_W, Rf_at, R_S_at, ...
-                    p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+            v = bellman_rhs_z3(cand(s,1), cand(s,2), tau, tau_R, LW_W, Rf_at, R_S_at, ...
+                    p.Rf, R_S, R_REIT, pt, A_next_pre_return, H_next_W, Y_next_W, ...
                     w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
             if v > maxval
                 maxval = v; c_seed = cand(s,1); pi_seed = cand(s,2);
@@ -498,15 +506,15 @@ parfor k = 1:n_feas
         %      duplicate B.
         % obj_scale multiplies the objective and is divided back out of the
         % result, so the reported value is on the model's own scale.
-        obj3 = @(x) -obj_scale * bellman_rhs_z3(x(1), x(2), x(3), LW_W, Rf_at, R_S_at, ...
-                                     p.Rf, R_S, pt, A_next_pre_return, ...
+        obj3 = @(x) -obj_scale * bellman_rhs_z3(x(1), x(2), x(3), tau_R, LW_W, Rf_at, R_S_at, ...
+                                     p.Rf, R_S, R_REIT, pt, A_next_pre_return, ...
                                      H_next_W, Y_next_W, ...
                                      w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
         V_polish = -inf; x_opt = [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)];
         try
             [x_try, neg_V_try, exitflag] = fmincon(obj3, ...
                 [c_grid(ic_max); pi_grid(ip_max); tau_grid(it_max)], ...
-                [], [], [], [], [c_floor; 0; 0], [1 - 1e-6; 1; 1], [], opts_polish);
+                [], [], [], [], [c_floor; 0; 0], [1 - 1e-6; 1; max(1 - tau_R, 0)], [], opts_polish);
             if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_polish
                 V_polish = -neg_V_try/obj_scale;
                 x_opt    = x_try;
@@ -556,8 +564,8 @@ parfor k = 1:n_feas
         end
         for s = 1:size(pin_starts, 1)
             tau_fix = pin_starts(s, 3);
-            obj2 = @(x) -obj_scale * bellman_rhs_z3(x(1), x(2), tau_fix, LW_W, Rf_at, R_S_at, ...
-                                         p.Rf, R_S, pt, A_next_pre_return, ...
+            obj2 = @(x) -obj_scale * bellman_rhs_z3(x(1), x(2), tau_fix, tau_R, LW_W, Rf_at, R_S_at, ...
+                                         p.Rf, R_S, R_REIT, pt, A_next_pre_return, ...
                                          H_next_W, Y_next_W, ...
                                          w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
             try
@@ -586,8 +594,8 @@ parfor k = 1:n_feas
         dc0 = c_grid(2) - c_grid(1);
         dp0 = pi_grid(min(2, NP)) - pi_grid(1);
         if isfinite(v_gl)
-            [c_r, p_r, v_r] = refine_cpi(c_gl, p_gl, tau, v_gl, LW_W, Rf_at, R_S_at, ...
-                p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+            [c_r, p_r, v_r] = refine_cpi(c_gl, p_gl, tau, tau_R, v_gl, LW_W, Rf_at, R_S_at, ...
+                p.Rf, R_S, R_REIT, pt, A_next_pre_return, H_next_W, Y_next_W, ...
                 w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
             if v_r > V_polish
                 V_polish = v_r; x_opt = [c_r; p_r; tau];
@@ -598,8 +606,8 @@ parfor k = 1:n_feas
         else
             cb0 = c_grid(ic_max); pb0 = pi_grid(ip_max); tb0 = tau_grid(it_max); vb0 = maxval;
         end
-        [c_r, p_r, v_r] = refine_cpi(cb0, pb0, tb0, vb0, LW_W, Rf_at, R_S_at, ...
-            p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+        [c_r, p_r, v_r] = refine_cpi(cb0, pb0, tb0, tau_R, vb0, LW_W, Rf_at, R_S_at, ...
+            p.Rf, R_S, R_REIT, pt, A_next_pre_return, H_next_W, Y_next_W, ...
             w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
         if v_r > V_polish
             V_polish = v_r; x_opt = [c_r; p_r; tb0];
@@ -654,8 +662,8 @@ parfor k = 1:n_feas
             else
                 cb0 = c_seed; pb0 = pi_seed; vb0 = maxval;
             end
-            [c_r, p_r, v_r] = refine_cpi(cb0, pb0, tau, vb0, LW_W, Rf_at, R_S_at, ...
-                p.Rf, R_S, pt, A_next_pre_return, H_next_W, Y_next_W, ...
+            [c_r, p_r, v_r] = refine_cpi(cb0, pb0, tau, tau_R, vb0, LW_W, Rf_at, R_S_at, ...
+                p.Rf, R_S, R_REIT, pt, A_next_pre_return, H_next_W, Y_next_W, ...
                 w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0);
             if v_r > V_polish
                 V_polish = v_r; x_opt = [c_r; p_r];
@@ -708,17 +716,17 @@ function rhs_val = bellman_rhs_z(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_next
     end
 end
 
-function [c_b, p_b, v_b] = refine_cpi(c0, p0, tau_fix, v0, LW_W, Rf_at, R_S_at, Rf, R_S, pt, ...
+function [c_b, p_b, v_b] = refine_cpi(c0, p0, tau_fix, tau_R, v0, LW_W, Rf_at, R_S_at, Rf, R_S, R_REIT, pt, ...
                                        A_next_pre_return, H_next_W, Y_next_W, ...
                                        w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
                                        c_floor, dc0, dp0)
     % Shrinking-radius local grid scan of the (c, pi) rhs surface with tau
-    % pinned at tau_fix. Derivative-free, so it resolves the narrow
-    % interpolation-kink ridges that defeat fmincon's finite differences.
-    % The surface is spiky in c but well-behaved in pi, so round 1 pairs a
-    % fine c window (one seed-grid cell, spacing dc0/8) with the FULL pi
-    % range; rounds 2-4 then zoom locally, resolving to ~dc0/256.
-    R_A      = ((1 - tau_fix) * Rf + tau_fix .* R_S) / pt;
+    % pinned at tau_fix (plus the fixed REIT share tau_R). Derivative-free, so
+    % it resolves the narrow interpolation-kink ridges that defeat fmincon's
+    % finite differences. The surface is spiky in c but well-behaved in pi, so
+    % round 1 pairs a fine c window (one seed-grid cell, spacing dc0/8) with the
+    % FULL pi range; rounds 2-4 then zoom locally, resolving to ~dc0/256.
+    R_A      = ((1 - tau_fix - tau_R) * Rf + tau_fix .* R_S + tau_R .* R_REIT) / pt;
     A_next_W = R_A * A_next_pre_return;               % n_shock x 1
     base_W   = A_next_W + H_next_W + Y_next_W;        % n_shock x 1
     n_shock  = numel(w);
@@ -762,14 +770,15 @@ function [c_b, p_b, v_b] = refine_cpi(c0, p0, tau_fix, v0, LW_W, Rf_at, R_S_at, 
     end
 end
 
-function rhs_val = bellman_rhs_z3(c, pi_eq, tau_dc, LW_W, Rf_at, R_S_at, Rf, R_S, pt, ...
+function rhs_val = bellman_rhs_z3(c, pi_eq, tau_dc, tau_R, LW_W, Rf_at, R_S_at, Rf, R_S, R_REIT, pt, ...
                                    A_next_pre_return, H_next_W, Y_next_W, ...
                                    w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac)
     % 3-choice Bellman RHS for the free-DC-share regime: same as
     % bellman_rhs_z but the DC position A_next_W is rebuilt from the choice
-    % variable tau_dc (survival-credit return, PRE-TAX -- the fund is
-    % sheltered; only the liquid legs Rf_at/R_S_at carry CGT + wealth tax).
-    R_A      = ((1 - tau_dc) * Rf + tau_dc .* R_S) / pt;
+    % variable tau_dc plus the fixed REIT share tau_R (survival-credit return,
+    % PRE-TAX -- the fund is sheltered; only the liquid legs Rf_at/R_S_at carry
+    % CGT + wealth tax).
+    R_A      = ((1 - tau_dc - tau_R) * Rf + tau_dc .* R_S + tau_R .* R_REIT) / pt;
     A_next_W = R_A * A_next_pre_return;
     R_X      = (1 - pi_eq) * Rf_at + pi_eq .* R_S_at;
     X_next_W = R_X * (1 - c) * LW_W;

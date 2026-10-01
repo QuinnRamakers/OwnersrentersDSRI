@@ -1,0 +1,1593 @@
+=== START 2026-09-17 11:06:11 ===
+
+---------- value across cube resolutions ----------
+[11:06:11] solving [8 8 6] ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7742, pi=0.4985  [6.0 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5980, pi=0.8967  [4.2 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4862, pi=0.9828  [4.1 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4312, pi=0.9791  [4.1 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1508, pi=0.4644  [3.7 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1728, pi=0.2555  [3.7 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.2043, pi=0.2074  [3.6 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2401, pi=0.3349  [3.6 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.3169, pi=0.8665  [3.6 s]
+   292 s
+[11:11:03] solving [12 12 8] ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7751, pi=0.4970  [9.5 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5982, pi=0.8917  [9.6 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4875, pi=0.9883  [9.2 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4337, pi=1.0000  [9.2 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1431, pi=0.4330  [9.3 s]
+=== START 2026-09-17 15:09:33 ===
+
+---------- value across cube resolutions ----------
+[15:09:33] solving [12 12 8] ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7751, pi=0.4970  [11.1 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5982, pi=0.8917  [9.4 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4875, pi=0.9883  [9.3 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4337, pi=1.0000  [9.2 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1431, pi=0.4330  [9.3 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1602, pi=0.1279  [9.1 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1861, pi=0.0835  [9.1 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2095, pi=0.2244  [9.0 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2783, pi=0.4921  [9.2 s]
+   698 s
+[15:21:11] solving [16 16 10] ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7750, pi=0.4933  [19.5 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5978, pi=0.8764  [19.4 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4875, pi=0.9997  [19.1 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4334, pi=1.0000  [18.9 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1362, pi=0.4472  [19.0 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1513, pi=0.0464  [18.5 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1705, pi=0.0015  [18.4 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.1799, pi=0.0372  [18.3 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2296, pi=0.3277  [18.2 s]
+   1406 s
+[15:44:37] solving [20 20 12] ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7747, pi=0.4918  [34.1 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5978, pi=0.9057  [35.0 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4871, pi=1.0000  [34.7 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4329, pi=1.0000  [34.0 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1336, pi=0.4316  [33.9 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1429, pi=0.0076  [32.9 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1429, pi=0.0000  [32.5 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.1326, pi=0.0000  [32.0 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.1628, pi=0.0118  [31.7 s]
+   2508 s
+
+=== z at tracked states, by cube ===
+
+occupied @34  (u1=0.139 u2=0.66)
+cube             nodes       age25       age34       age54       age74       age94
+[8 8 6]            384      0.0314      0.0234      0.0173      0.0529      0.1217
+[12 12 8]         1152      0.0230      0.0166      0.0125      0.0490      0.1093
+[16 16 10]        2560      0.0205      0.0157      0.0131      0.0502      0.1144
+[20 20 12]        4800      0.0169      0.0140      0.0136      0.0512      0.1177
+vs finest %                 85.56%      67.22%      26.82%       3.17%       3.35%   (coarsest)
+
+occupied @54  (u1=0.078 u2=0.74)
+cube             nodes       age25       age34       age54       age74       age94
+[8 8 6]            384      0.0122      0.0086      0.0069      0.0285      0.0890
+[12 12 8]         1152      0.0052      0.0033      0.0028      0.0235      0.0739
+[16 16 10]        2560      0.0021      0.0013      0.0023      0.0246      0.0802
+[20 20 12]        4800      0.0002      0.0001      0.0016      0.0257      0.0842
+vs finest %               6824.20%    7206.26%     334.78%      10.93%       5.71%   (coarsest)
+
+occupied @74  (u1=0.020 u2=0.91)
+cube             nodes       age25       age34       age54       age74       age94
+[8 8 6]            384      0.0000      0.0000      0.0000      0.0039      0.0501
+[12 12 8]         1152      0.0000      0.0000      0.0000      0.0006      0.0306
+[16 16 10]        2560      0.0000      0.0000      0.0000      0.0006      0.0379
+[20 20 12]        4800      0.0000      0.0000      0.0000      0.0010      0.0428
+vs finest %              31917.43%   29513.86%   81600.04%     275.50%      17.07%   (coarsest)
+
+sparse corner  (u1=0.300 u2=0.60)
+cube             nodes       age25       age34       age54       age74       age94
+[8 8 6]            384      0.0826      0.0634      0.0430      0.1078      0.1903
+[12 12 8]         1152      0.0742      0.0561      0.0387      0.1066      0.1830
+[16 16 10]        2560      0.0723      0.0565      0.0397      0.1075      0.1870
+[20 20 12]        4800      0.0707      0.0573      0.0405      0.1082      0.1892
+vs finest %                 16.93%      10.65%       6.31%      -0.38%       0.58%   (coarsest)
+
+high-illiquid edge  (u1=0.050 u2=0.98)
+cube             nodes       age25       age34       age54       age74       age94
+[8 8 6]            384      0.0000      0.0000      0.0000      0.0097      0.0559
+[12 12 8]         1152      0.0000      0.0000      0.0000      0.0039      0.0362
+[16 16 10]        2560      0.0000      0.0000      0.0000      0.0055      0.0441
+[20 20 12]        4800      0.0000      0.0000      0.0000      0.0065      0.0493
+vs finest %              27452.57%   19998.03%   20831.14%      49.16%      13.48%   (coarsest)
+
+figures in C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\diagnostics\factorial_figs
+
+---------- value across search routines ----------
+[16:26:34] no sweep, active-set ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7751, pi=0.4970  [1.7 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5986, pi=0.8917  [2.3 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4874, pi=0.9904  [1.9 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4335, pi=1.0000  [1.9 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1426, pi=0.4319  [1.3 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1600, pi=0.1289  [1.1 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1857, pi=0.0858  [1.0 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2088, pi=0.2348  [1.2 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2761, pi=0.5243  [1.2 s]
+   112 s | pi@80=0.623
+[16:28:26] no sweep, sqp ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7751, pi=0.4970  [1.7 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5986, pi=0.8916  [1.5 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4874, pi=1.0000  [1.2 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4340, pi=1.0000  [1.3 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1424, pi=0.4348  [1.3 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1600, pi=0.1284  [1.3 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1856, pi=0.0890  [1.1 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2084, pi=0.2367  [1.1 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2757, pi=0.5204  [1.2 s]
+   96 s | pi@80=0.713
+[16:30:02] no sweep, interior-point ...
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7751, pi=0.4970  [4.8 s]
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.448933e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.332280e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.049084e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.547210e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.312471e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.304651e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.304777e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.304904e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.305030e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.305157e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.305283e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.305410e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.305536e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.305662e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.305789e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.846443e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.508715e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.361553e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  6.828916e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.421256e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.382569e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.272309e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.309141e-21.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  6.666024e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.254899e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.312641e-21.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5986, pi=0.8714  [2.5 s]
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  7.972670e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.265819e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.889720e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.445645e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  7.481937e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.781065e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.044685e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.833072e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.042180e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.051680e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.617262e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.976796e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  6.340674e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4879, pi=0.9900  [2.2 s]
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.691309e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  9.795615e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.342191e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  6.655773e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.983936e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.244647e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.961112e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.888433e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.109829e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.808170e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4340, pi=1.0000  [2.3 s]
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.247323e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  7.293356e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.832943e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.688437e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.110227e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.110226e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.110226e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  6.571990e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.650479e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.093748e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1420, pi=0.4319  [2.1 s]
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  7.237669e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.613769e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.851052e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.262780e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.759345e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.335268e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.373798e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.273570e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  9.856335e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.416883e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.044957e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.220224e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.519937e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.555534e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.534701e-21.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.273141e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.282208e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.274613e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.282269e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.179627e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.340103e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.337331e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.588201e-21.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.361540e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.146862e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.626483e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.122886e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.934146e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.401284e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.241911e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.261082e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.261077e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.261072e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.261068e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.731336e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.622698e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  9.267405e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.634211e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.790691e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.988413e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.494869e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.530634e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.707078e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.707078e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.242309e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.990673e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1600, pi=0.1274  [2.1 s]
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.066640e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  9.517754e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.961845e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.172006e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.413172e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.623820e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.218756e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.840602e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.875867e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.953388e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.502665e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  9.049054e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  9.610093e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.091863e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.925480e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1857, pi=0.0863  [2.0 s]
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.034977e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.025489e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.091515e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.885681e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.997461e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.929706e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.918701e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.919960e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.965912e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.532432e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.531772e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.532102e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.531937e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.103655e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.857593e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  7.406016e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  7.223791e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  7.223039e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.616777e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  6.848815e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.250681e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.302170e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.902857e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  5.492747e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.860826e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.842329e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.226842e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  8.037764e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.332902e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  9.319789e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.231797e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.229880e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.605271e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.128117e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.186259e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.535355e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.235388e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.453203e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.279741e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.544078e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.555294e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.554823e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.124550e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  6.402805e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.851795e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.504324e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  4.362454e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.887444e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.727545e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.719527e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.023576e-20.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.745758e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.705830e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.706737e-19.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.857106e-16.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is singular to working precision.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.619040e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.268880e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2088, pi=0.2324  [1.9 s]
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  3.434168e-18.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  1.975826e-17.
+> In backsolveSys
+In solveKKTsystem
+In computeTrialStep
+In barrier
+In <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('fmincon', 'C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m', 657)" style="font-weight:bold">fmincon</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2025b\toolbox\shared\optimlib\fmincon.m',657,0)">line 657</a>)
+
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2769, pi=0.4983  [2.1 s]
+   166 s | pi@80=0.864
+[16:32:48] no sweep, pi multistart ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7751, pi=0.4970  [10.6 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5984, pi=0.8916  [13.5 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4877, pi=0.9810  [11.2 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4330, pi=1.0000  [11.2 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1430, pi=0.4334  [8.1 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1601, pi=0.1289  [7.8 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1859, pi=0.0843  [7.3 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2093, pi=0.2266  [7.7 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2779, pi=0.4943  [7.9 s]
+   718 s | pi@80=0.877
+[16:44:46] sweep pi after ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7751, pi=0.4970  [7.8 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5985, pi=0.8968  [7.7 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4877, pi=0.9813  [8.0 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4332, pi=1.0000  [7.6 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1431, pi=0.4339  [7.8 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1601, pi=0.1291  [7.4 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1859, pi=0.0844  [7.4 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2093, pi=0.2280  [7.2 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2775, pi=0.5064  [7.5 s]
+   571 s | pi@80=0.877
+[16:54:17] sweep pi and c first ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7751, pi=0.4970  [9.5 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5982, pi=0.8917  [9.3 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4875, pi=0.9883  [9.2 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4337, pi=1.0000  [9.2 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1431, pi=0.4330  [9.4 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1602, pi=0.1279  [9.1 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1861, pi=0.0835  [8.9 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2095, pi=0.2244  [9.1 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2783, pi=0.4921  [9.2 s]
+   693 s | pi@80=0.877
+[17:05:50] sweep c first ...
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7751, pi=0.4970  [6.4 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5981, pi=0.8896  [7.5 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4875, pi=0.9890  [7.2 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4336, pi=1.0000  [6.9 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1431, pi=0.4330  [7.5 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1602, pi=0.1282  [7.0 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1860, pi=0.0837  [6.9 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.2094, pi=0.2252  [6.8 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.2782, pi=0.4924  [6.8 s]
+   533 s | pi@80=0.877
+
+=== by search routine (cube [12 12 8], gh_n=5) ===
+routine                          sec    pi@34    pi@54    pi@80   z at tracked states, age 54 (% below best)
+no sweep, active-set             112    0.069    0.087    0.623    -0.145    -0.289    -4.566    -0.242
+no sweep, sqp                     96    0.070    0.091    0.713    -0.248    -0.351    -4.576    -0.325
+no sweep, interior-point         166    0.068    0.088    0.864    -0.260    -0.329    -2.594    -0.341
+no sweep, pi multistart          718    0.066    0.085    0.877    -0.065    -0.212    -4.242    -0.084
+sweep pi after                   571    0.066    0.086    0.877    -0.047    -0.190    -4.251    -0.070
+sweep pi and c first             693    0.065    0.084    0.877    +0.000    +0.000    +0.000    +0.000
+sweep c first                    533    0.065    0.085    0.877    -0.021    -0.015    -0.297    -0.096
+
+figures in C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\diagnostics\factorial_figs
+
+=== END 2026-09-17 17:14:47 ===

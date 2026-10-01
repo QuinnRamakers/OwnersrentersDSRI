@@ -14,6 +14,13 @@ if isfield(p, 'grid_type')
         'p.grid_type is ''lna'' but this is the simplex solver.');
 end
 
+% DC allocation feasibility: the bond leg 1 - tau_S - tau_REIT must stay
+% non-negative. Re-checked here (config.params also checks it) so a tau_REIT
+% overridden after params is still caught before it becomes a silent short.
+alloc = config.tau_effective(p) + config.reit_effective(p);
+assert(all(alloc <= 1 + 1e-12), 'solve_lifecycle:reit_alloc', ...
+    'tau_S + tau_REIT exceeds 1 (max %.4f): DC bond leg would go negative.', max(alloc));
+
 NL = p.N_lambda; NA = p.N_sA; NH = p.N_sH; T = p.T;
 
 % The welfare anchors (the b0 and b_alt initial states) must be exact grid nodes

@@ -52,7 +52,10 @@ if isfield(p, 'grid_type') && strcmp(char(p.grid_type), 'lna')
     F   = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, V0, 'linear', 'nearest');
     den = b(:) + p.h_mult + 1;
     u1  = 1        ./ den;
-    u2  = p.h_mult ./ (p.h_mult + b(:));
+    % h_mult = 0 with b = 0 is 0/0: no housing and no buffer, so the illiquid
+    % share of non-income wealth is zero. Arises only in the no-housing
+    % ablation rungs; the calibrated anchors have b > 0.
+    u2  = p.h_mult ./ max(p.h_mult + b(:), realmin);
     u3  = zeros(size(den));
     Vt0 = reshape(F(u1, u2, u3), size(b));
     if nargout > 1

@@ -1,0 +1,50 @@
+Starting parallel pool (parpool) using the 'Processes' profile ...
+Connected to parallel pool with 16 workers.
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7747, pi=0.4919  [25.2 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.5977, pi=0.8866  [6.6 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.4872, pi=1.0000  [5.9 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4329, pi=1.0000  [5.2 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.1338, pi=0.4446  [3.9 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.1451, pi=0.0128  [3.2 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.1564, pi=0.0000  [3.6 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.1548, pi=0.0009  [3.3 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.1912, pi=0.1176  [3.2 s]
+renter x1.00     C50=  31343  fin@66= 1009391  DCshare@66=0.84  eq@50= 187111
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7877, pi=0.5306  [5.6 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.6277, pi=0.9582  [6.2 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.5231, pi=1.0000  [5.8 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4725, pi=1.0000  [5.5 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.2151, pi=0.7676  [4.2 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.2491, pi=0.7402  [3.9 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.2917, pi=0.8315  [3.9 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.3147, pi=1.0000  [3.8 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.3785, pi=1.0000  [3.9 s]
+renter x0.25     C50=  39711  fin@66=  921563  DCshare@66=0.94  eq@50= 244806
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7875, pi=0.5302  [5.3 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.6270, pi=0.9594  [5.9 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.5218, pi=1.0000  [5.9 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4712, pi=1.0000  [5.1 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.2088, pi=0.7555  [4.3 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.2455, pi=0.6679  [3.8 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.2484, pi=0.3975  [3.7 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.1657, pi=0.0175  [3.3 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.0743, pi=0.0000  [2.9 s]
+owner x1.00      C50=  34197  fin@66=  953377  DCshare@66=0.90  eq@50= 213892
+  t=75 (age 99): c@(u1=0.20,u2=0.75,u3=0.33)=0.7907, pi=0.5403  [6.0 s]
+  t=70 (age 94): c@(u1=0.20,u2=0.75,u3=0.33)=0.6345, pi=0.9772  [6.0 s]
+  t=60 (age 84): c@(u1=0.20,u2=0.75,u3=0.33)=0.5311, pi=1.0000  [5.8 s]
+  t=50 (age 74): c@(u1=0.20,u2=0.75,u3=0.33)=0.4821, pi=1.0000  [5.2 s]
+  t=40 (age 64): c@(u1=0.20,u2=0.75,u3=0.33)=0.2313, pi=0.8257  [4.4 s]
+  t=30 (age 54): c@(u1=0.20,u2=0.75,u3=0.33)=0.2704, pi=0.9060  [3.9 s]
+  t=20 (age 44): c@(u1=0.20,u2=0.75,u3=0.33)=0.3052, pi=0.9952  [3.8 s]
+  t=10 (age 34): c@(u1=0.20,u2=0.75,u3=0.33)=0.3205, pi=1.0000  [3.6 s]
+  t= 1 (age 25): c@(u1=0.20,u2=0.75,u3=0.33)=0.3762, pi=1.0000  [3.7 s]
+owner x0.25      C50=  40085  fin@66=  916454  DCshare@66=0.94  eq@50= 250089
+[Warning: Escaped character '\_' is not valid. See 'doc sprintf' for supported special characters.] 
+[> In outcomes>make_fig (line 155)
+In outcomes (line 31)] 
+[Warning: Escaped character '\_' is not valid. See 'doc sprintf' for supported special characters.] 
+[> In outcomes>make_fig (line 155)
+In outcomes (line 31)] 
+figures in C:\Users\Quinn\Desktop\claudecodetest\OwnersrentersDSRI-rentproc\diagnostics\factorial_figs
+Parallel pool using the 'Processes' profile is shutting down.

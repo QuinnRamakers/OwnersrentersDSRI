@@ -44,9 +44,15 @@ end
 % Without these the cube's headline welfare number is a trilinear blend while
 % the simplex's is a solved node, so the two are not measuring the same thing
 % and the cube's number moves with resolution.
+% Under a non-default p.coord1 the first axis no longer carries lambda, so the
+% anchor is spliced at the image of lambda0 under that chart, evaluated at t = 1
+% with the anchor's own u2 and u3 = 0. ann_price is not read at t = 1, so it need
+% not be available here.
 if all(isfield(p, {'u1_grid', 'u2_grid'}))
-    p.u1_grid = merge_nodes(p.u1_grid, 1 ./ den);
-    p.u2_grid = merge_nodes(p.u2_grid, p.h_mult ./ (p.h_mult + [p.b0, p.b_alt]));
+    u2_anch   = p.h_mult ./ (p.h_mult + [p.b0, p.b_alt]);
+    c1        = config.coord1(p, 1, []);
+    p.u1_grid = merge_nodes(p.u1_grid, c1.fwd(1 ./ den, u2_anch, 0));
+    p.u2_grid = merge_nodes(p.u2_grid, u2_anch);
     p.N_u1    = numel(p.u1_grid);
     p.N_u2    = numel(p.u2_grid);
 end
