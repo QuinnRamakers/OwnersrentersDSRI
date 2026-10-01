@@ -63,7 +63,8 @@ if any(s.A.mean > 0)
     hs(end+1) = plot(ax, a(w), s.equity_share(w), 'Color', st.series(3, :), 'LineWidth', st.lw);
     names = [names, {'DC fund (glide)', 'all financial wealth'}];
 end
-legend(ax, hs, names, 'Location', 'southwest', 'Box', 'off', 'TextColor', st.ink2);
+legend(ax, hs, names, 'Location', 'southoutside', 'Orientation', 'horizontal', ...
+    'Box', 'off', 'TextColor', st.ink2);
 ylim(ax, [0 1]); ylabel(ax, 'equity share'); title(ax, 'Equity shares', 'Color', st.ink);
 
 % (d) housing burden
@@ -83,7 +84,7 @@ ax = nexttile(tl); prep(ax, st, ret);
 h1 = plot(ax, a, 100 * s.floored, 'Color', st.series(1, :), 'LineWidth', st.lw);
 h2 = plot(ax, a, 100 * s.at_c_bound, 'Color', st.series(2, :), 'LineWidth', st.lw);
 legend(ax, [h1 h2], {'topped up to the floor', 'at the consumption-search bound'}, ...
-    'Location', 'northeast', 'Box', 'off', 'TextColor', st.ink2);
+    'Location', 'northwest', 'Box', 'off', 'TextColor', st.ink2);
 ylabel(ax, '% of households'); title(ax, 'Consumption not freely chosen', 'Color', st.ink);
 
 % (f) calibration and checks
