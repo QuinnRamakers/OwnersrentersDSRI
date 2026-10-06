@@ -175,6 +175,8 @@ simulation draws continuous shocks and reads the policies off the cube.
 
 [GRIDS.md](GRIDS.md) explains how to choose the state grid from where
 households actually live. [TODO.md](TODO.md) lists the open questions.
+[CALIBRATION_PLAN.md](CALIBRATION_PLAN.md) is the step-by-step plan for the
+new calibration.
 
 ## History
 
