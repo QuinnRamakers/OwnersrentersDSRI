@@ -11,7 +11,8 @@ function R = robustness(step, opts)
 %   reference's number of households and seed, so differences come from the
 %   solution and not from sampling:
 %     optimisers   fmincon sqp and interior-point after the sweep
-%     search       active-set without the global sweep (fmincon from the warm start)
+%     search       active-set and interior-point without the global sweep (fmincon
+%                  from the warm start only)
 %     grids        [9 9 6] and quick [12 12 8] with 3 quadrature nodes, fine
 %                  [20 20 12] and twice the reference's u1 nodes with 5
 %   Each variant is saved to <numerics dir>/robustness/NN_<step>_<arm>_<variant>.mat
@@ -41,6 +42,7 @@ V = struct('name', {}, 'label', {}, 'set', {}, 'dims', {}, 'gh_n', {}, 'algorith
 V(end+1) = variant('sqp',      'fmincon sqp',                          'optimisers', dims, num.gh_n, 'sqp', true);
 V(end+1) = variant('ip',       'fmincon interior-point',               'optimisers', dims, num.gh_n, 'interior-point', true);
 V(end+1) = variant('nosweep',  'active-set, no global sweep',          'search', dims, num.gh_n, 'active-set', false);
+V(end+1) = variant('ip_nosweep', 'interior-point, no global sweep',    'search', dims, num.gh_n, 'interior-point', false);
 V(end+1) = variant('coarse',   'grid [9 9 6], 3 nodes',                'grids', [9 9 6],   3, 'active-set', true);
 V(end+1) = variant('quick',    'grid [12 12 8], 3 nodes',              'grids', [12 12 8], 3, 'active-set', true);
 V(end+1) = variant('fine',     'grid [20 20 12], 5 nodes',             'grids', [20 20 12], 5, 'active-set', true);
