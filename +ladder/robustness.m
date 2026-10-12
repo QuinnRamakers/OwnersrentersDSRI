@@ -7,14 +7,18 @@ function R = robustness(step, opts)
 %   R = ladder.robustness(...)                  % R.<arm>.<variant> = result
 %
 %   The reference is the step at the given numerics, as ladder.run saves it
-%   (run if missing). Three sets of variants are solved for every arm, with the
-%   reference's number of households and seed, so differences come from the
-%   solution and not from sampling:
-%     optimisers   fmincon sqp and interior-point after the sweep
-%     search       active-set and interior-point without the global sweep (fmincon
-%                  from the warm start only)
+%   (run if missing), with the default fmincon_algorithm and use_refine. Three
+%   sets of variants are solved for every arm, with the reference's number of
+%   households and seed, so differences come from the solution and not from
+%   sampling:
+%     optimisers   the other two fmincon algorithms, with the reference's sweep
+%                  setting
+%     search       the global sweep switched, for the reference's algorithm and
+%                  for active-set (interior-point when the reference is
+%                  active-set)
 %     grids        [9 9 6] and quick [12 12 8] with 3 quadrature nodes, fine
-%                  [20 20 12] and twice the reference's u1 nodes with 5
+%                  [20 20 12] and twice the reference's u1 nodes with 5, all
+%                  with the reference's algorithm and sweep setting
 %   Each variant is saved to <numerics dir>/robustness/NN_<step>_<arm>_<variant>.mat
 %   and reused while its calibration is unchanged. Each set is drawn over the
 %   reference with figures.compare, one PNG per arm and set, in the same folder.
@@ -38,20 +42,24 @@ dir = fullfile(num.dir, 'robustness');
 if ~isfolder(dir), mkdir(dir); end
 
 dims = num.dims;
+A0 = p0.fmincon_algorithm; S0 = p0.use_refine;
 V = struct('name', {}, 'label', {}, 'set', {}, 'dims', {}, 'gh_n', {}, 'algorithm', {}, 'refine', {});
-V(end+1) = variant('sqp',      'fmincon sqp',                          'optimisers', dims, num.gh_n, 'sqp', true);
-V(end+1) = variant('ip',       'fmincon interior-point',               'optimisers', dims, num.gh_n, 'interior-point', true);
-V(end+1) = variant('nosweep',  'active-set, no global sweep',          'search', dims, num.gh_n, 'active-set', false);
-V(end+1) = variant('ip_nosweep', 'interior-point, no global sweep',    'search', dims, num.gh_n, 'interior-point', false);
-V(end+1) = variant('coarse',   'grid [9 9 6], 3 nodes',                'grids', [9 9 6],   3, 'active-set', true);
-V(end+1) = variant('quick',    'grid [12 12 8], 3 nodes',              'grids', [12 12 8], 3, 'active-set', true);
-V(end+1) = variant('fine',     'grid [20 20 12], 5 nodes',             'grids', [20 20 12], 5, 'active-set', true);
+for alg = setdiff({'active-set', 'sqp', 'interior-point'}, A0, 'stable')
+    V(end+1) = solver_variant(alg{1}, S0, 'optimisers', dims, num.gh_n); %#ok<AGROW>
+end
+partner = 'active-set';
+if strcmp(A0, 'active-set'), partner = 'interior-point'; end
+V(end+1) = solver_variant(A0, ~S0, 'search', dims, num.gh_n);
+V(end+1) = solver_variant(partner, ~S0, 'search', dims, num.gh_n);
+V(end+1) = variant('coarse',   'grid [9 9 6], 3 nodes',    'grids', [9 9 6],    3, A0, S0);
+V(end+1) = variant('quick',    'grid [12 12 8], 3 nodes',  'grids', [12 12 8],  3, A0, S0);
+V(end+1) = variant('fine',     'grid [20 20 12], 5 nodes', 'grids', [20 20 12], 5, A0, S0);
 V(end+1) = variant('dense_u1', sprintf('grid [%d %d %d], 5 nodes', 2 * dims(1), dims(2:3)), ...
-                               'grids', [2 * dims(1), dims(2:3)], 5, 'active-set', true);
+                   'grids', [2 * dims(1), dims(2:3)], 5, A0, S0);
 
 ref = ladder.run(k, numerics = opts.numerics);
 ref = ref{1};
-ref_label = sprintf('reference: grid [%d %d %d], %d nodes, active-set with sweep', dims, num.gh_n);
+ref_label = sprintf('reference: grid [%d %d %d], %d nodes, %s', dims, num.gh_n, solver_text(A0, S0));
 
 R = struct();
 for arm = fieldnames(ref).'
@@ -88,6 +96,19 @@ for arm = fieldnames(ref).'
         figures.compare(rs, labels, ttl, out);
         fprintf('Wrote %s\n', out);
     end
+end
+end
+
+function v = solver_variant(algorithm, refine, set, dims, gh_n)
+short = struct('active_set', 'as', 'sqp', 'sqp', 'interior_point', 'ip');
+tag = {'nosweep', 'sweep'};
+name = sprintf('%s_%s', short.(strrep(algorithm, '-', '_')), tag{refine + 1});
+v = variant(name, solver_text(algorithm, refine), set, dims, gh_n, algorithm, refine);
+end
+
+function t = solver_text(algorithm, refine)
+if refine, t = [algorithm ' with global sweep'];
+else,      t = [algorithm ', no global sweep'];
 end
 end
 

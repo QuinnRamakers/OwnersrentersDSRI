@@ -120,9 +120,14 @@ end
 
 function collapsed_axes_exact()
 % Without housing and DC, u2 = u3 = 0 on every path. Solving on the collapsed
-% {0,1} axes must give the same policy on that line as a fuller cube.
+% {0,1} axes must give the same policy on that line as a fuller cube. Solved
+% with active-set and the sweep: interior-point stops within about 0.005 of the
+% equity share where it does not matter (households that consume everything),
+% and the objective scaling differs between the two cubes, so it would test the
+% optimiser's tolerance rather than the axes.
 p = ladder.params('cgm');
 p.grid_dims = [8 6 5]; p.gh_n = 3;
+p.fmincon_algorithm = 'active-set'; p.use_refine = true;
 p = config.derive(p);
 assert(p.N_u2 == 2 && p.N_u3 == 2, 'axes did not collapse');
 [pf, sk, an] = config.model_inputs(p);

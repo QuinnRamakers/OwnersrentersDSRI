@@ -350,8 +350,8 @@ Not calibration targets; accuracy choices, justified by convergence checks.
 |---|---|---|
 | `grid_dims` | [20 20 12] | Base nodes on (u1, u2, u3); the entry anchors add up to two on u1 and u2 |
 | `gh_n` | 5 | Gauss-Hermite nodes per shock; 3 and 5 gave the same policies wherever compared |
-| `use_refine` | true | Global (c, pi) sweep before fmincon at every node |
-| `fmincon_algorithm` | `'active-set'` | Local solve after the sweep. `'sqp'` and `'interior-point'` are robustness checks (`ladder.robustness`); active-set gives the same answer on a thread pool and a process pool, sqp did not at step 1 |
+| `use_refine` | false | Global (c, pi) sweep before fmincon at every node. Off by Quinn's choice on 12 Oct 2026, for now. At step 1 interior-point without it matches active-set with it; at the production calibration (quick numerics) it does not: the mean liquid equity share differs by up to 0.13 (renters) and 0.24 (owners), and it reaches a lower value at about 90% of node-ages |
+| `fmincon_algorithm` | `'interior-point'` | Local solve. `'active-set'` (the earlier default, with the sweep) and `'sqp'` are robustness checks (`ladder.robustness`). Active-set and interior-point give the same answer on a thread pool and a process pool; sqp did not at step 1 |
 | `N_c`, `N_pi` | 41 | Set the step sizes of the sweep's shrinking rounds |
 | `interp_method` | `'linear'` | Linear in z. `'makima'` serves as a structural error check |
 | `lambda_lo` | 0.0008 | Owners reach u1 = 0.0013; 0.002 clipped them |

@@ -99,8 +99,8 @@ p.gh_n          = 5;          % Gauss-Hermite nodes per shock
 p.gh_n_reit     = [];         % nodes for the REIT shock; [] uses gh_n
 p.N_c           = 41;         % sets the consumption step of the per-node search
 p.N_pi          = 41;         % sets the equity-share step of the per-node search
-p.use_refine    = true;       % global (c, pi) sweep before fmincon at every node
-p.fmincon_algorithm = 'active-set';   % local solve after the sweep: 'active-set', 'sqp' or 'interior-point'
+p.use_refine    = false;      % global (c, pi) sweep before fmincon at every node
+p.fmincon_algorithm = 'interior-point';   % local solve: 'interior-point', 'active-set' or 'sqp'
 p.interp_method = 'linear';   % continuation interpolant: 'linear', 'makima' or 'spline'
 p.lambda_lo     = 0.0008;     % bottom of the u1 axis
 p.lambda_hi     = [];         % top of the u1 axis; [] = min(0.9, 3/(1+h_mult)), or 1 without housing

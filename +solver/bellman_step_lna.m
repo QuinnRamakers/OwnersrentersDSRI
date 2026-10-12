@@ -20,8 +20,7 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %     2. if p.use_refine, a global sweep over (c, pi) -- a 21 x 21 grid
 %        spanning both ranges, then three rounds shrinking around the best
 %        point -- whose best point replaces the seed;
-%     3. fmincon (p.fmincon_algorithm, active-set by default) from the seed,
-%        kept if it improves on it.
+%     3. fmincon (p.fmincon_algorithm) from the seed, kept if it improves on it.
 %   The objective has competing local peaks at a minority of nodes, mostly in
 %   retirement, and a local solve from the warm start alone settles on the
 %   wrong one there. The sweep is what finds the right basin.

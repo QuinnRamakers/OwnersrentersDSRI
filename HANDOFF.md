@@ -29,6 +29,16 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 Default solver: interior-point without the global sweep (spec: none, decided by Quinn in Claude Code)
+Decision (Quinn, "for now"): `fmincon_algorithm = 'interior-point'`, `use_refine = false`. The evidence from the entry below stands: this matches the sweep at step 1 but not at the production calibration, so `ladder.robustness(k)` should be read at every step, and the sweep should be reconsidered before the housing step (TODO.md, 6).
+Changed: `+config/params.m` (the two defaults); `+solver/bellman_step_lna.m` (docstring); `+ladder/robustness.m`: variants now relative to the defaults: 'optimisers' = the other two algorithms with the reference's sweep setting, 'search' = the sweep switched for the reference's algorithm and for active-set; grids use the reference's solver. `tests/run_tests.m`: `collapsed_axes_exact` pinned to active-set with the sweep; under interior-point it failed (max d pi 0.0047 against 1e-3, max |dV/V| 1.4e-5 against 4.6e-8 for active-set, largest gap at u1 = 1, age 65, c = 1.000, where pi does not matter), which is the optimiser's tolerance and the different objective scaling of the two cubes, not the axes. CALIBRATION.md, README.md, TODO.md: the new defaults and the evidence.
+Checks run:
+- `run_tests` (full): 0 of 10 checks failed (after pinning; 1 of 10 before, as above).
+- Step 1 re-solved at standard with the new default (`ladder.run(1)` via `ladder.robustness(1)`): solve 14.6 s on a thread pool; c_bound_25_39 0, ce_entry 0.6427, offgrid 0, floored 0.
+- `ladder.robustness(1)` against it (max |d mean pi|, |dC/C|, |dX/X|): interior-point with sweep 0.001, 0.0%, 0.0%; active-set with sweep 0.001, 0.0%, 0.0%; active-set without 0.205, 152%, 491%; sqp without 1.000, 69%, 100% (stays at its seed: pi 0, no saving); grids [9 9 6] 0.028, 2.9%, 9.0%, [12 12 8] 0.012, 1.1%, 3.5%, [20 20 12] 0.010, 0.6%, 1.8%, [32 16 10] 0.012, 1.2%, 3.7%.
+Commit: pending (filled in by the next commit).
+Open: step 2 waits for review of step 1.
+
 ### 2026-10-12 Does interior-point need the global sweep? (spec: none, asked by Quinn in Claude Code)
 Quinn asked whether interior-point uses the global sweep, and to make it the default if it does not need it. The sweep runs before fmincon whatever the algorithm, so the interior-point run of the previous entry had it. Tested without it. Decision: it needs the sweep at the production calibration and is slower, so the default stays active-set with the sweep.
 Changed: `+ladder/robustness.m`: the 'search' set also solves interior-point without the sweep.

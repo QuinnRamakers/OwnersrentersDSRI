@@ -98,6 +98,10 @@ differences rather than levels.
   did not. Not yet the default.
 - The global (c, pi) sweep is most of the solve time. A cheaper search that
   keeps its accuracy would make the fine grid routine.
+- The default is interior-point without the sweep since 12 October, for now.
+  It matched the sweep at step 1 but not at the production calibration (quick
+  numerics). Decide before the housing step whether the sweep comes back;
+  `ladder.robustness(k)` shows the difference at each step.
 
 ## 7. Paper write-up
 
