@@ -29,6 +29,20 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 Step 7 housing at standard numerics; stopped before step 8 (spec: none, asked by Quinn in Claude Code)
+Changed: no code. Results, gitignored, under `ladder/standard_16x16x10_gh5/` (07_*, compare_06_07_*, owner_renter_07, robustness/robust_07_*).
+Checks run: `ladder.robustness(7)`, `ladder.compare(7)`, thread pool, interior-point with the sweep; solve 79 s (renter), 64 s (owner).
+- Renter: offgrid 0, c_bound_25_39 0, floored 0.4% (0.8% from 67); entry value 0.674. Correlations: income-stock nodes 0.040, panel 0.042; housing 0 as set.
+- Owner: offgrid 0, c_bound_25_39 0, floored 5.5% of household-years (12.2% from 67: 3.8% at 75, 11.8% at 85); entry value 0.660.
+- Against step 6 (ages 25/35/45/55/65/75/85), renter / owner: median C/Y0 0.65/0.63 0.95/1.01 1.21/1.35 1.43/1.55 1.64/1.69 1.58/1.59 1.45/1.20 (step 6: 1.07/1.07 1.33/1.40 1.55/1.63 1.73/1.81 1.89/1.96 1.82/1.89 1.66/1.71); mean X/Y0 at 65 16.7/14.6 (11.6/12.9), peak 17.0/15.1 at 67 (12.1/13.3); mean pi 1/1 0.956/0.899 0.72/0.824 0.555/0.876 0.465/0.611 0.503/0.637 0.559/0.652 (1 1 0.996/0.999 0.898/0.896 0.717/0.687 0.772/0.746 0.863/0.846); pi below 0.99 from 33 / 31 (47 / 48). Median housing cost over net income, renter 0.24 0.18 0.17 0.19 0.21 0.34 0.38; owner 0.22 0.20 0.23 0.09 0.13 0.28 0.39.
+- Against the expectation: consumption lower, liquid wealth at 67 higher (renter +40%, owner +13%), the equity share lower and the corner left 14-17 years earlier, housing-cost burdens as computed: as written. Consumption at 25 falls by more than the rent (39-41%): households also save more from the start. The owner floor flag came true.
+- Solver: default against active-set with the sweep, max |d mean pi| 0.0009 / 0.0006, consumption 0.05% / 0.44%, liquid wealth 0.03% / 0.53% of income.
+- Grid (max over ages 26-95; |dX| in years of income), renter: [9 9 6] pi 0.18, C 13%, X 1.5; [12 12 8] 0.075, 5.5%, 0.6; [20 20 12] 0.060, 5.4%, 0.4; [32 16 10] 0.186 (age 36), 19.7% (age 26), 0.9. Owner: [9 9 6] 0.18, 25%, 3.7; [12 12 8] 0.086, 22%, 2.2; [20 20 12] 0.061, 9.0%, 1.3; [32 16 10] 0.877 (age 27), 79% (age 26), 4.1, with 7% of young owners at the consumption search bound. Step 7 is not grid-converged for either tenure, worst for owners and in early life; the owners' consumption spike at 67 also changes sign across grids.
+Stop: the owner's floor share (5.5%) is above the 1% rule. Step 8 not run.
+Reading: maintenance is 1.5% of a house that appreciates 3.73% a year while the pension is flat, and the owner can neither sell nor borrow against the house, so in house-price booms maintenance outruns the pension (mean maintenance about EUR 37k a year at 100 against a EUR 52k pension; disposable income negative for the bottom decile). The grid sensitivity is the early-life problem of the research (a committed outflow of 22-24% of income with a floor of 1e-6), here without taxes, plus the owners' late-life low-u1 region.
+Commit: pending (filled in by the next commit).
+Open: Quinn's decisions on the owner's housing costs in retirement and on the floor and grid before step 7 is rerun and step 8 runs.
+
 ### 2026-10-12 Housing steps 7-8: code, and expectations written before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: housing first, taxes off; step 7 housing with the calibration tables (Table 1: house prices 3.73% real, vol 8.35%, NVM repeat sales 1996-2024; rents 0.99%, vol 1.79%, CBS regulated rents 1983-2025) and the earlier mortgage placeholders (1.36% real, 30 years, LTV 100%; h_mult 4, rent 6%, maintenance 1.5%), no housing correlations; step 8 adds the correlations (Table 3, gross income, 2002-2023): owners house price with income 0.09 and stocks 0.24, renters rent with income 0.06 and stocks 0.43. Defaults kept for the open decisions: entry buffer 0.079, interior-point with the sweep, the full robustness set, check-in after step 8 unless a stop rule fires. The savings stop rule is now measured against income.
 Changed:
@@ -52,7 +66,7 @@ Expectations, step 8 housing correlations against step 7:
 - Owners: stocks partly hedge the house-linked costs (0.24) and income moves a little with them (0.09), so the equity share rises slightly; consumption and wealth move by under 2%.
 - Renters: the same direction, smaller, since rent volatility is only 1.79% although the stock correlation is 0.43.
 - The correlations on the nodes equal the inputs and in the panel lie within 0.01.
-Commit: pending (filled in by the next commit).
+Commit: 72560c9, pushed to main before the runs.
 
 ### 2026-10-12 Steps 5 market and 6 corr_SL at standard numerics; the no-housing block is complete (spec: Calibration ladder, part 1)
 Changed: `+figures/robustness.m`, `+figures/step_dashboard.m`: % gaps in liquid savings are left out where the reference's savings are below 1% of their peak (they were a few euros at ages 26-30 and dominated the axes). Pages for steps 1-6 redrawn; no numbers changed. Results, gitignored, under `ladder/standard_16x16x10_gh5/`.
