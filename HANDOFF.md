@@ -41,7 +41,7 @@ Checks run:
 - Step 1 re-solved after adding the primitive: V, c_pol, pi_pol and summary identical to the earlier run (`isequaln`).
 - `ladder.robustness(1)`, all on a thread pool, against the reference (max over ages of |d mean pi|, |dC/C| mean, |dX/X| mean): sqp 0.014, 6.1%, 4.7%; interior-point 0.000, 0.0%, 0.0%; no global sweep 0.205, 152%, 491% (pi at 65 drops to 0.18; consumption and savings diverge after 90); grid [9 9 6] 0.028, 2.9%, 9.0%; [12 12 8] 0.012, 1.1%, 3.5%; [20 20 12] 0.006, 0.6%, 1.8%; [32 16 10] 0.012, 1.2%, 3.7%.
 - Pool dependence: sqp on a process pool equals the reference to 1e-5 in the policies, on a thread pool it differs by up to 0.069 in pi_pol (largest gap in mean pi at age 98). Active-set and interior-point give the same results on both pools. The sqp figures in the entry below were on a thread pool. Figure: `robustness/robust_01_cgm_nohousing_pool.png`.
-Commit: pending (filled in by the next commit).
+Commit: 989db7f, pushed to main.
 Open: step 2 waits for review of step 1.
 
 ### 2026-10-12 Step 1 cgm at standard numerics, and robustness checks (spec: Calibration ladder, part 1)
