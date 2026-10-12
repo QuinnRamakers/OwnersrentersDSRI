@@ -47,7 +47,7 @@ Robustness of step 1 (scratch runs, nothing saved), against the standard active-
   fmincon sqp instead of active-set: 0.014, 6.1%, 4.7% (within 0.003 in pi and 0.3% in C at ages 25-85). fmincon interior-point: 0.0001, 0.0%, 0.0%, 20 s instead of 13 s.
   No global sweep (use_refine = false, fmincon from the warm start only): 0.21, 62%, 491%. pi at 65 falls to 0.19. This is the known basin-trapping failure; the default keeps the sweep.
   Smoke solves of the new code under all three algorithms (steps 4 and 6 with two no-housing arms on [7 5 4] and [10 8 6], production with housing and DC on [8 6 5]): all finite and in range, no off-grid lookups, correlation 0.0400 on the nodes and 0.0390 in the panel at corr_SL 0.04. interior-point printed 380 "matrix is singular" warnings from inside fmincon on the production smoke solve, with results matching active-set (pi at 45: 0.027 against 0.028 for renters, 0.135 against 0.135 for owners).
-Commit: pending (filled in by the next commit).
+Commit: 6b127ea, pushed to main.
 Open: step 2 (gamma5) waits for review of step 1.
 
 ### 2026-10-12 Step 1 expectation, written before the run (spec: Calibration ladder, part 1)
