@@ -39,7 +39,7 @@ Checks run: none needed (no code changed). The numbers the script printed:
 - Young owner at 27 (house 3.81, liquid savings 0.36, both over income): standard pi 1.00, consumes 55% of liquid resources; doubled pi 0.07, 9%. Next year's worst shock combination is worth 0.44 against 0.020 years of income. The worst 5% of next year's shock combinations carry 14% of expected disutility on the standard grid and 88% on the doubled grid (worst 20%: 40% and 96%). On the doubled grid all-equity costs 11% of CE against the best share; on the standard grid the objective is flat within 0.2% over all shares. Entry value 0.660 against 0.034.
 - Flat house prices: the same zone and the same interpolation error, but households stay far from it (floored 0% at every age) and the two grids agree.
 Reading: the near-zero floor makes any reachable ruin state dominate expected utility (V proportional to CE^-4). The ruin zone is a cliff in the value function that the solver knows only at grid points; between them linear interpolation smooths the cliff away. Refining the u1 axis puts points on the slope before the cliff, so states near it lose orders of magnitude of value and young owners respond by saving most of their income in bonds. Neither grid is right at a floor of 1e-6, and the answer keeps moving as the grid refines. This supports the diagnosis entry: remove or make adjustable the house-linked outflow, or raise the floor; a floor of 0.1 still counts one floored year as 1e4 normal years.
-Commit: see the next commit on main.
+Commit: 614c8f7, pushed to main.
 Open: as in the diagnosis entry.
 
 ### 2026-10-12 Diagnosis: what drives step 7's grid sensitivity (spec: none, asked by Quinn in Claude Code)
