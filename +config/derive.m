@@ -43,10 +43,12 @@ assert(all(alloc <= 1 + 1e-12), 'derive:reit_alloc', ...
 % The franchise is a euro amount and the 'poly' profile is not in euros, so
 % contributions would silently compute to zero.
 assert(~(p.kappa_base > 0 && strcmp(p.income_source, 'poly')), 'derive:poly_dc', ...
-    'A DC pillar needs income in euros: use income_source = ''table''.');
+    'A DC pillar needs income in euros: use income_source = ''dhs'' or ''table''.');
 
 % Contribution rate on gross income, from the franchise rule on the
 % deterministic profile. Realised income cannot enter: only Y/W is a state.
+% The profile is the tenure's (config.income_process), so derive again after
+% changing is_owner.
 logY_det = config.income_profile(p);
 Y_det    = exp(logY_det);
 p.kappa  = zeros(p.T, 1);

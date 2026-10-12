@@ -4,7 +4,7 @@ function R = run_model(p, opts)
 %   run_model                          % the production calibration, renter and owner
 %   run_model(p)                       % any derived p: config.params, ladder.params, ...
 %   run_model(p, tag='floor010')       % suffix for the output files
-%   R = run_model(...)                 % R.renter and R.owner, or R.nohousing
+%   R = run_model(...)                 % one field per arm, named by model.tenure
 %
 %   Writes <output_dir>/results_<tenure>[_<tag>].mat with a dashboard PNG
 %   beside it (figures.dashboard). The output directory is CGM_OUTPUT_DIR, or
@@ -29,10 +29,11 @@ if ~isequal(dims, p.grid_dims) || gh ~= p.gh_n
 end
 
 arms = {false};
-if p.h_mult > 0, arms = {false, true}; end
+if model.tenures_differ(p), arms = {false, true}; end
 R = struct();
 for a = 1:numel(arms)
     pa = p; pa.is_owner = arms{a};
+    pa = config.derive(pa);
     r = model.run(pa, N_sim = opts.N_sim, seed = opts.seed, keep_sim = opts.keep_sim);
     name = ['results_' r.tenure];
     if ~isempty(opts.tag), name = [name '_' opts.tag]; end

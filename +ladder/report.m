@@ -14,13 +14,13 @@ S   = ladder.steps();
 num = ladder.numerics(numerics);
 rows = {};
 for k = 1:numel(S)
-    for tenure = {'nohousing', 'renter', 'owner'}
+    for tenure = {'nohousing', 'nohousing_renter', 'nohousing_owner', 'renter', 'owner'}
         file = ladder.result_file(num, k, S(k).name, tenure{1});
         if ~isfile(file), continue; end
         r = builtin('load', file, 'summary', 'checks', 'p', 'timing');
         s = r.summary; c = r.checks; a = s.ages; at = @(v, age) v(a == age);
         q = ladder.params(k); q.grid_dims = num.dims; q.gh_n = num.gh_n;
-        q.is_owner = strcmp(tenure{1}, 'owner');
+        q.is_owner = endsWith(tenure{1}, 'owner');
         rows(end+1, :) = {k, S(k).name, tenure{1}, ...
             at(s.C.p50, 25) / s.Y0, at(s.C.p50, 45) / s.Y0, at(s.C.p50, 75) / s.Y0, ...
             at(s.net_worth.mean, 66) / s.Y0, at(s.pi, 30), at(s.pi, 45), at(s.pi, 80), ...

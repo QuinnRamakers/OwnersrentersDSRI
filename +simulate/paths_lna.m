@@ -17,8 +17,8 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %   payment), ann_pay (gross annuity payout), c_bound (the lower bound of the
 %   consumption search at the household's state), floored (resources topped up
 %   to the floor); tau_A and reit_A (N x T-1, the DC fund's stock and REIT
-%   shares); bequest (N x 1); diagnostics, including policy lookups that fell
-%   outside the grid.
+%   shares); R_S (N x T-1, the gross stock return from t to t+1); bequest
+%   (N x 1); diagnostics, including policy lookups that fell outside the grid.
 
 if nargin < 5 || isempty(N), N = 5000; end
 if nargin < 6 || isempty(seed), seed = 20260511; end
@@ -53,6 +53,7 @@ fl_path  = false(N, T);
 bequest_path = zeros(N, 1);
 tau_A_path  = zeros(N, T-1);
 reit_A_path = zeros(N, T-1);
+R_S_path    = zeros(N, T-1);
 
 n_clamp_c = 0; n_clamp_pi = 0; n_negLW = 0; n_floored = 0;
 n_off = zeros(1, 3);
@@ -182,6 +183,7 @@ for t = 1:T
     n_negLW = n_negLW + sum(LW < 0);
 
     R_S_draw    = exp(p.mu_S + p.sigma_S * eps_S(:,t));
+    R_S_path(:,t) = R_S_draw;
     R_H_draw    = exp(mu_HR + sigma_HR * eps_H(:,t));
     R_S_at_draw = config.after_tax_stock(p, R_S_draw);
     R_X         = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;
@@ -241,6 +243,7 @@ sim.floored = fl_path;
 sim.bequest = bequest_path;
 sim.tau_A  = tau_A_path;
 sim.reit_A = reit_A_path;
+sim.R_S    = R_S_path;
 sim.ages = (p.age0 : p.age0 + p.T - 1);
 sim.N = N;
 sim.is_owner = is_owner;

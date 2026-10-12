@@ -5,10 +5,11 @@ function compare(step, numerics, opts)
 %   ladder.compare('pension', 'quick')
 %   ladder.compare(k, 'standard', against=1)  % against another step
 %
-%   One figure per tenure, saved next to the results, and a table of the
-%   main quantities at a few ages. Levels are in multiples of entry income, so
+%   One figure per arm, saved next to the results, and a table of the main
+%   quantities at a few ages. Levels are in multiples of entry income, so
 %   steps that change the income units (the CGM core uses CGM's) still line
-%   up. A step without housing is compared with both tenures of a step with it.
+%   up. Each arm is compared with the same tenure of the other step where it
+%   has one, and with its single no-housing arm otherwise.
 
 arguments
     step
@@ -24,15 +25,24 @@ prev = ladder.load(j, numerics);
 num  = ladder.numerics(numerics);
 
 for tenure = fieldnames(cur).'
-    t = tenure{1};
-    if isfield(prev, t), tp = t; else, tp = 'nohousing'; end
-    if ~isfield(prev, tp), tp = fieldnames(prev); tp = tp{1}; end
+    t  = tenure{1};
+    tp = matching_arm(t, prev);
     rs = {prev.(tp), cur.(t)};
     labels = {sprintf('%d %s (%s)', j, S(j).name, tp), sprintf('%d %s (%s)', k, S(k).name, t)};
     file = fullfile(num.dir, sprintf('compare_%02d_%02d_%s.png', j, k, t));
     figures.compare(rs, labels, sprintf('Step %d, %s: %s', k, S(k).label, t), file);
     print_table(rs, labels);
 end
+end
+
+function tp = matching_arm(t, prev)
+% The arm of prev to set against arm t: the same label, then the same tenure
+% with or without housing, then the single no-housing arm, then the first.
+side = erase(t, 'nohousing_');
+for c = {t, ['nohousing_' side], side, 'nohousing'}
+    if isfield(prev, c{1}), tp = c{1}; return; end
+end
+tp = fieldnames(prev); tp = tp{1};
 end
 
 function print_table(rs, labels)

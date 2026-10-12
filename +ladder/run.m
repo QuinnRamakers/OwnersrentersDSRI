@@ -9,8 +9,10 @@ function R = run(steps, opts)
 %   ladder.run(k, keep_sim=true)          % also save the simulated panel
 %   R = ladder.run(...)                   % the results, R{i}.<tenure>
 %
-%   Steps without housing solve one arm ('nohousing'); with housing, a renter
-%   and an owner. Each arm is saved to
+%   Steps without housing solve one arm ('nohousing') while renters and owners
+%   share an income process, and two ('nohousing_renter', 'nohousing_owner')
+%   once their income fields differ; with housing, a renter and an owner
+%   (model.tenure). Each arm is saved to
 %       <output_dir>/ladder/<numerics>/NN_<name>_<tenure>.mat
 %   with a dashboard figure next to it. A saved arm is reused unless its
 %   calibration no longer matches the step -- editing a step re-solves it and
@@ -46,10 +48,11 @@ for i = 1:numel(steps)
     fprintf('\n=== Step %d: %s (%s) ===\n%s\n', k, S(k).name, S(k).label, S(k).note);
 
     arms = {false};
-    if p.h_mult > 0, arms = {false, true}; end
+    if model.tenures_differ(p), arms = {false, true}; end
     out = struct();
     for a = 1:numel(arms)
         pa = p; pa.is_owner = arms{a};
+        pa = config.derive(pa);
         tenure = model.tenure(pa);
         file = ladder.result_file(num, k, S(k).name, tenure);
         if ~opts.force && isfile(file)

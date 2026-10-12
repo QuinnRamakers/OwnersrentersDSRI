@@ -46,8 +46,8 @@ a modelling choice in disguise; decide it together with the floor.
 |---|---|
 | `h_mult` | Placeholder 4.0. Replace with an income-contingent assignment fitted on LISS, with the Nibud loan-to-income tables as a feasibility ceiling |
 | `kappa_base` | Single OECD figure. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie) |
-| `sigma_l_log` | Borrowed from CGM. Needs a Carroll–Samwick or GMM decomposition on LISS income residuals |
-| `corr_SL`, `corr_HL`, `corr_SH` | All zero. Estimable from LISS individual income and house-value growth against aggregate return series; the Cholesky plumbing is in place, so this is pure calibration |
+| `corr_HL`, `corr_SH` | Zero. Estimable from LISS individual income and house-value growth against aggregate return series; the Cholesky plumbing is in place, so this is pure calibration |
+| `b0`, `b_alt` | The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now DHS household-head income (EUR 39,763 owners, 30,098 renters at 25), so the denominator, and possibly a buffer by tenure, should follow |
 | REIT moments and correlations | Placeholders with the same Sharpe ratio as equity; the leg is off |
 | `beta`, `chi` | No sourced value yet |
 | Box-3 regime | 36% on actual returns with no loss offset is in force; the wealth-tax alternative (`tau_wealth`) is off. Decide which regime the baseline represents |
@@ -105,11 +105,11 @@ differences rather than levels.
   mechanics, including the missing loss offset on the liquid account.
 - **Franchise.** Never stated, although `kappa_t` depends on it: EUR 18,475
   (1-1-2025, art. 18a lid 3 Wet LB).
-- **Price year.** 2025: BKV amounts are 2015 euros, factor CPI(2025)/CPI(2015)
-  = 1.3456 (CBS 83131NED).
+- **Price year.** 2025: the DHS income cubic is in 2025 euros, as is the
+  franchise.
 - **Entry state.** The initial liquid buffer is unstated and drives results.
-- **Off-by-ones.** BKV's last observed age is 64, not 65, and the code holds it
-  flat over 65–66 only; `tau` has `T-1` transitions.
+- **Off-by-ones.** The DHS sample ends at 65, so the cubic is extrapolated one
+  year to 66, the last working year; `tau` has `T-1` transitions.
 - **Equation (27).** The mean of `eps` is written `+0.5 sigma^2`; the code uses
   `-0.5 sigma^2`.
 - **Annuity formula.** Use the recursion the code uses,

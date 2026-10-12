@@ -14,6 +14,8 @@ fprintf('  housing cost / net income at 25: %.0f%%   after-tax premium %.2f%%, l
     100 * c.burden_25, 100 * c.premium_after_tax, c.merton_liquid);
 fprintf('  entry value worth a constant %.3g x entry income;  off-grid lookups %d;  thin u1 at %.0f%% of ages 40+\n', ...
     c.ce_entry, sum(c.offgrid), 100 * c.thin_u1_40);
+fprintf('  corr(income shock, stock return): corr_SL %.3f, nodes %.4f, panel %.4f\n', ...
+    r.p.corr_SL, c.corr_SL_nodes, c.corr_SL_sim);
 for i = 1:numel(c.notes)
     fprintf('  NOTE: %s\n', c.notes{i});
 end

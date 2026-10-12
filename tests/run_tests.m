@@ -13,9 +13,9 @@ arguments
 end
 
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @income_profile, ...
-          @income_table};
+          @income_table, @tenure_arms};
 if opts.solve
-    checks = [checks, {@collapsed_axes_exact, @smoke_both_tenures}];
+    checks = [checks, {@collapsed_axes_exact, @smoke_both_tenures, @nohousing_arms_corr}];
 end
 n_fail = 0;
 for i = 1:numel(checks)
@@ -73,14 +73,42 @@ assert(threw, 'a misspelt override was accepted');
 end
 
 function income_profile()
-% BKV lookup: anchored at the age-25 wage in 2025 euros, rising through the
-% forties, and stepping down by the replacement rate at retirement.
-p = config.params();
-logY = config.income_profile(p);
-Y = exp(logY);
-assert(abs(Y(1) - 33000 * p.income_price_factor) < 1e-6 * Y(1), 'anchor');
-assert(all(diff(Y(1:20)) > 0), 'profile should rise to 45');
-assert(abs(Y(p.t_ret) / Y(p.t_ret - 1) - p.replacement) < 1e-12, 'replacement step');
+% DHS cubic in 2025 euros, by tenure: the level at 25 and at the peak against
+% the values computed from the published coefficients, the peak age, the
+% tenure's shock std, and the step down by the replacement rate at retirement.
+target = struct('owner',  struct('y25', 39763, 'peak', 50, 'ypeak', 74656, 'sigma', 0.0816), ...
+                'renter', struct('y25', 30098, 'peak', 49, 'ypeak', 52013, 'sigma', 0.0843));
+for owner = [true false]
+    p = config.params(false); p.is_owner = owner; p = config.derive(p);
+    if owner, e = target.owner; else, e = target.renter; end
+    [logY, ~, sig] = config.income_profile(p);
+    Y = exp(logY); ages = p.age0 + (0 : p.T - 1).';
+    work = 1 : p.t_ret - 1;
+    [ypk, ipk] = max(Y(work));
+    assert(abs(Y(1) / e.y25 - 1) < 1e-4, 'level at 25: %.0f against %.0f', Y(1), e.y25);
+    assert(ages(ipk) == e.peak, 'peak at %d, expected %d', ages(ipk), e.peak);
+    assert(abs(ypk / e.ypeak - 1) < 1e-4, 'peak level %.0f against %.0f', ypk, e.ypeak);
+    assert(sig(1) == e.sigma && all(sig(p.t_ret - 1 : end) == 0), 'shock std');
+    assert(abs(Y(p.t_ret) / Y(p.t_ret - 1) - p.replacement) < 1e-12, 'replacement step');
+end
+end
+
+function tenure_arms()
+% Steps whose renter and owner income fields agree keep one no-housing arm;
+% once they differ, a step without housing has a renter and an owner arm.
+S = ladder.steps();
+for k = 1:numel(S)
+    p = ladder.params(k);
+    split = ~isequal(p.income_coef, p.income_coef_rent) || p.sigma_l_log ~= p.sigma_l_log_rent;
+    assert(model.tenures_differ(p) == (p.h_mult > 0 || split), 'step %d arms', k);
+    if k < ladder.index('income')
+        assert(strcmp(model.tenure(p), 'nohousing'), 'step %d should keep one arm', k);
+    end
+end
+p = ladder.params('income');
+q = p; q.is_owner = true;
+assert(strcmp(model.tenure(p), 'nohousing_renter') && strcmp(model.tenure(q), 'nohousing_owner'), ...
+    'labels of the no-housing arms');
 end
 
 function income_table()
@@ -123,4 +151,23 @@ for owner = [false true]
     assert(all(isfinite(r.summary.C.mean)) && all(r.summary.C.mean > 0), 'consumption');
     assert(sum(r.checks.offgrid) == 0, 'off-grid lookups on the default grid');
 end
+end
+
+function nohousing_arms_corr()
+% The step that adds the income-stock correlation, on a small grid: two arms
+% that differ, and the correlation on the quadrature nodes and in the panel
+% equal to corr_SL.
+p = ladder.params('corr_SL');
+p.grid_dims = [6 5 4]; p.gh_n = 3;
+C = struct();
+for owner = [false true]
+    pa = p; pa.is_owner = owner; pa = config.derive(pa);
+    r = model.run(pa, N_sim = 2000, verbose = false);
+    assert(all(isfinite(r.sol.V(:))), 'non-finite value');
+    assert(abs(r.checks.corr_SL_nodes - p.corr_SL) < 1e-10, 'nodes correlation %.4f', r.checks.corr_SL_nodes);
+    assert(abs(r.checks.corr_SL_sim - p.corr_SL) < 0.01, 'panel correlation %.4f', r.checks.corr_SL_sim);
+    C.(r.tenure) = r;
+end
+assert(isfield(C, 'nohousing_renter') && isfield(C, 'nohousing_owner'), 'arm labels');
+assert(~isequal(C.nohousing_renter.sol.c_pol, C.nohousing_owner.sol.c_pol), 'the arms should differ');
 end

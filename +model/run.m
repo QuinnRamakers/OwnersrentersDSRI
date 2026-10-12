@@ -4,11 +4,12 @@ function r = run(p, opts)
 %   r = model.run(p)
 %   r = model.run(p, N_sim=10000, seed=20260511, keep_sim=false, verbose=true)
 %
-%   p must already be derived (config.params, config.derive or ladder.params);
-%   the tenure is p.is_owner, and without housing (h_mult = 0) the two tenures
-%   coincide. Households enter at age p.age0 with p.b0 years of income in
-%   liquid wealth. Returns
-%     r.tenure                       'renter', 'owner' or 'nohousing'
+%   p must already be derived (config.params, config.derive or ladder.params)
+%   after its tenure p.is_owner is set, because the contribution profile is
+%   built from the tenure's income. Without housing (h_mult = 0) the two
+%   tenures differ only if their income fields do. Households enter at age
+%   p.age0 with p.b0 years of income in liquid wealth. Returns
+%     r.tenure                       model.tenure: 'renter', 'owner', 'nohousing', ...
 %     r.p, r.profile, r.ann_price    the calibration and its inputs
 %     r.sol                          value function and policies on the cube
 %     r.summary                      per-age statistics of the panel (model.summarize)
@@ -25,6 +26,9 @@ arguments
     opts.keep_sim (1,1) logical = false
     opts.verbose (1,1) logical = true
 end
+
+assert(isequal(config.derive(p).kappa, p.kappa), 'model:run_not_derived', ...
+    'p.kappa does not match the tenure''s income; call config.derive after setting is_owner.');
 
 if isempty(gcp('nocreate')), utility.start_pool(); end
 nthreads = maxNumCompThreads(1);              % BLAS on one thread while the parfor runs

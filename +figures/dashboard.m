@@ -125,8 +125,10 @@ p = r.p; c = r.checks; s = r.summary;
 kap = config.kappa_path(p);
 L = {};
 L{end+1} = sprintf('gamma %.3g   beta %.3g   retire at %d', p.gamma, p.beta, p.retirement_age);
-L{end+1} = sprintf('income %s   replacement %.3f   sigma_l %.4f', p.income_source, p.replacement, p.sigma_l_log);
-L{end+1} = sprintf('r %.4f   premium %.3f   equity vol %.3f', p.r, p.mu_S_level, p.sigma_S_level);
+[~, sigma_l] = config.income_process(p);
+L{end+1} = sprintf('income %s   replacement %.3f   sigma_l %.4f', p.income_source, p.replacement, sigma_l);
+L{end+1} = sprintf('r %.4f   premium %.4f   equity vol %.4f   corr_SL %.2f', ...
+    p.r, p.mu_S_level, p.sigma_S_level, p.corr_SL);
 if p.h_mult > 0
     L{end+1} = sprintf('h_mult %.2f   rent %.3f   maint %.3f   mortgage %.4f/%dy', ...
         p.h_mult, p.alpha, p.theta, p.r_m, p.N_mort);

@@ -4,7 +4,8 @@ function out = load(step, numerics)
 %   out = ladder.load(k)                     % standard numerics
 %   out = ladder.load('housing', 'quick')
 %
-%   Returns a struct with fields nohousing, or renter and owner. Errors if the
+%   Returns a struct with one field per arm (model.tenure): nohousing,
+%   nohousing_renter and nohousing_owner, or renter and owner. Errors if the
 %   step has not been run at these numerics, and warns if the saved run is for
 %   a calibration that no longer matches the step.
 
@@ -14,11 +15,11 @@ num = ladder.numerics(numerics);
 [p, k] = ladder.params(step);
 p.grid_dims = num.dims; p.gh_n = num.gh_n;
 out = struct();
-for tenure = {'nohousing', 'renter', 'owner'}
+for tenure = {'nohousing', 'nohousing_renter', 'nohousing_owner', 'renter', 'owner'}
     file = ladder.result_file(num, k, S(k).name, tenure{1});
     if isfile(file)
         out.(tenure{1}) = builtin('load', file);
-        q = p; q.is_owner = strcmp(tenure{1}, 'owner');
+        q = p; q.is_owner = endsWith(tenure{1}, 'owner');
         if ~ladder.same_calibration(out.(tenure{1}).p, q)
             warning('ladder:stale', ['%s was solved for a different calibration than ' ...
                 'step %d now specifies; re-run ladder.run(%d).'], file, k, k);

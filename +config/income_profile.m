@@ -13,12 +13,17 @@ function [logY, mu_growth, sigma_l_log] = income_profile(p)
 %   rate (Dutch context: ~0.30-0.40 of modal gross income), NOT the total
 %   target replacement rate.
 %
-%   Working-age SHAPE, selected by p.income_source:
+%   Working-age SHAPE, selected by p.income_source. The cubic sources read
+%   the coefficients and the shock std of the tenure (config.income_process).
 %
-%   'poly'  -- third-order-in-age cubic, p.income_coef = [a1 a2 a3 a4]:
-%              logY = a1 + a2*age + a3*age^2/100 + a4*age^3/1e4.
-%              Currently a CGM (2005, RFS) high-school-group placeholder
-%              (see params.m / TODO.md) -- US data, fitted, not Dutch.
+%   'dhs'   -- cubic in age estimated on DHS gross household-head income,
+%              coefficients [a1 a2 a3 a4]:
+%              logY = a1 + a2*age + a3*age^2/100 + a4*age^3/1e4,
+%              in log euros of the DHS price year; p.dhs_price_factor
+%              converts them to 2025 prices.
+%
+%   'poly'  -- the same cubic form in CGM (2005) income units, used by the
+%              first ladder steps. Not in euros.
 %
 %   'table' -- direct lookup of the semi-parametric age-effect estimates
 %              in Been, Knoef & Vethaak (2026, JBES 44(1):215-226),
@@ -42,13 +47,17 @@ ages  = (p.age0 : p.age0 + T - 1).';
 work_idx  = 1 : (t_ret - 1);
 work_ages = ages(work_idx);
 
+[a, sigma_l] = config.income_process(p);
+
 switch p.income_source
-    case 'poly'
-        a = p.income_coef;
+    case {'poly', 'dhs'}
         logY_work = a(1) ...
                   + a(2) .* work_ages ...
                   + a(3) .* (work_ages.^2) / 100 ...
                   + a(4) .* (work_ages.^3) / 1e4;
+        if strcmp(p.income_source, 'dhs')
+            logY_work = logY_work + log(p.dhs_price_factor);
+        end
 
     case 'table'
         [tbl_ages, g_men, g_women] = config.income_table_bkv();
@@ -110,7 +119,7 @@ switch p.income_source
         logY_work  = log(anchor_level) + (growth_at_work_ages - all_growth(anchor_idx));
 
     otherwise
-        error('income_profile:source', 'p.income_source must be ''poly'' or ''table''.');
+        error('income_profile:source', 'p.income_source must be ''dhs'', ''poly'' or ''table''.');
 end
 
 logY = nan(T, 1);
@@ -122,7 +131,7 @@ for t = (t_ret + 1) : T
 end
 
 mu_growth                = diff(logY);
-sigma_l_log              = p.sigma_l_log * ones(T - 1, 1);
+sigma_l_log              = sigma_l * ones(T - 1, 1);
 % The retirement transition step (t_ret-1 -> t_ret) is DETERMINISTIC: AOW is
 % replacement * Y_{t_ret-1} with no shock. Simulator implements it that way;
 % solver must agree, so we zero out sigma here as well as in retirement itself.

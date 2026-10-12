@@ -21,27 +21,30 @@ function p = params(do_derive)
 
 % Time
 p.T              = 76;        % periods, ages 25-100
-p.age0           = 25;        % first age of the BKV income table
+p.age0           = 25;        % first age of the DHS income sample
 p.retirement_age = 67;        % statutory AOW age
-p.sex            = 1;         % income profile: 1 men, 2 women, 3 pooled (mortality is unisex)
+p.sex            = 1;         % 'table' income only: 1 men, 2 women, 3 pooled (mortality is unisex)
 
 % Preferences
 p.gamma = 5;                  % relative risk aversion
 p.beta  = 0.96;               % time discount factor
 p.chi   = 0;                  % bequest intensity
 
-% Labour income
-p.income_source       = 'table';   % 'table': BKV age effects in euros; 'poly': CGM cubic, not in euros
-p.income_coef         = [0.530339, 0.16818, -0.323371, 0.19704];   % CGM (2005) high-school cubic, 'poly' only
-p.sigma_l_log         = 0.1032;    % permanent income shock std; log income is a random walk
+% Labour income. Owners use income_coef and sigma_l_log; renters the _rent fields.
+p.income_source       = 'dhs';     % 'dhs': DHS cubic in euros; 'poly': CGM cubic, not in euros; 'table': BKV age effects
+p.income_coef         = [7.7979, 0.17253, -0.2784, 0.1405];   % owner: log y = a1 + a2 age + a3 age^2/100 + a4 age^3/1e4
+p.income_coef_rent    = [7.5302, 0.17828, -0.3126, 0.1784];   % renter, same form
+p.sigma_l_log         = 0.0816;    % owner permanent income shock std; log income is a random walk
+p.sigma_l_log_rent    = 0.0843;    % renter permanent income shock std
 p.replacement         = 0.307;     % first-pillar (AOW) income as a share of final wage
-p.income_price_factor = 1.3456;    % CPI(2025)/CPI(2015), rescales the BKV euro anchor
+p.dhs_price_factor    = 1.0;       % DHS euros to 2025 prices; the DHS cubic is already in 2025 euros
+p.income_price_factor = 1.3456;    % 'table' only: CPI(2025)/CPI(2015), rescales the BKV euro anchor
 
 % Financial market
-p.r             = 0.011;      % real risk-free rate
-p.mu_S_level    = 0.04;       % equity excess return
-p.sigma_S_level = 0.16;       % equity return volatility
-p.corr_SL       = 0;          % corr(stock return, income shock)
+p.r             = 0.0115;     % real risk-free rate
+p.mu_S_level    = 0.0456;     % equity excess return
+p.sigma_S_level = 0.2161;     % equity return volatility
+p.corr_SL       = 0.04;       % corr(stock return, income shock)
 p.corr_HL       = 0;          % corr(H growth, income shock)
 p.corr_SH       = 0;          % corr(stock return, H growth)
 
@@ -62,7 +65,7 @@ p.corr_RS          = 0;       % corr(REIT return, stock return)
 p.corr_RH          = 0;       % corr(REIT return, H growth)
 
 % Housing. Renters pay alpha*H on a rent index H; owners pay (theta + mortgage)*H.
-p.is_owner      = false;      % tenure
+p.is_owner      = false;      % tenure; also selects the income fields without housing
 p.h_mult        = 4.0;        % H at entry as a multiple of income (placeholder); 0 removes housing
 p.alpha         = 0.06;       % rent as a share of the rent index
 p.theta         = 0.015;      % owner maintenance, share of H

@@ -71,21 +71,25 @@ primitives on top of the steps before it:
 | 1 | `cgm` | CGM core: gamma 10, CGM income cubic, 68% replacement at 65, r 2%, equity vol 15.7%; no housing, pension or taxes |
 | 2 | `gamma5` | risk aversion 5 |
 | 3 | `retire67` | retirement at 67 |
-| 4 | `income` | Dutch income profile (BKV), in euros |
-| 5 | `market` | Dutch real rate 1.1%, equity vol 16% |
-| 6 | `housing` | housing at 4x entry income: renter and owner from here on |
-| 7 | `pension` | AOW at 30.7% of final wage, DC contributions, glide, annuity |
-| 8 | `inctax` | EET income tax at 38.2% |
-| 9 | `box3` | box-3 tax at 36% on the liquid account, no loss offset |
+| 4 | `income` | DHS income cubic in euros and permanent shock std, separately for owners and renters |
+| 5 | `market` | real rate 1.15%, equity premium 4.56%, equity vol 21.6% |
+| 6 | `corr_SL` | income-stock correlation 0.04 |
+| 7 | `housing` | housing at 4x entry income |
+| 8 | `pension` | AOW at 30.7% of final wage, DC contributions, glide, annuity |
+| 9 | `inctax` | EET income tax at 38.2% |
+| 10 | `box3` | box-3 tax at 36% on the liquid account, no loss offset |
 
-Step 9 is `config.params()` exactly; `run_tests` checks this. To change the
+Step 10 is `config.params()` exactly; `run_tests` checks this. To change the
 calibration, edit a value in a step or append a step after `box3` (a floor
 level, a housing multiple from data, the REIT leg). `ladder.params(k)`
 returns the calibration at step k, and an override that names a field that is
 not a primitive is an error.
 
 `ladder.run` solves a step for each tenure it has, at numerics held fixed
-along the ladder so that differences between steps come from the calibration:
+along the ladder so that differences between steps come from the calibration.
+Steps 1–3 have one arm (`nohousing`); from the income step, renters and owners
+have their own income process, so steps 4–6 have two (`nohousing_renter`,
+`nohousing_owner`) and the housing steps a renter and an owner.
 
 | numerics | grid | gh_n | households | step with housing and DC, per tenure (16 cores) |
 |---|---|---|---|---|
@@ -93,8 +97,8 @@ along the ladder so that differences between steps come from the calibration:
 | `standard` | [16 16 10] | 5 | 10,000 | about 4 minutes |
 | `fine` | [20 20 12] | 5 | 10,000 | about 8 minutes |
 
-Steps 1-5 have no housing. Their u2 and u3 axes cannot move, so they collapse
-to two nodes and solve in seconds; step 6 has no DC pillar yet and collapses
+Steps 1-6 have no housing. Their u2 and u3 axes cannot move, so they collapse
+to two nodes and solve in seconds; step 7 has no DC pillar yet and collapses
 u3. Results are saved under
 `<output dir>/ladder/<numerics>/` as `NN_<name>_<tenure>.mat`, each with a
 dashboard. A saved step is reused until its calibration changes; editing a

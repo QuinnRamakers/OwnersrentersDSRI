@@ -10,11 +10,13 @@ the end.
 All euro-denominated inputs are in **2025 euros** — the last complete calendar
 year, so the CBS annual CPI is final and the statutory amounts are settled.
 
-Only two inputs carry a price year: `income_price_factor` and `franchise`.
-They must move together, because the contribution rate compares income to the
-franchise and mixing years silently misstates it at every age. Everything else
-in `params.m` is a real or unit-free rate and has no price year. `b0`/`b_alt`
-are a ratio of same-year euros and so are price-level-free.
+Two inputs carry a price year: the income profile's price factor
+(`dhs_price_factor` for the production DHS profile, `income_price_factor` for
+the BKV table) and `franchise`. They must move together, because the
+contribution rate compares income to the franchise and mixing years silently
+misstates it at every age. Everything else in `params.m` is a real or
+unit-free rate and has no price year. `b0`/`b_alt` are a ratio of same-year
+euros and so are price-level-free.
 
 A 2026 base was tried and rejected: 2026 is still running, so its factor could
 only come from a part-year CPI average that CBS will revise.
@@ -23,50 +25,69 @@ only come from a part-year CPI average that CBS will revise.
 
 | Parameter | Value | Source |
 |---|---|---|
-| `age0` | 25 | The BKV income table's first non-baseline age, so the working profile needs no below-sample extrapolation |
+| `age0` | 25 | First age of the DHS income sample (heads aged 25–65), so the working profile needs no below-sample extrapolation |
 | `retirement_age` | 67 | Statutory AOW eligibility, 2026 |
 | `T` | 76 | Set so the terminal age stays 100 |
 | `p_surv` | age profile | CBS life table 2021–2026, sexes combined (`CBSunisexmortality21-26.csv`, StatLine 37360ned) |
-| `sex` | 1 (men) | Selects the income profile only — the life table is unisex |
+| `sex` | 1 (men) | Selects the BKV income table (`'table'`) only; unused by the DHS profile. The life table is unisex |
 | `gamma` | 5 | Production choice. CGM (2005) use 10; the ladder starts there |
 | `beta` | 0.96 | Larsen et al. (2023) |
 | `chi` | 0 | Bequest motive off in the baseline |
 
 ## Labour income
 
-The working-age profile is a direct lookup of the semi-parametric age effects
-in Been, Knoef & Vethaak (2026, JBES 44(1):215–226), Online Appendix Tables
-D.1 (men) and D.2 (women), "Full-time, Selection" column. No curve fitting or
-smoothing: ages 24–64 each get their published coefficient.
+The working-age profile is a cubic in age estimated on gross income of the
+household head in the DNB Household Survey (DHS), waves 1993–2024, heads aged
+25–65, separately for owners and renters (Quinn's calibration notes, 12 Oct
+2026, Table 3, gross):
 
-Two edges are outside the estimation sample:
+```
+log y = a0 + a1 age + a2 age^2/10 + a3 age^3/100
+```
 
-- Below 24 the series would be linearly extrapolated from the slope of ages
-  24–27. With `age0 = 25` this path is never taken; it stays as a guard.
-- Above 64, relevant because retirement is at 67, growth is held **flat** at
-  the age-64 value. Extrapolating the pre-64 decline is unreliable this close
-  to the sample edge.
+in log euros of 2025. The code's cubic divides by 100 and 1e4 instead, so the
+code coefficients are `[a0, a1, 10 a2, 100 a3]`. Owners use `income_coef` and
+`sigma_l_log`, renters `income_coef_rent` and `sigma_l_log_rent`
+(`config.income_process`). A step without housing whose two sets differ is
+solved for both tenures (`model.tenures_differ`).
 
 | Parameter | Value | Source |
 |---|---|---|
-| Euro anchor | EUR 33,000 at age 25 (men), 2015 prices | BKV Section 3.2.3 descriptives |
-| `income_price_factor` | 1.3456 | CPI(2025)/CPI(2015) = 134.56/100, CBS 83131NED. BKV express wages in 2015 euros (their Section 3.1) |
-| `sigma_l_log` | 0.1032 | CGM (2005) high-school group, **permanent** shock std |
+| `income_source` | `'dhs'` | The DHS cubic, in euros |
+| `income_coef` | [7.7979, 0.17253, -0.2784, 0.1405] | Owners, Table 3. EUR 39,763 at 25, peak 74,656 at 50 |
+| `income_coef_rent` | [7.5302, 0.17828, -0.3126, 0.1784] | Renters, Table 3. EUR 30,098 at 25, peak 52,013 at 49 |
+| `dhs_price_factor` | 1.0 | The DHS euros are already in 2025 prices |
+| `sigma_l_log` | 0.0816 | Owners, permanent shock std, Table 3 |
+| `sigma_l_log_rent` | 0.0843 | Renters, permanent shock std, Table 3 |
 | `replacement` | 0.307 | DNB, *Toereikendheid van pensioenen*, Table 3, median first-pillar replacement rate |
 
+Table 3 reports 39,749 and 74,557 (owners) and 30,094 and 51,972 (renters);
+the gap is coefficient rounding. The sample ends at 65, so age 66, the last
+working year, is the cubic extrapolated one year.
+
 `sigma_l_log` is the permanent component because this model's income process
-is a pure random walk — every shock compounds forward. CGM's transitory
-component (std 0.2717) has no home in a single-shock structure and is simply
-omitted.
+is a pure random walk — every shock compounds forward. The transitory
+component (DHS std 0.119 for owners and 0.138 for renters; CGM 0.2717) has no
+home in a single-shock structure and is omitted.
+
+Without a franchise the model is homothetic in income, so the owners' higher
+level does not matter before the DC pillar enters; until then the tenures
+differ through the shape of the profile and the shock std.
 
 The first pillar is `replacement` times final working income rather than a
 flat AOW amount, which keeps the model homothetic. It removes the floor that a
 flat AOW gives households with a bad history of permanent shocks.
 
-`income_coef` holds a CGM (2005) age cubic for `income_source = 'poly'`, used
-by the first ladder steps. It is US data and hump-shaped, and its level is not
-in euros, so it cannot be combined with a DC pillar (the franchise is a euro
-amount); `config.derive` refuses that combination.
+Two other income sources stay in the code. `'poly'` is the same cubic in CGM
+(2005) income units, used by the first ladder steps; its level is not in
+euros, so `config.derive` refuses it together with a DC pillar (the franchise
+is a euro amount). `'table'` looks up the semi-parametric age effects of Been,
+Knoef & Vethaak (2026, JBES 44(1):215–226), Online Appendix Tables D.1 (men)
+and D.2 (women), "Full-time, Selection" column, for the sex in `sex`. It is
+anchored at EUR 33,000 at age 25 (men; BKV Section 3.2.3), in 2015 prices,
+rescaled by `income_price_factor` = 1.3456 = CPI(2025)/CPI(2015) (CBS
+83131NED). Below 24 it is extrapolated linearly from ages 24–27; above 64 it
+is held flat at the age-64 value.
 
 ## Pension
 
@@ -77,7 +98,8 @@ gross income rises with income and is an age profile rather than a scalar:
 kappa_t = kappa_base * max(Y_t - F, 0) / Y_t
 ```
 
-giving roughly 10.9% at 25 rising to 14.6% around age 55.
+giving about 10.0% at 25 rising to 14.0% at 50 on the owners' DHS profile, and
+7.2% rising to 12.0% at 49 on the renters'.
 
 | Parameter | Value | Source |
 |---|---|---|
@@ -136,9 +158,9 @@ The DC fund is sheltered from both, which is its tax advantage.
 
 The missing loss offset matters more than the rate. With it, the tax keeps
 0.64 of every gain and none of any loss, which cuts the after-tax equity
-premium on the liquid account from 4.0% to about 1.2% and the Merton share at
-gamma = 5 from about 0.31 to 0.16. A symmetric tax at the same rate leaves the
-Sharpe ratio unchanged and raises the Merton share to about 0.49. The
+premium on the liquid account from 4.6% to about 1.0% and the Merton share at
+gamma = 5 from about 0.20 to 0.08. A symmetric tax at the same rate leaves the
+Sharpe ratio unchanged and raises the Merton share to about 0.31. The
 government becomes a silent partner (Domar-Musgrave). `cg_loss_offset = true`
 switches to the symmetric tax.
 
@@ -149,24 +171,26 @@ balance is a wealth tax. Switching regimes should be a calibration change, not
 a code change.
 
 At the calibrated `tau_wealth = 0.0197` the liquid account's safe return turns
-negative in real terms (`1.011 * 0.9803 - 1 = -0.89%`) against `+1.10%` inside
+negative in real terms (`1.0115 * 0.9803 - 1 = -0.84%`) against `+1.15%` inside
 the sheltered fund.
 
 ## Financial markets
 
 `mu_S_level` is the **excess** return over the risk-free rate; the housing
-drift `mu_H_level` is the house's own return, not excess.
+drift `mu_H_level` is the house's own return, not excess. The market series
+are real, and the correlations come from the same pipeline as the moments.
 
 | Parameter | Value | Source |
 |---|---|---|
-| `r` | 0.011 | Mean 3-month Dutch T-bill rate less mean inflation, real |
-| `mu_S_level` | 0.04 | Equity premium |
-| `sigma_S_level` | 0.16 | Equity return volatility |
+| `r` | 0.0115 | Real NL 3-month interbank rate (FRED IR3TIB01NLM156N) deflated by the CBS CPI, mean 1982–2024. Calibration notes, Table 2 |
+| `mu_S_level` | 0.0456 | Real stock return less `r`, mean 2000–2024. Calibration notes, Table 2 |
+| `sigma_S_level` | 0.2161 | Standard deviation of real stock returns, 2000–2024. An arithmetic std, as `sigma_S_level` is. Calibration notes, Table 2 |
 | `mu_H_level` | 0.027 | BIS Real Residential Property Price Index (NL), CPI-deflated |
 | `sigma_H_level` | 0.037 | Same |
 | `mu_R_level` | 0.0097 | Real rent growth, mean — own estimate. Consistent with the regulated-sector cap formula (CPI or wage growth, plus about 1pp) |
 | `sigma_R_level` | 0.018 | Real rent growth, vol — same estimate. See the caveat below |
-| `corr_SL`, `corr_HL`, `corr_SH` | 0 | Not yet estimated |
+| `corr_SL` | 0.04 | Correlation of the permanent income shock with the stock return: gross income, pooled over all DHS households, 2002–2023 (T = 22). Calibration notes, Table 4. One value for both tenures |
+| `corr_HL`, `corr_SH` | 0 | Not yet estimated |
 
 The correlations are wired through a Cholesky factor in both `grids.shock_grid`
 and `simulate.paths_lna`, so giving them values costs nothing in runtime or node
@@ -223,7 +247,7 @@ because tenure is fixed at t = 1 and no household ever faces both processes.
 | `sell_cost` | 0.025 | Seller transaction cost at bequest, Hambel et al. (2026). Inert while `chi = 0` |
 
 For a renter, `alpha` and `h_mult` enter only as the product `alpha * h_mult`:
-the rent at entry is 24% of gross income, about 44% of net income after tax
+the rent at entry is 24% of gross income, about 42% of net income after tax
 and contributions. That committed outflow, which the household cannot reduce,
 is what makes early life ill-conditioned at this calibration (README). The
 owner's equivalent is maintenance plus the mortgage payment.
@@ -298,16 +322,25 @@ exact grid nodes.
 | Parameter | Value | Source |
 |---|---|---|
 | `gamma` | 10 | CGM (2005) baseline |
-| `income_source`, `income_coef` | `'poly'`, cubic above | CGM (2005) Table 1, high-school group (age terms; the level is not used) |
+| `income_source` | `'poly'` | CGM income units |
+| `income_coef`, `income_coef_rent` | [0.530339, 0.16818, -0.323371, 0.19704] for both | CGM (2005) Table 1, high-school group (age terms; the level is not used) |
+| `sigma_l_log`, `sigma_l_log_rent` | 0.1032 for both | CGM (2005) high-school group, permanent shock std |
 | `replacement` | 0.68212 | CGM (2005), high-school group |
 | `retirement_age` | 65 | CGM (2005) |
 | `r` | 0.02 | CGM (2005) |
 | `mu_S_level`, `sigma_S_level` | 0.04, 0.157 | CGM (2005) |
+| `corr_SL` | 0 | CGM (2005) baseline |
 | `h_mult`, `kappa_base` | 0 | No housing, no DC pillar |
 | taxes | 0 | None |
 
-Deviations kept throughout the ladder: entry at 25 rather than 20, a terminal
-age of 100, Dutch unisex mortality, and no transitory income shock.
+Renters and owners share this income process until the income step (4), so
+steps 1–3 have one no-housing arm. Deviations kept throughout the ladder:
+entry at 25 rather than 20, a terminal age of 100, Dutch unisex mortality, and
+no transitory income shock.
+
+The ladder up to the housing step: 4 income (the DHS values above), 5 market
+(`r`, `mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.04. Retirement
+income stays at CGM's 68.2% of final income until the pension step.
 
 ## Numerics
 

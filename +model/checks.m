@@ -16,6 +16,9 @@ function c = checks(p, sol, sim, s, profile, shocks)
 %   burden_25, burden_30   median housing cost over net income
 %   premium_after_tax, merton_liquid   after-tax equity premium and Merton
 %                    share of the liquid account
+%   corr_SL_nodes, corr_SL_sim   correlation of the income shock with the log
+%                    stock return, on the quadrature nodes and in the panel's
+%                    working years; both should equal corr_SL
 %   cov_u1, cov_u2   grid nodes inside the 1-99 percentile band of simulated
 %                    households, by age (NaN at the first two ages and the last)
 %   thin_u1_40       share of ages from 40 on with fewer than two u1 nodes in
@@ -55,6 +58,9 @@ VR    = sum(w .* (RS_at - ER).^2);
 c.premium_after_tax = ER - Rf_at;
 c.merton_liquid     = c.premium_after_tax / (g * VR);
 
+c.corr_SL_nodes = weighted_corr(shocks.joint.eps_Y_unit(:), log(shocks.joint.R_S(:)), shocks.joint.w(:));
+c.corr_SL_sim   = panel_corr(sim, profile);
+
 [c.cov_u1, c.cov_u2] = coverage(p, sim);
 m40 = ages >= 40 & ~isnan(c.cov_u1);
 c.thin_u1_40 = mean(c.cov_u1(m40) < 2);
@@ -76,11 +82,33 @@ if c.ce_entry < 0.05
     c.notes{end+1} = sprintf(['The value at entry is worth a constant %.2g x entry income: it is ' ...
         'dominated by floor states, so read behaviour, not welfare.'], c.ce_entry);
 end
+if abs(c.corr_SL_sim - p.corr_SL) > 0.01 || abs(c.corr_SL_nodes - p.corr_SL) > 0.01
+    c.notes{end+1} = sprintf(['The income-stock correlation is %.3f on the nodes and %.3f in ' ...
+        'the panel, against corr_SL = %.3f.'], c.corr_SL_nodes, c.corr_SL_sim, p.corr_SL);
+end
 if c.thin_u1_40 > 0.25
     c.notes{end+1} = sprintf(['From 40 on, the occupied band holds fewer than two u1 nodes at ' ...
         '%.0f%% of ages, so policies there come from a single cell. A finer or ' ...
         'placed grid helps (GRIDS.md).'], 100 * c.thin_u1_40);
 end
+end
+
+function rho = weighted_corr(x, y, w)
+w = w / sum(w);
+x = x - sum(w .* x);
+y = y - sum(w .* y);
+rho = sum(w .* x .* y) / sqrt(sum(w .* x.^2) * sum(w .* y.^2));
+end
+
+function rho = panel_corr(sim, profile)
+% The income shock at t is log income growth less its deterministic part; it
+% is drawn only in working years, where sigma_l_log > 0.
+m = find(profile.sigma_l_log > 0).';
+if isempty(m), rho = NaN; return; end
+g = log(sim.Y(:, m + 1) ./ sim.Y(:, m)) - profile.mu_growth(m).';
+s = log(sim.R_S(:, m));
+r = corrcoef(g(:), s(:));
+rho = r(1, 2);
 end
 
 function [n1, n2] = coverage(p, sim)
