@@ -32,7 +32,7 @@ Done: 2026-10-12
 ### 2026-10-12 Robustness page: levels beside the differences, reference named (spec: none, asked by Quinn in Claude Code)
 Changed: `+figures/robustness.m`: each row now shows consumption, liquid savings and the liquid equity share as levels (the reference in black with its band, the variants drawn on top) beside their differences; the title, every legend, every zero line and the settings box name the black line as the step as solved in the ladder with its settings. `+ladder/robustness.m`: the reference label states the solver and grid. Pages for steps 1-4 redrawn from the saved runs; no numbers changed.
 Checks run: `run_tests` (full): 0 of 10 checks failed.
-Commit: pending (filled in by the next commit).
+Commit: 8f93670, pushed to main.
 Open: steps 5 and 6 wait for Quinn's review of steps 1-4.
 
 ### 2026-10-12 Sweep back on; step and robustness dashboards; steps 1-4 at standard numerics (spec: Calibration ladder, part 1)
