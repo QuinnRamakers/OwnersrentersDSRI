@@ -41,7 +41,7 @@ Checks run:
 - Stop check: step 6 renter triggered the solver rule on liquid wealth (3.24%), at age 29, where mean savings are 107 euros: 4 euros. The largest absolute gap over ages 26-95 is 7 euros (0.014% of income). Not a solver problem; the rule should measure the savings gap against income or leave out near-zero savings, as the figures now do.
 - Owner against renter at step 6: equity share within 0.03, consumption within 6% in multiples of each one's entry income.
 - `run_tests(solve=false)`: 0 of 6 checks failed (only figure files changed since the last full run).
-Commit: pending (filled in by the next commit).
+Commit: 4f6ccac, pushed to main.
 Open: Quinn's review of steps 5-6, which closes the no-housing block (the baseline). Before the housing step: interior-point against active-set in the full model, the entry buffer's denominator, the housing placeholders, and tau_inc against DHS net/gross (later, at the tax step).
 
 ### 2026-10-12 Review of steps 1-4, and expectations for steps 5-6, written before the runs (spec: Calibration ladder, part 1)
