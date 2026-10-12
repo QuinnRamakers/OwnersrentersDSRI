@@ -39,7 +39,7 @@ Checks run:
 - Floor 0.1 x income: owner 0.206, 21.5%, 2.8 (floored 5.9%); renter 0.139, 11.7%, 0.77.
 - Renter, second axis: [16 16 10] against [16 32 10] 0.021, 1.7%, 0.27; [32 16 10] against [32 32 10] 0.091, 9.4%, 0.39; [16 16 10] against [32 32 10] 0.243, 27%, 1.3.
 Reading: one mechanism, a housing outflow the household cannot adjust, tied to the H shock, with a near-zero floor. For owners the mortgage approximation (a payment proportional to an appreciating, volatile house) makes it large and risky in early life, and maintenance on the same house causes the retirement floor states; with the house price held flat both disappear and the owner converges. Renters have the same mechanism in milder form, not caused by the mortgage: a floor of 0.1 removes only part of it, and the solution keeps moving in early life as either axis is refined. This is the early-life problem of TODO.md item 1.
-Commit: pending (filled in by the next commit).
+Commit: fe5f1b6, pushed to main.
 Open: Quinn's choice of owner cost structure and of how to handle the renters' early life before step 7 is rerun.
 
 ### 2026-10-12 The model's mortgage against a real annuity mortgage (spec: none, asked by Quinn in Claude Code)
