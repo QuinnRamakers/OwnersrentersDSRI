@@ -29,8 +29,30 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 Step 1 cgm at standard numerics, and robustness checks (spec: Calibration ladder, part 1)
+Changed: no code. Result saved, gitignored, under `ladder/standard_16x16x10_gh5/` (`01_cgm_nohousing.mat`, its dashboard, and `cgm_compare_01.png`, the result laid out like CGM's Figures 2 and 3).
+Checks run: `ladder.run(1)`: one arm (nohousing), 18 x 2 x 2 nodes, gh_n 5, 10,000 households, solve 13 s. CGM income units (Y0 = 20.5):
+  age 25: income 20.5, median C 13.1, mean liquid 1.6, mean pi 1.000
+  age 35: income 28.7, C 19.7, liquid 112, pi 0.736
+  age 45: income 31.8, C 26.0, liquid 255, pi 0.469
+  age 55: income 31.2, C 31.8, liquid 372, pi 0.386
+  age 65: income 21.0, C 37.1, liquid 429, pi 0.385
+  age 75: income 21.0, C 37.3, liquid 337, pi 0.400
+  age 85: income 21.0, C 36.2, liquid 213, pi 0.438
+  Merton share 0.162. model.checks: c_bound_25_39 0, ce_entry 0.643, offgrid [0 0 0], floored 0, thin_u1_40 0.10; corr nodes 0.000, panel 0.002 (corr_SL 0).
+Against the expectation: the equity share and wealth are as expected. Mean pi leaves 0.99 at 30, bottoms out at 0.379 at 59 and rises to 0.54 at 95; liquid wealth peaks at 65 (20.9 x entry income, against 20.8 at quick); the largest gap to the quick run is 0.012 in pi. Consumption humps, but the expectation was wrong that it tracks income until 35: it is 64% of income at 25.
+Against CGM (2005), read off their figures: the shapes of Figure 3A and 3C and all three panels of Figure 2 are reproduced (pi decreasing in cash on hand at every age; the age-99 rule at 1 below about 1.5 x income and falling towards the Merton share of 0.16; consumption concave and rising with age). Levels differ, and the difference starts with saving when young: median consumption is 64% of income at 25 and 69% at 35, where CGM's households consume about their income until 35; mean liquid wealth is about 3.7 times CGM's at 35 and about 2 times at 65 (429 against about 220). With more wealth relative to human capital, households move down the decreasing pi rule earlier: they leave the all-equity corner at 30 (CGM about 38) and bottom out at 0.38 at 59 (CGM 0.50 at 65); the retirement rise is weaker (0.54 at 95 against 0.65). Our reading, not tested: at gamma 10 and a permanent std of 0.103, the precautionary term of a second-order Euler approximation is about (gamma/2) sigma^2 = 5.3% a year of consumption growth, against income growth of 4.3% at 25 and 1.5% at 35, so the model saves from the start; entry at 25 (a flatter part of the profile than CGM's 20) with a 0.08-year buffer, and Dutch 2021-26 mortality (longer retirement, slower decumulation) push the same way. A transitory shock would by the same logic add precautionary saving and lower pi, so on its own it should widen the gap, not close it; worth a test before it is cited as the cause. The terminal age of 100 is CGM's own.
+Robustness of step 1 (scratch runs, nothing saved), against the standard active-set run, max over ages of |d pi|, |dC/C| (median C), |dX/X| (mean liquid):
+  grid [12 12 8] gh 3: 0.012, 1.3%, 3.5%. [20 20 12] gh 5: 0.006, 0.7%, 1.8%. [40 2 2] gh 5 (42 u1 nodes): 0.014, 1.6%, 4.3%. [9 2 2] gh 3: 0.029, 3.2%, 9.1%.
+  fmincon sqp instead of active-set: 0.014, 6.1%, 4.7% (within 0.003 in pi and 0.3% in C at ages 25-85). fmincon interior-point: 0.0001, 0.0%, 0.0%, 20 s instead of 13 s.
+  No global sweep (use_refine = false, fmincon from the warm start only): 0.21, 62%, 491%. pi at 65 falls to 0.19. This is the known basin-trapping failure; the default keeps the sweep.
+  Smoke solves of the new code under all three algorithms (steps 4 and 6 with two no-housing arms on [7 5 4] and [10 8 6], production with housing and DC on [8 6 5]): all finite and in range, no off-grid lookups, correlation 0.0400 on the nodes and 0.0390 in the panel at corr_SL 0.04. interior-point printed 380 "matrix is singular" warnings from inside fmincon on the production smoke solve, with results matching active-set (pi at 45: 0.027 against 0.028 for renters, 0.135 against 0.135 for owners).
+Commit: pending (filled in by the next commit).
+Open: step 2 (gamma5) waits for review of step 1.
+
 ### 2026-10-12 Step 1 expectation, written before the run (spec: Calibration ladder, part 1)
 Step 1 (cgm) has no parent; the benchmark is CGM (2005) Figure 3. Expect consumption to track income until about 35 and then hump, and liquid wealth to build to a peak at 65 and run down after. The equity share should start at 1, leave the corner near 28 (CGM: about 38), bottom out near 0.37-0.40 around 58-62 (CGM: 0.50 at 65) and rise through retirement to about 0.55 (CGM: 0.65). Standard numerics change only the grid and quadrature, so the quick baseline (mean pi 0.47 at 45, 0.41 at 80; net worth 20.8 x entry income at 66) should move by a few percent at most.
+Commit: c7bf0f2, pushed to main before step 1 ran.
 
 ### 2026-10-12 Calibration ladder part 1: code work (spec: Calibration ladder, part 1, items 3b-f)
 Changed:
@@ -46,7 +68,7 @@ Checks run:
 - Steps 1-3, `ladder.run(1:3, numerics='quick', force=true)` against the baseline files: V, c_pol, pi_pol, summary and every common checks field identical (`isequaln`), max |dV| = 0 for all three. `ladder.same_calibration(old.p, new.p)` is false for all three only because the baseline files lack the three new primitives; every primitive the baseline has is equal.
 - `run_tests` (full): 0 of 9 checks failed (39 s).
 - Liquid Merton share by step (gamma, after tax): 1 cgm 0.162; 2-4 0.325; 5-9 0.195; 10 box3 0.077 (was 0.180 at the old market values: the higher volatility deepens the no-loss-offset cut).
-Commit: pending (filled in by the next commit).
+Commit: c7bf0f2, pushed to main.
 Open: the entry buffer b0 still divides by the BKV men's wage at 25 (TODO.md).
 
 ### 2026-10-12 Baseline on d8efb70 (spec: Record a baseline)
