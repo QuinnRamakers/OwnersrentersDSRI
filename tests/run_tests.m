@@ -12,8 +12,8 @@ arguments
     opts.solve (1,1) logical = true
 end
 
-checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @income_profile, ...
-          @income_table, @tenure_arms, @housing_corr_by_tenure};
+checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
+          @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure};
 if opts.solve
     checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @figures_render}];
@@ -71,6 +71,31 @@ catch err
     threw = strcmp(err.identifier, 'ladder:unknown_field');
 end
 assert(threw, 'a misspelt override was accepted');
+end
+
+function ladder_branches()
+% The DC steps build on the baseline without housing and the housing steps
+% have no DC pillar; the combined step has both. The three funds are all
+% bonds, all stocks, and the production glide.
+assert(ladder.parent('dc_bonds') == ladder.index('corr_SL'), 'dc_bonds parent');
+assert(ladder.parent('pension') == ladder.index('housing_corr'), 'pension parent');
+assert(ladder.parent('housing') == ladder.index('corr_SL'), 'housing parent');
+for k = ladder.index('dc_bonds') : ladder.index('aow')
+    p = ladder.params(k);
+    assert(p.h_mult == 0 && p.kappa_base == 0.186, 'step %d: DC pillar without housing', k);
+end
+for k = [ladder.index('housing'), ladder.index('housing_corr')]
+    p = ladder.params(k);
+    assert(p.kappa_base == 0 && p.replacement == 0.68212, 'step %d: housing without DC', k);
+end
+p = ladder.params('pension');
+assert(p.h_mult > 0 && p.kappa_base > 0 && p.replacement == 0.307, 'pension combines both');
+assert(ladder.params('dc_glide').replacement == 0.68212 && ladder.params('aow').replacement == 0.307, ...
+    'replacement along the DC branch');
+assert(all(config.tau_effective(ladder.params('dc_bonds')) == 0), 'all-bond fund');
+assert(all(config.tau_effective(ladder.params('dc_stocks')) == 1), 'all-stock fund');
+assert(isequal(config.tau_effective(ladder.params('dc_glide')), config.tau_effective(config.params())), ...
+    'glide fund differs from production');
 end
 
 function income_profile()

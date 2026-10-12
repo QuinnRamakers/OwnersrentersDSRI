@@ -1,7 +1,7 @@
 function compare(step, numerics, opts)
-%COMPARE  What one ladder step changed: overlay it on the step before.
+%COMPARE  What one ladder step changed: overlay it on the step it builds on.
 %
-%   ladder.compare(k)                      % step k against k-1
+%   ladder.compare(k)                      % step k against its parent (ladder.parent)
 %   ladder.compare('pension', 'quick')
 %   ladder.compare(k, 'standard', against=1)  % against another step
 %
@@ -22,14 +22,14 @@ end
 
 S = ladder.steps();
 k = ladder.index(step, S);
-if isempty(opts.against), j = max(k - 1, 1); else, j = ladder.index(opts.against, S); end
+if isempty(opts.against), j = max(ladder.parent(k, S), 1); else, j = ladder.index(opts.against, S); end
 cur  = ladder.load(k, numerics);
 prev = ladder.load(j, numerics);
 num  = ladder.numerics(numerics);
 
 for tenure = fieldnames(cur).'
     t  = tenure{1};
-    tp = matching_arm(t, prev);
+    tp = ladder.matching_arm(t, prev);
     rs = {prev.(tp), cur.(t)};
     labels = {sprintf('%d %s (%s)', j, S(j).name, tp), sprintf('%d %s (%s)', k, S(k).name, t)};
     file = fullfile(num.dir, sprintf('compare_%02d_%02d_%s.png', j, k, t));
@@ -65,16 +65,6 @@ end
 
 function s = val(v)
 if ischar(v) || isstring(v), s = char(v); else, s = mat2str(v, 6); end
-end
-
-function tp = matching_arm(t, prev)
-% The arm of prev to set against arm t: the same label, then the same tenure
-% with or without housing, then the single no-housing arm, then the first.
-side = erase(t, 'nohousing_');
-for c = {t, ['nohousing_' side], side, 'nohousing'}
-    if isfield(prev, c{1}), tp = c{1}; return; end
-end
-tp = fieldnames(prev); tp = tp{1};
 end
 
 function print_table(rs, labels)

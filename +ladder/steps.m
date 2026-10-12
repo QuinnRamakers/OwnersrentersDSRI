@@ -3,10 +3,18 @@ function S = steps()
 %
 %   S = ladder.steps()
 %
-%   Each step is one change to the calibration, applied on top of every step
-%   before it. Step 1 replaces production values with a Cocco, Gomes and
-%   Maenhout (2005) core inside this model's time structure, and each later
-%   step restores one feature, so the last step reproduces config.params().
+%   Each step is one change to the calibration, applied on top of the step it
+%   builds on (its parent), and so on back to step 1. Step 1 replaces
+%   production values with a Cocco, Gomes and Maenhout (2005) core inside this
+%   model's time structure, and each later step restores one feature, so the
+%   last step reproduces config.params().
+%
+%   The ladder branches at step 6, the baseline without housing:
+%       6 -> 7 housing -> 8 housing correlations
+%       6 -> 9 DC all bonds -> 10 DC all stocks -> 11 DC glide -> 12 AOW
+%       8 -> 13 housing with AOW and DC -> 14 income tax -> 15 box 3
+%   so housing and the DC pension are each checked on the baseline before
+%   step 13 puts them together.
 %
 %   To change the calibration, edit a value in a step, or append a step at the
 %   end -- for example a consumption-floor level, a housing multiple from data,
@@ -16,6 +24,9 @@ function S = steps()
 %     note    where the values come from, one line
 %     set     parameter overrides; every field must be a primitive of
 %             config.params (config.params(false) lists them)
+%     parent  name of the step this one builds on; '' for the step before it
+%     vary    primitives to move one at a time around this step, each with
+%             its values (ladder.sensitivity); empty for most steps
 %
 %   Fixed throughout, as deviations from CGM: entry at 25 rather than 20, a
 %   terminal age of 100, Dutch unisex mortality, and no transitory income
@@ -25,7 +36,7 @@ function S = steps()
 %   which gives each its own; from there on a step without housing is solved
 %   for both (model.tenures_differ).
 
-S = struct('name', {}, 'label', {}, 'note', {}, 'set', {});
+S = struct('name', {}, 'label', {}, 'note', {}, 'set', {}, 'parent', {}, 'vary', {});
 
 cgm_coef = [0.530339, 0.16818, -0.323371, 0.19704];
 S(end+1) = step('cgm', 'CGM (2005) core', ...
@@ -80,10 +91,33 @@ S(end+1) = step('housing_corr', 'Housing correlations', ...
      'income 0.09 and stocks 0.24; renters rent with income 0.06 and stocks 0.43'], ...
     struct('corr_HL', 0.09, 'corr_HL_rent', 0.06, 'corr_SH', 0.24, 'corr_SH_rent', 0.43));
 
-S(end+1) = step('pension', 'AOW and DC pension', ...
-    ['AOW replaces 30.7% of final wage; DC contributions of 18.6% above ' ...
-     'the franchise, glide-path fund, annuitised at 67'], ...
-    struct('replacement', 0.307, 'kappa_base', 0.186));
+S(end+1) = step('dc_bonds', 'DC pension, all-bond fund', ...
+    ['Built on step 6, without housing. Contributions of 18.6% of income above ' ...
+     'the EUR 18,475 franchise, the fund all in bonds, annuitised at 67; ' ...
+     'first-pillar income stays at CGM''s 68.2% of final income'], ...
+    struct('kappa_base', 0.186, 'glide_cap', 0), 'corr_SL');
+
+S(end+1) = step('dc_stocks', 'DC pension, all-stock fund', ...
+    'The DC fund all in stocks at every age, and the annuity in retirement too', ...
+    struct('glide_cap', 1, 'glide_span', 1, 'tau_decum', 1));
+
+S(end+1) = step('dc_glide', 'DC pension, glide-path fund', ...
+    ['The production fund: 80% stocks until 39, linear to 0% at 67, all bonds ' ...
+     'in retirement'], ...
+    struct('glide_cap', 0.8, 'glide_span', 35, 'tau_decum', []));
+
+S(end+1) = step('aow', 'First pillar at the AOW', ...
+    ['First-pillar income from 67 falls from CGM''s 68.2% to the AOW''s 30.7% ' ...
+     'of final income (DNB, median first-pillar replacement rate)'], ...
+    struct('replacement', 0.307));
+% Illustrative lower and higher values, not calibration targets
+S(end).vary = struct('replacement', [0.20 0.40], 'kappa_base', [0.10 0.30]);
+
+S(end+1) = step('pension', 'Housing with AOW and DC pension', ...
+    ['Built on step 8 (housing correlations): AOW replaces 30.7% of final ' ...
+     'wage; DC contributions of 18.6% above the franchise, glide-path fund, ' ...
+     'annuitised at 67'], ...
+    struct('replacement', 0.307, 'kappa_base', 0.186), 'housing_corr');
 
 S(end+1) = step('inctax', 'Income tax', ...
     'EET at 38.2% on wages, AOW and annuity payouts', ...
@@ -94,6 +128,8 @@ S(end+1) = step('box3', 'Box-3 tax', ...
     struct('tau_cg_bond', 0.36, 'tau_cg_stock', 0.36));
 end
 
-function s = step(name, label, note, set)
-s = struct('name', name, 'label', label, 'note', note, 'set', set);
+function s = step(name, label, note, set, parent)
+if nargin < 5, parent = ''; end
+s = struct('name', name, 'label', label, 'note', note, 'set', set, 'parent', parent, ...
+           'vary', struct());
 end

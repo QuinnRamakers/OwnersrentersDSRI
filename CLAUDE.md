@@ -18,7 +18,7 @@ Use the session-start skill at the beginning and the session-end skill at the en
 - A new input is a primitive in `config.params`, one line, with its source in CALIBRATION.md. Anything that follows from inputs goes in `config.derive`.
 - `ladder.same_calibration` compares every primitive, so a saved result for a different calibration is never reused as if it were comparable. A value kept only in a derived field escapes that check, so do not do that.
 - The last ladder step must equal `config.params()`. `run_tests` checks this. To change the production calibration, change the step and `params` together.
-- Editing a ladder step re-solves it and every step after it. Compare steps only at the same numerics (quick, standard or fine).
+- Editing a ladder step re-solves it and every step built on it (the ladder branches at step 6; `ladder.parent`). Compare steps only at the same numerics (quick, standard or fine).
 - An override that names a field that is not a primitive is an error. Do not work around it.
 
 ## Checks before saying something works

@@ -1,8 +1,9 @@
-function fig = compare(rs, labels, ttl, file)
+function fig = compare(rs, labels, ttl, file, opts)
 %COMPARE  Overlay several solved results on the same panels.
 %
 %   figures.compare({r_ref, r1, r2}, {'reference', 'one', 'two'})
 %   figures.compare(rs, labels, title, file)
+%   figures.compare(rs, labels, title, file, view='pension')
 %
 %   The first result is the reference: drawn in black with its 10th-90th
 %   percentile band, and the one the middle row measures differences from.
@@ -13,14 +14,27 @@ function fig = compare(rs, labels, ttl, file)
 %   resources over income, with markers on each result's own grid nodes, and a
 %   box with each result's settings and checks.
 %
+%   view='pension' shows the DC pension account in place of net worth, and in
+%   place of the policy at 30 the stock share of financial wealth (stock in
+%   the liquid account and the DC fund over liquid saving plus the fund).
+%
 %   Levels are in thousands of euros (or CGM units) when every result has the
 %   same income units and entry income, and in multiples of entry income
 %   otherwise, so steps with different income units still line up.
 
+arguments
+    rs cell
+    labels cell
+    ttl = ''
+    file = ''
+    opts.view (1,:) char {mustBeMember(opts.view, {'default', 'pension'})} = 'default'
+end
+
 n = numel(rs);
 assert(n >= 2 && n <= 6, 'figures:compare', 'compare takes two to six results.');
-if nargin < 3 || isempty(ttl), ttl = 'Comparison'; end
+if isempty(ttl), ttl = 'Comparison'; end
 D = cellfun(@figures.panel_data, rs, 'UniformOutput', false);
+pension_view = strcmp(opts.view, 'pension');
 
 same_units = all(cellfun(@(d) strcmp(d.unit, D{1}.unit), D)) && ...
              all(cellfun(@(r) abs(r.summary.Y0 / rs{1}.summary.Y0 - 1) < 1e-9, rs));
@@ -46,6 +60,9 @@ series = {
     'Liquid savings',       @(d) d.X,         unit,                false, 'Liquid savings'
     'Net worth (liquid + pension + net home equity)', @(d) d.net_worth, unit, false, 'Net worth'
     'Liquid equity share',  @(d) d.pi,        'Stock share [0-1]', true,  'Liquid equity share' };
+if pension_view
+    series(3, :) = {'Pension account (DC)', @(d) d.A, unit, false, 'Pension account'};
+end
 letters = 'abcdefghijkl';
 ret = rs{1}.p.retirement_age;
 
@@ -78,11 +95,14 @@ for j = 1:4
     yline(ax, 0, 'k-', 'LineWidth', 0.8, 'HandleVisibility', 'off');
     a = D{1}.ages; ref = mean(series{j, 2}(D{1}), 1, 'omitnan');
     if series{j, 4}, a = a(1:end-1); ref = ref(1:end-1); end
+    absolute = pension_view && j == 3;      % the reference may have no pension account
     for i = 2:n
         v = mean(series{j, 2}(D{i}), 1, 'omitnan');
         if series{j, 4}
             v = v(1:end-1);
             dv = v - ref;
+        elseif absolute
+            dv = v * scl(i) - ref * scl(1);
         else
             dv = 100 * (v * scl(i) ./ (ref * scl(1)) - 1);
             dv(abs(ref) < 1e-9 * max(abs(ref))) = NaN;
@@ -91,18 +111,38 @@ for j = 1:4
     end
     if series{j, 4}
         ylabel(ax, 'difference in share');
+    elseif absolute
+        ylabel(ax, ['difference, ' unit]);
     else
         ylabel(ax, '% difference from reference');
     end
     title(ax, sprintf('(%s)  %s: difference from black', letters(4 + j), series{j, 5}), 'FontSize', FT);
 end
 
-% Row 3: the equity share policy at three ages
-for j = 1:3
-    age = [30 55 75];
+% Row 3: the equity share policy at three ages, or in the pension view the
+% stock share of financial wealth and the policy at two
+ages = [30 55 75];
+if pension_view
+    ax = tile(tl, ret, FS);
+    for i = n:-1:1
+        d = D{i}; a = d.ages(1:end-1);
+        M = (d.eq_liquid + d.eq_pension) ./ max(d.fin, 1e-12);
+        M = M(:, 1:end-1);
+        if i == 1
+            fill(ax, [a, fliplr(a)], [quantile(M, 0.1, 1), fliplr(quantile(M, 0.9, 1))], ...
+                [0.85 0.85 0.85], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+        end
+        plot(ax, a, mean(M, 1, 'omitnan'), styles{i}, 'Color', cols(i, :), 'LineWidth', lw(i));
+    end
+    ylim(ax, [0 1]); ylabel(ax, 'Stock share [0-1]');
+    title(ax, '(i)  Stock share of liquid saving plus pension account', 'FontSize', FT);
+    ages = ages(2:3);
+end
+for j = 1:numel(ages)
     ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS;
-    policy_panel(ax, rs, D, age(j), cols, styles, lw);
-    title(ax, sprintf('(%s)  Equity share policy at age %d', letters(8 + j), age(j)), 'FontSize', FT);
+    policy_panel(ax, rs, D, ages(j), cols, styles, lw);
+    title(ax, sprintf('(%s)  Equity share policy at age %d', letters(11 - numel(ages) + j), ages(j)), ...
+        'FontSize', FT);
 end
 
 % Settings and checks
@@ -111,7 +151,7 @@ text(ax, 0, 1, info_lines(rs, labels), 'Units', 'normalized', 'VerticalAlignment
     'FontSize', FS - 1.5, 'Interpreter', 'none', 'FontName', 'Consolas');
 title(ax, '(l)  Settings and checks', 'FontSize', FT);
 
-if nargin > 3 && ~isempty(file)
+if ~isempty(file)
     axs = findall(fig, 'Type', 'axes');
     for i = 1:numel(axs)
         if ~isempty(axs(i).Toolbar), axs(i).Toolbar.Visible = 'off'; end

@@ -6,15 +6,21 @@ function [p, k, S] = params(step, S)
 %   p = ladder.params(k, S)       % a ladder other than ladder.steps()
 %   [p, k, S] = ladder.params(...)
 %
-%   Starts from the production primitives, applies the overrides of steps
-%   1..k in order, and derives. An override naming a field that is not a
-%   primitive of config.params is an error, so a misspelt parameter cannot
-%   pass silently. p.ladder carries the step's index, name and label.
+%   Starts from the production primitives, applies the overrides of the steps
+%   from 1 to k along k's line of parents (ladder.parent), in order, and
+%   derives. Steps on another branch are not applied. An override naming a
+%   field that is not a primitive of config.params is an error, so a misspelt
+%   parameter cannot pass silently. p.ladder carries the step's index, name,
+%   label and the steps applied.
 
 if nargin < 2 || isempty(S), S = ladder.steps(); end
 k = ladder.index(step, S);
+line = k;
+while line(1) > 1
+    line = [ladder.parent(line(1), S), line]; %#ok<AGROW>
+end
 p = config.params(false);
-for j = 1:k
+for j = line
     f = fieldnames(S(j).set);
     for i = 1:numel(f)
         assert(isfield(p, f{i}), 'ladder:unknown_field', ...
@@ -24,5 +30,6 @@ for j = 1:k
     end
 end
 p = config.derive(p);
-p.ladder = struct('index', k, 'name', S(k).name, 'label', S(k).label, 'note', S(k).note);
+p.ladder = struct('index', k, 'name', S(k).name, 'label', S(k).label, 'note', S(k).note, ...
+                  'line', line);
 end

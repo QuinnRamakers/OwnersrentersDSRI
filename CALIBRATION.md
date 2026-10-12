@@ -348,11 +348,19 @@ steps 1–3 have one no-housing arm. Deviations kept throughout the ladder:
 entry at 25 rather than 20, a terminal age of 100, Dutch unisex mortality, and
 no transitory income shock.
 
-The ladder up to the pension step: 4 income (the DHS values above), 5 market
-(`r`, `mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.04, 7 housing
-(`h_mult` 4 and the housing dynamics above, no housing correlations), 8 the
-housing correlations above. Retirement income stays at CGM's 68.2% of final
-income until the pension step.
+The rest of the ladder: 4 income (the DHS values above), 5 market (`r`,
+`mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.04. From step 6 it
+branches. Housing: 7 housing (`h_mult` 4 and the housing dynamics above, no
+housing correlations), 8 the housing correlations above. DC pension, without
+housing: 9 `kappa_base` 0.186 with an all-bond fund (`glide_cap` 0), 10 an
+all-stock fund (`glide_cap` 1, `glide_span` 1, `tau_decum` 1), 11 the
+production glide above, 12 `replacement` 0.307. Retirement income stays at
+CGM's 68.2% of final income through step 11. Step 13 puts housing (step 8)
+together with the AOW and the DC pension; 14 and 15 add the taxes.
+
+Around step 12, `ladder.sensitivity` moves `replacement` to 0.20 and 0.40 and
+`kappa_base` to 0.10 and 0.30, one at a time. These are illustrative values for
+a sensitivity, not calibration.
 
 ## Numerics
 

@@ -16,7 +16,7 @@ function R = run(steps, opts)
 %       <output_dir>/ladder/<numerics>/NN_<name>_<tenure>.mat
 %   with a dashboard figure next to it. A saved arm is reused unless its
 %   calibration no longer matches the step -- editing a step re-solves it and
-%   every step after it, since the ladder is cumulative.
+%   every step built on it, since the ladder is cumulative along each branch.
 
 arguments
     steps
