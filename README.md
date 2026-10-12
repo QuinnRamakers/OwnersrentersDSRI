@@ -103,12 +103,16 @@ u3. Results are saved under
 `<output dir>/ladder/<numerics>/` as `NN_<name>_<tenure>.mat`, each with a
 twelve-panel dashboard (`figures.dashboard`). A saved step is reused until its
 calibration changes; editing a step re-solves it and every step after it on the
-next `ladder.run`. `ladder.compare(k)` overlays step k on step k-1
-(`figures.compare`: levels, differences, and the equity-share policy at three
-ages) and prints the main quantities. `ladder.robustness(k)` solves step k again
-under other fmincon algorithms, without the global sweep, and on four other
-grids, and overlays each set on the step in the same panels; the figures go to
-`<output dir>/ladder/<numerics>/robustness/`. `ladder.report` tabulates every
+next `ladder.run`. Two pages go with every step. `ladder.compare(k)` draws the
+step dashboard (`figures.step_dashboard`): step k-1 and step k on the twelve
+panels, both with their 10th-90th percentile bands, the change in consumption
+and savings, and the parameters that differ; with a renter and an owner arm it
+also draws the two arms on one page. `ladder.robustness(k)` solves step k again
+under the other fmincon algorithms, with the global sweep switched, and on four
+other grids, and draws all three sets against the step on one page
+(`figures.robustness`) in `<output dir>/ladder/<numerics>/robustness/`.
+`figures.compare` overlays up to six results with their policy functions, for
+anything else. `ladder.report` tabulates every
 saved step. Levels are in multiples of entry income whenever two results have
 different income units, because steps 1-3 use CGM's.
 
@@ -125,10 +129,9 @@ after each solve and shown on the dashboard).
   from the warm start alone, fmincon settles on the wrong local peak at about
   8% of retirement nodes, and the simulated share falls through retirement when
   it should rise. `p.use_refine = true` sweeps (c, pi) before fmincon at every
-  node. Since 12 October the default is interior-point without the sweep
-  (Quinn's choice, for now); at step 1 it matches the sweep, at the production
-  calibration it does not, so `ladder.robustness(k)` shows the sweep against
-  it at every step.
+  node; it is on by default, followed by fmincon interior-point.
+  `ladder.robustness(k)` shows a step without the sweep and with the other
+  fmincon algorithms.
 - **At the production calibration, ages 25-39 are not converged.** Rent of
   about 44% of net income at 25 (owners: maintenance and mortgage of about
   41%), a floor of 1e-6 times income, and gamma = 5 leave
@@ -167,9 +170,8 @@ are level.
 
 Solution. Backward induction over 76 periods, Gauss-Hermite quadrature over
 the income, equity and housing shocks, and at each node a search over c and pi:
-fmincon (`p.fmincon_algorithm`, interior-point by default) from the warm
-start, optionally after a global (c, pi) sweep (`p.use_refine`, off by
-default). The simulation draws continuous shocks and reads the policies off
+a global (c, pi) sweep from the warm start (`p.use_refine`), then fmincon
+(`p.fmincon_algorithm`, interior-point by default). The simulation draws continuous shocks and reads the policies off
 the cube.
 
 ## Layout

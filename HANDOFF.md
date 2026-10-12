@@ -29,6 +29,23 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 Sweep back on; step and robustness dashboards; steps 1-4 at standard numerics (spec: Calibration ladder, part 1)
+Quinn: turn the sweep back on (interior-point kept as the local solver), and two dashboards per step, one for the change from the previous step with both 10-90 bands, one for the robustness within the step.
+Changed:
+- `+config/params.m`: `use_refine = true`. CALIBRATION.md, README.md, TODO.md follow.
+- `+figures/step_dashboard.m` (new): two results on the twelve-panel page, each with its band (gross income, consumption, disposable income, liquid savings, DC account, housing cost, net worth, total wealth with human capital, liquid equity share, stock exposure over total wealth with each Merton share, % change in consumption and liquid savings, and a box with the parameters that differ and both runs' checks). `+ladder/compare.m` draws it per arm, plus `owner_renter_KK.png` when a step has both tenures.
+- `+figures/robustness.m` (new): one page per arm, rows local optimiser / global search / grid, columns consumption and liquid savings as % differences, the equity share and its difference, and a settings-and-checks box. `+ladder/robustness.m` draws it (`robust_KK_<step>_<arm>.png`) instead of three separate figures.
+- `tests/run_tests.m`: `figures_render` also draws both new pages.
+Checks run:
+- `run_tests` (full): 0 of 10 checks failed.
+- Steps 1-4 at standard, thread pool, default interior-point with the sweep, each with `ladder.robustness(k)` and `ladder.compare(k)`. No stop check triggered. model.checks for every arm: offgrid 0, c_bound_25_39 0, floored 0; corr nodes 0.000, panel within 0.002 of 0. Default against active-set with the sweep, max |d mean pi|: 0.0001, 0.0011, 0.0012, 0.0006 (renter) / 0.0013 (owner); consumption and liquid wealth within 0.2% (ages 26-95). Entry value: 0.643, 0.903, 0.904, 1.14 (renter) / 1.20 (owner).
+- Step 3 against step 2 (ages 25/35/45/55/65/75/85): median C/Y0 0.87 1.12 1.34 1.55 1.75 1.75 1.66 (0.869 1.12 1.34 1.55 1.72 1.72 1.62); mean X/Y0 0.079 2.72 7.43 12.4 15.7 13.1 7.6 (0.079 2.73 7.47 12.5 15.9 12.5 7.22); mean pi 1 1 0.979 0.886 0.807 0.796 0.862 (1 1 0.979 0.884 0.789 0.807 0.87). Peak X/Y0 16.13 at 67 (15.95 at 65). As expected.
+- Step 4 against step 3, renter / owner: median C/Y0 1.06/1.07 1.33/1.40 1.57/1.65 1.77/1.86 1.98/2.06 1.96/2.04 1.83/1.91; mean X/Y0 0.079 0.74/0.47 3.95/3.76 8.43/8.99 12.7/13.9 10.7/11.8 5.84/6.51; mean pi 1 1 1 0.984/0.986 0.925/0.911 0.90/0.885 0.944/0.935. Peak X/Y0 13.39 / 14.64 at 67 (16.13); pi below 0.99 from 54 (44).
+- Step 4 against the expectation: less saving when young, wealth lower before 50 and the equity share at 1 for ten more years, as expected. Two misses: wealth at 67 is lower, not unchanged (by 17% renter, 9% owner, in multiples of entry income), and the retirement equity share is about 0.1 higher, not unchanged (0.91-0.93 at 65 against 0.81): with less wealth beside the same 68.2% pension, the pension is a larger part of total wealth. Renter against owner: the renter saves more until about 45 and less after (in multiples of its own entry income; the owner's profile rises more), consumption within about 6%, and the renter's equity share is up to 0.016 higher, not lower.
+- Robustness at step 4 (owner page): active-set with the sweep within 0.001 in mean pi; sqp with the sweep within 0.001 in pi and 1.1% in consumption (its liquid-savings gap of 57% is at age 31, where savings are near zero). Without the sweep both algorithms go wrong: interior-point's equity share drops to about 0.55 at 26-29 and both fall late in life (active-set by 0.74 at 99). Grids: consumption within 1.6% and liquid savings within 6% ([9 9 6]) or 3% (the others); mean pi within 0.02 on [12 12 8] and [20 20 12], 0.034 on [32 16 10] and 0.079 on [9 9 6], largest around retirement at 67.
+Commit: pending (filled in by the next commit).
+Open: steps 5 (market) and 6 (corr_SL) wait for Quinn's review of steps 1-4.
+
 ### 2026-10-12 Step 2 gamma5 at standard numerics; stopped before step 3 on the solver check (spec: Calibration ladder, part 1)
 Changed: no code. Results, gitignored, under `ladder/standard_16x16x10_gh5/`: `02_gamma5_nohousing.mat` and dashboard, `compare_01_02_nohousing.png`, `robustness/robust_02_gamma5_nohousing_{optimisers,search,grids}.png`.
 Checks run: `ladder.robustness(2)` and `ladder.compare(2)`, thread pool. Default solver (interior-point, no sweep), solve 13.2 s. model.checks: offgrid 0, c_bound_25_39 0, floored 0, ce_entry 0.9035, Merton 0.3246, corr nodes 0.000, panel 0.002.

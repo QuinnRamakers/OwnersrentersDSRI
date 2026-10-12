@@ -20,8 +20,9 @@ function R = robustness(step, opts)
 %                  [20 20 12] and twice the reference's u1 nodes with 5, all
 %                  with the reference's algorithm and sweep setting
 %   Each variant is saved to <numerics dir>/robustness/NN_<step>_<arm>_<variant>.mat
-%   and reused while its calibration is unchanged. Each set is drawn over the
-%   reference with figures.compare, one PNG per arm and set, in the same folder.
+%   and reused while its calibration is unchanged. All three sets are drawn on
+%   one page per arm with figures.robustness, robust_NN_<step>_<arm>.png in the
+%   same folder.
 %
 %   The parallel pool is part of the result: at step 1, sqp gave different
 %   answers on a thread pool and on a process pool, while active-set gave the
@@ -86,16 +87,19 @@ for arm = fieldnames(ref).'
         save(file, '-struct', 'r');
         R.(a).(v.name) = r;
     end
-    for grp = {'optimisers', 'search', 'grids'}
-        w = strcmp({V.set}, grp{1});
-        rs = [{R.(a).reference}, arrayfun(@(x) R.(a).(x.name), V(w), 'UniformOutput', false)];
-        labels = [{ref_label}, {V(w).label}];
-        what = struct('optimisers', 'local optimiser', 'search', 'global search', 'grids', 'grid');
-        ttl = sprintf('Step %d, %s: %s. Robustness to the %s', k, S(k).label, a, what.(grp{1}));
-        out = fullfile(dir, sprintf('robust_%02d_%s_%s_%s.png', k, S(k).name, a, grp{1}));
-        figures.compare(rs, labels, ttl, out);
-        fprintf('Wrote %s\n', out);
+    sets  = {'optimisers', 'search', 'grids'};
+    names = {'Local optimiser', 'Global search', 'Grid'};
+    G = struct('name', names, 'rs', [], 'labels', []);
+    for g = 1:numel(sets)
+        w = strcmp({V.set}, sets{g});
+        G(g).rs = arrayfun(@(x) R.(a).(x.name), V(w), 'UniformOutput', false);
+        G(g).labels = {V(w).label};
     end
+    ttl = sprintf('Step %d, %s: %s. Robustness to the optimiser, the global search and the grid', ...
+        k, S(k).label, a);
+    out = fullfile(dir, sprintf('robust_%02d_%s_%s.png', k, S(k).name, a));
+    figures.robustness(R.(a).reference, ref_label, G, ttl, out);
+    fprintf('Wrote %s\n', out);
 end
 end
 

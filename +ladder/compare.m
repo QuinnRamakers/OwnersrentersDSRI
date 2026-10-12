@@ -5,11 +5,14 @@ function compare(step, numerics, opts)
 %   ladder.compare('pension', 'quick')
 %   ladder.compare(k, 'standard', against=1)  % against another step
 %
-%   One figure per arm, saved next to the results, and a table of the main
-%   quantities at a few ages. Levels are in multiples of entry income, so
-%   steps that change the income units (the CGM core uses CGM's) still line
-%   up. Each arm is compared with the same tenure of the other step where it
-%   has one, and with its single no-housing arm otherwise.
+%   One step dashboard per arm (figures.step_dashboard: both steps with their
+%   10th-90th percentile bands, and the parameters that differ), saved next to
+%   the results as compare_JJ_KK_<arm>.png, and a table of the main quantities
+%   at a few ages. A step with a renter and an owner arm also gets
+%   owner_renter_KK.png, the two arms on one page. Levels are in multiples of
+%   entry income when the income units differ. Each arm is compared with the
+%   same tenure of the other step where it has one, and with its single
+%   no-housing arm otherwise.
 
 arguments
     step
@@ -30,9 +33,38 @@ for tenure = fieldnames(cur).'
     rs = {prev.(tp), cur.(t)};
     labels = {sprintf('%d %s (%s)', j, S(j).name, tp), sprintf('%d %s (%s)', k, S(k).name, t)};
     file = fullfile(num.dir, sprintf('compare_%02d_%02d_%s.png', j, k, t));
-    figures.compare(rs, labels, sprintf('Step %d, %s: %s', k, S(k).label, t), file);
+    figures.step_dashboard(rs{1}, rs{2}, labels, sprintf('Step %d, %s: %s against step %d', ...
+        k, S(k).label, t, j), file, changes = changed(rs{1}.p, rs{2}.p));
     print_table(rs, labels);
 end
+arms = fieldnames(cur);
+o = arms(endsWith(arms, 'owner')); n = arms(endsWith(arms, 'renter'));
+if isscalar(o) && isscalar(n)
+    figures.step_dashboard(cur.(n{1}), cur.(o{1}), {sprintf('%d %s (%s)', k, S(k).name, n{1}), ...
+        sprintf('%d %s (%s)', k, S(k).name, o{1})}, sprintf('Step %d, %s: renter and owner', k, S(k).label), ...
+        fullfile(num.dir, sprintf('owner_renter_%02d.png', k)), ...
+        colours = [0.45 0.20 0.55; 0.20 0.60 0.30], changes = changed(cur.(n{1}).p, cur.(o{1}).p));
+end
+end
+
+function L = changed(pa, pb)
+% The primitives that differ between two calibrations, as 'name: a -> b'.
+L = {};
+for f = fieldnames(config.params(false)).'
+    a = []; b = [];
+    if isfield(pa, f{1}), a = pa.(f{1}); end
+    if isfield(pb, f{1}), b = pb.(f{1}); end
+    if ~isequaln(a, b)
+        L{end+1} = sprintf('%s: %s -> %s', f{1}, val(a), val(b)); %#ok<AGROW>
+    end
+end
+if ~isequal(pa.is_owner, pb.is_owner) && pa.h_mult == 0 && pb.h_mult == 0
+    L{end+1} = '(without housing, is_owner only selects the renter or owner income cubic and shock std)';
+end
+end
+
+function s = val(v)
+if ischar(v) || isstring(v), s = char(v); else, s = mat2str(v, 6); end
 end
 
 function tp = matching_arm(t, prev)

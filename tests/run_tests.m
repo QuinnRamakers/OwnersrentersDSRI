@@ -191,5 +191,9 @@ figures.dashboard(r{1}, fullfile(d, 'a.png'));
 figures.dashboard(r{2}, fullfile(d, 'b.png'));
 figures.compare(r(2:3), {'active-set', 'sqp, finer u1'}, 'test', fullfile(d, 'c.png'));
 figures.compare(r([1 2]), {'cgm', 'production'}, 'test', fullfile(d, 'd.png'));
-assert(all(isfile(fullfile(d, {'a.png', 'b.png', 'c.png', 'd.png'}))), 'a figure was not written');
+figures.step_dashboard(r{1}, r{2}, {'cgm', 'production'}, 'test', fullfile(d, 'e.png'), changes = {'x: 1 -> 2'});
+G = struct('name', {'A', 'B'}, 'rs', {{r{3}}, {r{3}, r{2}}}, 'labels', {{'sqp'}, {'sqp', 'same'}});
+figures.robustness(r{2}, 'reference', G, 'test', fullfile(d, 'f.png'));
+assert(all(isfile(fullfile(d, {'a.png', 'b.png', 'c.png', 'd.png', 'e.png', 'f.png'}))), ...
+    'a figure was not written');
 end
