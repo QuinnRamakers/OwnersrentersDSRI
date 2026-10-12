@@ -34,7 +34,7 @@ Quinn found the five ruin figures too technical. Redrawn as two figures with lin
 Numbers the script printed:
 - Age 27, no liquid savings, well-being (CE, years of income) at a house of 4.2 x income: 0.59 (standard grid) against 0.03 (doubled); at 5.5 x: 0.49 (standard, at 5.2) against 0.003. The typical 27-year-old owner's house is 3.8 x income, so on the doubled grid the typical young owner sits on the cliff.
 - Age 85: bankrupt this year 11.8% (standard) and 6.9% (doubled) of owners; the value function rates them at a median of 0.65 and 0.27, against 0.91 and 1.09 for the rest. They should be near 0.
-Commit: see the next commit on main.
+Commit: cae11a1, pushed to main.
 
 ### 2026-10-12 How the floor, ruin and the grid move step 7, in figures (spec: none, asked by Quinn in Claude Code)
 Quinn asked for intuitive pictures of how the grid and the possibility of ruin change the value and policy functions. No code changed. A scratch script drew five figures from the saved step-7 owner solves ([16 16 10] and the doubled income axis [32 16 10]) and the flat-house-price runs of the diagnosis entry below: `ladder/standard_16x16x10_gh5/diagnosis/ruin_1_why.png` to `ruin_5_choice.png` (gitignored). Values are shown as a certainty-equivalent consumption stream (CE): the constant consumption, in years of current income, worth as much as the state over the remaining expected lifetime.
