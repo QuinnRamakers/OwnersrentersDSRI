@@ -29,6 +29,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 The model's mortgage against a real annuity mortgage (spec: none, asked by Quinn in Claude Code)
+Changed: `+figures/mortgage.m` (new): for an owner result, the model's payment (annuity rate times the current house value) against two contracts on the same loan, a real annuity at r_m (constant real payment) and the nominal annuity at r_m plus 2.3% inflation (fixed euro payment, falling in real terms); payment, payment over income, balance, cumulative payments, present value at r_m per household. Drawn for step 7: `ladder/standard_16x16x10_gh5/mortgage_07_owner.png` (gitignored).
+Checks run: `run_tests(solve=false)`: 0 of 7 checks failed. Both real contracts have a present value of exactly 1.00 times the loan (payments at the end of each year).
+Numbers (step 7 owner, loan EUR 159k): the annual payment is EUR 6.5k at 25 in every contract; at 54 the model charges EUR 18.6k on average (p10 9.9k, p90 29.4k) against 6.5k (real annuity) and 4.5k (nominal, in real euros). Over gross income at 45: model 19.5%, real 9.4%, nominal 8.0%; at 54: 27.9%, 9.7%, 6.7%. Total paid over the term: model 2.18 times the loan on average (p10 1.47, p90 3.01), real 1.22, nominal 1.20. Present value at r_m: model 1.71 times the loan on average (p10 1.18, median 1.64, p90 2.34) against 1.00 for both contracts; 98% of owners pay more than the loan. The model's balance also stays near the full loan until about 40 instead of falling from the start, since it is a share of a rising house.
+Commit: pending (filled in by the next commit).
+Open: whether to model the mortgage as a real contract (needs a balance state, or a payment fixed at entry carried in another way); Quinn's decisions on step 7 still open.
+
 ### 2026-10-12 Step 7 housing at standard numerics; stopped before step 8 (spec: none, asked by Quinn in Claude Code)
 Changed: no code. Results, gitignored, under `ladder/standard_16x16x10_gh5/` (07_*, compare_06_07_*, owner_renter_07, robustness/robust_07_*).
 Checks run: `ladder.robustness(7)`, `ladder.compare(7)`, thread pool, interior-point with the sweep; solve 79 s (renter), 64 s (owner).
