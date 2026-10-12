@@ -36,7 +36,7 @@ Checks run:
 - Step 1, standard, thread pool, against active-set with the sweep (7.1 s): interior-point without the sweep (14.9 s) gives the same panel (max |d mean pi| 0.001, consumption and savings 0.0%). Its policy differs by up to 1.0 at 681 of 5,472 node-ages, 638 of them off the occupied u2 = u3 = 0 line and the rest at poor retirees (u1 0.53-1) who consume most of their resources. Figure `robustness/robust_01_cgm_nohousing_search.png`.
 - Production calibration (step 10), quick numerics, thread pool, renter and owner; solve s; max |d mean pi|; max |dX/X|: active-set with sweep 54 / 39 (reference); interior-point with sweep 96 / 89, 0.038 / 0.097, 0.4% / 1.5%; interior-point without 67 / 69, 0.133 / 0.236, 4.3% / 96.6%; active-set without 25 / 24, 0.270 / 0.267, 4.7% / 95.6%. Without the sweep both algorithms lose value against the reference at about 90% (interior-point) and 84% (active-set) of node-ages. With the sweep neither algorithm dominates: interior-point is higher at 52% of renter node-ages and lower at 59% of owner node-ages. Each solve's values rest on its own continuation, so this ranks tendencies, not node by node. Figures `ladder/quick_12x12x8_gh3/robustness/robust_10_box3_<arm>_interior_point.png` (scratch script, not in the repo; `ladder.robustness(10, numerics='quick')` reproduces the same runs plus the grid set).
 - `run_tests` (full): 0 of 10 checks failed.
-Commit: pending (filled in by the next commit).
+Commit: 1000075, pushed to main.
 Open: step 2 waits for review of step 1.
 
 ### 2026-10-12 Old-style dashboards, overlay figures, ladder.robustness (spec: none, asked by Quinn in Claude Code)
