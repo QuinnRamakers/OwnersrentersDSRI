@@ -1,8 +1,9 @@
-function report_pdf(numerics)
+function report_pdf(numerics, res)
 %REPORT_PDF  Every page of the retirement steps (9-12) and their sensitivities in one PDF.
 %
 %   report_pdf()              % standard numerics
 %   report_pdf('quick')
+%   report_pdf('standard', 80)  % a smaller copy, retirement_dashboards_80dpi.pdf
 %
 %   Run from the repository root after
 %       ladder.run(9:12); for k = 9:12, ladder.compare(k); end
@@ -16,9 +17,11 @@ function report_pdf(numerics)
 %   have not been drawn are listed on the intro page and skipped.
 
 if nargin < 1, numerics = 'standard'; end
+if nargin < 2, res = 130; end
 num = ladder.numerics(numerics); d = num.dir; S = ladder.steps();
 arms = {'nohousing_renter', 'nohousing_owner'};
 pdf = fullfile(d, 'retirement_dashboards.pdf');
+if res < 130, pdf = strrep(pdf, '.pdf', sprintf('_%ddpi.pdf', res)); end
 if isfile(pdf), delete(pdf); end
 
 cover(pdf, 'Retirement steps 9-12: the DC pension without housing', { ...
@@ -87,7 +90,7 @@ for s = 1:size(sec, 1)
         L = [L, {'', 'Not drawn yet, skipped:'}, strcat({'  '}, nm, ext)]; %#ok<AGROW>
     end
     cover(pdf, sec{s, 1}, L);
-    for f = sec{s, 3}(have), add_png(pdf, f{1}); end
+    for f = sec{s, 3}(have), add_png(pdf, f{1}, res); end
 end
 fprintf('wrote %s (%.1f MB)\n', pdf, dir(pdf).bytes / 1e6);
 end
@@ -181,12 +184,12 @@ exportgraphics(fig, pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 1
 close(fig);
 end
 
-function add_png(pdf, file)
+function add_png(pdf, file, res)
 I = imread(file);
 [h, w, ~] = size(I);
 fig = figure('Visible', 'off', 'Position', [0 0 round(w / 1.3) round(h / 1.3)], 'Color', 'w');
 ax = axes(fig, 'Position', [0 0 1 1]);
 image(ax, I); axis(ax, 'image', 'off');
-exportgraphics(fig, pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 130);
+exportgraphics(fig, pdf, 'Append', true, 'ContentType', 'image', 'Resolution', res);
 close(fig);
 end
