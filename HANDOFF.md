@@ -29,6 +29,19 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 Diagnosis: what drives step 7's grid sensitivity (spec: none, asked by Quinn in Claude Code)
+Quinn asked whether the mortgage problem and the grid non-convergence are related. Scratch runs of step 7 (standard numerics, interior-point with the sweep), each solved on [16 16 10] and on a refined grid; the gap is the largest difference over ages 26-95 in mean pi, mean consumption (%) and mean liquid wealth (years of income). No code changed. Dashboards, gitignored: `ladder/standard_16x16x10_gh5/diagnosis/` (grid_* = standard against refined, effect_* = against step 7 as run) and `diag_convergence_07.png`.
+Checks run:
+- Owner as run, [32 16 10]: 0.877, 79%, 4.1 (floored 5.5%). Renter as run: 0.186, 19.7%, 0.9.
+- Owner, flat house prices (mu_H 0, sigma_H 0.001): 0.018, 0.3%, 0.04, floor never binds. With flat prices the model's mortgage equals a real annuity and maintenance is constant.
+- Owner, no maintenance (mortgage approximation only): 0.108, 20.8%, 0.74, floor binds in 0.01% of years.
+- Owner, house-price risk without drift: 0.354, 25%, 0.77 (about 2,200 off-grid lookups; rough).
+- Floor 0.1 x income: owner 0.206, 21.5%, 2.8 (floored 5.9%); renter 0.139, 11.7%, 0.77.
+- Renter, second axis: [16 16 10] against [16 32 10] 0.021, 1.7%, 0.27; [32 16 10] against [32 32 10] 0.091, 9.4%, 0.39; [16 16 10] against [32 32 10] 0.243, 27%, 1.3.
+Reading: one mechanism, a housing outflow the household cannot adjust, tied to the H shock, with a near-zero floor. For owners the mortgage approximation (a payment proportional to an appreciating, volatile house) makes it large and risky in early life, and maintenance on the same house causes the retirement floor states; with the house price held flat both disappear and the owner converges. Renters have the same mechanism in milder form, not caused by the mortgage: a floor of 0.1 removes only part of it, and the solution keeps moving in early life as either axis is refined. This is the early-life problem of TODO.md item 1.
+Commit: pending (filled in by the next commit).
+Open: Quinn's choice of owner cost structure and of how to handle the renters' early life before step 7 is rerun.
+
 ### 2026-10-12 The model's mortgage against a real annuity mortgage (spec: none, asked by Quinn in Claude Code)
 Changed: `+figures/mortgage.m` (new): for an owner result, the model's payment (annuity rate times the current house value) against two contracts on the same loan, a real annuity at r_m (constant real payment) and the nominal annuity at r_m plus 2.3% inflation (fixed euro payment, falling in real terms); payment, payment over income, balance, cumulative payments, present value at r_m per household. Drawn for step 7: `ladder/standard_16x16x10_gh5/mortgage_07_owner.png` (gitignored).
 Checks run: `run_tests(solve=false)`: 0 of 7 checks failed. Both real contracts have a present value of exactly 1.00 times the loan (payments at the end of each year).
