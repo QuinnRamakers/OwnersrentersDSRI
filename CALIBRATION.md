@@ -185,19 +185,28 @@ are real, and the correlations come from the same pipeline as the moments.
 | `r` | 0.0115 | Real NL 3-month interbank rate (FRED IR3TIB01NLM156N) deflated by the CBS CPI, mean 1982–2024. Calibration notes, Table 2 |
 | `mu_S_level` | 0.0456 | Real stock return less `r`, mean 2000–2024. Calibration notes, Table 2 |
 | `sigma_S_level` | 0.2161 | Standard deviation of real stock returns, 2000–2024. An arithmetic std, as `sigma_S_level` is. Calibration notes, Table 2 |
-| `mu_H_level` | 0.027 | BIS Real Residential Property Price Index (NL), CPI-deflated |
-| `sigma_H_level` | 0.037 | Same |
-| `mu_R_level` | 0.0097 | Real rent growth, mean — own estimate. Consistent with the regulated-sector cap formula (CPI or wage growth, plus about 1pp) |
-| `sigma_R_level` | 0.018 | Real rent growth, vol — same estimate. See the caveat below |
+| `mu_H_level` | 0.0373 | Real house-price growth, mean, NVM repeat sales of individual houses, 1996–2024. Calibration tables, Table 1 |
+| `sigma_H_level` | 0.0835 | Same series, standard deviation |
+| `mu_R_level` | 0.0099 | Real rent growth, mean, CBS regulated rent increase, 1983–2025. Calibration tables, Table 1 |
+| `sigma_R_level` | 0.0179 | Same series, standard deviation. See the caveat below |
 | `corr_SL` | 0.04 | Correlation of the permanent income shock with the stock return: gross income, pooled over all DHS households, 2002–2023 (T = 22). Calibration notes, Table 4. One value for both tenures |
-| `corr_HL`, `corr_SH` | 0 | Not yet estimated |
+| `corr_HL`, `corr_HL_rent` | 0.09, 0.06 | Correlation of the H shock with income: house price for owners, rent for renters. Gross income, annual shocks 2002–2023 (T = 22). Calibration tables, Table 3 |
+| `corr_SH`, `corr_SH_rent` | 0.24, 0.43 | Correlation of the H shock with the stock return: house price for owners, rent for renters. Same source |
+
+Table 1 reports means and standard deviations of annual real arithmetic growth
+rates, which is what the `_level` inputs take; `config.derive` turns them into
+the log-normal parameters. Table 3 also gives the house price–rent correlation
+(0.21) and the REIT's correlations; the first has no place in the model, since
+no household faces both processes, and the REIT is off.
 
 The correlations are wired through a Cholesky factor in both `grids.shock_grid`
 and `simulate.paths_lna`, so giving them values costs nothing in runtime or node
 count. Each represents the covariance of a single composite income shock: with
-no aggregate/idiosyncratic split, one number absorbs both channels. `corr_HL`
-is the third shock's correlation with income, so it means corr(house return,
-income) for an owner and corr(rent growth, income) for a renter.
+no aggregate/idiosyncratic split, one number absorbs both channels. The third
+shock is the house-price return for an owner and the rent increase for a
+renter, so its correlations come in pairs and `config.h_corr` picks the
+tenure's. Without housing the H shock is degenerate and the housing cost is
+zero, so a step without housing does not depend on any housing parameter.
 
 ## The rent process
 
@@ -216,8 +225,8 @@ The rent drift is the most consequential number for the renter arm. Rent
 compounds for all 76 model years while retirement income is flat in real terms
 after the replacement drop, so the renter's burden is governed by the growth
 differential compounded over the retirement years. Setting `mu_R_level` to the
-house-price drift of 0.027, which the model did before the processes were
-separated, puts median rent at roughly 240% of net AOW at 67.
+house-price drift, as the model did before the processes were separated (then
+0.027), put median rent at roughly 240% of net AOW at 67.
 
 Two caveats on `sigma_R_level`. Real rent growth is nominal less CPI, and the
 nominal increase is a capped policy number in a narrow band, so nearly all of
@@ -230,8 +239,8 @@ implied 90% band on the rent level after 75 years is only 0.78x to 1.29x, so
 the drift does essentially all the work.
 
 The rent and house-price processes are not jointly consistent when extrapolated
-— 0.0097 against 0.027 implies the rent-to-price ratio falls from `alpha` = 6%
-to about 1.7% over the horizon. Nothing in the model requires consistency,
+— 0.0099 against 0.0373 implies the rent-to-price ratio falls from `alpha` = 6%
+to about 0.8% over the horizon. Nothing in the model requires consistency,
 because tenure is fixed at t = 1 and no household ever faces both processes.
 
 ## Housing
@@ -330,6 +339,7 @@ exact grid nodes.
 | `r` | 0.02 | CGM (2005) |
 | `mu_S_level`, `sigma_S_level` | 0.04, 0.157 | CGM (2005) |
 | `corr_SL` | 0 | CGM (2005) baseline |
+| `corr_HL`, `corr_HL_rent`, `corr_SH`, `corr_SH_rent` | 0 | No housing correlations until step 8 |
 | `h_mult`, `kappa_base` | 0 | No housing, no DC pillar |
 | taxes | 0 | None |
 
@@ -338,9 +348,11 @@ steps 1–3 have one no-housing arm. Deviations kept throughout the ladder:
 entry at 25 rather than 20, a terminal age of 100, Dutch unisex mortality, and
 no transitory income shock.
 
-The ladder up to the housing step: 4 income (the DHS values above), 5 market
-(`r`, `mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.04. Retirement
-income stays at CGM's 68.2% of final income until the pension step.
+The ladder up to the pension step: 4 income (the DHS values above), 5 market
+(`r`, `mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.04, 7 housing
+(`h_mult` 4 and the housing dynamics above, no housing correlations), 8 the
+housing correlations above. Retirement income stays at CGM's 68.2% of final
+income until the pension step.
 
 ## Numerics
 
@@ -354,7 +366,7 @@ Not calibration targets; accuracy choices, justified by convergence checks.
 | `fmincon_algorithm` | `'interior-point'` | Local solve after the sweep (Quinn's choice). With the sweep, interior-point and active-set agree to 0.001 in the mean equity share at steps 1-2; at the production calibration they differed by up to 0.10 with neither reaching the higher value everywhere. `'active-set'` and `'sqp'` are robustness checks (`ladder.robustness`). Active-set and interior-point give the same answer on a thread pool and a process pool; sqp did not at step 1 |
 | `N_c`, `N_pi` | 41 | Set the step sizes of the sweep's shrinking rounds |
 | `interp_method` | `'linear'` | Linear in z. `'makima'` serves as a structural error check |
-| `lambda_lo` | 0.0008 | Owners reach u1 = 0.0013; 0.002 clipped them |
+| `lambda_lo` | `[]` | 0.0008, or 0.0002 with housing. With house prices at 3.73% real and 8.35% vol, owners reach u1 = 0.0005 at 85+; 0.0008 clipped 0.02% of their household-years |
 | `lambda_hi` | `[]` | `min(0.9, 3/(1 + h_mult))`, or 1 without housing |
 | `grid_pow`, `grid_pow_u2`, `u2_lo`, `u3_lo`, `u3_hi`, `grid_nodes` | uniform, full axes | Placement; see GRIDS.md |
 

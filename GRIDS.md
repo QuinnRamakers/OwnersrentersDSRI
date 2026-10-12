@@ -100,7 +100,7 @@ Primitives of `config.params`, all at their full-axis, uniform defaults except
 
 | field | axis | default | effect |
 |-------|------|---------|--------|
-| `lambda_lo`, `lambda_hi` | `u1` | 0.0008, `[]` | ends of the income axis; `[]` is `min(0.9, 3/(1 + h_mult))`, or 1 without housing |
+| `lambda_lo`, `lambda_hi` | `u1` | `[]`, `[]` | ends of the income axis; `lambda_lo = []` is 0.0008, or 0.0002 with housing; `lambda_hi = []` is `min(0.9, 3/(1 + h_mult))`, or 1 without housing |
 | `grid_pow` | `u1` | 1 | `> 1` bunches nodes toward the low end |
 | `u2_lo` | `u2` | 0 | bottom of the illiquid axis |
 | `grid_pow_u2` | `u2` | 1 | `> 1` bunches nodes toward 1 |

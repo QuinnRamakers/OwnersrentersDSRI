@@ -16,7 +16,9 @@ function shocks = shock_grid(p)
 %
 %   corr_SL/corr_HL/corr_SH (and corr_RL/corr_RS/corr_RH) are correlations
 %   with a single composite income shock: the model has no aggregate versus
-%   idiosyncratic split, so each one stands for both channels.
+%   idiosyncratic split, so each one stands for both channels. The H shock's
+%   pair is the tenure's (config.h_corr): house price for owners, rent for
+%   renters.
 %
 %   Returns:
 %       shocks.R_S, w_S            stock return + weights (1 x n), UNCORRELATED
@@ -39,6 +41,11 @@ wz = w(:).' / sqrt(pi);
 % for renters. Same lognormal shape either way, so the node structure below is
 % tenure-independent -- only the two parameters move.
 [mu_H, sigma_H] = config.h_process(p);
+if field_or(p, 'h_mult', 0) == 0
+    % Without housing H = 0 on every path. A degenerate H shock keeps the
+    % housing parameters out of the solve, also at the nodes no one occupies.
+    mu_H = 0; sigma_H = 0;
+end
 
 % REIT marginal nodes at gh_n_reit (defaults to gh_n). Always built: it is
 % cheap and pension.annuity_price needs the REIT mean whenever the share is on.
@@ -65,6 +72,7 @@ shocks.w_REIT = wzr;
 corr_RL = field_or(p, 'corr_RL', 0);
 corr_RS = field_or(p, 'corr_RS', 0);
 corr_RH = field_or(p, 'corr_RH', 0);
+[corr_HL, corr_SH] = config.h_corr(p);   % the H shock's correlations, by tenure
 
 if config.reit_active(p)
     % Four shocks (income L, stock S, housing H, REIT R): gh_n^3 * gh_n_reit
@@ -73,9 +81,9 @@ if config.reit_active(p)
     [Wl, Ws, Wh, Wr] = ndgrid(wz, wz, wz, wzr);
     w_joint = Wl(:) .* Ws(:) .* Wh(:) .* Wr(:);
 
-    Sigma = [1,         p.corr_SL, p.corr_HL, corr_RL; ...
-             p.corr_SL, 1,         p.corr_SH, corr_RS; ...
-             p.corr_HL, p.corr_SH, 1,         corr_RH; ...
+    Sigma = [1,         p.corr_SL, corr_HL,   corr_RL; ...
+             p.corr_SL, 1,         corr_SH,   corr_RS; ...
+             corr_HL,   corr_SH,   1,         corr_RH; ...
              corr_RL,   corr_RS,   corr_RH,   1      ];
     Lc = chol(Sigma, 'lower');
 
@@ -91,9 +99,9 @@ else
     [Wl, Ws, Wh] = ndgrid(wz, wz, wz);
     w_joint = Wl(:) .* Ws(:) .* Wh(:);
 
-    Sigma = [1,         p.corr_SL, p.corr_HL; ...
-             p.corr_SL, 1,         p.corr_SH; ...
-             p.corr_HL, p.corr_SH, 1        ];
+    Sigma = [1,         p.corr_SL, corr_HL; ...
+             p.corr_SL, 1,         corr_SH; ...
+             corr_HL,   corr_SH,   1      ];
     Lc = chol(Sigma, 'lower');
 
     Zind  = [Zl(:).'; Zs(:).'; Zh(:).'];

@@ -248,6 +248,13 @@ elseif d.has_housing
 else
     L{end+1} = 'No housing';
 end
+if d.has_housing
+    [mu_h, s_h] = deal(p.mu_H_level, p.sigma_H_level);
+    if ~p.is_owner, [mu_h, s_h] = deal(p.mu_R_level, p.sigma_R_level); end
+    [cHL, cSH] = config.h_corr(p);
+    L{end+1} = sprintf('H growth %.2f%%, vol %.2f%%   |   corr(income, H) %.2f, corr(stock, H) %.2f', ...
+        100 * mu_h, 100 * s_h, cHL, cSH);
+end
 algo = 'active-set';
 if isfield(p, 'fmincon_algorithm'), algo = p.fmincon_algorithm; end
 sweep = 'on'; if ~p.use_refine, sweep = 'off'; end

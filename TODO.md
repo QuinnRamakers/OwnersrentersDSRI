@@ -46,9 +46,9 @@ a modelling choice in disguise; decide it together with the floor.
 |---|---|
 | `h_mult` | Placeholder 4.0. Replace with an income-contingent assignment fitted on LISS, with the Nibud loan-to-income tables as a feasibility ceiling |
 | `kappa_base` | Single OECD figure. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie) |
-| `corr_HL`, `corr_SH` | Zero. Estimable from LISS individual income and house-value growth against aggregate return series; the Cholesky plumbing is in place, so this is pure calibration |
+| Housing level | `h_mult` 4, `alpha` 6%, `theta` 1.5% and the mortgage (1.36%, 30 years, LTV 100%) are placeholders; the housing dynamics and correlations are calibrated (Tables 1 and 3) |
 | `b0`, `b_alt` | The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now DHS household-head income (EUR 39,763 owners, 30,098 renters at 25), so the denominator, and possibly a buffer by tenure, should follow |
-| REIT moments and correlations | Placeholders with the same Sharpe ratio as equity; the leg is off |
+| REIT moments and correlations | The leg is off and the code still has placeholders; the calibration tables give 5.43% excess return, 24.48% vol (Table 1) and the correlations in Table 3 |
 | `beta`, `chi` | No sourced value yet |
 | Box-3 regime | 36% on actual returns with no loss offset is in force; the wealth-tax alternative (`tau_wealth`) is off. Decide which regime the baseline represents |
 | `sex = 3` pooling | Currently a plain mean of the men's and women's series. Participation-weighted? Does a single-earner household want pooled individual wages, or household labour income? |

@@ -51,8 +51,12 @@ net_inc = 1 - p.tau_inc;
 tau_b   = p.tau_cg_bond;
 tau_w   = p.tau_wealth;
 
-% Housing carrying cost as a share of H
-if is_owner
+% Housing carrying cost as a share of H. Without housing H = 0 on every path;
+% zero cost and bequest keep the housing parameters out of the solve, also at
+% the nodes no one occupies.
+if p.h_mult == 0
+    h_cost_rate = 0;
+elseif is_owner
     if t <= numel(p.m_rate_path), m_rate_t = p.m_rate_path(t); else, m_rate_t = 0; end
     h_cost_rate = p.theta + m_rate_t;
 else
@@ -60,7 +64,7 @@ else
 end
 
 kappa_t   = p.kappa(min(t, numel(p.kappa)));
-h_beq_fac = is_owner * (1 - p.sell_cost);   % renters bequeath no housing
+h_beq_fac = is_owner * (p.h_mult > 0) * (1 - p.sell_cost);   % renters bequeath no housing
 phi_floor = p.phi_floor;
 FLOOR_EPS = 1e-12;
 

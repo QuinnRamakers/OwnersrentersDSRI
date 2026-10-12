@@ -74,12 +74,13 @@ primitives on top of the steps before it:
 | 4 | `income` | DHS income cubic in euros and permanent shock std, separately for owners and renters |
 | 5 | `market` | real rate 1.15%, equity premium 4.56%, equity vol 21.6% |
 | 6 | `corr_SL` | income-stock correlation 0.04 |
-| 7 | `housing` | housing at 4x entry income |
-| 8 | `pension` | AOW at 30.7% of final wage, DC contributions, glide, annuity |
-| 9 | `inctax` | EET income tax at 38.2% |
-| 10 | `box3` | box-3 tax at 36% on the liquid account, no loss offset |
+| 7 | `housing` | housing at 4x entry income; house prices 3.73% (vol 8.35%), rents 0.99% (vol 1.79%) |
+| 8 | `housing_corr` | correlations of the house price (owners) or rent (renters) with income and stocks |
+| 9 | `pension` | AOW at 30.7% of final wage, DC contributions, glide, annuity |
+| 10 | `inctax` | EET income tax at 38.2% |
+| 11 | `box3` | box-3 tax at 36% on the liquid account, no loss offset |
 
-Step 10 is `config.params()` exactly; `run_tests` checks this. To change the
+Step 11 is `config.params()` exactly; `run_tests` checks this. To change the
 calibration, edit a value in a step or append a step after `box3` (a floor
 level, a housing multiple from data, the REIT leg). `ladder.params(k)`
 returns the calibration at step k, and an override that names a field that is
@@ -98,7 +99,7 @@ have their own income process, so steps 4–6 have two (`nohousing_renter`,
 | `fine` | [20 20 12] | 5 | 10,000 | about 8 minutes |
 
 Steps 1-6 have no housing. Their u2 and u3 axes cannot move, so they collapse
-to two nodes and solve in seconds; step 7 has no DC pillar yet and collapses
+to two nodes and solve in seconds; steps 7-8 have no DC pillar yet and collapse
 u3. Results are saved under
 `<output dir>/ladder/<numerics>/` as `NN_<name>_<tenure>.mat`, each with a
 twelve-panel dashboard (`figures.dashboard`). A saved step is reused until its

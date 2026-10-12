@@ -25,7 +25,7 @@ Route of the ladder:
 14: a second ladder from today's full calibration to the new one
 ```
 
-Steps 7 and 8 branch off the baseline and are checked separately before step 9 combines them. Until the branching ladder is built, the code runs a single line: 7 housing, 8 DC pension on top of housing, 9 income tax, 10 box 3.
+Steps 7 and 8 branch off the baseline and are checked separately before step 9 combines them. Until the branching ladder is built, the code runs a single line: 7 housing, 8 housing correlations (Quinn, 12 Oct: housing first, in two parts, the correlations pulled forward from step 12), 9 DC pension on top of housing, 10 income tax, 11 box 3.
 
 ## Step 1: CGM model, CGM calibration
 

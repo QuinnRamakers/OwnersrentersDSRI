@@ -45,8 +45,10 @@ p.r             = 0.0115;     % real risk-free rate
 p.mu_S_level    = 0.0456;     % equity excess return
 p.sigma_S_level = 0.2161;     % equity return volatility
 p.corr_SL       = 0.04;       % corr(stock return, income shock)
-p.corr_HL       = 0;          % corr(H growth, income shock)
-p.corr_SH       = 0;          % corr(stock return, H growth)
+p.corr_HL       = 0.09;       % owner: corr(house-price growth, income shock)
+p.corr_HL_rent  = 0.06;       % renter: corr(rent growth, income shock)
+p.corr_SH       = 0.24;       % owner: corr(stock return, house-price growth)
+p.corr_SH_rent  = 0.43;       % renter: corr(stock return, rent growth)
 
 % DC pension
 p.kappa_base = 0.186;         % contribution rate on income above the franchise; 0 removes the DC pillar
@@ -69,10 +71,10 @@ p.is_owner      = false;      % tenure; also selects the income fields without h
 p.h_mult        = 4.0;        % H at entry as a multiple of income (placeholder); 0 removes housing
 p.alpha         = 0.06;       % rent as a share of the rent index
 p.theta         = 0.015;      % owner maintenance, share of H
-p.mu_H_level    = 0.027;      % real house-price growth
-p.sigma_H_level = 0.037;      % house-price volatility
-p.mu_R_level    = 0.0097;     % real rent growth (the renter's H)
-p.sigma_R_level = 0.018;      % rent growth volatility
+p.mu_H_level    = 0.0373;     % real house-price growth
+p.sigma_H_level = 0.0835;     % house-price volatility
+p.mu_R_level    = 0.0099;     % real rent growth (the renter's H)
+p.sigma_R_level = 0.0179;     % rent growth volatility
 p.r_m           = 0.0136;     % real mortgage rate
 p.N_mort        = 30;         % mortgage term, years
 p.LTV           = 1.00;       % only 1.00 is implemented
@@ -102,7 +104,7 @@ p.N_pi          = 41;         % sets the equity-share step of the per-node searc
 p.use_refine    = true;       % global (c, pi) sweep before fmincon at every node
 p.fmincon_algorithm = 'interior-point';   % local solve: 'interior-point', 'active-set' or 'sqp'
 p.interp_method = 'linear';   % continuation interpolant: 'linear', 'makima' or 'spline'
-p.lambda_lo     = 0.0008;     % bottom of the u1 axis
+p.lambda_lo     = [];         % bottom of the u1 axis; [] = 0.0008, or 0.0002 with housing
 p.lambda_hi     = [];         % top of the u1 axis; [] = min(0.9, 3/(1+h_mult)), or 1 without housing
 p.grid_pow      = 1;          % > 1 bunches u1 nodes toward the bottom
 p.grid_pow_u2   = 1;          % > 1 bunches u2 nodes toward 1

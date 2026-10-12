@@ -13,9 +13,10 @@ arguments
 end
 
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @income_profile, ...
-          @income_table, @tenure_arms};
+          @income_table, @tenure_arms, @housing_corr_by_tenure};
 if opts.solve
-    checks = [checks, {@collapsed_axes_exact, @smoke_both_tenures, @nohousing_arms_corr, @figures_render}];
+    checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
+                       @nohousing_arms_corr, @figures_render}];
 end
 n_fail = 0;
 for i = 1:numel(checks)
@@ -118,6 +119,29 @@ out = evalc('verify_income_profile');
 assert(contains(out, 'ALL CHECKS PASSED'), 'verify_income_profile reported a failure');
 end
 
+function housing_corr_by_tenure()
+% At the housing-correlation step the quadrature nodes carry the tenure's
+% correlations of the H shock with income and with the stock return, and
+% the step before it has none.
+for k = [ladder.index('housing'), ladder.index('housing_corr')]
+    for owner = [false true]
+        p = ladder.params(k); p.is_owner = owner; p = config.derive(p);
+        sk = grids.shock_grid(p); w = sk.joint.w(:) / sum(sk.joint.w);
+        lh = log(sk.joint.R_H(:)); ly = sk.joint.eps_Y_unit(:); ls = log(sk.joint.R_S(:));
+        wc = @(x, y) sum(w .* (x - sum(w .* x)) .* (y - sum(w .* y))) / ...
+             sqrt(sum(w .* (x - sum(w .* x)).^2) * sum(w .* (y - sum(w .* y)).^2));
+        [cHL, cSH] = config.h_corr(p);
+        assert(abs(wc(ly, lh) - cHL) < 1e-10 && abs(wc(ls, lh) - cSH) < 1e-10, ...
+            'step %d, owner %d: node correlations %.4f, %.4f against %.4f, %.4f', ...
+            k, owner, wc(ly, lh), wc(ls, lh), cHL, cSH);
+        if k == ladder.index('housing'), assert(cHL == 0 && cSH == 0, 'step 7 should have none'); end
+    end
+end
+p = ladder.params('housing_corr'); q = p; q.is_owner = true;
+[a, b] = config.h_corr(p); [c, d] = config.h_corr(q);
+assert(isequal([a b c d], [0.06 0.43 0.09 0.24]), 'tenure selection of the housing correlations');
+end
+
 function collapsed_axes_exact()
 % Without housing and DC, u2 = u3 = 0 on every path. Solving on the collapsed
 % {0,1} axes must give the same policy on that line as a fuller cube. Solved
@@ -139,6 +163,27 @@ solB = solver.solve(q, pf, sk, an, false);
 dc  = max(abs(squeeze(solA.c_pol(:, 1, 1, :))  - squeeze(solB.c_pol(:, 1, 1, :))), [], 'all');
 dpi = max(abs(squeeze(solA.pi_pol(:, 1, 1, :)) - squeeze(solB.pi_pol(:, 1, 1, :))), [], 'all');
 assert(dc < 1e-4 && dpi < 1e-3, 'collapsed axes moved the policy: dc %.2g, dpi %.2g', dc, dpi);
+end
+
+function nohousing_ignores_housing()
+% A step without housing must not depend on any housing parameter, not even
+% through the nodes no household occupies: changing them all leaves the
+% solution bit-identical, for both tenures.
+for owner = [false true]
+    p = ladder.params('corr_SL'); p.is_owner = owner;
+    p.grid_dims = [6 5 4]; p.gh_n = 3; p = config.derive(p);
+    q = p;
+    q.mu_H_level = 0.01; q.sigma_H_level = 0.2; q.mu_R_level = 0.03; q.sigma_R_level = 0.1;
+    q.alpha = 0.1; q.theta = 0.05; q.r_m = 0.05; q.sell_cost = 0.1;
+    q.corr_HL = 0.5; q.corr_HL_rent = 0.5; q.corr_SH = 0.5; q.corr_SH_rent = 0.5;
+    q = config.derive(q);
+    [pf, sk, an] = config.model_inputs(p);
+    [qf, qk, qn] = config.model_inputs(q);
+    A = solver.solve(p, pf, sk, an, false);
+    B = solver.solve(q, qf, qk, qn, false);
+    assert(isequaln(A.V, B.V) && isequaln(A.c_pol, B.c_pol) && isequaln(A.pi_pol, B.pi_pol), ...
+        'owner %d: the housing parameters moved a solve without housing', owner);
+end
 end
 
 function smoke_both_tenures()

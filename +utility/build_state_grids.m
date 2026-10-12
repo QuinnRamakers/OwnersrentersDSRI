@@ -12,6 +12,7 @@ function p = build_state_grids(p, dims, gh_n)
 %
 %   Placement, per axis, unless p.grid_nodes supplies the axis outright:
 %     u1  [lambda_lo, lambda_hi], bunched toward the bottom when grid_pow > 1.
+%         The bottom defaults to 0.0008, or 0.0002 with housing.
 %         The top defaults to min(0.9, 3/(1+h_mult)), since W >= H + Y caps the
 %         income share, and to 1 without housing, where a household that spends
 %         its liquid wealth down reaches lambda = 1 exactly.
@@ -87,7 +88,10 @@ end
 % ------------------------------------------------------------------------
 function [lo, hi] = lambda_bounds(p)
 %LAMBDA_BOUNDS  Ends of the u1 = Y/W axis.
-lo = field_or(p, 'lambda_lo', 0.0008);
+% Owners whose house grows large against their income sit at very low u1 late
+% in life, so the axis reaches further down with housing.
+if field_or(p, 'h_mult', 0) > 0, lo_default = 0.0002; else, lo_default = 0.0008; end
+lo = field_or(p, 'lambda_lo', lo_default);
 if field_or(p, 'h_mult', 0) > 0
     hi = min(0.9, 3 / (1 + p.h_mult));
 else

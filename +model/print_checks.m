@@ -16,6 +16,11 @@ fprintf('  entry value worth a constant %.3g x entry income;  off-grid lookups %
     c.ce_entry, sum(c.offgrid), 100 * c.thin_u1_40);
 fprintf('  corr(income shock, stock return): corr_SL %.3f, nodes %.4f, panel %.4f\n', ...
     r.p.corr_SL, c.corr_SL_nodes, c.corr_SL_sim);
+if r.p.h_mult > 0
+    [cHL, cSH] = config.h_corr(r.p);
+    fprintf('  corr(income, H): %.3f, nodes %.4f, panel %.4f;  corr(stock, H): %.3f, nodes %.4f, panel %.4f\n', ...
+        cHL, c.corr_HL_nodes, c.corr_HL_sim, cSH, c.corr_SH_nodes, c.corr_SH_sim);
+end
 for i = 1:numel(c.notes)
     fprintf('  NOTE: %s\n', c.notes{i});
 end

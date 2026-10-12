@@ -34,7 +34,7 @@ for tenure = fieldnames(cur).'
     labels = {sprintf('%d %s (%s)', j, S(j).name, tp), sprintf('%d %s (%s)', k, S(k).name, t)};
     file = fullfile(num.dir, sprintf('compare_%02d_%02d_%s.png', j, k, t));
     figures.step_dashboard(rs{1}, rs{2}, labels, sprintf('Step %d, %s: %s against step %d', ...
-        k, S(k).label, t, j), file, changes = changed(rs{1}.p, rs{2}.p));
+        k, S(k).label, t, j), file, changes = [changed(rs{1}.p, rs{2}.p), {['Step ' num2str(k) ': ' S(k).note]}]);
     print_table(rs, labels);
 end
 arms = fieldnames(cur);

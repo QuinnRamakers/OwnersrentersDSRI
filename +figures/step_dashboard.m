@@ -127,6 +127,11 @@ for i = 1:2
     if isfield(c, 'corr_SL_nodes')
         L{end+1} = sprintf('  corr(income, stock) %.2f: nodes %.3f, panel %.3f', p.corr_SL, c.corr_SL_nodes, c.corr_SL_sim); %#ok<AGROW>
     end
+    if p.h_mult > 0 && isfield(c, 'corr_HL_nodes')
+        [cHL, cSH] = config.h_corr(p);
+        L{end+1} = sprintf('  corr(income, H) %.2f: nodes %.3f, panel %.3f', cHL, c.corr_HL_nodes, c.corr_HL_sim); %#ok<AGROW>
+        L{end+1} = sprintf('  corr(stock, H) %.2f: nodes %.3f, panel %.3f', cSH, c.corr_SH_nodes, c.corr_SH_sim); %#ok<AGROW>
+    end
 end
 L = cellfun(@(s) wrap(s, 70), L, 'UniformOutput', false);
 L = [L{:}];
