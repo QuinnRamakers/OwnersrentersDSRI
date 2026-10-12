@@ -1,59 +1,186 @@
 function fig = compare(rs, labels, ttl, file)
-%COMPARE  Overlay the life-cycle profiles of several solved results.
+%COMPARE  Overlay several solved results on the same panels.
 %
-%   figures.compare({r1, r2}, {'before', 'after'})
+%   figures.compare({r_ref, r1, r2}, {'reference', 'one', 'two'})
 %   figures.compare(rs, labels, title, file)
 %
-%   Levels are divided by each result's entry income, so calibrations in
-%   different income units still line up. With two results the first is drawn
-%   in grey and the second in blue; with three, in the fixed series order.
+%   The first result is the reference: drawn in black with its 10th-90th
+%   percentile band, and the one the middle row measures differences from.
+%   The others are drawn in colour, up to five. Row 1: consumption, liquid
+%   savings, net worth and the liquid equity share (means across households).
+%   Row 2: the same four as differences from the reference. Row 3: the equity
+%   share policy at ages 30, 55 and 75 as the solver returned it, against
+%   resources over income, with markers on each result's own grid nodes, and a
+%   box with each result's settings and checks.
+%
+%   Levels are in thousands of euros (or CGM units) when every result has the
+%   same income units and entry income, and in multiples of entry income
+%   otherwise, so steps with different income units still line up.
+
+n = numel(rs);
+assert(n >= 2 && n <= 6, 'figures:compare', 'compare takes two to six results.');
+if nargin < 3 || isempty(ttl), ttl = 'Comparison'; end
+D = cellfun(@figures.panel_data, rs, 'UniformOutput', false);
+
+same_units = all(cellfun(@(d) strcmp(d.unit, D{1}.unit), D)) && ...
+             all(cellfun(@(r) abs(r.summary.Y0 / rs{1}.summary.Y0 - 1) < 1e-9, rs));
+if same_units
+    scl = cellfun(@(d) d.scale, D); unit = D{1}.unit;
+else
+    scl = cellfun(@(r) 1 / r.summary.Y0, rs); unit = 'multiples of entry income';
+end
 
 st = figures.style();
-n  = numel(rs);
-assert(n >= 2 && n <= 3, 'figures:compare', 'compare takes two or three results.');
-if n == 2
-    cols = [st.previous; st.series(1, :)];
-else
-    cols = st.series(1:n, :);
-end
-if nargin < 3 || isempty(ttl), ttl = 'Comparison'; end
+cols = [0 0 0; st.series(1:5, :)];
+styles = {'-', '-', '--', '-.', ':', '-'};
+lw = [2.4, 1.7 * ones(1, 5)];
+FS = 10; FT = 11; LFS = 9;
 
-fig = figure('Visible', 'off', 'Color', 'w', 'Position', [50 50 1500 820]);
-tl  = tiledlayout(fig, 2, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
-title(tl, ttl, 'FontSize', 13, 'Color', st.ink);
+fig = figure('Visible', 'off', 'Position', [30 30 2200 1300], 'Color', 'w');
+tl  = tiledlayout(fig, 3, 4, 'Padding', 'compact', 'TileSpacing', 'compact');
+title(tl, {ttl, ['Black = ' labels{1} ' (the reference, with its 10th-90th percentile band); ' ...
+    'lines are means across simulated households']}, 'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
 
-panels = {
-    'Consumption (median)',             'multiples of entry income', @(s) s.C.p50 / s.Y0
-    'Net worth (mean)',                 'multiples of entry income', @(s) s.net_worth.mean / s.Y0
-    'DC pot (mean)',                    'multiples of entry income', @(s) s.A.mean / s.Y0
-    'Liquid equity share (mean)',       'equity share',              @(s) s.pi
-    'Equity share of financial wealth', 'equity share',              @(s) s.equity_share
-    'Consumption not freely chosen',    '% of households',           @(s) 100 * (s.floored + s.at_c_bound)
-    };
-for k = 1:size(panels, 1)
-    ax = nexttile(tl);
-    hold(ax, 'on'); box(ax, 'off'); grid(ax, 'on');
-    ax.GridColor = st.grid; ax.GridAlpha = 1;
-    ax.XColor = st.muted; ax.YColor = st.muted; ax.FontSize = st.font;
-    ax.XLim = [25 100];
-    hs = gobjects(1, n);
-    for i = 1:n
-        s = rs{i}.summary; a = s.ages; y = panels{k, 3}(s);
-        if k == 4 || k == 5, a = a(1:end-1); y = y(1:end-1); end   % nothing is held in the last period
-        hs(i) = plot(ax, a, y, 'Color', cols(i, :), 'LineWidth', st.lw);
-        xline(ax, rs{i}.p.retirement_age, 'Color', st.grid, 'HandleVisibility', 'off');
+series = {
+    'Consumption',          @(d) d.C,         unit,                false, 'Consumption'
+    'Liquid savings',       @(d) d.X,         unit,                false, 'Liquid savings'
+    'Net worth (liquid + pension + net home equity)', @(d) d.net_worth, unit, false, 'Net worth'
+    'Liquid equity share',  @(d) d.pi,        'Stock share [0-1]', true,  'Liquid equity share' };
+letters = 'abcdefghijkl';
+ret = rs{1}.p.retirement_age;
+
+% Row 1: levels
+for j = 1:4
+    ax = tile(tl, ret, FS);
+    h = gobjects(1, n);
+    for i = n:-1:1
+        d = D{i}; a = d.ages; M = series{j, 2}(d);
+        if ~series{j, 4}, M = M * scl(i); end
+        if series{j, 4}, a = a(1:end-1); M = M(:, 1:end-1); end
+        if i == 1
+            fill(ax, [a, fliplr(a)], [quantile(M, 0.1, 1), fliplr(quantile(M, 0.9, 1))], ...
+                [0.85 0.85 0.85], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+        end
+        h(i) = plot(ax, a, mean(M, 1, 'omitnan'), styles{i}, 'Color', cols(i, :), 'LineWidth', lw(i));
     end
-    if k == 4 || k == 5, ylim(ax, [0 1]); else, ylim(ax, [0 inf]); end
-    title(ax, panels{k, 1}, 'Color', st.ink);
-    ylabel(ax, panels{k, 2}); xlabel(ax, 'age');
-    if k == 1
-        legend(ax, hs, labels, 'Location', 'northwest', 'Box', 'off', ...
-            'TextColor', st.ink2, 'Interpreter', 'none');
+    uistack(h(1), 'top');
+    if series{j, 4}, ylim(ax, [0 1]); end
+    ylabel(ax, series{j, 3});
+    title(ax, sprintf('(%s)  %s', letters(j), series{j, 1}), 'FontSize', FT);
+    if j == 1
+        legend(ax, h(1:n), labels, 'Location', 'northwest', 'FontSize', LFS, 'Interpreter', 'none');
     end
 end
+
+% Row 2: differences from the reference
+for j = 1:4
+    ax = tile(tl, ret, FS);
+    yline(ax, 0, 'k-', 'LineWidth', 0.8, 'HandleVisibility', 'off');
+    a = D{1}.ages; ref = mean(series{j, 2}(D{1}), 1, 'omitnan');
+    if series{j, 4}, a = a(1:end-1); ref = ref(1:end-1); end
+    for i = 2:n
+        v = mean(series{j, 2}(D{i}), 1, 'omitnan');
+        if series{j, 4}
+            v = v(1:end-1);
+            dv = v - ref;
+        else
+            dv = 100 * (v * scl(i) ./ (ref * scl(1)) - 1);
+            dv(abs(ref) < 1e-9 * max(abs(ref))) = NaN;
+        end
+        plot(ax, a, dv, styles{i}, 'Color', cols(i, :), 'LineWidth', lw(i));
+    end
+    if series{j, 4}
+        ylabel(ax, 'difference in share');
+    else
+        ylabel(ax, '% difference from reference');
+    end
+    title(ax, sprintf('(%s)  %s: difference from black', letters(4 + j), series{j, 5}), 'FontSize', FT);
+end
+
+% Row 3: the equity share policy at three ages
+for j = 1:3
+    age = [30 55 75];
+    ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS;
+    policy_panel(ax, rs, D, age(j), cols, styles, lw);
+    title(ax, sprintf('(%s)  Equity share policy at age %d', letters(8 + j), age(j)), 'FontSize', FT);
+end
+
+% Settings and checks
+ax = nexttile(tl); axis(ax, 'off');
+text(ax, 0, 1, info_lines(rs, labels), 'Units', 'normalized', 'VerticalAlignment', 'top', ...
+    'FontSize', FS - 1.5, 'Interpreter', 'none', 'FontName', 'Consolas');
+title(ax, '(l)  Settings and checks', 'FontSize', FT);
 
 if nargin > 3 && ~isempty(file)
+    axs = findall(fig, 'Type', 'axes');
+    for i = 1:numel(axs)
+        if ~isempty(axs(i).Toolbar), axs(i).Toolbar.Visible = 'off'; end
+    end
     exportgraphics(fig, file, 'Resolution', 130);
     close(fig);
+end
+end
+
+% ------------------------------------------------------------------------
+function ax = tile(tl, ret, FS)
+ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on');
+ax.FontSize = FS; ax.XLim = [25 100];
+xline(ax, ret, 'k--', 'HandleVisibility', 'off');
+xlabel(ax, 'Age');
+end
+
+function policy_panel(ax, rs, D, age, cols, styles, lw)
+% pi(u1) at the reference households' median (u2, u3) at this age, over the
+% u1 range they occupy, drawn against W/Y = 1/u1. Each result is read off its
+% own grid with the interpolant the simulator uses.
+s1 = D{1}.sim; t = age - rs{1}.p.age0 + 1;
+u1 = s1.lambda(:, t);
+u2 = median((s1.sA(:, t) + s1.sH(:, t)) ./ max(1 - u1, 1e-12));
+u3 = median(min(max(s1.sA(:, t) ./ max(s1.sA(:, t) + s1.sH(:, t), 1e-12), 0), 1));
+lo = prctile(u1, 1) / 1.5; hi = min(1, prctile(u1, 99) * 1.5);
+uq = exp(linspace(log(lo), log(hi), 200)).';
+for i = numel(rs):-1:1
+    p = rs{i}.p;
+    F = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, rs{i}.sol.pi_pol(:, :, :, t), 'linear', 'nearest');
+    plot(ax, 1 ./ uq, F(uq, u2 * ones(size(uq)), u3 * ones(size(uq))), styles{i}, ...
+        'Color', cols(i, :), 'LineWidth', lw(i));
+    nodes = p.u1_grid(p.u1_grid >= lo & p.u1_grid <= hi);
+    plot(ax, 1 ./ nodes, F(nodes, u2 * ones(size(nodes)), u3 * ones(size(nodes))), 'o', ...
+        'Color', cols(i, :), 'MarkerSize', 4, 'MarkerFaceColor', 'w', 'HandleVisibility', 'off');
+end
+xline(ax, 1 / median(u1), ':', 'median household', 'Color', [0.4 0.4 0.4], ...
+    'LabelVerticalAlignment', 'bottom', 'FontSize', 8, 'HandleVisibility', 'off');
+set(ax, 'XScale', 'log'); xlim(ax, [1 / hi, 1 / lo]); ylim(ax, [-0.02 1.02]);
+xlabel(ax, 'Total resources / income (W/Y = 1/u_1), log scale');
+ylabel(ax, 'Stock share [0-1]');
+if D{1}.has_housing || D{1}.has_pension
+    text(ax, 0.02, 0.04, sprintf('slice at u_2 = %.2f, u_3 = %.2f', u2, u3), 'Units', 'normalized', ...
+        'FontSize', 8, 'Color', [0.4 0.4 0.4]);
+end
+end
+
+function L = info_lines(rs, labels)
+L = {};
+ref = rs{1}.summary;
+for i = 1:numel(rs)
+    p = rs{i}.p; c = rs{i}.checks; s = rs{i}.summary;
+    algo = 'active-set';
+    if isfield(p, 'fmincon_algorithm'), algo = p.fmincon_algorithm; end
+    pool = 'serial';
+    if isfield(rs{i}.timing, 'pool') && isfield(rs{i}.timing.pool, 'type')
+        if contains(rs{i}.timing.pool.type, 'Thread'), pool = 'threads';
+        elseif contains(rs{i}.timing.pool.type, 'Process'), pool = 'processes'; end
+    end
+    L{end+1} = labels{i}; %#ok<AGROW>
+    L{end+1} = sprintf('  grid %dx%dx%d, gh %d, fmincon %s, sweep %d, %s, %.0f s', ...
+        p.N_u1, p.N_u2, p.N_u3, p.gh_n, algo, p.use_refine, pool, rs{i}.timing.solve_sec); %#ok<AGROW>
+    L{end+1} = sprintf('  bound 25-39 %.1f%%  floored %.2f%%  off-grid %d  entry value %.3g', ...
+        100 * c.c_bound_25_39, 100 * c.floored_share, sum(c.offgrid), c.ce_entry); %#ok<AGROW>
+    if i > 1
+        w = 1:numel(s.pi) - 1;
+        L{end+1} = sprintf('  max |d pi| %.3f   max |dC/C| %.1f%%   max |dX/X| %.1f%%', ...
+            max(abs(s.pi(w) - ref.pi(w))), 100 * max(abs(s.C.mean ./ ref.C.mean - 1)), ...
+            100 * max(abs(s.X.mean(2:end) ./ ref.X.mean(2:end) - 1))); %#ok<AGROW>
+    end
 end
 end

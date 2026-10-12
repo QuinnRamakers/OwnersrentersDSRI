@@ -29,6 +29,21 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 Old-style dashboards, overlay figures, ladder.robustness (spec: none, asked by Quinn in Claude Code)
+Quinn asked for the earlier make_plots dashboards back and for the optimiser and grid checks to be drawn on the same panels instead of tabulated. Step 1 is CGM's calibration in this model; Quinn's calibration enters at steps 4-6, which have not run.
+Changed:
+- `+figures/dashboard.m`: the twelve-panel layout of demo/make_plots.m (income and housing costs, consumption, disposable income, net worth, DC account, housing, total wealth with human capital, share consumed, stock shares, total stock exposure, stock share of savings and pension, calibration), in thousands of 2025 euros (CGM units at steps 1-3), with the step in the title and model.checks in the calibration panel. `+figures/panel_data.m` (new) rebuilds the panel from a saved result with the run's N_sim and seed.
+- `+figures/compare.m`: overlay of two to six results, the first as a black reference with its 10-90 band. Rows: levels (consumption, liquid savings, net worth, liquid equity share); differences from the reference; the equity-share policy at 30, 55 and 75 read off each result's own grid, with its nodes marked; settings and checks, including the parallel pool. Used by ladder.compare and ladder.robustness. `+figures/style.m`: all eight palette slots.
+- `+config/params.m`, `+solver/bellman_step_lna.m`: new numerics primitive `fmincon_algorithm` ('active-set', unchanged default). `+ladder/robustness.m` (new): re-solves a step with sqp and interior-point, without the global sweep, and on grids [9 9 6] gh 3, [12 12 8] gh 3, [20 20 12] gh 5 and [32 16 10] gh 5, saves them under `<numerics>/robustness/` and draws one overlay per set.
+- `tests/run_tests.m`: `figures_render` draws both figures for a no-housing step and an owner with housing and DC. CALIBRATION.md: `fmincon_algorithm`. README.md: dashboards and robustness. TODO.md: DHS net/gross at 25 implies an average tax of about 23% (owners) and 25% (renters), against the 38.2% of the income-tax step.
+Checks run:
+- `run_tests` (full): 0 of 10 checks failed.
+- Step 1 re-solved after adding the primitive: V, c_pol, pi_pol and summary identical to the earlier run (`isequaln`).
+- `ladder.robustness(1)`, all on a thread pool, against the reference (max over ages of |d mean pi|, |dC/C| mean, |dX/X| mean): sqp 0.014, 6.1%, 4.7%; interior-point 0.000, 0.0%, 0.0%; no global sweep 0.205, 152%, 491% (pi at 65 drops to 0.18; consumption and savings diverge after 90); grid [9 9 6] 0.028, 2.9%, 9.0%; [12 12 8] 0.012, 1.1%, 3.5%; [20 20 12] 0.006, 0.6%, 1.8%; [32 16 10] 0.012, 1.2%, 3.7%.
+- Pool dependence: sqp on a process pool equals the reference to 1e-5 in the policies, on a thread pool it differs by up to 0.069 in pi_pol (largest gap in mean pi at age 98). Active-set and interior-point give the same results on both pools. The sqp figures in the entry below were on a thread pool. Figure: `robustness/robust_01_cgm_nohousing_pool.png`.
+Commit: pending (filled in by the next commit).
+Open: step 2 waits for review of step 1.
+
 ### 2026-10-12 Step 1 cgm at standard numerics, and robustness checks (spec: Calibration ladder, part 1)
 Changed: no code. Result saved, gitignored, under `ladder/standard_16x16x10_gh5/` (`01_cgm_nohousing.mat`, its dashboard, and `cgm_compare_01.png`, the result laid out like CGM's Figures 2 and 3).
 Checks run: `ladder.run(1)`: one arm (nohousing), 18 x 2 x 2 nodes, gh_n 5, 10,000 households, solve 13 s. CGM income units (Y0 = 20.5):

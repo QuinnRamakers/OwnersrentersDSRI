@@ -52,7 +52,7 @@ a modelling choice in disguise; decide it together with the floor.
 | `beta`, `chi` | No sourced value yet |
 | Box-3 regime | 36% on actual returns with no loss offset is in force; the wealth-tax alternative (`tau_wealth`) is off. Decide which regime the baseline represents |
 | `sex = 3` pooling | Currently a plain mean of the men's and women's series. Participation-weighted? Does a single-earner household want pooled individual wages, or household labour income? |
-| `tau_inc` | Should eventually be an effective average rate computed along the model's own income profile, not a single national statistic |
+| `tau_inc` | Should eventually be an effective average rate computed along the model's own income profile, not a single national statistic. DHS net over gross income at 25 (calibration notes, Table 3: 30,563 / 39,749 owners, 22,474 / 30,094 renters) implies about 23% for owners and 25% for renters, against the 38.2% the income-tax step applies |
 
 ## 3. Where welfare is read
 

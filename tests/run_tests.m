@@ -15,7 +15,7 @@ end
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @income_profile, ...
           @income_table, @tenure_arms};
 if opts.solve
-    checks = [checks, {@collapsed_axes_exact, @smoke_both_tenures, @nohousing_arms_corr}];
+    checks = [checks, {@collapsed_axes_exact, @smoke_both_tenures, @nohousing_arms_corr, @figures_render}];
 end
 n_fail = 0;
 for i = 1:numel(checks)
@@ -170,4 +170,21 @@ for owner = [false true]
 end
 assert(isfield(C, 'nohousing_renter') && isfield(C, 'nohousing_owner'), 'arm labels');
 assert(~isequal(C.nohousing_renter.sol.c_pol, C.nohousing_owner.sol.c_pol), 'the arms should differ');
+end
+
+function figures_render()
+% The dashboard and the overlay draw for a no-housing step and for an owner
+% with housing and DC, and the overlay takes results on different grids and
+% optimisers.
+q = ladder.params('cgm'); q.grid_dims = [6 5 4]; q.gh_n = 3; q = config.derive(q);
+p = config.params(false); p.is_owner = true; p.grid_dims = [6 5 4]; p.gh_n = 3; p = config.derive(p);
+p2 = p; p2.grid_dims = [7 5 4]; p2.fmincon_algorithm = 'sqp'; p2 = config.derive(p2);
+r = {model.run(q, N_sim = 300, verbose = false), model.run(p, N_sim = 300, verbose = false), ...
+     model.run(p2, N_sim = 300, verbose = false)};
+d = tempname; mkdir(d); cleanup = onCleanup(@() rmdir(d, 's'));
+figures.dashboard(r{1}, fullfile(d, 'a.png'));
+figures.dashboard(r{2}, fullfile(d, 'b.png'));
+figures.compare(r(2:3), {'active-set', 'sqp, finer u1'}, 'test', fullfile(d, 'c.png'));
+figures.compare(r([1 2]), {'cgm', 'production'}, 'test', fullfile(d, 'd.png'));
+assert(all(isfile(fullfile(d, {'a.png', 'b.png', 'c.png', 'd.png'}))), 'a figure was not written');
 end

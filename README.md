@@ -101,11 +101,16 @@ Steps 1-6 have no housing. Their u2 and u3 axes cannot move, so they collapse
 to two nodes and solve in seconds; step 7 has no DC pillar yet and collapses
 u3. Results are saved under
 `<output dir>/ladder/<numerics>/` as `NN_<name>_<tenure>.mat`, each with a
-dashboard. A saved step is reused until its calibration changes; editing a
-step re-solves it and every step after it on the next `ladder.run`.
-`ladder.compare(k)` overlays step k on step k-1 and prints the main
-quantities. `ladder.report` tabulates every saved step. Levels in both are in
-multiples of entry income, because step 1 uses CGM's income units.
+twelve-panel dashboard (`figures.dashboard`). A saved step is reused until its
+calibration changes; editing a step re-solves it and every step after it on the
+next `ladder.run`. `ladder.compare(k)` overlays step k on step k-1
+(`figures.compare`: levels, differences, and the equity-share policy at three
+ages) and prints the main quantities. `ladder.robustness(k)` solves step k again
+under other fmincon algorithms, without the global sweep, and on four other
+grids, and overlays each set on the step in the same panels; the figures go to
+`<output dir>/ladder/<numerics>/robustness/`. `ladder.report` tabulates every
+saved step. Levels are in multiples of entry income whenever two results have
+different income units, because steps 1-3 use CGM's.
 
 ## Reading the results
 
