@@ -18,7 +18,7 @@ styles = {'-', '--', '-.', ':', '-'};
 FS = 10; FT = 10.5; LFS = 8.5; LWD = 1.7;
 d0 = figures.panel_data(ref); a = d0.ages; ret = ref.p.retirement_age; sc = d0.scale;
 C0 = mean(d0.C, 1); X0 = mean(d0.X, 1); P0 = mean(d0.pi, 1);
-small = X0 < 1e-3 * max(X0);
+small = X0 < 0.01 * max(X0);         % % gaps on near-zero savings say nothing
 w = 1:numel(a) - 1;
 ref_name = 'black: the step as solved (reference)';
 

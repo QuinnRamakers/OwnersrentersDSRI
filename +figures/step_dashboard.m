@@ -104,7 +104,7 @@ yline(ax, 0, 'k-', 'LineWidth', 0.8, 'HandleVisibility', 'off');
 a = D{2}.ages; w = 2:numel(a);
 cA = mean(D{1}.C, 1) * scl(1); cB = mean(D{2}.C, 1) * scl(2);
 xA = mean(D{1}.X, 1) * scl(1); xB = mean(D{2}.X, 1) * scl(2);
-dx = 100 * (xB ./ xA - 1); dx(xA < 1e-3 * max(xA)) = NaN;
+dx = 100 * (xB ./ xA - 1); dx(xA < 0.01 * max(xA)) = NaN;      % % gaps on near-zero savings say nothing
 plot(ax, a, 100 * (cB ./ cA - 1), '-', 'Color', col(2, :), 'LineWidth', LWD, 'DisplayName', 'consumption (mean)');
 plot(ax, a(w), dx(w), '-.', 'Color', col(2, :), 'LineWidth', LWD, 'DisplayName', 'liquid savings (mean)');
 ylabel(ax, '% change (coloured against black)');
