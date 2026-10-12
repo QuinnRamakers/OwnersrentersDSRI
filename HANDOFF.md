@@ -36,7 +36,7 @@ Checks run:
 - `run_tests` (full): 0 of 10 checks failed (after pinning; 1 of 10 before, as above).
 - Step 1 re-solved at standard with the new default (`ladder.run(1)` via `ladder.robustness(1)`): solve 14.6 s on a thread pool; c_bound_25_39 0, ce_entry 0.6427, offgrid 0, floored 0.
 - `ladder.robustness(1)` against it (max |d mean pi|, |dC/C|, |dX/X|): interior-point with sweep 0.001, 0.0%, 0.0%; active-set with sweep 0.001, 0.0%, 0.0%; active-set without 0.205, 152%, 491%; sqp without 1.000, 69%, 100% (stays at its seed: pi 0, no saving); grids [9 9 6] 0.028, 2.9%, 9.0%, [12 12 8] 0.012, 1.1%, 3.5%, [20 20 12] 0.010, 0.6%, 1.8%, [32 16 10] 0.012, 1.2%, 3.7%.
-Commit: pending (filled in by the next commit).
+Commit: 0edb2c5, pushed to main.
 Open: step 2 waits for review of step 1.
 
 ### 2026-10-12 Does interior-point need the global sweep? (spec: none, asked by Quinn in Claude Code)
