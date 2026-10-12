@@ -60,7 +60,7 @@ V(end+1) = variant('dense_u1', sprintf('grid [%d %d %d], 5 nodes', 2 * dims(1), 
 
 ref = ladder.run(k, numerics = opts.numerics);
 ref = ref{1};
-ref_label = sprintf('reference: grid [%d %d %d], %d nodes, %s', dims, num.gh_n, solver_text(A0, S0));
+ref_label = sprintf('fmincon %s, grid [%d %d %d], %d quadrature nodes', solver_text(A0, S0), dims, num.gh_n);
 
 R = struct();
 for arm = fieldnames(ref).'
