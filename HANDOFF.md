@@ -29,6 +29,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 Review of steps 1-4, and expectations for steps 5-6, written before the runs (spec: Calibration ladder, part 1)
+Quinn reviewed steps 1-4 ("these look good") and agreed with the expectations below. On the step-4 misses, Quinn's reading: lower income risk makes labour income more bond-like, and less liquid saving is needed. Claude Code's note: in retirement neither step has income risk, so the first works through wealth (less precautionary saving leaves less wealth beside the same pension, which raises the retirement equity share); steps 3 and 4 both retire at 67 with the same mortality, so the number of retirement years is the same, and the lower wealth at 67 comes from less precautionary saving and the later, higher income peak. Wealth over final income is checked in the step-5 run.
+Same numerics, solver and stop rules as for steps 2-4. Check-in after step 6.
+- Step 5 market (r 2% -> 1.15%, premium 4% -> 4.56%, vol 15.7% -> 21.61%), against step 4, both arms: the Merton share falls from 0.325 to 0.195, so the liquid equity share falls wherever it is below 1; households leave the all-equity corner well before 54, and the retirement share falls from about 0.9 towards 0.5-0.6. The lower safe rate and lower risk-adjusted return should, at gamma 5 (EIS 0.2), make households save somewhat more: liquid wealth somewhat higher at 67 and consumption slightly lower when young. Less sure of the saving direction than of the equity share. Renter and owner move alike.
+- Step 6 corr_SL (0 -> 0.04), against step 5: human capital becomes slightly equity-like, so the equity share falls a little, mostly where it is below 1 before retirement, by under 0.02; consumption and wealth move by under 1%. The correlation on the quadrature nodes should be 0.0400 and in the panel within 0.01 of it.
+Commit: pending (filled in by the next commit).
+
 ### 2026-10-12 Robustness page: levels beside the differences, reference named (spec: none, asked by Quinn in Claude Code)
 Changed: `+figures/robustness.m`: each row now shows consumption, liquid savings and the liquid equity share as levels (the reference in black with its band, the variants drawn on top) beside their differences; the title, every legend, every zero line and the settings box name the black line as the step as solved in the ladder with its settings. `+ladder/robustness.m`: the reference label states the solver and grid. Pages for steps 1-4 redrawn from the saved runs; no numbers changed.
 Checks run: `run_tests` (full): 0 of 10 checks failed.
