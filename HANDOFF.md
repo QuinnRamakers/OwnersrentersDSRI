@@ -29,6 +29,10 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 All step-7 robustness and diagnosis dashboards in one PDF (spec: none, asked by Quinn in Claude Code)
+No code changed. The round-2 diagnosis cases (owner without maintenance, owner with house-price risk but no growth, renter with the second axis or both axes doubled) were re-solved with full results so they can be drawn; the numbers match the diagnosis entry (no maintenance: floored 0.01% / 0%, entry 0.884 / 0.708; no growth: about 2,200 off-grid lookups on both grids, entry 0.900 / 0.637; renter [16 32 10] entry 0.663, [32 32 10] entry 0.488). Every test is drawn with `figures.step_dashboard`, against step 7 as run and as its own coarse against fine grid, and collected with an intro page per section in `ladder/standard_16x16x10_gh5/diagnosis/step07_robustness_dashboards.pdf` (29 pages, gitignored); the single pages are `effect_*` and `grid_*` in the same folder.
+Commit: see the next commit on main.
+
 ### 2026-10-12 Step 7 owner at higher consumption floors (spec: none, asked by Quinn in Claude Code)
 Quinn asked for the ruin figures at higher floors. Scratch solves of the step-7 owner (standard numerics, interior-point with the sweep) at phi_floor 0.2, 0.3 and 0.5, each on [16 16 10] and [32 16 10]; 0.1 from the diagnosis entry. No code changed. Figures, gitignored, in `ladder/standard_16x16x10_gh5/diagnosis/`: `floors_overview.png`, `ruin_*_floor010/020/030/050.png`, and `grid_map.png` (where the solver's grid points lie per unit of income: the u1 columns sit at total wealth 0.7 ... 7.3, 11.5, 23.9 and 4999 times income, nothing in between).
 Checks run (coarse / fine): offgrid 0 and c_bound_25_39 0 in every solve. Floored household-years 5.5/3.9% (1e-6), 5.9/3.7% (0.1), 7.0/4.0% (0.2), 8.3/4.7% (0.3), 11.8/8.2% (0.5); entry value 0.660/0.034, 0.733/0.618, 0.762/0.661, 0.784/0.689, 0.815/0.747.
