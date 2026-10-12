@@ -29,6 +29,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-12 Step 7 owner at higher consumption floors (spec: none, asked by Quinn in Claude Code)
+Quinn asked for the ruin figures at higher floors. Scratch solves of the step-7 owner (standard numerics, interior-point with the sweep) at phi_floor 0.2, 0.3 and 0.5, each on [16 16 10] and [32 16 10]; 0.1 from the diagnosis entry. No code changed. Figures, gitignored, in `ladder/standard_16x16x10_gh5/diagnosis/`: `floors_overview.png`, `ruin_*_floor010/020/030/050.png`, and `grid_map.png` (where the solver's grid points lie per unit of income: the u1 columns sit at total wealth 0.7 ... 7.3, 11.5, 23.9 and 4999 times income, nothing in between).
+Checks run (coarse / fine): offgrid 0 and c_bound_25_39 0 in every solve. Floored household-years 5.5/3.9% (1e-6), 5.9/3.7% (0.1), 7.0/4.0% (0.2), 8.3/4.7% (0.3), 11.8/8.2% (0.5); entry value 0.660/0.034, 0.733/0.618, 0.762/0.661, 0.784/0.689, 0.815/0.747.
+Largest gap between the grids, ages 26-95 (stock share in points, consumption in %, liquid savings in years of income): 1e-6 87.7, 79.2, 4.13; 0.1 20.6, 21.5, 2.77; 0.2 21.1, 20.2, 2.76; 0.3 19.8, 17.9, 2.64; 0.5 13.5, 11.1, 1.86. At 27 both grids hold 100% stocks from a floor of 0.1 on (12% on the fine grid at 1e-6).
+Reading: any floor of 0.1 or more removes the cliff, and with it the early-life collapse on the fine grid. The grids still disagree by 13-21 points in the stock share and 11-22% in consumption, in mid-life (40-66) and retirement, far above the 2-point stop rule. The floor binds more often as it rises (partly by definition, partly less precaution), mostly from 70 on, up to 45% of owners at 95 at a floor of 0.5. A floor is needed but does not fix the grid dependence; the remaining driver is the housing cost on an unsellable, appreciating house.
+Commit: see the next commit on main.
+
 ### 2026-10-12 Plain-language version of the ruin figures (spec: none, asked by Quinn in Claude Code)
 Quinn found the five ruin figures too technical. Redrawn as two figures with linear axes and plain labels: `ladder/standard_16x16x10_gh5/diagnosis/simple_1_what_goes_wrong.png` and `simple_2_what_it_does.png` (gitignored). No code changed.
 Numbers the script printed:
