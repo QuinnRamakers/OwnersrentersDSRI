@@ -40,7 +40,7 @@ Checks run: `ladder.robustness(7)`, `ladder.compare(7)`, thread pool, interior-p
 - Grid (max over ages 26-95; |dX| in years of income), renter: [9 9 6] pi 0.18, C 13%, X 1.5; [12 12 8] 0.075, 5.5%, 0.6; [20 20 12] 0.060, 5.4%, 0.4; [32 16 10] 0.186 (age 36), 19.7% (age 26), 0.9. Owner: [9 9 6] 0.18, 25%, 3.7; [12 12 8] 0.086, 22%, 2.2; [20 20 12] 0.061, 9.0%, 1.3; [32 16 10] 0.877 (age 27), 79% (age 26), 4.1, with 7% of young owners at the consumption search bound. Step 7 is not grid-converged for either tenure, worst for owners and in early life; the owners' consumption spike at 67 also changes sign across grids.
 Stop: the owner's floor share (5.5%) is above the 1% rule. Step 8 not run.
 Reading: maintenance is 1.5% of a house that appreciates 3.73% a year while the pension is flat, and the owner can neither sell nor borrow against the house, so in house-price booms maintenance outruns the pension (mean maintenance about EUR 37k a year at 100 against a EUR 52k pension; disposable income negative for the bottom decile). The grid sensitivity is the early-life problem of the research (a committed outflow of 22-24% of income with a floor of 1e-6), here without taxes, plus the owners' late-life low-u1 region.
-Commit: pending (filled in by the next commit).
+Commit: c99d9f4, pushed to main.
 Open: Quinn's decisions on the owner's housing costs in retirement and on the floor and grid before step 7 is rerun and step 8 runs.
 
 ### 2026-10-12 Housing steps 7-8: code, and expectations written before the runs (spec: none, asked by Quinn in Claude Code)
