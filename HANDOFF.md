@@ -20,6 +20,7 @@ Answers to the plan's questions 1-4:
 Change: ladder steps 1-3 unchanged; 4 income (DHS, owner and renter), 5 market, 6 corr_SL (new); housing, pension, inctax, box3 follow unchanged. Code first: an income source 'dhs' with a price factor, usable with a DC pillar; renter income primitives; two no-housing arms (nohousing_owner, nohousing_renter) when the renter fields differ; config.params equal to the last step; correlation check on the nodes and in the panel. Then run one step at a time at standard numerics, stopping after each for review, with a written expectation before each run.
 Why: first block of the calibration ladder (CALIBRATION_PLAN.md); no housing, DC, taxes or REIT in it.
 Checks that must pass: after the code work, steps 1-3 reproduce the baseline; full `run_tests` 0 failures; both correlations within about 0.01 of corr_SL for each arm.
+Done: 2026-10-12
 
 ### 2026-10-07 Record a baseline
 Change: no code change. Run the full test suite and the quick ladder once, and log the results.
@@ -28,6 +29,39 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-12 Handoff: where the calibration ladder stands (spec: Calibration ladder, part 1, and Quinn's requests in Claude Code)
+A summary of the session of 12 October for Quinn and the next session. The numbers are in the entries below; the open decisions are in TODO.md item 1.
+
+Where things stand:
+1. Steps 1-6 (cgm, gamma5, retire67, income, market, corr_SL) are run at standard numerics and accepted by Quinn. The no-housing baseline is closed and the spec "Calibration ladder, part 1" is done. For every step the results, dashboard, comparison with the step before, owner-against-renter page (from step 4) and robustness runs are saved under `ladder/standard_16x16x10_gh5/`. They are gitignored, so they exist only on Quinn's PC.
+2. Step 7 (housing: Table 1 dynamics, mortgage and level placeholders, no correlations) is run and stopped: the owner is at the floor in 5.5% of household-years (rule: 1%), and neither tenure is grid-converged. Step 8 (housing correlations, Table 3) is coded and not run. Steps 9-11 (pension, inctax, box3) are untouched.
+3. The step-7 diagnosis is finished. Nothing more is run until Quinn decides TODO.md item 1 (Quinn is meeting a coauthor on it).
+
+Decisions Quinn made:
+- Income: the DHS household-head cubic for owners and renters, 2025 euros, extrapolated from 65 to 66; retirement income 68.2% of final income until the pension step.
+- Market: r 0.0115 (NL interbank), equity premium 0.0456, volatility 0.2161; income-stock correlation 0.04.
+- Order: housing first with taxes off, split into step 7 (dynamics) and step 8 (correlations); the pension comes later as its own step.
+- Solver default: interior-point with the global (c, pi) sweep on (`p.fmincon_algorithm`, `p.use_refine`).
+- Reporting: results as figures, not tables. Per step a twelve-panel dashboard, a comparison with the step before showing both 10-90 bands, and a robustness page with the reference drawn in black and levels beside the differences. Explanatory figures use plain words, not model notation.
+- Steps 1-6 accepted; the step-7 diagnosis scripts are kept in the repo.
+
+What changed on main (all pushed): c7bf0f2 ladder part 1 (DHS income source, renter income primitives, two no-housing arms, correlation checks); 989db7f twelve-panel dashboards, overlays and `ladder.robustness`; 2042985 sweep back on, step and robustness dashboards; 8f93670 levels on the robustness page; 4f6ccac near-zero savings left out of the % gaps; 72560c9 housing steps 7 and 8 (Table 1 dynamics, tenure-specific H correlations, no housing parameters reaching steps without housing, `lambda_lo` 0.0002 with housing); 4f73211 `figures.mortgage`; and this entry's commit, `diagnostics/step07/`.
+
+What the step-7 diagnosis found:
+- One mechanism: a housing outflow the household cannot adjust, tied to the house-price shock, with a floor of 1e-6 times income, at which one floored year weighs as much as 1e24 normal years. With constant house prices the owner converges.
+- The owner's mortgage is a rate times the current house value: 1.71 times the loan in present value against 1.00 for a real annuity. Maintenance on a house growing 3.73% a year outruns the flat pension late in life.
+- The grid knows the value only at its points, and along the income axis it has none between 24 and 4999 times income. Ruin is hidden there in old age, and in early life each refinement finds more of it: on the doubled grid the 27-year-old holds 7% in equities instead of 100%.
+- Floors of 0.1-0.5 remove the early-life collapse but leave gaps of 13-21 points in the equity share between the grids. The fix is the housing cost (equity access, the mortgage payment, a rent cap), with a sourced floor as the backstop.
+
+Next, once Quinn has decided:
+1. Write the expectations here, implement the TODO item 1 choices, and rerun step 7 on the standard and the doubled grid. It passes when they agree within the stop rule (2 points in the equity share, 2% in consumption).
+2. Run step 8, then the pension step (DC only), then the tax steps.
+3. Still open from part 1: the entry buffer's denominator, `tau_inc` against DHS net over gross, and the housing level placeholders (TODO.md item 2).
+
+Where things are: `diagnostics/step07/README.md` lists the scripts and how to rerun them. Their results are in `ladder/standard_16x16x10_gh5/diagnosis/data/`, the figures and `step07_robustness_dashboards.pdf` in `ladder/standard_16x16x10_gh5/diagnosis/` (gitignored). TODO.md item 1 now holds the step-7 evidence and the decisions in order.
+Checks run: `run_tests(solve=false)`: 0 of 7 checks failed. `checkcode` on `diagnostics/step07`: no messages. `solve_cases(cases="owner_floor_020", grids={[8 6 6], [10 6 6]}, gh_n=3, out=tempdir)`: both solves ran in 45 s (offgrid 0, c_bound 0). All diagnosis figures and the PDF redrawn from the repo scripts and the moved data: 47 files, the same numbers as before (for example the floor overview gaps 87.7, 20.6, 21.1, 19.8, 13.5 points).
+Commit: see the next commit on main.
 
 ### 2026-10-12 All step-7 robustness and diagnosis dashboards in one PDF (spec: none, asked by Quinn in Claude Code)
 No code changed. The round-2 diagnosis cases (owner without maintenance, owner with house-price risk but no growth, renter with the second axis or both axes doubled) were re-solved with full results so they can be drawn; the numbers match the diagnosis entry (no maintenance: floored 0.01% / 0%, entry 0.884 / 0.708; no growth: about 2,200 off-grid lookups on both grids, entry 0.900 / 0.637; renter [16 32 10] entry 0.663, [32 32 10] entry 0.488). Every test is drawn with `figures.step_dashboard`, against step 7 as run and as its own coarse against fine grid, and collected with an intro page per section in `ladder/standard_16x16x10_gh5/diagnosis/step07_robustness_dashboards.pdf` (29 pages, gitignored); the single pages are `effect_*` and `grid_*` in the same folder.

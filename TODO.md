@@ -9,7 +9,8 @@ things that are still open. The research evidence referred to is on the
 
 ## 1. The consumption floor and the committed housing outflow
 
-The decision everything else waits on.
+The decision everything else waits on. The calibration ladder stopped here, at
+step 7 (housing).
 
 At the production calibration a 25-year-old renter pays rent of about 44% of
 net income (owners: maintenance and mortgage of a similar order), cannot reduce
@@ -20,21 +21,56 @@ quadrature or the node placement moves consumption and the equity share at
 rent down to 11% of net income makes the model converge outright, so the cause
 is the outflow, not the numerics. From 40 on, behaviour is stable.
 
-Options, not mutually exclusive:
+Step 7 shows the same problem without taxes or DC (HANDOFF.md, 2026-10-12;
+scripts in `diagnostics/step07/`):
 
-- **Set the floor to the social minimum.** `phi_floor` is a placeholder. A
-  floor proportional to gross income cannot represent a level minimum
-  (`phi_floor = 0.618` guarantees 62% of a rising wage and binds in 60% of
-  household-years); 0.10-0.20 makes early life well behaved but binds in a few
-  percent of years. A level floor in euros needs W as a state (about 40x the
-  solve cost). Decide which floor the paper wants.
-- **Make the outflow avoidable.** Let renters downsize, as in Yao and Zhang
-  (2005), whose model has no such pathology. A modelling change.
-- **Calibrate the outflow from data.** `h_mult` is a placeholder (see 2), and
-  the owner's 100% LTV with almost no liquid wealth at entry is the starkest
-  version of the same problem.
-- **Report ages 40+ only** at the current specification, stating that
-  accumulation is not identified.
+- Neither tenure is grid-converged. Doubling the income axis moves the owner's
+  mean equity share by up to 0.88 and consumption by 79% (renter 0.19 and 20%).
+  With constant house prices the owner converges (0.02 and 0.3%), so the cause
+  is a housing outflow tied to the house-price shock that the household cannot
+  adjust, combined with the near-zero floor.
+- The owner's mortgage is charged on the current house value. In present value
+  it costs 1.71 times the loan on average, against 1.00 for a real annuity, and
+  28% of gross income at 54 against 10%. Maintenance of 1.5% on a house that
+  grows 3.73% a year outruns the flat pension: 12% of owner household-years
+  from 67 are at the floor.
+- The grid knows the value only at its points, and along the income axis it
+  has none between 24 and 4999 times income. Floor states are valued as
+  comfortable in old age, and in early life each refinement finds more of them.
+- Raising the owner's floor to 0.1-0.5 times income removes the early-life
+  collapse, but the grids still differ by 13-21 points in the equity share and
+  11-22% in consumption, in mid-life and retirement, and the floor binds more
+  often as it rises (45% of owners at 95 at a floor of 0.5). A floor is needed
+  but does not fix the grid dependence.
+
+Decisions open, to be settled before step 7 is rerun:
+
+1. **Owners' access to housing equity.** Let owners sell part of the house, or
+   release equity, when cash runs short. This removes owner ruin while equity
+   is positive and keeps three states.
+2. **The mortgage payment.** A payment tied to income, matched to a real
+   annuity on average (three states), or a real contract on the purchase price
+   (a fourth state, several times the solve cost). See also 5.
+3. **Renters.** Cap the rent burden with housing benefit (huurtoeslag), at a
+   share of income to be sourced, or let renters downsize as in Yao and Zhang
+   (2005).
+4. **The floor.** `phi_floor` is a placeholder; set it to the social minimum
+   (bijstand) as a share of income, with its source in CALIBRATION.md, and
+   decide whether it applies in retirement. A floor proportional to gross
+   income cannot represent a level minimum (`phi_floor = 0.618` guarantees 62%
+   of a rising wage and binds in 60% of household-years). A level floor in
+   euros needs W as a state (about 40x the solve cost). A higher floor weakens
+   precautionary saving; that is an economic effect to report, not a reason to
+   keep 1e-6.
+5. **What the house is for.** A bequest (`chi > 0`, see 4) or equity release.
+6. **The outflow from data.** `h_mult` is a placeholder (see 2), and the
+   owner's 100% LTV with almost no liquid wealth at entry is the starkest
+   version of the same problem.
+
+Then rerun step 7 on the standard and the doubled grid; it passes when they
+agree within the stop rule (2 points in the equity share, 2% in consumption).
+If none of this is taken up, report ages 40+ only and state that accumulation
+is not identified.
 
 Related: `c_floor_frac`, the lower bound of the consumption search, binds in
 early life at this calibration and its effect changes sign across grids. It is
@@ -83,7 +119,8 @@ differences rather than levels.
   transitory shock. Partial persistence needs a fourth state dimension. If a
   transitory shock is added, retirement income must be keyed to the permanent
   component, as in CGM.
-- **Mortgage balance.** Deliberately not modelled; see `CALIBRATION.md`.
+- **Mortgage balance.** Not modelled; see `CALIBRATION.md`. What the
+  approximation costs is in 1.
 - **Free DC investment choice and glide-path comparisons.** Implemented on the
   research branch, parked until 1 is settled. The annuity there is priced off
   the plan's glide, not the chosen share; say which question a comparison
@@ -98,10 +135,11 @@ differences rather than levels.
   did not. Not yet the default.
 - The global (c, pi) sweep is most of the solve time. A cheaper search that
   keeps its accuracy would make the fine grid routine.
-- With the sweep, interior-point and active-set agree at steps 1-2 but differed
-  by up to 0.10 in the mean equity share at the production calibration, with
-  neither reaching the higher value at every node. Look again at the housing
-  step, where `ladder.robustness(k)` shows both.
+- With the sweep, interior-point and active-set agree within the solver stop
+  rule at every ladder step run so far (1-7; within 0.001 in the mean equity
+  share at step 7) but differed by up to 0.10 at the production calibration, with neither reaching the higher value at every
+  node. Look again at the tax and pension steps, where `ladder.robustness(k)`
+  shows both.
 
 ## 7. Paper write-up
 
