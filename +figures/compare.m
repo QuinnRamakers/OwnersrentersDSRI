@@ -11,8 +11,9 @@ function fig = compare(rs, labels, ttl, file, opts)
 %   savings, net worth and the liquid equity share (means across households).
 %   Row 2: the same four as differences from the reference. Row 3: the equity
 %   share policy at ages 30, 55 and 75 as the solver returned it, against
-%   resources over income, with markers on each result's own grid nodes, and a
-%   box with each result's settings and checks.
+%   resources over income, each at its own households' median pension and
+%   housing shares, with markers on each result's own grid nodes, and a box
+%   with each result's settings and checks.
 %
 %   view='pension' shows the DC pension account in place of net worth, and in
 %   place of the policy at 30 the stock share of financial wealth (stock in
@@ -75,8 +76,8 @@ for j = 1:4
         if ~series{j, 4}, M = M * scl(i); end
         if series{j, 4}, a = a(1:end-1); M = M(:, 1:end-1); end
         if i == 1
-            fill(ax, [a, fliplr(a)], [quantile(M, 0.1, 1), fliplr(quantile(M, 0.9, 1))], ...
-                [0.85 0.85 0.85], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+            uistack(fill(ax, [a, fliplr(a)], [quantile(M, 0.1, 1), fliplr(quantile(M, 0.9, 1))], ...
+                [0.85 0.85 0.85], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off'), 'bottom');
         end
         h(i) = plot(ax, a, mean(M, 1, 'omitnan'), styles{i}, 'Color', cols(i, :), 'LineWidth', lw(i));
     end
@@ -105,7 +106,7 @@ for j = 1:4
             dv = v * scl(i) - ref * scl(1);
         else
             dv = 100 * (v * scl(i) ./ (ref * scl(1)) - 1);
-            dv(abs(ref) < 1e-9 * max(abs(ref))) = NaN;
+            dv(abs(ref) < 0.01 * max(abs(ref))) = NaN;    % % gaps on near-zero levels say nothing
         end
         plot(ax, a, dv, styles{i}, 'Color', cols(i, :), 'LineWidth', lw(i));
     end
@@ -129,8 +130,8 @@ if pension_view
         M = (d.eq_liquid + d.eq_pension) ./ max(d.fin, 1e-12);
         M = M(:, 1:end-1);
         if i == 1
-            fill(ax, [a, fliplr(a)], [quantile(M, 0.1, 1), fliplr(quantile(M, 0.9, 1))], ...
-                [0.85 0.85 0.85], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+            uistack(fill(ax, [a, fliplr(a)], [quantile(M, 0.1, 1), fliplr(quantile(M, 0.9, 1))], ...
+                [0.85 0.85 0.85], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off'), 'bottom');
         end
         plot(ax, a, mean(M, 1, 'omitnan'), styles{i}, 'Color', cols(i, :), 'LineWidth', lw(i));
     end
@@ -170,32 +171,37 @@ xlabel(ax, 'Age');
 end
 
 function policy_panel(ax, rs, D, age, cols, styles, lw)
-% pi(u1) at the reference households' median (u2, u3) at this age, over the
-% u1 range they occupy, drawn against W/Y = 1/u1. Each result is read off its
-% own grid with the interpolant the simulator uses.
-s1 = D{1}.sim; t = age - rs{1}.p.age0 + 1;
-u1 = s1.lambda(:, t);
-u2 = median((s1.sA(:, t) + s1.sH(:, t)) ./ max(1 - u1, 1e-12));
-u3 = median(min(max(s1.sA(:, t) ./ max(s1.sA(:, t) + s1.sH(:, t), 1e-12), 0), 1));
-lo = prctile(u1, 1) / 1.5; hi = min(1, prctile(u1, 99) * 1.5);
+% pi(u1) at this age, drawn against W/Y = 1/u1 over the u1 range the
+% households occupy. Each result is read off its own grid with the
+% interpolant the simulator uses, at its own households' median (u2, u3), so
+% that steps with and without a pension or a house are each shown where their
+% households are; dotted lines mark each result's median household.
+t = age - rs{1}.p.age0 + 1;
+lo = inf; hi = 0; sl = zeros(numel(rs), 3);
+for i = 1:numel(rs)
+    s = D{i}.sim; u1 = s.lambda(:, t);
+    sl(i, :) = [median(u1), median((s.sA(:, t) + s.sH(:, t)) ./ max(1 - u1, 1e-12)), ...
+                median(min(max(s.sA(:, t) ./ max(s.sA(:, t) + s.sH(:, t), 1e-12), 0), 1))];
+    lo = min(lo, prctile(u1, 1) / 1.5); hi = max(hi, min(1, prctile(u1, 99) * 1.5));
+end
 uq = exp(linspace(log(lo), log(hi), 200)).';
 for i = numel(rs):-1:1
-    p = rs{i}.p;
+    p = rs{i}.p; u2 = sl(i, 2); u3 = sl(i, 3);
     F = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, rs{i}.sol.pi_pol(:, :, :, t), 'linear', 'nearest');
     plot(ax, 1 ./ uq, F(uq, u2 * ones(size(uq)), u3 * ones(size(uq))), styles{i}, ...
         'Color', cols(i, :), 'LineWidth', lw(i));
     nodes = p.u1_grid(p.u1_grid >= lo & p.u1_grid <= hi);
     plot(ax, 1 ./ nodes, F(nodes, u2 * ones(size(nodes)), u3 * ones(size(nodes))), 'o', ...
         'Color', cols(i, :), 'MarkerSize', 4, 'MarkerFaceColor', 'w', 'HandleVisibility', 'off');
+    xline(ax, 1 / sl(i, 1), ':', 'Color', cols(i, :), 'LineWidth', 1, 'HandleVisibility', 'off');
 end
-xline(ax, 1 / median(u1), ':', 'median household', 'Color', [0.4 0.4 0.4], ...
-    'LabelVerticalAlignment', 'bottom', 'FontSize', 8, 'HandleVisibility', 'off');
 set(ax, 'XScale', 'log'); xlim(ax, [1 / hi, 1 / lo]); ylim(ax, [-0.02 1.02]);
 xlabel(ax, 'Total resources / income (W/Y = 1/u_1), log scale');
 ylabel(ax, 'Stock share [0-1]');
-if D{1}.has_housing || D{1}.has_pension
-    text(ax, 0.02, 0.04, sprintf('slice at u_2 = %.2f, u_3 = %.2f', u2, u3), 'Units', 'normalized', ...
-        'FontSize', 8, 'Color', [0.4 0.4 0.4]);
+if any(cellfun(@(d) d.has_housing || d.has_pension, D))
+    txt = sprintf('each at its households'' median u_2 (%s)', ...
+        strjoin(arrayfun(@(v) sprintf('%.2f', v), sl(:, 2).', 'UniformOutput', false), ', '));
+    text(ax, 0.02, 0.04, txt, 'Units', 'normalized', 'FontSize', 8, 'Color', [0.4 0.4 0.4]);
 end
 end
 
@@ -218,9 +224,10 @@ for i = 1:numel(rs)
         100 * c.c_bound_25_39, 100 * c.floored_share, sum(c.offgrid), c.ce_entry); %#ok<AGROW>
     if i > 1
         w = 1:numel(s.pi) - 1;
+        wx = ref.X.mean >= 0.01 * max(ref.X.mean);      % leave out near-zero savings
         L{end+1} = sprintf('  max |d pi| %.3f   max |dC/C| %.1f%%   max |dX/X| %.1f%%', ...
             max(abs(s.pi(w) - ref.pi(w))), 100 * max(abs(s.C.mean ./ ref.C.mean - 1)), ...
-            100 * max(abs(s.X.mean(2:end) ./ ref.X.mean(2:end) - 1))); %#ok<AGROW>
+            100 * max(abs(s.X.mean(wx) ./ ref.X.mean(wx) - 1))); %#ok<AGROW>
     end
 end
 end
