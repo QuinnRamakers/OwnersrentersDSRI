@@ -30,6 +30,29 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-13 Which grid axis matters, and runtime: results (spec: none, asked by Quinn in Claude Code)
+Changed: `+ladder/grid_axes.m`: after step 9 showed u2 mattering more than expected, two variants at the standard number of points were added to the ladders: u2 bunched toward 1 (`grid_pow_u2` 2) and both axes bunched (`grid_pow` 2, `grid_pow_u2` 2); a fourth row 'Both axes'. `diagnostics/grid_axes/runtime_map.m`: the bunched runs, axis limits. `diagnostics/grid_axes/axes_pdf.m` (new): `robustness/grid_axes.pdf` (12 pages: the gap table, the runtime map, the axis page of steps 12, 11, 10, 9, 6 per arm). Figures and runs gitignored under `ladder/standard_16x16x10_gh5/robustness/` (`robust_axes_*`, `runtime_map.png`, `*_g*x*x*_gh*.mat`).
+Checks run: `ladder.grid_axes(k)` for k = 6, 9, 10, 11 and `ladder.grid_axes(12, ladders=true)`, 6,204 s, nothing else running; then the bunched variants and `runtime_map` (5 min). `run_tests` (full): 0 of 13 checks failed (198 s).
+One axis doubled, largest gap to the step as solved over ages 26-95 (renter/owner; equity share, consumption):
+- u3 (pension against house): exactly 0 at steps 9-12; u2 and u3 exactly 0 at step 6 (collapsed axes), as expected.
+- Step 6: u1 0.033/0.034, 1.4/1.6%; 7 quadrature nodes 0.008/0.009.
+- Step 9: u1 0.036/0.064, 1.7/2.7%; u2 0.077/0.184 (at 65), 1.5/2.2%; quadrature 0.016/0.034.
+- Step 10: u1 0.108/0.112, 10.1/11.2% (at 66), liquid savings 0.8/0.9 years of income (at 79); u2 0.080/0.099, 5.2/9.7%; quadrature 0.047/0.047.
+- Step 11: u1 0.058/0.082, 4.0/5.4%; u2 0.269/0.381 (at 65), 2.7/3.0%; quadrature 0.032/0.038.
+- Step 12: u1 0.105/0.139, 2.2/3.3%; u2 0.078/0.078, 1.5/2.2%; quadrature 0.034/0.028.
+Step 12 against the finest grid run, u1 x4 with u2 x2 ([64 32 10], 491/486 s) (renter/owner; largest equity-share gap, consumption gap, liquid savings at 66, solve s):
+- standard [16 16 10]: 0.139/0.192, 4.5/5.9%, +21/+32%, 56/57 s
+- u1 x1.5: 0.056/0.079, 3.1/3.7%, +14/+23%, 98 s; u1 x3: 0.032/0.056, 1.9/2.8%, +5.5/+7.6%, 185 s; u1 x4: 0.033/0.056, 1.7/2.4%, +3.3/+3.7%, 245 s
+- u2 x1.5, x2, x3: 0.10-0.14, 3.8-5.1%, +16 to +28%, 100-200 s (little better than standard)
+- 7 quadrature nodes: 0.123/0.163, 4.7/6.4%, 131 s (no better)
+- u1 bunched low: 0.058/0.080, 3.3/4.3%, +15/+22%, 70 s; u2 bunched toward 1: 0.107/0.140, 3.3/4.9%, +16/+26%, 85/71 s
+- both bunched: 0.049/0.059, 1.7/2.2%, +6.4/+8.5%, 72/69 s; u1 x2 with u2 x2: 0.035/0.045, 0.9/1.4%, +5.3/+8.3%, 249/251 s
+Runtime (`runtime_map.png`): solve time is proportional to the number of state-grid points and does not depend on which axis carries them (about 0.1 s per point: 57 s at 576 points, 490 s at 4,224); 7 quadrature nodes cost 2.3 times as much (131 s). The global sweep costs about 20 s per solve at standard (interior-point 57 s with it, 36 s without); active-set with the sweep 41 s. Ladder steps: 10 s without housing or DC, 57-80 s with the DC state, 64-79 s with housing.
+Against the expectations: u3 and the collapsed axes as expected; quadrature small (up to 0.047 at step 10, where the whole pot rides on the stock shock). Wrong: I expected u1 to dominate at every DC step. It dominates at step 12 and for retirement liquid savings and consumption everywhere, but at steps 9 and 11 (first pillar at 68.2%) u2 dominates the equity share in the last working years (63-66), when households run liquid savings down and u2 approaches 1, where the axis has two points. Doubling u2 does not help at step 12, where the gap is in u1.
+Reading: the standard grid's error is mostly placement, not the number of points. With the DC account the occupied region moves to large total resources over income (low u1, retirees at 15-40 years of AOW income) and to u2 near 1, both at the ends of evenly spaced axes. Refining u1 moves step 12 in one direction (liquid savings down 7-20% at every age from 35, the pre-retirement equity-share dip filled in by up to 0.2) and is still moving liquid savings by about 3% between x3 and x4, so even the finest run is not fully settled. Bunching both axes gets most of the way at no extra cost.
+Commit: this entry, with the changed files, pushed to main.
+Open: whether to make the bunched grid the default for the DC steps. Before that: check it at steps 9-11, where u2 matters (it was only run at step 12), and at steps 1-6, where bunching u1 low thins the points the young use; then re-run steps 9-12 and redo the comparisons. The step-12 ladders are not converged in liquid savings at x4.
+
 ### 2026-10-13 Which grid axis matters, and runtime: code, and expectations written before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn asked for the grid robustness in more detail: whether adding points on one axis matters more than another (the housing axis should not matter in the current specification; it might be liquid savings), what the other axes mean, and a map of how runtime develops.
 The axes: u1 = Y/W, income over total resources (liquid savings, pension account, house and this year's income), so 1/u1 is total resources in years of income; u2 = (A+H)/(W-Y), the share of wealth held in the pension account and house rather than liquid savings (without housing: the pension account against liquid savings); u3 = A/(A+H), the pension account against the house; and the quadrature, 5 nodes per shock. Without housing u3 is collapsed to two nodes, and without housing or DC so is u2. u1 is evenly spaced in Y/W: at standard its points sit at total resources of 1, ..., 3, 3.7, 5, 7.5, 14.8 and 1,250 years of income, nothing between the last two.

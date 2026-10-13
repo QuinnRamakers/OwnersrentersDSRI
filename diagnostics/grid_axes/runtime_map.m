@@ -58,13 +58,14 @@ nexttile(tl, 4); axd = gca; hold(axd, 'on'); grid(axd, 'on'); box(axd, 'on'); ax
 hb = gobjects(1, 3);
 for a = 1:2
     T = runs(num, d, S, k, arms{a});
-    best = T(T.default & T.pow == 1 & T.gh == 5 & all(T.dims == [64 32 10], 2), :);
+    even = T.default & T.pow == 1 & T.pow2 == 1 & T.gh == 5;
+    best = T(even & all(T.dims == [64 32 10], 2), :);
     if isempty(best), continue; end
     sb = best.summary{1}; w = sb.ages >= 26 & sb.ages <= 95;
     for l = 1:size(ladders, 1)
         dims = tags.(ladders{l, 1}); x = nan(size(dims)); y = x; gp = x; gc = x;
         for j = 1:numel(dims)
-            row = T(T.default & T.pow == 1 & T.gh == 5 & all(T.dims == dims{j}, 2), :);
+            row = T(even & all(T.dims == dims{j}, 2), :);
             if isempty(row), continue; end
             s = row.summary{1};
             x(j) = row.nodes(1); y(j) = row.sec(1);
@@ -75,22 +76,31 @@ for a = 1:2
         plot(axc, y, gp, ['-' mk{a}], 'Color', cols(l, :), 'MarkerFaceColor', cols(l, :), 'LineWidth', 1.5);
         plot(axd, y, gc, ['-' mk{a}], 'Color', cols(l, :), 'MarkerFaceColor', cols(l, :), 'LineWidth', 1.5);
     end
-    pw = T(T.default & T.pow == 2, :);
-    if ~isempty(pw)
-        s = pw.summary{1};
-        plot(axc, pw.sec(1), max(abs(s.pi(w) - sb.pi(w))), mk{a}, 'Color', 'k', 'MarkerSize', 9, 'LineWidth', 1.5);
-        plot(axd, pw.sec(1), 100 * max(abs(s.C.mean(w) ./ sb.C.mean(w) - 1)), mk{a}, 'Color', 'k', 'MarkerSize', 9, 'LineWidth', 1.5);
+    % Same number of points, bunched where households are
+    bunch = {[2 1], 'u1 low', [0 0 0]; [1 2], 'u2 high', [0.55 0.55 0.55]; [2 2], 'both', [0.75 0.10 0.10]};
+    for j = 1:size(bunch, 1)
+        row = T(T.default & T.pow == bunch{j, 1}(1) & T.pow2 == bunch{j, 1}(2) & all(T.dims == [16 16 10], 2), :);
+        if isempty(row), continue; end
+        s = row.summary{1}; x = row.sec(1);
+        yp = max(abs(s.pi(w) - sb.pi(w))); yc = 100 * max(abs(s.C.mean(w) ./ sb.C.mean(w) - 1));
+        plot(axc, x, yp, mk{a}, 'Color', bunch{j, 3}, 'MarkerSize', 10, 'LineWidth', 1.8);
+        plot(axd, x, yc, mk{a}, 'Color', bunch{j, 3}, 'MarkerSize', 10, 'LineWidth', 1.8);
+        if a == 1
+            text(axc, x * 1.08, yp, bunch{j, 2}, 'Color', bunch{j, 3}, 'FontSize', 9);
+            text(axd, x * 1.08, yc, bunch{j, 2}, 'Color', bunch{j, 3}, 'FontSize', 9);
+        end
     end
 end
-set(axb, 'XScale', 'log', 'YScale', 'log'); xlabel(axb, 'state-grid points'); ylabel(axb, 'solve time, s');
+set(axb, 'XScale', 'log', 'YScale', 'log'); xlim(axb, [400 6000]); xlabel(axb, 'state-grid points'); ylabel(axb, 'solve time, s');
 legend(axb, hb, ladders(:, 2), 'Location', 'northwest');
 title(axb, '(b)  Step 12: solve time as one axis is refined');
 for ax = [axc axd]
     set(ax, 'XScale', 'log'); xlabel(ax, 'solve time, s');
 end
 ylabel(axc, 'largest gap in the equity share'); ylabel(axd, 'largest gap in consumption, %');
-title(axc, {'(c)  Step 12: equity-share gap to the finest grid [64 32 10]', 'black: base points bunched low (grid\_pow 2)'});
-title(axd, {'(d)  Step 12: consumption gap to the finest grid [64 32 10]', 'ages 26-95; lower is closer'});
+title(axc, {'(c)  Step 12: equity-share gap to the finest grid [64 32 10]', ...
+    'colours as in (b); open markers: the standard points, bunched where households are'});
+title(axd, {'(d)  Step 12: consumption gap to the finest grid [64 32 10]', 'ages 26-95, colours as in (b); lower is closer'});
 
 % (e) ladder steps
 ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS;
@@ -140,14 +150,14 @@ files = [{ladder.result_file(num, k, S(k).name, arm)}, ...
          fullfile(d, {builtin('dir', fullfile(d, sprintf('%02d_%s_%s_*.mat', k, S(k).name, arm))).name})];
 files = files(cellfun(@isfile, files));
 n = numel(files);
-nodes = zeros(n, 1); sec = nodes; gh = nodes; pow = nodes; dims = zeros(n, 3); default = false(n, 1);
+nodes = zeros(n, 1); sec = nodes; gh = nodes; pow = nodes; pow2 = nodes; dims = zeros(n, 3); default = false(n, 1);
 summary = cell(n, 1);
 for i = 1:n
     r = load(files{i}, 'p', 'timing', 'summary');
     nodes(i) = r.p.N_u1 * r.p.N_u2 * r.p.N_u3; sec(i) = r.timing.solve_sec;
-    gh(i) = r.p.gh_n; pow(i) = r.p.grid_pow; dims(i, :) = r.p.grid_dims;
+    gh(i) = r.p.gh_n; pow(i) = r.p.grid_pow; pow2(i) = r.p.grid_pow_u2; dims(i, :) = r.p.grid_dims;
     default(i) = strcmp(r.p.fmincon_algorithm, 'interior-point') && r.p.use_refine;
     summary{i} = r.summary;
 end
-T = table(nodes, sec, gh, pow, dims, default, summary);
+T = table(nodes, sec, gh, pow, pow2, dims, default, summary);
 end
