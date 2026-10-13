@@ -1,9 +1,8 @@
-function report_pdf(numerics, res)
-%REPORT_PDF  Every page of the retirement steps (9-12) and their sensitivities in one PDF.
+function report_pdf(numerics)
+%REPORT_PDF  Every page of the retirement steps (9-12) and their sensitivities, in two PDFs.
 %
 %   report_pdf()              % standard numerics
 %   report_pdf('quick')
-%   report_pdf('standard', 80)  % a smaller copy, retirement_dashboards_80dpi.pdf
 %
 %   Run from the repository root after
 %       ladder.run(9:12); for k = 9:12, ladder.compare(k); end
@@ -13,18 +12,18 @@ function report_pdf(numerics, res)
 %       ladder.sensitivity('aow')
 %       for k = 9:12, ladder.robustness(k); end
 %   Collects the saved pages, with an intro page per section that lists the
-%   main numbers, in <numerics dir>/retirement_dashboards.pdf. Pages that
-%   have not been drawn are listed on the intro page and skipped.
+%   main numbers, in <numerics dir>/retirement_dashboards_part1.pdf
+%   (sections 1-3: overview, steps 9 and 10) and _part2.pdf (sections 4-6:
+%   steps 11 and 12, sensitivities), each under 30 MB so it can be sent, and
+%   each opening with the same cover page. Pages that have not been drawn
+%   are listed on the intro page and skipped.
 
 if nargin < 1, numerics = 'standard'; end
-if nargin < 2, res = 130; end
 num = ladder.numerics(numerics); d = num.dir; S = ladder.steps();
 arms = {'nohousing_renter', 'nohousing_owner'};
-pdf = fullfile(d, 'retirement_dashboards.pdf');
-if res < 130, pdf = strrep(pdf, '.pdf', sprintf('_%ddpi.pdf', res)); end
-if isfile(pdf), delete(pdf); end
+parts = {1:3, 4:6};
 
-cover(pdf, 'Retirement steps 9-12: the DC pension without housing', { ...
+intro = { ...
     'All four steps build on step 6 (corr_SL), the baseline without housing; taxes and the REIT are off.', ...
     '  9  dc_bonds   DC contributions of 18.6% above the franchise, fund all in bonds, annuity at 67;', ...
     '                first pillar stays at CGM''s 68.2% of final income', ...
@@ -39,7 +38,8 @@ cover(pdf, 'Retirement steps 9-12: the DC pension without housing', { ...
     'lower liquid savings in retirement by 5-12%. Step 6, without the account, is grid-converged. Every direction', ...
     'between steps holds on the finer grids; the sizes around 55-66 do not.', '', ...
     'Sections:', '  1. Overview: all steps on one page', '  2-5. Each step against the one it builds on, its dashboards and robustness', ...
-    '  6. Sensitivity of step 12 to the replacement rate and the contribution rate'});
+    '  6. Sensitivity of step 12 to the replacement rate and the contribution rate', '', ...
+    'Part 1 holds sections 1-3, part 2 sections 4-6.'};
 
 sec = {};
 % 1. Overview
@@ -82,17 +82,25 @@ L = [{'Step 12 with one primitive moved at a time (illustrative values): per arm
       'then each value against step 12 on the twelve-panel page.', ''}, sens_lines(d, arms, vary)];
 sec(end+1, :) = {'6. Step 12: replacement rate 0.20 / 0.40, contribution rate 0.10 / 0.30', L, P};
 
-for s = 1:size(sec, 1)
-    have = cellfun(@isfile, sec{s, 3});
-    L = sec{s, 2};
-    if any(~have)
-        [~, nm, ext] = cellfun(@fileparts, sec{s, 3}(~have), 'UniformOutput', false);
-        L = [L, {'', 'Not drawn yet, skipped:'}, strcat({'  '}, nm, ext)]; %#ok<AGROW>
+for q = 1:numel(parts)
+    pdf = fullfile(d, sprintf('retirement_dashboards_part%d.pdf', q));
+    if isfile(pdf), delete(pdf); end
+    cover(pdf, sprintf('Retirement steps 9-12: the DC pension without housing (part %d of %d)', ...
+        q, numel(parts)), intro);
+    for s = parts{q}
+        have = cellfun(@isfile, sec{s, 3});
+        L = sec{s, 2};
+        if any(~have)
+            [~, nm, ext] = cellfun(@fileparts, sec{s, 3}(~have), 'UniformOutput', false);
+            L = [L, {'', 'Not drawn yet, skipped:'}, strcat({'  '}, nm, ext)]; %#ok<AGROW>
+        end
+        cover(pdf, sec{s, 1}, L);
+        for f = sec{s, 3}(have), add_png(pdf, f{1}); end
     end
-    cover(pdf, sec{s, 1}, L);
-    for f = sec{s, 3}(have), add_png(pdf, f{1}, res); end
+    mb = dir(pdf).bytes / 2^20;
+    fprintf('wrote %s (%.1f MiB)\n', pdf, mb);
+    if mb > 30, warning('report_pdf:size', '%s is over 30 MiB; move a section to the other part.', pdf); end
 end
-fprintf('wrote %s (%.1f MB)\n', pdf, dir(pdf).bytes / 1e6);
 end
 
 % ------------------------------------------------------------------------
@@ -184,12 +192,12 @@ exportgraphics(fig, pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 1
 close(fig);
 end
 
-function add_png(pdf, file, res)
+function add_png(pdf, file)
 I = imread(file);
 [h, w, ~] = size(I);
 fig = figure('Visible', 'off', 'Position', [0 0 round(w / 1.3) round(h / 1.3)], 'Color', 'w');
 ax = axes(fig, 'Position', [0 0 1 1]);
 image(ax, I); axis(ax, 'image', 'off');
-exportgraphics(fig, pdf, 'Append', true, 'ContentType', 'image', 'Resolution', res);
+exportgraphics(fig, pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 130);
 close(fig);
 end
