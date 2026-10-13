@@ -30,6 +30,22 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-13 Which grid axis matters, and runtime: code, and expectations written before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn asked for the grid robustness in more detail: whether adding points on one axis matters more than another (the housing axis should not matter in the current specification; it might be liquid savings), what the other axes mean, and a map of how runtime develops.
+The axes: u1 = Y/W, income over total resources (liquid savings, pension account, house and this year's income), so 1/u1 is total resources in years of income; u2 = (A+H)/(W-Y), the share of wealth held in the pension account and house rather than liquid savings (without housing: the pension account against liquid savings); u3 = A/(A+H), the pension account against the house; and the quadrature, 5 nodes per shock. Without housing u3 is collapsed to two nodes, and without housing or DC so is u2. u1 is evenly spaced in Y/W: at standard its points sit at total resources of 1, ..., 3, 3.7, 5, 7.5, 14.8 and 1,250 years of income, nothing between the last two.
+Changed: `+ladder/grid_axes.m` (new): re-solves a step with one axis refined at a time (u1, u2, u3 doubled; 7 quadrature nodes), and with `ladders=true` u1 at 1.5, 2, 3, 4 times its base points and bunched low (`grid_pow` 2), u2 at 1.5, 2, 3 times, both doubled, and u1 x4 with u2 x2; reuses any saved run of the same calibration; draws `robust_axes_NN_<step>_<arm>.png` (figures.robustness, one row per set) and prints the largest gaps. `diagnostics/grid_axes/runtime_map.m` (new): solve time against grid points, step 12's ladders as time against accuracy, solve time per ladder step and per solver, in `robustness/runtime_map.png`.
+Checks run: `run_tests` (full): 0 of 13 checks failed (198 s). Smoke on [8 6 6], gh 3 (separate folder): u2 and u3 doubled at step 6 and u3 doubled at step 12 give gaps of exactly 0; the rest ran.
+Where households sit (standard results, owner): at step 12 the share of households in the lowest u1 cell (total resources above 14.8 years of income) is 0.11 at 55, 0.28 at 62, 0.39 at 66, 1.00 at 70 and 0.87 at 80; at step 6 it is at most 0.21 (70). At step 12 u2 lies between 0.67 and 1.00 (p10-p90), where the axis has six points.
+Expectations:
+- u3 doubled: no change at all at steps 9-12 (collapsed); u2 and u3 doubled: none at step 6.
+- u1 is the axis that matters at steps 9-12, because retirees at step 12 (and near-retirees at 9-11) sit in the lowest u1 cell. Doubling u1 alone gives most of the gap of the earlier [32 16 10] run (it is that run). The u1 ladder settles from about x3 on; bunching the base points low (grid_pow 2) gets much of the way at no extra cost.
+- u2 (pension account against liquid savings): smaller, mostly at 55-66 where the equity share is below 1.
+- 7 quadrature nodes: small, under 0.01 in the equity share, as at earlier steps.
+- At step 6 u1 doubling moves the equity share by about 0.04 at most, as in the robustness pages.
+- Runtime about proportional to the u1 x u2 points: about 1 minute at the standard grid, 2 doubling either axis, 4 doubling both, 8 at u1 x4 with u2 x2; 7 quadrature nodes about twice the time (49 against 25 joint nodes).
+Runs, in order, nothing else running so the times are clean: `ladder.grid_axes(k)` for k = 6, 9, 10, 11, then `ladder.grid_axes(12, ladders=true)`, then `runtime_map`.
+Commit: this entry, with the two new files, pushed to main before the runs.
+
 ### 2026-10-13 Retirement steps 9-12 and sensitivities at standard numerics (spec: none, asked by Quinn in Claude Code)
 Changed: `+figures/compare.m` (37b5a98): the reference band no longer covers the other lines; the policy panels read each result at its own households' median pension and housing shares (at the reference's, a DC step was read with an empty pot and drew on top of step 6); % gaps and the settings box leave out near-zero levels. `diagnostics/retirement/report_pdf.m` (new): every page below with an intro page per section, in two PDFs under 30 MiB so they can be sent. Results and figures, gitignored, under `ladder/standard_16x16x10_gh5/`: `09_*` to `12_*`, `compare_06_09_*`, `compare_09_10_*`, `compare_10_11_*`, `compare_09_11_*`, `compare_11_12_*`, `owner_renter_09..12`, `overlay_retirement_*`, `overlay_dc_funds_*`, `sensitivity/`, `robustness/robust_09..12_*`, and `retirement_dashboards_part1.pdf` (overview, steps 9-10; 22 pages, 18 MiB) and `_part2.pdf` (steps 11-12, sensitivities; 32 pages, 26 MiB).
 Checks run:
