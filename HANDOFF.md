@@ -30,6 +30,16 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-14 Step-7 figures 1-4: Quinn's wording, value-function axes, zoomed figure 3 (spec: none, asked by Quinn in Claude Code)
+Quinn rewrote the titles of figures 1-3, removed the notes in figures 2 and 3, renamed the axes and colour bar to "value function", and asked for a second figure 3 zoomed to houses up to 100 years of household income with its own colour scale.
+Changed: `diagnostics/step07/ruin_figures.m`, `diagnostics/step07/README.md`.
+- Figure 1 title, figure 2 titles and panel titles, figure 3 title and colour-bar label as Quinn wrote them ("redline" spelled "red line").
+- Figure 2: notes removed; the dashed line is now the highest house-to-income ratio among simulated households, as its caption says (29 at 45, 394 at 85, 24 at 85 with constant prices; the same on both grids, since nobody chooses the house). Its y axis and figure 4's are labelled "value function (log scale)" with ticks like figure 3's colour bar: the certainty-equivalent consumption and, in brackets, V.
+- Figure 3: note removed. New `ruin_3_landscape_zoom100.png`: house value 0-100, savings 0-20, colour range set per age from the values in that window and shared by both grids (age 85: 0.18 to 3.2, where the full version uses 10^-6 to 10). The age-85 most exposed household (house 394) lies outside the zoom.
+- Figure 4: "well-being" replaced by "value function"; otherwise unchanged. `save_fig` retries when a viewer holds the old file open.
+Checks run: `checkcode` on the script, no messages. Only figure code changed.
+Commit: this entry, pushed to main.
+
 ### 2026-10-14 Step-7 figures: income units in words, text written out for review (spec: none, asked by Quinn in Claude Code)
 Quinn: replace "x income" with "years of household income" in figures 1-4, and list all text in the plots for review.
 Changed: `diagnostics/step07/ruin_figures.m`. Every "Nx income" and the axis labels ("relative to income") now read "years of household income". Saving a figure also writes all its text, panel by panel, to a .txt file next to the .png (gitignored), which is the list Quinn reviews.

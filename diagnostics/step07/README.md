@@ -12,13 +12,15 @@ them. None of it changes the model.
    and 0.5 times income, a renter floor of 0.1, and two renter grid
    refinements. Each two-grid case is solved on the standard grid
    [16 16 10] and with the income axis doubled [32 16 10]. About 25 minutes.
-2. `ruin_figures.m` draws five figures for the step-7 owner: why one year at
-   the floor dominates, what the solver sees along the no-savings grid line,
-   the value over savings and house value, slices at the typical household's
-   savings with a map of the grid points each slice is interpolated from, and
-   the 27-year-old's choice. `ruin_figures()` uses step 7 as run
-   with constant house prices as the contrast; `ruin_figures(0.3)` uses a
-   floor of 0.3 with step 7 as run as the contrast.
+2. `ruin_figures.m` draws the figures for the step-7 owner: the bankruptcy
+   rate by age, the value function along the no-savings grid line, the value
+   function over savings and house value (also zoomed to houses up to 100
+   years of household income), slices at the typical household's savings with
+   a map of the grid points each slice is interpolated from, and the
+   27-year-old's choice. Each figure's text is also written to a .txt file
+   next to it. `ruin_figures()` uses step 7 as run with constant house prices
+   as the contrast; `ruin_figures(0.3)` uses a floor of 0.3 with step 7 as
+   run as the contrast.
 3. `floor_overview.m` puts all floors on one page and prints the largest gap
    between the grids for each.
 4. `grid_map.m` shows where the solver's grid points lie per unit of income.

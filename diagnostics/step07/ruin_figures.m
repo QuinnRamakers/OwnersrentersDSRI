@@ -19,7 +19,7 @@ if nargin < 1 || isempty(phi)
     R  = {S, D, FL.std, FL.dense};
     nm = {'coarse grid', 'fine grid', 'constant house prices, coarse grid', 'constant house prices, fine grid'};
     tag = ''; main = 'as run'; alt = 'constant house prices'; notes_on = true;
-    zw = 'bankrupt'; zone_txt = 'Red: bankrupt (housing costs exceed income)';
+    zw = 'bankrupt';
 else
     F = load(fullfile(pth.data, sprintf('owner_floor_%03d.mat', round(100 * phi))));
     R  = {F.std, F.dense, S, D};
@@ -27,12 +27,10 @@ else
           'coarse grid, floor 10^{-6} (before)', 'fine grid, floor 10^{-6} (before)'};
     tag = sprintf('_floor%03d', round(100 * phi)); main = sprintf('floor %g', phi); alt = 'floor 10^{-6} (before)';
     notes_on = false; zw = 'on the floor';
-    zone_txt = 'Red: on the floor this year (housing costs leave less than the floor)';
 end
 cS = [0 0 0]; cD = [0.85 0.33 0.10]; cF = [0.20 0.45 0.75];
 col = {cS, cD, cF, cD}; sty = {'-', '-', '-', '--'};
 YLO = 1e-7; YHI = 1e2;                                  % value axis in the cut figures
-WB = 'well-being (log scale)';
 HY = 'house value (years of household income)';
 XY = 'savings (years of household income)';
 P = cell(1, 4);
@@ -68,37 +66,32 @@ end
 xlim(ax, [25 100]); xline(ax, 67, 'k--', 'retirement', 'LabelVerticalAlignment', 'middle', 'HandleVisibility', 'off');
 xlabel(ax, 'Age'); ylabel(ax, sprintf('%% of simulated households %s that year', zw));
 legend(ax, nm(1:2), 'Location', 'northwest');
-if R{1}.p.phi_floor < 1e-3, fl = sprintf('10^{%d}', round(log10(R{1}.p.phi_floor))); else, fl = sprintf('%g', R{1}.p.phi_floor); end
-title(ax, {sprintf('1. How often households are %s, by age (%s)', zw, main), ...
-    sprintf('%s: savings plus income do not cover the housing bill, so the household consumes the floor (%s years of household income)', ...
-    [upper(zw(1)) zw(2:end)], fl), ...
-    sprintf('With %s: at most %.1f%% in any year', alt, 100 * max(mean(P{3}.sim.floored, 1)))}, 'FontSize', 12);
+if notes_on
+    title(ax, 'Fraction of simulated households that go bankrupt (housing costs greater than income and savings)', 'FontSize', 12);
+else
+    title(ax, sprintf(['Fraction of simulated households on the floor of %g years of household income ' ...
+        '(housing costs leave less than the floor)'], phi), 'FontSize', 12);
+end
 save_fig(fig, fullfile(out, ['ruin_1_why' tag '.png']));
 
 %% 2. The cliff along the no-savings line, grid point by grid point
 fig = figure('Visible', 'off', 'Position', [30 30 2100 720], 'Color', 'w');
 tl = tiledlayout(fig, 1, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
-title(tl, {'2. What the computer sees: well-being of an owner without savings, as the house gets bigger relative to income', ...
-    ['Dots: where the computer calculates. Lines: the straight lines it draws in between. ' ...
-     zone_txt '. Grey bars: where households are. Dashed: the most exposed household (least cash after the housing bill)']}, ...
+title(tl, {'Value function as a function of income to house size (constant income and savings to income rate)', ...
+    ['Dots are the grid points, the histogram shows the distribution of simulated households, ' ...
+     'and the dashed line is the highest housing to income ratio observed']}, ...
     'FontSize', 12, 'FontWeight', 'bold');
-cl_cases = {1, 45, main; 1, 85, main; 3, 85, alt};
-short = {'coarse', 'fine', 'coarse', 'fine'};
-note = {{'The fine grid finds well-being', 'collapsing well before bankruptcy:', ...
-         'from there a run of bad years can', 'still push the household over.', ...
-         'The coarse grid draws one straight', 'line across the whole fall.'}, ...
-        {'Households here are bankrupt', 'this year, so their well-being', ...
-         'should be near zero. But the next', 'calculation point is far away, so', 'the computer rates them as fine.'}, ...
-        {'Same blind spot, but with', 'constant house prices no household', 'gets near it.'}};
+cl_cases = {1, 45, ''; 1, 85, ''; 3, 85, [alt ', ']};
+Zw = [upper(zw(1)) zw(2:end)];
 for k = 1:3
-    i0 = cl_cases{k, 1}; t = find(ages == cl_cases{k, 2}); a = find(show_ages == cl_cases{k, 2});
+    i0 = cl_cases{k, 1}; t = find(ages == cl_cases{k, 2});
     ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on');
     hb = (1 - R{i0}.p.phi_floor) / cost_rate(R{i0}.p, t);
     patch(ax, [hb HR HR hb], [YLO YLO YHI YHI], [0.9 0.3 0.3], 'FaceAlpha', 0.12, 'EdgeColor', 'none', ...
         'HandleVisibility', 'off');
     hist_strip(ax, linspace(0, HR, 81), P{i0}.h(:, t), YLO, 2);
     hh = linspace(0, HR, 4000);
-    lines = gobjects(1, 2); txt = {}; nxt = 0;
+    lines = gobjects(1, 2);
     for j = 0:1
         r = R{i0 + j}; cc = col{i0 + j};
         F = z_interp(r, t); Dh = horizon(r, t)^(1 / (g - 1));
@@ -109,71 +102,69 @@ for k = 1:3
         zn = z_nodes(r, t); zn = zn(:, end, 1);          % u2 = 1 (no liquid savings), u3 = 0
         cen = zn ./ u1n * Dh;
         plot(ax, hn, cen, 'o', 'Color', cc, 'MarkerFaceColor', cc, 'MarkerSize', 5, 'HandleVisibility', 'off');
-        plot(ax, EH(i0 + j, a) * [1 1], [YLO YHI], '--', 'Color', cc, 'LineWidth', 1.4, 'HandleVisibility', 'off');
-        txt{end+1} = sprintf('%s grid: last point outside the red zone at %.0f years of household income, next at %.0f', ...
-            short{i0 + j}, max(hn(hn < hb)), min(hn(hn >= hb))); %#ok<AGROW>
-        txt{end+1} = sprintf('   most exposed household: house %.0f years of household income, savings %.1f', EH(i0 + j, a), EX(i0 + j, a)); %#ok<AGROW>
-        if ~any(hn > hb & hn <= HR), nxt = max(nxt, min(hn(hn > HR))); end
     end
-    set(ax, 'YScale', 'log'); xlim(ax, [0 HR]); ylim(ax, [YLO YHI]);
-    xlabel(ax, HY); ylabel(ax, WB);
+    hmax_obs = max([P{i0}.h(:, t); P{i0 + 1}.h(:, t)]);   % the same on both grids: nobody chooses the house
+    plot(ax, hmax_obs * [1 1], [YLO YHI], '--', 'Color', [0.3 0.3 0.3], 'LineWidth', 1.4, 'HandleVisibility', 'off');
+    value_axis(ax, YLO, YHI, horizon(R{i0}, t), g);
+    xlim(ax, [0 HR]);
+    xlabel(ax, HY); ylabel(ax, 'value function (log scale)');
     legend(ax, lines, nm(i0 + [0 1]), 'Location', 'northeast', 'FontSize', 9);
-    title(ax, sprintf('(%s)  %s, age %d: %s above %.0f years of household income', char('a' + k - 1), cl_cases{k, 3}, cl_cases{k, 2}, zw, hb));
-    text(ax, 0.08, 0.87, txt, 'Units', 'normalized', 'FontSize', 9, 'VerticalAlignment', 'top');
-    if nxt > 0
-        text(ax, 0.99, 0.55, sprintf('next grid point at %.0f years of household income, off the chart \\rightarrow', nxt), 'Units', 'normalized', ...
-            'HorizontalAlignment', 'right', 'FontSize', 9, 'Color', [0.55 0.1 0.1]);
-    end
-    if notes_on, text(ax, 0.30, 0.45, note{k}, 'Units', 'normalized', 'FontSize', 9.5, 'VerticalAlignment', 'top', ...
-            'Color', [0.55 0.1 0.1]); end
+    title(ax, {sprintf('(%s)  %sage %d', char('a' + k - 1), cl_cases{k, 3}, cl_cases{k, 2}), ...
+        sprintf('(%s when the house price exceeds %.0f years of household income)', Zw, hb)});
 end
 save_fig(fig, fullfile(out, ['ruin_2_cliff' tag '.png']));
 
 %% 3. The value landscape over house value and savings
-fig = figure('Visible', 'off', 'Position', [30 30 1900 1800], 'Color', 'w');
-tl = tiledlayout(fig, 3, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+% Two versions: the full range shared with figures 2 and 4 and the colour scale
+% of the floor, and a zoom on houses up to 100 years of household income with
+% the colour scale of each age's own values in that window.
 Dage = arrayfun(@(age) horizon(R{1}, find(ages == age)), show_ages);
-title(tl, {'3. Well-being in every situation: house value (across) and savings (up), both in years of household income', ...
-    ['Colour: well-being, the constant yearly consumption (in years of household income) worth as much as the situation. In brackets the value ' ...
-     'function V = -D x well-being^{-4}, in units where a year of consuming one''s income is -1,'], ...
-    [sprintf('with D the remaining discounted, survival-weighted years (%.1f at 27, %.1f at 45, %.1f at 85). ', Dage) ...
-     'Black dots: grid points. Pink dots: households. Star: the most exposed household. Right of the red line: ' zw]}, ...
-    'FontSize', 12, 'FontWeight', 'bold');
-[Hg, Xg] = meshgrid(linspace(0, HR, 400), linspace(0, XR, 300));
-for k = 1:numel(show_ages)
-    t = find(ages == show_ages(k)); kr = cost_rate(R{1}.p, t);
-    hb = linspace((1 - R{1}.p.phi_floor) / kr, HR, 100); xb = kr * hb - 1 + R{1}.p.phi_floor;   % the bankruptcy line
-    for i = 1:2
-        ax = nexttile(tl); hold(ax, 'on'); box(ax, 'on');
-        pcolor(ax, Hg, Xg, log10(ce_at(R{i}, t, Xg, Hg))); shading(ax, 'flat');
-        colormap(ax, blue_map()); clim(ax, [clo, 1]);
-        cb = colorbar(ax); cb.Ticks = clo:1;
-        cb.TickLabels = arrayfun(@(e) v_label(e, Dage(k), g), clo:1, 'UniformOutput', false);
-        cb.Label.String = 'well-being   [value function V]';
-        [xn, hn] = nodes_xh(R{i}.p);
-        in = xn <= XR & hn <= HR;
-        plot(ax, hn(in), xn(in), 'o', 'MarkerSize', 3.5, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'w', 'LineWidth', 0.4);
-        scatter(ax, P{i}.h(1:5:end, t), P{i}.x(1:5:end, t), 4, [0.90 0.20 0.65], 'filled', 'MarkerFaceAlpha', 0.45);
-        m = xb <= XR;
-        plot(ax, hb(m), xb(m), 'r-', 'LineWidth', 2);
-        plot(ax, EH(i, k), EX(i, k), 'p', 'MarkerSize', 16, 'MarkerFaceColor', cW, 'MarkerEdgeColor', 'k', 'LineWidth', 1);
-        set(ax, 'Layer', 'top'); xlim(ax, [0 HR]); ylim(ax, [0 XR]);
-        xlabel(ax, HY); ylabel(ax, XY);
-        title(ax, sprintf('(%s)  age %d, %s', char('a' + 2 * (k - 1) + i - 1), show_ages(k), nm{i}));
-        if show_ages(k) == 85 && notes_on
-            text(ax, 0.97, 0.95, {'Households right of the red line are bankrupt this year,', ...
-                'yet they look comfortable: no grid point lies there'}, 'Units', 'normalized', ...
-                'FontSize', 9.5, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', ...
-                'Color', [0.55 0.1 0.1], 'BackgroundColor', 'w', 'Margin', 2);
+for zoom = [false true]
+    if zoom, H3 = 100; ftag = '_zoom100'; else, H3 = HR; ftag = ''; end
+    fig = figure('Visible', 'off', 'Position', [30 30 1900 1800], 'Color', 'w');
+    tl = tiledlayout(fig, 3, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+    title(tl, {'Value function over savings and home value (as multiples of yearly household income) for two grids.', ...
+        ['The red line is the line where the savings and income is lower than the housing costs. ' ...
+         'Black dots are the grid points, pink dots are the simulated households,'], ...
+        'and the star is the simulated household that is the closest to bankruptcy or has the highest negative balance.'}, ...
+        'FontSize', 12, 'FontWeight', 'bold');
+    [Hg, Xg] = meshgrid(linspace(0, H3, 400), linspace(0, XR, 300));
+    for k = 1:numel(show_ages)
+        t = find(ages == show_ages(k)); kr = cost_rate(R{1}.p, t);
+        hb = linspace((1 - R{1}.p.phi_floor) / kr, H3, 100); xb = kr * hb - 1 + R{1}.p.phi_floor;   % the bankruptcy line
+        L = {log10(ce_at(R{1}, t, Xg, Hg)), log10(ce_at(R{2}, t, Xg, Hg))};
+        if zoom                                         % this age's own range, shared by both grids
+            lim = [floor(4 * min([L{1}(:); L{2}(:)])), ceil(4 * max([L{1}(:); L{2}(:)]))] / 4;
+            if diff(lim) >= 3, tk = ceil(lim(1)):floor(lim(2)); else, tk = linspace(lim(1), lim(2), 6); end
+        else
+            lim = [clo, 1]; tk = clo:1;
+        end
+        for i = 1:2
+            ax = nexttile(tl); hold(ax, 'on'); box(ax, 'on');
+            pcolor(ax, Hg, Xg, L{i}); shading(ax, 'flat');
+            colormap(ax, blue_map()); clim(ax, lim);
+            cb = colorbar(ax); cb.Ticks = tk;
+            cb.TickLabels = arrayfun(@(e) v_label(e, Dage(k), g), tk, 'UniformOutput', false);
+            cb.Label.String = 'value function';
+            [xn, hn] = nodes_xh(R{i}.p);
+            in = xn <= XR & hn <= H3;
+            plot(ax, hn(in), xn(in), 'o', 'MarkerSize', 3.5, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'w', 'LineWidth', 0.4);
+            scatter(ax, P{i}.h(1:5:end, t), P{i}.x(1:5:end, t), 4, [0.90 0.20 0.65], 'filled', 'MarkerFaceAlpha', 0.45);
+            m = xb <= XR;
+            plot(ax, hb(m), xb(m), 'r-', 'LineWidth', 2);
+            plot(ax, EH(i, k), EX(i, k), 'p', 'MarkerSize', 16, 'MarkerFaceColor', cW, 'MarkerEdgeColor', 'k', 'LineWidth', 1);
+            set(ax, 'Layer', 'top'); xlim(ax, [0 H3]); ylim(ax, [0 XR]);
+            xlabel(ax, HY); ylabel(ax, XY);
+            title(ax, sprintf('(%s)  age %d, %s', char('a' + 2 * (k - 1) + i - 1), show_ages(k), nm{i}));
         end
     end
+    save_fig(fig, fullfile(out, ['ruin_3_landscape' ftag tag '.png']));
 end
-save_fig(fig, fullfile(out, ['ruin_3_landscape' tag '.png']));
 
 %% 4. Cuts through the occupied region, with the grid each cut passes through
 fig = figure('Visible', 'off', 'Position', [30 30 2100 1900], 'Color', 'w');
 tl = tiledlayout(fig, 6, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
-title(tl, {'4. A slice through figure 3 at the typical household''s savings: well-being as the house gets bigger, and the grid the slice runs through', ...
+title(tl, {'4. A slice through figure 3 at the typical household''s savings: the value function as the house gets bigger, and the grid the slice runs through', ...
     ['Rows 1 and 3: ' main ' and ' alt '. Dots on the lines: where the slice crosses a grid line; ' ...
      'between dots the computer interpolates. Grey bars: households. Red: ' zw '. Dashed: the most exposed household'], ...
     ['Rows 2 and 4: the same slice (purple) on the grid, house value across and savings up as in figure 3. The grid is regular in the solver''s own variables ' ...
@@ -204,13 +195,13 @@ for row = 1:2
                 'MarkerFaceColor', col{ii(j)}, 'MarkerSize', 4, 'HandleVisibility', 'off');
             plot(ax, EH(ii(j), k) * [1 1], [YLO YHI], '--', 'Color', col{ii(j)}, 'LineWidth', 1.4, 'HandleVisibility', 'off');
         end
-        set(ax, 'YScale', 'log'); ylim(ax, [YLO YHI]); xlim(ax, [0 HR]);
-        xlabel(ax, HY); ylabel(ax, WB);
+        value_axis(ax, YLO, YHI, horizon(base, t), g); xlim(ax, [0 HR]);
+        xlabel(ax, HY); ylabel(ax, 'value function (log scale)');
         title(ax, sprintf('(%s)  %s, age %d, savings %.1f years of household income', char('a' + 6 * (row - 1) + k - 1), lab, show_ages(k), x0));
         legend(ax, lines, nm(ii), 'Location', 'southwest', 'FontSize', 9);
         if row == 1 && k == 3 && notes_on
             text(ax, 0.35, 0.45, {'Households in the red zone are bankrupt this year,', ...
-                'so their well-being should be near zero. The computer', ...
+                'so their value should be near the floor. The computer', ...
                 'has no calculation point there, so it carries over', ...
                 'the value from the safe side.'}, 'Units', 'normalized', 'FontSize', 9.5, ...
                 'Color', [0.55 0.1 0.1]);
@@ -460,7 +451,7 @@ for j = 1:2
 end
 set(ax, 'Layer', 'top'); xlim(ax, [0 hmax]); ylim(ax, [-0.02 * xtop, xtop]);
 if far > hmax
-    text(ax, 0.99, 0.93, sprintf('the slice also draws on grid points off the chart, out to %.0f years of household income \\rightarrow', far), ...
+    text(ax, 0.99, 0.93 - 0.5 * with_legend, sprintf('also uses grid points out to %.0f years of household income \\rightarrow', far), ...
         'Units', 'normalized', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'FontSize', 9, ...
         'Color', [0.55 0.1 0.1], 'BackgroundColor', 'w', 'Margin', 1);
 end
@@ -478,12 +469,23 @@ h = Pi.h(j, t); x = Pi.x(j, t);
 end
 
 function s = v_label(e, D, g)
-% Colour-bar tick: well-being 10^e and the value function in units where a
-% year of consuming one's income is -1.
-if e == 0, c = '1'; elseif e == 1, c = '10'; else, c = sprintf('10^{%d}', e); end
+% Value-axis tick: certainty-equivalent consumption 10^e (years of household
+% income) and, in brackets, the value function in units where a year of
+% consuming one's income is -1.
+if e == 0, c = '1'; elseif e == 1, c = '10';
+elseif e == round(e), c = sprintf('10^{%d}', e); else, c = sprintf('%.2g', 10^e); end
 v = D * 10^((1 - g) * e); ex = floor(log10(v));
 if abs(ex) <= 2, vs = sprintf('%.3g', v); else, vs = sprintf('%.1f\\cdot10^{%d}', v / 10^ex, ex); end
 s = sprintf('%s   [V = -%s]', c, vs);
+end
+
+function value_axis(ax, ylo, yhi, D, g)
+% Log axis of certainty-equivalent consumption, one tick per decade, each
+% labelled with the value function it stands for.
+e = ceil(log10(ylo)):floor(log10(yhi));
+set(ax, 'YScale', 'log'); ylim(ax, [ylo yhi]);
+ax.YTick = 10.^e;
+ax.YTickLabel = arrayfun(@(k) v_label(k, D, g), e, 'UniformOutput', false);
 end
 
 function m = blue_map()
@@ -537,7 +539,14 @@ axs = findall(fig, 'Type', 'axes');
 for i = 1:numel(axs)
     if ~isempty(axs(i).Toolbar), axs(i).Toolbar.Visible = 'off'; end
 end
-exportgraphics(fig, file, 'Resolution', 120);
+for attempt = 1:5                                % a viewer can hold the old file open for a moment
+    try
+        exportgraphics(fig, file, 'Resolution', 120); break
+    catch err
+        if attempt == 5, rethrow(err); end
+        pause(3);
+    end
+end
 dump_text(fig, [file(1:end-4) '.txt']);
 close(fig);
 fprintf('wrote %s\n', file);
