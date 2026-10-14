@@ -30,6 +30,11 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-14 Mortgage payment figure: Quinn's labels (spec: none, asked by Quinn in Claude Code)
+Changed: `+figures/mortgage.m`, payment-only figure: title "Annual mortgage payment" only; legend "Model approximation (rate*current house value)" and "Fixed rate mortgage". The six-panel figure keeps its labels. Redrawn `mortgage_07_owner_payment.png`.
+Checks run: `checkcode` on the function, no messages.
+Commit: this entry, pushed to main.
+
 ### 2026-10-14 Mortgage figure: payment panel only, without the nominal annuity (spec: none, asked by Quinn in Claude Code)
 Quinn: rerun the mortgage plot with only panel (a) and without the nominal mortgage.
 Changed: `+figures/mortgage.m`: options `panels` ('all' or 'payment') and `nominal` (true or false); without the nominal annuity its lines, legend entries and numbers are left out in every panel. The defaults draw the figure as before. Drawn for step 7: `ladder/standard_16x16x10_gh5/mortgage_07_owner_payment.png` (gitignored), the model's payment (mean EUR 6.5k at 25, 18.6k at 54, p10-p90 9.9k-29.4k) against the real annuity (EUR 6.5k every year to 54).

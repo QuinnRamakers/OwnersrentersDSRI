@@ -75,8 +75,9 @@ if strcmp(opts.panels, 'payment')
     fig = figure('Visible', 'off', 'Position', [30 30 1300 700], 'Color', 'w');
     ax = axes(fig); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS + 1;
     xlabel(ax, 'Age');
+    leg(1:2) = {'Model approximation (rate*current house value)', 'Fixed rate mortgage'};
     payment_panel(ax, a, pay_model, pay_real, pay_nom, sc, nom, cm, cr, cn, LWD, d.unit, leg);
-    title(ax, [ttl, {'Annual mortgage payment'}], 'FontSize', FT + 1, 'Interpreter', 'none');
+    title(ax, 'Annual mortgage payment', 'FontSize', FT + 2);
 else
     fig = figure('Visible', 'off', 'Position', [30 30 2100 1150], 'Color', 'w');
     tl  = tiledlayout(fig, 2, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
