@@ -75,15 +75,15 @@ end
 save_fig(fig, fullfile(out, ['ruin_1_why' tag '.png']));
 
 %% 2. The cliff along the no-savings line, grid point by grid point
-fig = figure('Visible', 'off', 'Position', [30 30 2100 720], 'Color', 'w');
-tl = tiledlayout(fig, 1, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
+fig = figure('Visible', 'off', 'Position', [30 30 1600 720], 'Color', 'w');
+tl = tiledlayout(fig, 1, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {'Value function as a function of income to house size (constant income and savings to income rate)', ...
     ['Dots are the grid points, the histogram shows the distribution of simulated households, ' ...
      'and the dashed line is the highest housing to income ratio observed']}, ...
     'FontSize', 12, 'FontWeight', 'bold');
-cl_cases = {1, 45, ''; 1, 85, ''; 3, 85, [alt ', ']};
+cl_cases = {1, 45, ''; 1, 85, ''};                     % step 7 as run at 45 and 85
 Zw = [upper(zw(1)) zw(2:end)];
-for k = 1:3
+for k = 1:size(cl_cases, 1)
     i0 = cl_cases{k, 1}; t = find(ages == cl_cases{k, 2});
     ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on');
     hb = (1 - R{i0}.p.phi_floor) / cost_rate(R{i0}.p, t);

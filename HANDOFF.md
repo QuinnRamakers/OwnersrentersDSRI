@@ -30,6 +30,11 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-14 Step-7 figure 2 without the constant-price panel (spec: none, asked by Quinn in Claude Code)
+Changed: `diagnostics/step07/ruin_figures.m`: figure 2 (value function along the no-savings line) shows only step 7 as run at 45 and 85; the constant-house-price panel is gone. Redrawn.
+Checks run: `checkcode` on the script, no messages.
+Commit: this entry, pushed to main.
+
 ### 2026-10-14 Mortgage payment figure: Quinn's labels (spec: none, asked by Quinn in Claude Code)
 Changed: `+figures/mortgage.m`, payment-only figure: title "Annual mortgage payment" only; legend "Model approximation (rate*current house value)" and "Fixed rate mortgage". The six-panel figure keeps its labels. Redrawn `mortgage_07_owner_payment.png`.
 Checks run: `checkcode` on the function, no messages.
