@@ -30,6 +30,18 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-14 Step-7 figures 1-4: one range for all panels, the most exposed household, a value scale (spec: none, asked by Quinn in Claude Code)
+Quinn: focus on figures 1-4; figure 1 only the bankruptcy rate of the two grids; figure 3 without the difference column, a colour scheme where the households show, and numbers on the colour scale including the value function; the same range in every panel; mark the most extreme simulated household.
+Changed: `diagnostics/step07/ruin_figures.m`.
+- Figure 1 is one panel: the share of simulated households bankrupt each year, coarse and fine grid.
+- Figures 2-4 use one linear range in every panel: house value 0-450 and savings 0-20, relative to income. It is set by the most exposed household (house 394x income at 85) and by where each slice of figure 4 turns bankrupt.
+- Each panel marks the most exposed simulated household: the one with the least cash left after the housing bill (savings + income - housing costs). Coarse grid: house 5.3x / savings 0.19x at 27, 26x / 0.0x at 45 (bankrupt), 394x / 0.0x at 85 (bankrupt, short by 4.9x income). Fine grid: 2.2x / 0.83x at 27, 2.6x / 0.90x at 45, 394x / 0.0x at 85. House value over income does not depend on the grid; savings do.
+- Figure 3 is two columns (coarse, fine), dark blue for near the floor to white for comfortable, pink households drawn above the grid points. The colour bar shows well-being from 10^-6 to 10 and, in brackets, the value function V = -D x well-being^-4 in units where a year of consuming one's income is -1 (D = 22.1 at 27, 19.3 at 45, 5.8 at 85).
+- Figure 5 is unchanged.
+What it shows: at 85 the most exposed household is bankrupt, yet both value functions rate its situation as comfortable (light blue). The cost of one range for all ages is that the age-27 and age-45 panels squeeze the region that matters at those ages into the left tenth.
+Checks run: `checkcode` on the script, no messages. Only a figure script changed.
+Commit: this entry, pushed to main.
+
 ### 2026-10-14 Step-7 figures: one axis convention (spec: none, asked by Quinn in Claude Code)
 Quinn: the grid graphs scaled their axes inconsistently; wanted both axes linear in every grid graph, and the figures for the 1e-6 floor only.
 Changed: `diagnostics/step07/ruin_figures.m`. Figures 2, 3 and 4 now put house value relative to income across and savings relative to income up, both linear, with one range per age shared by all three (age 27: house 0-30, savings 0-2; 45: 0-90, 0-10; 85: 0-300, 0-20). The house range reaches past the point where both slices of figure 4 turn bankrupt; the savings range covers 95% of households, so the richest 5% are off the top. Figure 3 swapped its axes to match figure 4. On linear axes the grid lines in figure 4 are straight: diagonals of equal total wealth and rays of equal house share. Figure 2 says where the next grid point lies when it is off the chart (4,999x income at 85). The bankruptcy line in figure 3 now uses the floor of the case shown (it used the 1e-6 floor in the floor variants). Redrawn for step 7 as run only; the `_floorNNN` figures on disk predate this.
