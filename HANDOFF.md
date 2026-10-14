@@ -30,6 +30,19 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-14 Where households live on the grid, by age (spec: none, asked by Quinn in Claude Code)
+Quinn: where households live moves over the life cycle, so show where they actually are on the grids over the years.
+Changed: `diagnostics/grid_axes/occupancy.m` (new). From the saved results of steps 6 and 9-12 (standard numerics, both arms), no new solves. `robustness/occupancy_<arm>.png`: per step, the households' density on u1 (log scale, labelled in years of income) and on u2 by age, with the standard grid's points (black) and the bunched grid's (red dashes), and the number of grid points inside the middle-90% band per age. `robustness/occupancy_joint_<arm>.png`: steps 9-12 at ages 35, 50, 62, 66 and 75, 1,500 households on (u1, u2) with both lattices, each panel zoomed to its households.
+What the pages show (owner; renter alike):
+- The occupied band is a path that moves with age: u1 falls from about 1 at 25 to about 0.1 (10 years of income) at 66 as wealth builds, jumps down at 67 when income becomes the pension, and rises again as wealth is spent. u2 starts at 1 (the first contributions with no liquid savings), falls to 0.7-0.8 in mid-life and returns towards 1 by 66 and in retirement.
+- At each age the band covers only a small part of each axis. One fixed set of points serves every age, so most points are idle at any one age, and the occupied cells change with age and with the step.
+- Step 6: 3-5 u1 points inside the band in working life and 5-15 in retirement. Steps 9-12: 1-2 u1 points from about 45 to 66; at step 12 no standard u1 point at all inside the band from 67 to about 85 (median at 0.02, 50 years of income, below the lowest interior point at 0.067). u2: everyone lives above 0.5 after 30, where the even grid has 8 of its 16 points; at 35 the whole cloud sits in one cell (0.93-1).
+- Step 10 (all-stock fund) spreads retirees over two decades of u1 (0.003-0.3) because the pot's outcome varies so much.
+- The bunched grid raises the count to about 2-4 per axis in the same places, but does not follow the band either.
+Checks run: `checkcode` on the script, no messages. No code outside `diagnostics/` changed.
+Commit: this entry, pushed to main.
+Open: how to follow the moving band. A fixed grid placed by occupancy over all ages (`utility.auto_state_grids` from the step's own panel, or the bunched grid) spends points on the union of the path; a grid that changes with age (each age its own points, with next year's value read on next year's grid) would follow it, but the solver uses one grid for all ages, so that is a code change. Quinn to choose.
+
 ### 2026-10-13 Which grid axis matters, and runtime: results (spec: none, asked by Quinn in Claude Code)
 Changed: `+ladder/grid_axes.m`: after step 9 showed u2 mattering more than expected, two variants at the standard number of points were added to the ladders: u2 bunched toward 1 (`grid_pow_u2` 2) and both axes bunched (`grid_pow` 2, `grid_pow_u2` 2); a fourth row 'Both axes'. `diagnostics/grid_axes/runtime_map.m`: the bunched runs, axis limits. `diagnostics/grid_axes/axes_pdf.m` (new): `robustness/grid_axes.pdf` (12 pages: the gap table, the runtime map, the axis page of steps 12, 11, 10, 9, 6 per arm). Figures and runs gitignored under `ladder/standard_16x16x10_gh5/robustness/` (`robust_axes_*`, `runtime_map.png`, `*_g*x*x*_gh*.mat`).
 Checks run: `ladder.grid_axes(k)` for k = 6, 9, 10, 11 and `ladder.grid_axes(12, ladders=true)`, 6,204 s, nothing else running; then the bunched variants and `runtime_map` (5 min). `run_tests` (full): 0 of 13 checks failed (198 s).
