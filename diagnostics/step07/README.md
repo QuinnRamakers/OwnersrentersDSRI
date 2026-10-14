@@ -15,7 +15,8 @@ them. None of it changes the model.
 2. `ruin_figures.m` draws five figures for the step-7 owner: why one year at
    the floor dominates, what the solver sees along the no-savings grid line,
    the value over savings and house value, slices at the typical household's
-   savings, and the 27-year-old's choice. `ruin_figures()` uses step 7 as run
+   savings with a map of the grid points each slice is interpolated from, and
+   the 27-year-old's choice. `ruin_figures()` uses step 7 as run
    with constant house prices as the contrast; `ruin_figures(0.3)` uses a
    floor of 0.3 with step 7 as run as the contrast.
 3. `floor_overview.m` puts all floors on one page and prints the largest gap

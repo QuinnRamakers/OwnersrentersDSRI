@@ -190,25 +190,29 @@ for k = 1:numel(show_ages)
 end
 save_fig(fig, fullfile(out, ['ruin_3_landscape' tag '.png']));
 
-%% 4. Cuts through the occupied region
-fig = figure('Visible', 'off', 'Position', [30 30 2100 1150], 'Color', 'w');
-tl = tiledlayout(fig, 2, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
-title(tl, {'4. A slice through figure 3 at the typical household''s savings: well-being as the house gets bigger', ...
-    ['Top: ' main '. Bottom: ' alt '. Tick marks at the top: where the computer calculates ' ...
-     '(black coarse, orange fine). Grey bars: households. Red: ' zw]}, ...
+%% 4. Cuts through the occupied region, with the grid each cut passes through
+fig = figure('Visible', 'off', 'Position', [30 30 2100 1900], 'Color', 'w');
+tl = tiledlayout(fig, 6, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
+title(tl, {'4. A slice through figure 3 at the typical household''s savings: well-being as the house gets bigger, and the grid the slice runs through', ...
+    ['Rows 1 and 3: ' main ' and ' alt '. Dots on the lines: where the slice crosses a grid line; ' ...
+     'between dots the computer interpolates. Grey bars: households. Red: ' zw], ...
+    ['Rows 2 and 4: the same slice (purple) drawn on the grid. The grid is regular in the solver''s own variables ' ...
+     '(income as a share of wealth, house as a share of savings plus house),'], ...
+    ['so per unit of income its lines are diagonals (same total wealth) and rays from the origin (same house share). ' ...
+     'Large dots: the grid points whose values the slice is interpolated from']}, ...
     'FontSize', 12, 'FontWeight', 'bold');
 cut_ages = [27 45 85];
 for row = 1:2
     for k = 1:3
         t = find(ages == cut_ages(k));
-        if row == 1, ii = [1 2]; else, ii = [3 4]; end
+        if row == 1, ii = [1 2]; lab = main; else, ii = [3 4]; lab = alt; end
         base = R{ii(1)};
         x0 = median(P{ii(1)}.x(:, t));
         hs = [P{ii(1)}.h(:, t); P{ii(2)}.h(:, t)];
         hb = (x0 + 1 - base.p.phi_floor) / cost_rate(base.p, t);
         hlo = max(0.2, prctile(hs, 0.5) * 0.5); hmax = max(prctile(hs, 99.5) * 2, hb * 2);
         hh = logspace(log10(hlo), log10(hmax), 2000);
-        ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on');
+        ax = nexttile(tl, 9 * (row - 1) + k, [2 1]); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on');
         patch(ax, [hb hmax hmax hb], [YLO YLO YHI YHI], [0.9 0.3 0.3], 'FaceAlpha', 0.12, 'EdgeColor', 'none', ...
             'HandleVisibility', 'off');
         hist_strip(ax, logspace(log10(hlo), log10(hmax), 61), hs, YLO, 2);
@@ -217,20 +221,13 @@ for row = 1:2
             ce = ce_at(R{ii(j)}, t, x0 * ones(size(hh)), hh);
             lines(j) = plot(ax, hh, ce, sty{ii(j)}, 'Color', col{ii(j)}, 'LineWidth', 2);
             [hx1, hx2] = crossings(R{ii(j)}.p, x0, hlo, hmax);
-            tick_col = cS * (j == 1) + cD * (j == 2);
-            for v = [hx1, hx2]
-                plot(ax, [v v], YHI * [0.25^j, 0.25^(j - 1)], '-', 'Color', tick_col, 'LineWidth', 1.2, ...
-                    'HandleVisibility', 'off');
-            end
+            hc = sort([hx1, hx2]);
+            plot(ax, hc, ce_at(R{ii(j)}, t, x0 * ones(size(hc)), hc), 'o', 'Color', col{ii(j)}, ...
+                'MarkerFaceColor', col{ii(j)}, 'MarkerSize', 4, 'HandleVisibility', 'off');
         end
         set(ax, 'XScale', 'log', 'YScale', 'log'); ylim(ax, [YLO YHI]); xlim(ax, [hlo hmax]);
         xlabel(ax, HY); ylabel(ax, WB);
-        if row == 1
-            ttl = sprintf('(%s)  %s, age %d, savings %.1fx income', char('a' + k - 1), main, cut_ages(k), x0);
-        else
-            ttl = sprintf('(%s)  %s, age %d, savings %.1fx income', char('d' + k - 1), alt, cut_ages(k), x0);
-        end
-        title(ax, ttl);
+        title(ax, sprintf('(%s)  %s, age %d, savings %.1fx income', char('a' + 6 * (row - 1) + k - 1), lab, cut_ages(k), x0));
         legend(ax, lines, nm(ii), 'Location', 'southwest', 'FontSize', 9);
         if row == 1 && k == 3 && notes_on
             text(ax, 0.35, 0.45, {'Households in the red zone are bankrupt this year,', ...
@@ -239,6 +236,10 @@ for row = 1:2
                 'the value from the safe side.'}, 'Units', 'normalized', 'FontSize', 9.5, ...
                 'Color', [0.55 0.1 0.1]);
         end
+        ax = nexttile(tl, 9 * (row - 1) + 6 + k); hold(ax, 'on'); box(ax, 'on');
+        grid_slice(ax, R(ii), col(ii), P{ii(1)}, t, x0, hlo, hmax, k == 1);
+        xlabel(ax, HY); ylabel(ax, XY);
+        title(ax, sprintf('(%s)  the slice on the grid, age %d', char('a' + 6 * (row - 1) + 3 + k - 1), cut_ages(k)));
     end
 end
 save_fig(fig, fullfile(out, ['ruin_4_cut' tag '.png']));
@@ -441,6 +442,72 @@ function [h1, h2] = crossings(p, x0, hlo, hmax)
 h1 = 1 ./ p.u1_grid(:) - 1 - x0; h1 = h1(h1 > hlo & h1 < hmax).';
 u2 = p.u2_grid(p.u2_grid < 1); u2 = u2(:);
 h2 = u2 .* x0 ./ (1 - u2); h2 = h2(h2 > hlo & h2 < hmax).';
+end
+
+function grid_slice(ax, Rp, cols, Pb, t, x0, hlo, hmax, with_legend)
+% The slice x = x0 on both grids, in savings and house value per unit of income.
+% A grid line of constant u1 is the diagonal x + h = 1/u1 - 1; a line of
+% constant u2 is the ray x = h (1 - u2) / u2.
+cP = [0.45 0.15 0.60];
+xtop = max(2.5 * x0 + 0.5, 1);
+p1 = Rp{1}.p; k = cost_rate(p1, t);
+hz = logspace(log10(hlo), log10(hmax), 400);
+xz = min(max(k * hz - 1 + p1.phi_floor, 0), xtop);           % bankrupt below this line
+patch(ax, [hz, fliplr(hz)], [zeros(size(hz)), fliplr(xz)], [0.9 0.3 0.3], 'FaceAlpha', 0.12, ...
+    'EdgeColor', 'none', 'HandleVisibility', 'off');
+hd = scatter(ax, Pb.h(1:4:end, t), Pb.x(1:4:end, t), 3, [0.6 0.6 0.6], 'filled', 'MarkerFaceAlpha', 0.25);
+hl = logspace(log10(hlo), log10(hmax), 2000);
+hu = gobjects(1, 2); far = 0;
+for j = 2:-1:1                                                % fine grid first, coarse on top
+    p = Rp{j}.p; c = cols{j}; cl = 0.45 * c + 0.55;
+    u1 = p.u1_grid(:); u2 = p.u2_grid(:);
+    for a = 1:numel(u1)
+        plot(ax, hl, 1 / u1(a) - 1 - hl, '-', 'Color', cl, 'LineWidth', 0.6, 'HandleVisibility', 'off');
+    end
+    for b = find(u2 > 0).'
+        plot(ax, hl, hl * (1 - u2(b)) / u2(b), '-', 'Color', cl, 'LineWidth', 0.6, 'HandleVisibility', 'off');
+    end
+    [U1, U2] = ndgrid(u1, u2);
+    xn = (1 - U1) .* (1 - U2) ./ U1; hn = (1 - U1) .* U2 ./ U1;
+    plot(ax, hn(:), xn(:), '.', 'Color', c, 'MarkerSize', 7, 'HandleVisibility', 'off');
+    used = slice_nodes(p, x0, hl);
+    hu(j) = plot(ax, hn(used), xn(used), 'o', 'Color', c, 'MarkerFaceColor', c, 'MarkerSize', 6);
+    far = max(far, max(hn(used)));
+end
+hs = plot(ax, [hlo hmax], [x0 x0], '-', 'Color', cP, 'LineWidth', 2.5);
+set(ax, 'XScale', 'log', 'Layer', 'top'); xlim(ax, [hlo hmax]); ylim(ax, [-0.04 * xtop, xtop]);
+if far > hmax
+    text(ax, 0.99, 0.93, sprintf('the slice also draws on grid points off the chart, out to %.0fx income \\rightarrow', far), ...
+        'Units', 'normalized', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'FontSize', 9, ...
+        'Color', [0.55 0.1 0.1], 'BackgroundColor', 'w', 'Margin', 1);
+end
+if with_legend
+    legend(ax, [hu, hs, hd], {'coarse grid points used', 'fine grid points used', 'the slice', 'households'}, ...
+        'Location', 'northwest', 'FontSize', 8);
+end
+end
+
+function used = slice_nodes(p, x0, hl)
+% Grid points (u3 = 0 layer) that carry at least 1% of the weight somewhere along the slice.
+u1g = p.u1_grid(:); u2g = p.u2_grid(:);
+used = false(numel(u1g), numel(u2g));
+[l1, w1] = bracket(u1g, 1 ./ (1 + x0 + hl));
+[l2, w2] = bracket(u2g, hl ./ max(x0 + hl, 1e-12));
+for s = 1:numel(hl)
+    for a = 0:1
+        for b = 0:1
+            wt = (a * w1(s) + (1 - a) * (1 - w1(s))) * (b * w2(s) + (1 - b) * (1 - w2(s)));
+            if wt >= 0.01, used(l1(s) + a, l2(s) + b) = true; end
+        end
+    end
+end
+end
+
+function [lo, w] = bracket(g, v)
+% Lower bracketing node and the weight on the upper one; flat beyond the ends.
+v = min(max(v(:), g(1)), g(end));
+lo = discretize(v, g);
+w = (v - g(lo)) ./ (g(lo + 1) - g(lo));
 end
 
 function hist_strip(ax, e, v, ylo, dec)

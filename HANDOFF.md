@@ -30,6 +30,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-14 Step-7 slice figure: the grid the slice runs through (spec: none, asked by Quinn in Claude Code)
+Quinn: in the slice figure (ruin_4_cut) show which points are on the grid, since its house-value axis is built from the solver's own state variables.
+Changed: `diagnostics/step07/ruin_figures.m`, figure 4 only. Under each slice a map in savings and house value per unit of income shows both grids: lines of constant u1 are the diagonals x + h = 1/u1 - 1, lines of constant u2 the rays x = h (1 - u2)/u2, grid points at their crossings, the slice as a horizontal line, the bankrupt region and the households. Large dots mark the grid points that carry at least 1% of the interpolation weight somewhere along the slice; a note gives the furthest such point when it lies off the chart. On the slices themselves, dots mark where the slice crosses a grid line (the tick marks are gone). Redrawn for step 7 as run and the floors 0.1, 0.2, 0.3 and 0.5 (gitignored figures).
+What it shows: the slice passes between grid points, not through them, except at zero savings, where it runs along the u2 = 1 line. At every age shown, as run and with constant house prices, the slice's values near and inside the bankrupt region come partly from a grid point at about 4,900-5,000 times income (the bottom of the u1 axis), far off the chart.
+Checks run: none of the model (only a figure script changed).
+Commit: this entry, pushed to main.
+
 ### 2026-10-14 Where households live on the grid, by age (spec: none, asked by Quinn in Claude Code)
 Quinn: where households live moves over the life cycle, so show where they actually are on the grids over the years.
 Changed: `diagnostics/grid_axes/occupancy.m` (new). From the saved results of steps 6 and 9-12 (standard numerics, both arms), no new solves. `robustness/occupancy_<arm>.png`: per step, the households' density on u1 (log scale, labelled in years of income) and on u2 by age, with the standard grid's points (black) and the bunched grid's (red dashes), and the number of grid points inside the middle-90% band per age. `robustness/occupancy_joint_<arm>.png`: steps 9-12 at ages 35, 50, 62, 66 and 75, 1,500 households on (u1, u2) with both lattices, each panel zoomed to its households.
