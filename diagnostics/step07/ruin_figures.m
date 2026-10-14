@@ -1,7 +1,10 @@
-function ruin_figures(phi)
+function ruin_figures(phi, opts)
 %RUIN_FIGURES  Step 7 owner: how the floor, ruin and the grid interact.
 %   ruin_figures()     step 7 as run (floor 1e-6), constant house prices as the contrast
 %   ruin_figures(phi)  step 7 at floor phi (0.1, 0.2, 0.3 or 0.5), step 7 as run as the contrast
+%   ruin_figures([], files={c, f, c0, f0}, names=..., tag='_x', figures=1:3)
+%                      any four saved solves: a coarse and a fine one, then a
+%                      contrast pair; figure 1 then shows all four
 %   Five figures, each comparing the standard grid with the income axis doubled:
 %   ruin_1_why (bankruptcy rate by age), ruin_2_cliff, ruin_3_landscape,
 %   ruin_4_cut and ruin_5_choice. Figures 2-4 share one linear range, house
@@ -9,12 +12,31 @@ function ruin_figures(phi)
 %   cash after the housing bill). Needs step 7 and its robustness solves and
 %   the solve_cases results. "Well-being" is the certainty-equivalent
 %   consumption stream in years of current income; the labels describe it in words.
+arguments
+    phi = []
+    opts.files cell = {}
+    opts.names cell = {}
+    opts.main (1,:) char = ''
+    opts.alt (1,:) char = ''
+    opts.tag (1,:) char = ''
+    opts.out (1,:) char = ''
+    opts.figures double = 1:5
+end
 pth = step07_paths();
 cd(pth.repo);
-out = pth.out;
+out = pth.out; if ~isempty(opts.out), out = opts.out; end
+if ~isfolder(out), mkdir(out); end
 S  = load(fullfile(pth.res, '07_housing_owner.mat'));
 D  = load(fullfile(pth.res, 'robustness', '07_housing_owner_dense_u1.mat'));
-if nargin < 1 || isempty(phi)
+cS = [0 0 0]; cD = [0.85 0.33 0.10]; cF = [0.20 0.45 0.75];
+col = {cS, cD, cF, cD}; sty = {'-', '-', '-', '--'};
+all_in_fig1 = false;
+if ~isempty(opts.files)
+    R = cellfun(@load_result, opts.files, 'UniformOutput', false);
+    nm = opts.names; tag = opts.tag; main = opts.main; alt = opts.alt;
+    notes_on = true; zw = 'bankrupt'; all_in_fig1 = true;
+    col = {cS, cD, [0.55 0.55 0.55], [0.95 0.65 0.45]}; sty = {'-', '-', '--', '--'};
+elseif isempty(phi)
     FL = load(fullfile(pth.data, 'owner_flat_prices.mat'));
     R  = {S, D, FL.std, FL.dense};
     nm = {'coarse grid', 'fine grid', 'constant house prices, coarse grid', 'constant house prices, fine grid'};
@@ -28,14 +50,12 @@ else
     tag = sprintf('_floor%03d', round(100 * phi)); main = sprintf('floor %g', phi); alt = 'floor 10^{-6} (before)';
     notes_on = false; zw = 'on the floor';
 end
-cS = [0 0 0]; cD = [0.85 0.33 0.10]; cF = [0.20 0.45 0.75];
-col = {cS, cD, cF, cD}; sty = {'-', '-', '-', '--'};
 YLO = 1e-7; YHI = 1e2;                                  % value axis in the cut figures
 HY = 'house value (years of household income)';
 XY = 'savings (years of household income)';
 P = cell(1, 4);
 for i = 1:4, P{i} = panel(R{i}); end
-ages = P{1}.ages; g = S.p.gamma;
+ages = P{1}.ages; g = R{1}.p.gamma;
 clo = floor(log10(R{1}.p.phi_floor));                 % bottom of the colour scale in figure 3
 show_ages = [27 45 85];
 % The most exposed simulated household per solve and age: the one with the
@@ -52,20 +72,24 @@ hmx = max(EH(:)); xmx = 1;
 for a = 1:numel(show_ages)
     t = find(ages == show_ages(a));
     for i = 1:4, xmx = max(xmx, 1.2 * prctile(P{i}.x(:, t), 95)); end
-    for i = [1 3], hmx = max(hmx, (median(P{i}.x(:, t)) + 1 - R{i}.p.phi_floor) / cost_rate(R{i}.p, t)); end
+    if any(opts.figures == 4)                          % where figure 4's slices turn bankrupt
+        for i = [1 3], hmx = max(hmx, (median(P{i}.x(:, t)) + 1 - R{i}.p.phi_floor) / cost_rate(R{i}.p, t)); end
+    end
 end
 HR = nice(1.03 * hmx); XR = nice(xmx);
 cW = [1.00 0.85 0.10];                                  % marker fill for the most exposed household
 
 %% 1. How often households go bankrupt
+if any(opts.figures == 1)
 fig = figure('Visible', 'off', 'Position', [30 30 1300 650], 'Color', 'w');
 ax = axes(fig); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = 11;
-for i = 1:2
-    plot(ax, ages, 100 * mean(P{i}.sim.floored, 1), '-', 'Color', col{i}, 'LineWidth', 2.5);
+n1 = 2 + 2 * all_in_fig1;
+for i = 1:n1
+    plot(ax, ages, 100 * mean(P{i}.sim.floored, 1), sty{i}, 'Color', col{i}, 'LineWidth', 2.5);
 end
 xlim(ax, [25 100]); xline(ax, 67, 'k--', 'retirement', 'LabelVerticalAlignment', 'middle', 'HandleVisibility', 'off');
 xlabel(ax, 'Age'); ylabel(ax, sprintf('%% of simulated households %s that year', zw));
-legend(ax, nm(1:2), 'Location', 'northwest');
+legend(ax, nm(1:n1), 'Location', 'northwest');
 if notes_on
     title(ax, 'Fraction of simulated households that go bankrupt (housing costs greater than income and savings)', 'FontSize', 12);
 else
@@ -73,8 +97,10 @@ else
         '(housing costs leave less than the floor)'], phi), 'FontSize', 12);
 end
 save_fig(fig, fullfile(out, ['ruin_1_why' tag '.png']));
+end
 
 %% 2. The cliff along the no-savings line, grid point by grid point
+if any(opts.figures == 2)
 fig = figure('Visible', 'off', 'Position', [30 30 1600 720], 'Color', 'w');
 tl = tiledlayout(fig, 1, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {'Value function as a function of income to house size (constant income and savings to income rate)', ...
@@ -113,11 +139,13 @@ for k = 1:size(cl_cases, 1)
         sprintf('(%s when the house price exceeds %.0f years of household income)', Zw, hb)});
 end
 save_fig(fig, fullfile(out, ['ruin_2_cliff' tag '.png']));
+end
 
 %% 3. The value landscape over house value and savings
 % Two versions: the full range shared with figures 2 and 4 and the colour scale
 % of the floor, and a zoom on houses up to 100 years of household income with
 % the colour scale of each age's own values in that window.
+if any(opts.figures == 3)
 Dage = arrayfun(@(age) horizon(R{1}, find(ages == age)), show_ages);
 for zoom = [false true]
     if zoom, H3 = 100; ftag = '_zoom100'; else, H3 = HR; ftag = ''; end
@@ -160,8 +188,10 @@ for zoom = [false true]
     end
     save_fig(fig, fullfile(out, ['ruin_3_landscape' ftag tag '.png']));
 end
+end
 
 %% 4. Cuts through the occupied region, with the grid each cut passes through
+if any(opts.figures == 4)
 fig = figure('Visible', 'off', 'Position', [30 30 2100 1900], 'Color', 'w');
 tl = tiledlayout(fig, 6, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {'4. A slice through figure 3 at the typical household''s savings: the value function as the house gets bigger, and the grid the slice runs through', ...
@@ -213,8 +243,10 @@ for row = 1:2
     end
 end
 save_fig(fig, fullfile(out, ['ruin_4_cut' tag '.png']));
+end
 
 %% 5. The young owner's choice
+if any(opts.figures == 5)
 t = find(ages == 27);
 x0 = median(P{1}.x(:, t)); h0 = median(P{1}.h(:, t));
 fig = figure('Visible', 'off', 'Position', [30 30 2100 1150], 'Color', 'w');
@@ -294,6 +326,7 @@ text(ax, 0, 1, L6, 'Units', 'normalized', 'VerticalAlignment', 'top', 'FontSize'
 title(ax, '(f)  In numbers');
 save_fig(fig, fullfile(out, ['ruin_5_choice' tag '.png']));
 cellfun(@(s) fprintf('%s\n', s), L6);
+end
 end
 
 % ------------------------------------------------------------------------
@@ -581,4 +614,10 @@ function put(fid, what, s)
 if isempty(s), return; end
 s = cellstr(s);
 fprintf(fid, '%s: %s\n', what, strjoin(s(:).', ' / '));
+end
+
+function r = load_result(f)
+% A saved solve: a file holding r (solve_grids) or the result itself (ladder).
+s = load(f);
+if isfield(s, 'r'), r = s.r; else, r = s; end
 end
