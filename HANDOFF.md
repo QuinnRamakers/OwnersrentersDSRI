@@ -30,6 +30,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-14 Step-7 figures: one axis convention (spec: none, asked by Quinn in Claude Code)
+Quinn: the grid graphs scaled their axes inconsistently; wanted both axes linear in every grid graph, and the figures for the 1e-6 floor only.
+Changed: `diagnostics/step07/ruin_figures.m`. Figures 2, 3 and 4 now put house value relative to income across and savings relative to income up, both linear, with one range per age shared by all three (age 27: house 0-30, savings 0-2; 45: 0-90, 0-10; 85: 0-300, 0-20). The house range reaches past the point where both slices of figure 4 turn bankrupt; the savings range covers 95% of households, so the richest 5% are off the top. Figure 3 swapped its axes to match figure 4. On linear axes the grid lines in figure 4 are straight: diagonals of equal total wealth and rays of equal house share. Figure 2 says where the next grid point lies when it is off the chart (4,999x income at 85). The bankruptcy line in figure 3 now uses the floor of the case shown (it used the 1e-6 floor in the floor variants). Redrawn for step 7 as run only; the `_floorNNN` figures on disk predate this.
+Checks run: `checkcode` on the script, no messages. Only a figure script changed.
+Commit: this entry, pushed to main.
+
 ### 2026-10-14 Step-7 slice figure: the grid the slice runs through (spec: none, asked by Quinn in Claude Code)
 Quinn: in the slice figure (ruin_4_cut) show which points are on the grid, since its house-value axis is built from the solver's own state variables.
 Changed: `diagnostics/step07/ruin_figures.m`, figure 4 only. Under each slice a map in savings and house value per unit of income shows both grids: lines of constant u1 are the diagonals x + h = 1/u1 - 1, lines of constant u2 the rays x = h (1 - u2)/u2, grid points at their crossings, the slice as a horizontal line, the bankrupt region and the households. Large dots mark the grid points that carry at least 1% of the interpolation weight somewhere along the slice; a note gives the furthest such point when it lies off the chart. On the slices themselves, dots mark where the slice crosses a grid line (the tick marks are gone). Redrawn for step 7 as run and the floors 0.1, 0.2, 0.3 and 0.5 (gitignored figures).
