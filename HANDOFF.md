@@ -30,6 +30,22 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Grid design for step 7: a log-wealth grid converges, and shows the young owners' answer is a corner (spec: none, asked by Quinn in Claude Code)
+Quinn: come up with a more appropriate grid; show figures 1-3 and the dashboards. Floor kept at 1e-6 (Quinn: no other floors).
+Changed: `diagnostics/grid_design/` (new: `grid_rule.m`, `solve_grids.m`, `compare_grids.m`, README), `diagnostics/step07/ruin_figures.m` (takes any four saved solves, draws a chosen subset of figures). No model code; grids set through the existing primitive `p.grid_nodes`; the production grid is unchanged. Results and figures under `ladder/standard_16x16x10_gh5/grid_design/` (gitignored).
+Grids (step 7 owner, standard numerics, gh_n 5, N_sim 10000):
+- current: u1 (income over total wealth) evenly spaced on [0.0002, 0.6]; in wealth over income the points run ... 11.5, 23.9, 4,999 at 16 base nodes.
+- log-wealth: u1 evenly spaced in log(1 + wealth/income), three times denser between 2 and 60 than below 2 or above 60, same ends; u2 half evenly on [0, 0.9], half evenly in log(savings/house) from 0.11 to 0.0005, then 1.
+- edge-aligned: log-wealth with points moved onto the bankruptcy edge s = k - u1 (1 + k) (Quinn's suggestion).
+Checks run (largest gap to log-wealth 128x96 over ages 26-95: mean pi, mean C %, mean liquid savings in years of income; then floored % of household-years, young at the consumption bound, entry value):
+- current 16x16 (as run): 0.72, 1012%, 56; 5.5%, 0%, 0.66. 32x16: 0.88, 500%, 52; 3.9%, 7%, 0.034. 32x32: 0.88, 441%, 52; 3.8%, 53%, 1.2e-4. 64x48: 0.69, 192%, 43; 2.3%, 95%, 1.5e-5.
+- log-wealth 16x16: 0.84, 396%, 50; 2.0%, 0%, 0.13. 32x32: 0.58, 174%, 39; 0.59%, 96%, 6.5e-6. 64x48: 0.13, 55%, 12; 0.37%, 100%, 3.2e-6. 128x96: reference; 0.35%, 100%, 2.9e-6 (solve 2,062 s).
+- edge 16x16: 0.81, 392%, 49; 1.7%, 0%, 0.15. 32x32: 0.60, 170%, 39; 0.58%, 96%, 6.1e-6.
+- Against the current grid's own 64x48, log-wealth 32x32 is closer (0.26, 53%, 4.4) than the current 32x32 (0.52, 429%, 11).
+Reading: the log-wealth grid converges and the current grid does not: from 64x48 to 128x96 the bankruptcy rate by age, the value function along the no-savings line and the equity share agree closely; the remaining gap is late-life consumption (ages 80-95) and savings around 80. The current grid at 64x48 still has 2.3% of household-years bankrupt against 0.35%. Aligning points with the edge adds nothing beyond log-wealth spacing, since the value has already collapsed well before the edge. The converged answer is a corner: every owner aged 25-39 consumes at the solver's lower bound (c_floor_frac, 1% of total wealth, about EUR 3-5k a year), savings reach EUR 3.2M at 80, and consumption peaks at EUR 275k at 90. Households hoard to avoid old-age bankruptcy: maintenance on a house that grows 3.73% a year outruns a flat pension and the house cannot be sold, and with a 1e-6 floor that risk outweighs everything. The coarse grid hid this; the economics is the issue, not the grid.
+Commit: this entry, pushed to main.
+Open: (1) whether to make log-wealth the default placement (a new primitive selecting the rule; every saved result goes stale and steps 1-7 re-solve); (2) the owner's housing cost or a way to tap the house in retirement, which decides whether the corner is the model's answer (TODO.md item 1).
+
 ### 2026-10-14 Step-7 figure 2 without the constant-price panel (spec: none, asked by Quinn in Claude Code)
 Changed: `diagnostics/step07/ruin_figures.m`: figure 2 (value function along the no-savings line) shows only step 7 as run at 45 and 85; the constant-house-price panel is gone. Redrawn.
 Checks run: `checkcode` on the script, no messages.
