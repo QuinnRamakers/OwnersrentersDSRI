@@ -30,6 +30,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-14 Mortgage figure: payment panel only, without the nominal annuity (spec: none, asked by Quinn in Claude Code)
+Quinn: rerun the mortgage plot with only panel (a) and without the nominal mortgage.
+Changed: `+figures/mortgage.m`: options `panels` ('all' or 'payment') and `nominal` (true or false); without the nominal annuity its lines, legend entries and numbers are left out in every panel. The defaults draw the figure as before. Drawn for step 7: `ladder/standard_16x16x10_gh5/mortgage_07_owner_payment.png` (gitignored), the model's payment (mean EUR 6.5k at 25, 18.6k at 54, p10-p90 9.9k-29.4k) against the real annuity (EUR 6.5k every year to 54).
+Checks run: `run_tests(solve=false)`: 0 of 8 checks failed. `checkcode` on the function, no messages. The default figure redrawn and compared by eye with the earlier one: unchanged.
+Commit: this entry, pushed to main.
+
 ### 2026-10-14 Step-7 figures 1-4: Quinn's wording, value-function axes, zoomed figure 3 (spec: none, asked by Quinn in Claude Code)
 Quinn rewrote the titles of figures 1-3, removed the notes in figures 2 and 3, renamed the axes and colour bar to "value function", and asked for a second figure 3 zoomed to houses up to 100 years of household income with its own colour scale.
 Changed: `diagnostics/step07/ruin_figures.m`, `diagnostics/step07/README.md`.

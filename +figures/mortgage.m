@@ -3,6 +3,7 @@ function fig = mortgage(r, file, opts)
 %
 %   figures.mortgage(r_owner)
 %   figures.mortgage(r_owner, file, inflation=0.023)
+%   figures.mortgage(r_owner, file, panels='payment', nominal=false)
 %
 %   The model has no mortgage balance state: each year it charges the annuity
 %   rate of an N_mort-year loan at r_m times the current house value, so the
@@ -18,12 +19,15 @@ function fig = mortgage(r, file, opts)
 %   balance, cumulative payments, the present value of all payments at r_m
 %   against the loan, and the numbers. Model lines are means across simulated
 %   households with 10th-90th percentile bands; the real contracts are the
-%   same for every household.
+%   same for every household. panels='payment' draws only the payment panel;
+%   nominal=false leaves out the nominal annuity.
 
 arguments
     r (1,1) struct
     file (1,:) char = ''
     opts.inflation (1,1) double = 0.023
+    opts.panels (1,:) char {mustBeMember(opts.panels, {'all', 'payment'})} = 'all'
+    opts.nominal (1,1) logical = true
 end
 
 p = r.p;
@@ -55,90 +59,104 @@ pv_nom   = sum(pay_nom(1, :) .* disc);
 st = figures.style();
 cm = [0.65 0.15 0.15]; cr = st.series(1, :); cn = st.series(2, :);
 FS = 10; FT = 11; LWD = 2;
-fig = figure('Visible', 'off', 'Position', [30 30 2100 1150], 'Color', 'w');
-tl  = tiledlayout(fig, 2, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
+nom = opts.nominal;
 step = ''; if isfield(r, 'step'), step = sprintf('Step %d, %s: ', r.step.index, r.step.label); end
-title(tl, {sprintf('%sthe model''s mortgage against a real annuity mortgage (owner)', step), ...
-    sprintf(['Loan %.0f%% of the house at entry (EUR %.0fk), %d years. Model: %.2f%% of the current house value each year. ' ...
-    'Red = model (mean, 10-90 band); blue = real annuity at %.2f%% real; orange = nominal annuity at %.2f%% with %.1f%% inflation, in real euros'], ...
-    100 * p.LTV, H0 * sc, n, 100 * ann(rm), 100 * rm, 100 * rn, 100 * pin)}, ...
-    'FontSize', 13, 'FontWeight', 'bold', 'Interpreter', 'none');
+key = sprintf('Red = model (mean, 10-90 band); blue = real annuity at %.2f%% real', 100 * rm);
+if nom
+    key = [key sprintf('; orange = nominal annuity at %.2f%% with %.1f%% inflation, in real euros', 100 * rn, 100 * pin)];
+end
+ttl = {sprintf('%sthe model''s mortgage against a real annuity mortgage (owner)', step), ...
+    sprintf('Loan %.0f%% of the house at entry (EUR %.0fk), %d years. Model: %.2f%% of the current house value each year.', ...
+    100 * p.LTV, H0 * sc, n, 100 * ann(rm)), key};
+leg = {'model: rate x current house value', 'real annuity on the price at entry', 'nominal annuity, in real euros'};
+if ~nom, leg = leg(1:2); end
 
-ax = tile(tl, FS);
-band(ax, a, pay_model * sc, cm, LWD);
-plot(ax, a, pay_real * sc, '-', 'Color', cr, 'LineWidth', LWD);
-plot(ax, a, pay_nom * sc, '-', 'Color', cn, 'LineWidth', LWD);
-xlim(ax, [25 60]); ylabel(ax, d.unit);
-legend(ax, {'model: rate x current house value', 'real annuity on the price at entry', ...
-    'nominal annuity, in real euros'}, 'Location', 'northwest', 'FontSize', 9);
-title(ax, '(a)  Annual mortgage payment', 'FontSize', FT);
+if strcmp(opts.panels, 'payment')
+    fig = figure('Visible', 'off', 'Position', [30 30 1300 700], 'Color', 'w');
+    ax = axes(fig); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS + 1;
+    xlabel(ax, 'Age');
+    payment_panel(ax, a, pay_model, pay_real, pay_nom, sc, nom, cm, cr, cn, LWD, d.unit, leg);
+    title(ax, [ttl, {'Annual mortgage payment'}], 'FontSize', FT + 1, 'Interpreter', 'none');
+else
+    fig = figure('Visible', 'off', 'Position', [30 30 2100 1150], 'Color', 'w');
+    tl  = tiledlayout(fig, 2, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
+    title(tl, ttl, 'FontSize', 13, 'FontWeight', 'bold', 'Interpreter', 'none');
 
-ax = tile(tl, FS);
-band(ax, a, 100 * pay_model ./ d.Y, cm, LWD);
-band(ax, a, 100 * pay_real ./ d.Y, cr, LWD);
-band(ax, a, 100 * pay_nom ./ d.Y, cn, LWD);
-xlim(ax, [25 60]); ylabel(ax, '% of gross income');
-title(ax, '(b)  Payment over gross income (each with its 10-90 band)', 'FontSize', FT);
+    ax = tile(tl, FS);
+    payment_panel(ax, a, pay_model, pay_real, pay_nom, sc, nom, cm, cr, cn, LWD, d.unit, leg);
+    title(ax, '(a)  Annual mortgage payment', 'FontSize', FT);
 
-ax = tile(tl, FS);
-band(ax, a, bal_model * sc, cm, LWD);
-plot(ax, a, bal_real * sc, '-', 'Color', cr, 'LineWidth', LWD);
-plot(ax, a, bal_nom * sc, '-', 'Color', cn, 'LineWidth', LWD);
-xlim(ax, [25 60]); ylabel(ax, d.unit);
-title(ax, '(c)  Outstanding balance (model: its share of the current house)', 'FontSize', FT);
+    ax = tile(tl, FS);
+    band(ax, a, 100 * pay_model ./ d.Y, cm, LWD);
+    band(ax, a, 100 * pay_real ./ d.Y, cr, LWD);
+    if nom, band(ax, a, 100 * pay_nom ./ d.Y, cn, LWD); end
+    xlim(ax, [25 60]); ylabel(ax, '% of gross income');
+    title(ax, '(b)  Payment over gross income (each with its 10-90 band)', 'FontSize', FT);
 
-ax = tile(tl, FS);
-band(ax, a, cumsum(pay_model, 2) * sc, cm, LWD);
-plot(ax, a, cumsum(pay_real) * sc, '-', 'Color', cr, 'LineWidth', LWD);
-plot(ax, a, cumsum(pay_nom) * sc, '-', 'Color', cn, 'LineWidth', LWD);
-yline(ax, L * sc, 'k:', 'loan', 'LabelHorizontalAlignment', 'left', 'HandleVisibility', 'off');
-xlim(ax, [25 60]); ylabel(ax, d.unit);
-title(ax, '(d)  Cumulative payments, real euros, undiscounted', 'FontSize', FT);
+    ax = tile(tl, FS);
+    band(ax, a, bal_model * sc, cm, LWD);
+    plot(ax, a, bal_real * sc, '-', 'Color', cr, 'LineWidth', LWD);
+    if nom, plot(ax, a, bal_nom * sc, '-', 'Color', cn, 'LineWidth', LWD); end
+    xlim(ax, [25 60]); ylabel(ax, d.unit);
+    title(ax, '(c)  Outstanding balance (model: its share of the current house)', 'FontSize', FT);
 
-ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS;
-histogram(ax, pv_model / L, 60, 'FaceColor', cm, 'EdgeColor', 'none', 'FaceAlpha', 0.6, ...
-    'Normalization', 'probability');
-xline(ax, pv_real / L, '-', 'Color', cr, 'LineWidth', LWD);
-xline(ax, pv_nom / L, '--', 'Color', cn, 'LineWidth', LWD);
-xline(ax, mean(pv_model) / L, '-', 'Color', cm, 'LineWidth', LWD);
-xlabel(ax, 'present value of all payments at r_m, multiples of the loan');
-ylabel(ax, 'share of households');
-legend(ax, {'model, per household', 'real annuity', 'nominal annuity', 'model, mean'}, 'FontSize', 9);
-title(ax, '(e)  What the mortgage costs, in present value at entry', 'FontSize', FT);
+    ax = tile(tl, FS);
+    band(ax, a, cumsum(pay_model, 2) * sc, cm, LWD);
+    plot(ax, a, cumsum(pay_real) * sc, '-', 'Color', cr, 'LineWidth', LWD);
+    if nom, plot(ax, a, cumsum(pay_nom) * sc, '-', 'Color', cn, 'LineWidth', LWD); end
+    yline(ax, L * sc, 'k:', 'loan', 'LabelHorizontalAlignment', 'left', 'HandleVisibility', 'off');
+    xlim(ax, [25 60]); ylabel(ax, d.unit);
+    title(ax, '(d)  Cumulative payments, real euros, undiscounted', 'FontSize', FT);
 
-ax = nexttile(tl); axis(ax, 'off');
-q  = @(x, k) prctile(x, k);
-at = @(M, age) M(:, a == age);
-Lt = {
-    sprintf('Loan at entry: EUR %.0fk (%.0f%% of a house of %.1f x entry income)', L * sc, 100 * p.LTV, p.h_mult)
-    sprintf('Annuity rate: %.2f%% real (model and real annuity), %.2f%% nominal', 100 * ann(rm), 100 * ann(rn))
-    ''
-    'Annual payment, EUR thousand (2025):'
-    sprintf('  age 25: model %.1f; real annuity %.1f; nominal annuity %.1f', mean(at(pay_model, 25)) * sc, pay_real(1) * sc, pay_nom(1) * sc)
-    sprintf('  age 40: model mean %.1f (p10 %.1f, p90 %.1f); real %.1f; nominal %.1f', mean(at(pay_model, 40)) * sc, ...
-        q(at(pay_model, 40), 10) * sc, q(at(pay_model, 40), 90) * sc, pay_real(a == 40) * sc, pay_nom(a == 40) * sc)
-    sprintf('  age 54: model mean %.1f (p10 %.1f, p90 %.1f); real %.1f; nominal %.1f', mean(at(pay_model, 54)) * sc, ...
-        q(at(pay_model, 54), 10) * sc, q(at(pay_model, 54), 90) * sc, pay_real(a == 54) * sc, pay_nom(a == 54) * sc)
-    ''
-    'Payment over gross income, mean:'
-    sprintf('  age 25: model %.1f%%, real %.1f%%, nominal %.1f%%', 100 * mean(at(pay_model ./ d.Y, 25)), ...
-        100 * mean(at(pay_real ./ d.Y, 25)), 100 * mean(at(pay_nom ./ d.Y, 25)))
-    sprintf('  age 45: model %.1f%%, real %.1f%%, nominal %.1f%%', 100 * mean(at(pay_model ./ d.Y, 45)), ...
-        100 * mean(at(pay_real ./ d.Y, 45)), 100 * mean(at(pay_nom ./ d.Y, 45)))
-    sprintf('  age 54: model %.1f%%, real %.1f%%, nominal %.1f%%', 100 * mean(at(pay_model ./ d.Y, 54)), ...
-        100 * mean(at(pay_real ./ d.Y, 54)), 100 * mean(at(pay_nom ./ d.Y, 54)))
-    ''
-    'Total paid over the term, real, undiscounted (multiples of the loan):'
-    sprintf('  model mean %.2f (p10 %.2f, p90 %.2f); real %.2f; nominal %.2f', mean(sum(pay_model, 2)) / L, ...
-        q(sum(pay_model, 2), 10) / L, q(sum(pay_model, 2), 90) / L, sum(pay_real) / L, sum(pay_nom) / L)
-    'Present value at r_m (multiples of the loan):'
-    sprintf('  model mean %.2f (p10 %.2f, median %.2f, p90 %.2f); real %.2f; nominal %.2f', mean(pv_model) / L, ...
-        q(pv_model, 10) / L, q(pv_model, 50) / L, q(pv_model, 90) / L, pv_real / L, pv_nom / L)
-    sprintf('  households paying more than the loan in PV: %.0f%%', 100 * mean(pv_model > L * 1.0001))
-    };
-text(ax, 0, 1, Lt, 'Units', 'normalized', 'VerticalAlignment', 'top', 'FontSize', FS - 0.5, ...
-    'Interpreter', 'none', 'FontName', 'Consolas');
-title(ax, '(f)  Numbers', 'FontSize', FT);
+    ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS;
+    histogram(ax, pv_model / L, 60, 'FaceColor', cm, 'EdgeColor', 'none', 'FaceAlpha', 0.6, ...
+        'Normalization', 'probability');
+    xline(ax, pv_real / L, '-', 'Color', cr, 'LineWidth', LWD);
+    if nom, xline(ax, pv_nom / L, '--', 'Color', cn, 'LineWidth', LWD); end
+    xline(ax, mean(pv_model) / L, '-', 'Color', cm, 'LineWidth', LWD);
+    xlabel(ax, 'present value of all payments at r_m, multiples of the loan');
+    ylabel(ax, 'share of households');
+    lg = {'model, per household', 'real annuity', 'nominal annuity', 'model, mean'};
+    if ~nom, lg(3) = []; end
+    legend(ax, lg, 'FontSize', 9);
+    title(ax, '(e)  What the mortgage costs, in present value at entry', 'FontSize', FT);
+
+    ax = nexttile(tl); axis(ax, 'off');
+    q  = @(x, k) prctile(x, k);
+    at = @(M, age) M(:, a == age);
+    nv = @(fmt, v) nom_part(nom, fmt, v);              % the nominal contract's figure, when shown
+    Lt = {
+        sprintf('Loan at entry: EUR %.0fk (%.0f%% of a house of %.1f x entry income)', L * sc, 100 * p.LTV, p.h_mult)
+        [sprintf('Annuity rate: %.2f%% real (model and real annuity)', 100 * ann(rm)) nv(', %.2f%% nominal', 100 * ann(rn))]
+        ''
+        'Annual payment, EUR thousand (2025):'
+        [sprintf('  age 25: model %.1f; real annuity %.1f', mean(at(pay_model, 25)) * sc, pay_real(1) * sc) ...
+            nv('; nominal annuity %.1f', pay_nom(1) * sc)]
+        [sprintf('  age 40: model mean %.1f (p10 %.1f, p90 %.1f); real %.1f', mean(at(pay_model, 40)) * sc, ...
+            q(at(pay_model, 40), 10) * sc, q(at(pay_model, 40), 90) * sc, pay_real(a == 40) * sc) nv('; nominal %.1f', pay_nom(a == 40) * sc)]
+        [sprintf('  age 54: model mean %.1f (p10 %.1f, p90 %.1f); real %.1f', mean(at(pay_model, 54)) * sc, ...
+            q(at(pay_model, 54), 10) * sc, q(at(pay_model, 54), 90) * sc, pay_real(a == 54) * sc) nv('; nominal %.1f', pay_nom(a == 54) * sc)]
+        ''
+        'Payment over gross income, mean:'
+        [sprintf('  age 25: model %.1f%%, real %.1f%%', 100 * mean(at(pay_model ./ d.Y, 25)), ...
+            100 * mean(at(pay_real ./ d.Y, 25))) nv(', nominal %.1f%%', 100 * mean(at(pay_nom ./ d.Y, 25)))]
+        [sprintf('  age 45: model %.1f%%, real %.1f%%', 100 * mean(at(pay_model ./ d.Y, 45)), ...
+            100 * mean(at(pay_real ./ d.Y, 45))) nv(', nominal %.1f%%', 100 * mean(at(pay_nom ./ d.Y, 45)))]
+        [sprintf('  age 54: model %.1f%%, real %.1f%%', 100 * mean(at(pay_model ./ d.Y, 54)), ...
+            100 * mean(at(pay_real ./ d.Y, 54))) nv(', nominal %.1f%%', 100 * mean(at(pay_nom ./ d.Y, 54)))]
+        ''
+        'Total paid over the term, real, undiscounted (multiples of the loan):'
+        [sprintf('  model mean %.2f (p10 %.2f, p90 %.2f); real %.2f', mean(sum(pay_model, 2)) / L, ...
+            q(sum(pay_model, 2), 10) / L, q(sum(pay_model, 2), 90) / L, sum(pay_real) / L) nv('; nominal %.2f', sum(pay_nom) / L)]
+        'Present value at r_m (multiples of the loan):'
+        [sprintf('  model mean %.2f (p10 %.2f, median %.2f, p90 %.2f); real %.2f', mean(pv_model) / L, ...
+            q(pv_model, 10) / L, q(pv_model, 50) / L, q(pv_model, 90) / L, pv_real / L) nv('; nominal %.2f', pv_nom / L)]
+        sprintf('  households paying more than the loan in PV: %.0f%%', 100 * mean(pv_model > L * 1.0001))
+        };
+    text(ax, 0, 1, Lt, 'Units', 'normalized', 'VerticalAlignment', 'top', 'FontSize', FS - 0.5, ...
+        'Interpreter', 'none', 'FontName', 'Consolas');
+    title(ax, '(f)  Numbers', 'FontSize', FT);
+end
 
 if ~isempty(file)
     axs = findall(fig, 'Type', 'axes');
@@ -162,4 +180,18 @@ lo = prctile(M, 10, 1); hi = prctile(M, 90, 1);
 fill(ax, [x, fliplr(x)], [lo, fliplr(hi)], min(1, col * 0.5 + 0.5), 'EdgeColor', 'none', ...
     'FaceAlpha', 0.3, 'HandleVisibility', 'off');
 plot(ax, x, mean(M, 1), '-', 'Color', col, 'LineWidth', lwd);
+end
+
+function payment_panel(ax, a, pay_model, pay_real, pay_nom, sc, nom, cm, cr, cn, lwd, unit, leg)
+band(ax, a, pay_model * sc, cm, lwd);
+plot(ax, a, pay_real * sc, '-', 'Color', cr, 'LineWidth', lwd);
+if nom, plot(ax, a, pay_nom * sc, '-', 'Color', cn, 'LineWidth', lwd); end
+xlim(ax, [25 60]); ylabel(ax, unit);
+legend(ax, leg, 'Location', 'northwest', 'FontSize', 9);
+end
+
+function s = nom_part(nom, fmt, v)
+% The nominal contract's part of a numbers line, or nothing when it is not shown.
+s = '';
+if nom, s = sprintf(fmt, v); end
 end
