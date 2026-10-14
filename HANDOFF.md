@@ -30,6 +30,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-14 Step-7 figures: income units in words, text written out for review (spec: none, asked by Quinn in Claude Code)
+Quinn: replace "x income" with "years of household income" in figures 1-4, and list all text in the plots for review.
+Changed: `diagnostics/step07/ruin_figures.m`. Every "Nx income" and the axis labels ("relative to income") now read "years of household income". Saving a figure also writes all its text, panel by panel, to a .txt file next to the .png (gitignored), which is the list Quinn reviews.
+Checks run: `checkcode` on the script, no messages.
+Commit: this entry, pushed to main.
+
 ### 2026-10-14 Step-7 figures 1-4: one range for all panels, the most exposed household, a value scale (spec: none, asked by Quinn in Claude Code)
 Quinn: focus on figures 1-4; figure 1 only the bankruptcy rate of the two grids; figure 3 without the difference column, a colour scheme where the households show, and numbers on the colour scale including the value function; the same range in every panel; mark the most extreme simulated household.
 Changed: `diagnostics/step07/ruin_figures.m`.

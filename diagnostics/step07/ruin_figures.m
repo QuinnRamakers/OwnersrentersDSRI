@@ -33,8 +33,8 @@ cS = [0 0 0]; cD = [0.85 0.33 0.10]; cF = [0.20 0.45 0.75];
 col = {cS, cD, cF, cD}; sty = {'-', '-', '-', '--'};
 YLO = 1e-7; YHI = 1e2;                                  % value axis in the cut figures
 WB = 'well-being (log scale)';
-HY = 'house value relative to income';
-XY = 'savings relative to income';
+HY = 'house value (years of household income)';
+XY = 'savings (years of household income)';
 P = cell(1, 4);
 for i = 1:4, P{i} = panel(R{i}); end
 ages = P{1}.ages; g = S.p.gamma;
@@ -70,7 +70,7 @@ xlabel(ax, 'Age'); ylabel(ax, sprintf('%% of simulated households %s that year',
 legend(ax, nm(1:2), 'Location', 'northwest');
 if R{1}.p.phi_floor < 1e-3, fl = sprintf('10^{%d}', round(log10(R{1}.p.phi_floor))); else, fl = sprintf('%g', R{1}.p.phi_floor); end
 title(ax, {sprintf('1. How often households are %s, by age (%s)', zw, main), ...
-    sprintf('%s: savings plus income do not cover the housing bill, so the household consumes the floor (%s x income)', ...
+    sprintf('%s: savings plus income do not cover the housing bill, so the household consumes the floor (%s years of household income)', ...
     [upper(zw(1)) zw(2:end)], fl), ...
     sprintf('With %s: at most %.1f%% in any year', alt, 100 * max(mean(P{3}.sim.floored, 1)))}, 'FontSize', 12);
 save_fig(fig, fullfile(out, ['ruin_1_why' tag '.png']));
@@ -110,18 +110,18 @@ for k = 1:3
         cen = zn ./ u1n * Dh;
         plot(ax, hn, cen, 'o', 'Color', cc, 'MarkerFaceColor', cc, 'MarkerSize', 5, 'HandleVisibility', 'off');
         plot(ax, EH(i0 + j, a) * [1 1], [YLO YHI], '--', 'Color', cc, 'LineWidth', 1.4, 'HandleVisibility', 'off');
-        txt{end+1} = sprintf('%s grid: last point outside the red zone at %.0fx income, next at %.0fx', ...
+        txt{end+1} = sprintf('%s grid: last point outside the red zone at %.0f years of household income, next at %.0f', ...
             short{i0 + j}, max(hn(hn < hb)), min(hn(hn >= hb))); %#ok<AGROW>
-        txt{end+1} = sprintf('   most exposed household: house %.0fx income, savings %.1fx', EH(i0 + j, a), EX(i0 + j, a)); %#ok<AGROW>
+        txt{end+1} = sprintf('   most exposed household: house %.0f years of household income, savings %.1f', EH(i0 + j, a), EX(i0 + j, a)); %#ok<AGROW>
         if ~any(hn > hb & hn <= HR), nxt = max(nxt, min(hn(hn > HR))); end
     end
     set(ax, 'YScale', 'log'); xlim(ax, [0 HR]); ylim(ax, [YLO YHI]);
     xlabel(ax, HY); ylabel(ax, WB);
     legend(ax, lines, nm(i0 + [0 1]), 'Location', 'northeast', 'FontSize', 9);
-    title(ax, sprintf('(%s)  %s, age %d: %s above %.0fx income', char('a' + k - 1), cl_cases{k, 3}, cl_cases{k, 2}, zw, hb));
+    title(ax, sprintf('(%s)  %s, age %d: %s above %.0f years of household income', char('a' + k - 1), cl_cases{k, 3}, cl_cases{k, 2}, zw, hb));
     text(ax, 0.08, 0.87, txt, 'Units', 'normalized', 'FontSize', 9, 'VerticalAlignment', 'top');
     if nxt > 0
-        text(ax, 0.99, 0.55, sprintf('next grid point at %.0fx income, off the chart \\rightarrow', nxt), 'Units', 'normalized', ...
+        text(ax, 0.99, 0.55, sprintf('next grid point at %.0f years of household income, off the chart \\rightarrow', nxt), 'Units', 'normalized', ...
             'HorizontalAlignment', 'right', 'FontSize', 9, 'Color', [0.55 0.1 0.1]);
     end
     if notes_on, text(ax, 0.30, 0.45, note{k}, 'Units', 'normalized', 'FontSize', 9.5, 'VerticalAlignment', 'top', ...
@@ -133,8 +133,8 @@ save_fig(fig, fullfile(out, ['ruin_2_cliff' tag '.png']));
 fig = figure('Visible', 'off', 'Position', [30 30 1900 1800], 'Color', 'w');
 tl = tiledlayout(fig, 3, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
 Dage = arrayfun(@(age) horizon(R{1}, find(ages == age)), show_ages);
-title(tl, {'3. Well-being in every situation: house value (across) and savings (up), both relative to income', ...
-    ['Colour: well-being, the constant consumption (x income) worth as much as the situation. In brackets the value ' ...
+title(tl, {'3. Well-being in every situation: house value (across) and savings (up), both in years of household income', ...
+    ['Colour: well-being, the constant yearly consumption (in years of household income) worth as much as the situation. In brackets the value ' ...
      'function V = -D x well-being^{-4}, in units where a year of consuming one''s income is -1,'], ...
     [sprintf('with D the remaining discounted, survival-weighted years (%.1f at 27, %.1f at 45, %.1f at 85). ', Dage) ...
      'Black dots: grid points. Pink dots: households. Star: the most exposed household. Right of the red line: ' zw]}, ...
@@ -206,7 +206,7 @@ for row = 1:2
         end
         set(ax, 'YScale', 'log'); ylim(ax, [YLO YHI]); xlim(ax, [0 HR]);
         xlabel(ax, HY); ylabel(ax, WB);
-        title(ax, sprintf('(%s)  %s, age %d, savings %.1fx income', char('a' + 6 * (row - 1) + k - 1), lab, show_ages(k), x0));
+        title(ax, sprintf('(%s)  %s, age %d, savings %.1f years of household income', char('a' + 6 * (row - 1) + k - 1), lab, show_ages(k), x0));
         legend(ax, lines, nm(ii), 'Location', 'southwest', 'FontSize', 9);
         if row == 1 && k == 3 && notes_on
             text(ax, 0.35, 0.45, {'Households in the red zone are bankrupt this year,', ...
@@ -460,7 +460,7 @@ for j = 1:2
 end
 set(ax, 'Layer', 'top'); xlim(ax, [0 hmax]); ylim(ax, [-0.02 * xtop, xtop]);
 if far > hmax
-    text(ax, 0.99, 0.93, sprintf('the slice also draws on grid points off the chart, out to %.0fx income \\rightarrow', far), ...
+    text(ax, 0.99, 0.93, sprintf('the slice also draws on grid points off the chart, out to %.0f years of household income \\rightarrow', far), ...
         'Units', 'normalized', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'FontSize', 9, ...
         'Color', [0.55 0.1 0.1], 'BackgroundColor', 'w', 'Margin', 1);
 end
@@ -538,6 +538,38 @@ for i = 1:numel(axs)
     if ~isempty(axs(i).Toolbar), axs(i).Toolbar.Visible = 'off'; end
 end
 exportgraphics(fig, file, 'Resolution', 120);
+dump_text(fig, [file(1:end-4) '.txt']);
 close(fig);
 fprintf('wrote %s\n', file);
+end
+
+function dump_text(fig, file)
+% Every piece of text in a figure, panel by panel in reading order, for review.
+fid = fopen(file, 'w'); cl = onCleanup(@() fclose(fid));
+tl = findall(fig, 'Type', 'tiledlayout');
+axs = findall(fig, 'Type', 'axes');
+if ~isempty(tl)
+    put(fid, 'figure title', tl(1).Title.String);
+    [~, o] = sort(arrayfun(@(a) a.Layout.Tile, axs)); axs = axs(o);
+end
+for i = 1:numel(axs)
+    ax = axs(i);
+    fprintf(fid, '\n');
+    put(fid, 'panel title', ax.Title.String);
+    put(fid, 'x axis', ax.XLabel.String);
+    put(fid, 'y axis', ax.YLabel.String);
+    for tx = findobj(ax, 'Type', 'text').', put(fid, 'note', tx.String); end
+    for ln = findobj(ax, 'Type', 'constantline').', put(fid, 'line label', ln.Label); end
+    if ~isempty(ax.Legend), put(fid, 'legend', ax.Legend.String); end
+    if ~isempty(ax.Colorbar)
+        put(fid, 'colour bar', ax.Colorbar.Label.String);
+        put(fid, 'colour bar ticks', ax.Colorbar.TickLabels);
+    end
+end
+end
+
+function put(fid, what, s)
+if isempty(s), return; end
+s = cellstr(s);
+fprintf(fid, '%s: %s\n', what, strjoin(s(:).', ' / '));
 end
