@@ -30,6 +30,11 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Handoff: step 7, the state grid, and what waits on Quinn (spec: none, asked by Quinn in Claude Code)
+A standalone handoff for chat and the next session: `docs/HANDOFF_2026-10-15.md`. It covers 12-15 October: where the ladder stands, the step-7 mechanism, the grid study (current, log-wealth, edge-aligned and power grids against log-wealth 128x96), the converged corner for young owners, the open decisions in order, how to reproduce everything, where the scripts and results are, and how Quinn wants results shown. No code changed.
+Checks run: none needed (a document).
+Commit: this entry, pushed to main.
+
 ### 2026-10-15 Grid design for step 7: the power grid, and income on the comparison pages (spec: none, asked by Quinn in Claude Code)
 Quinn asked about the runtimes and the earlier power grid, and to plot income on the dashboards from now on.
 Changed: `diagnostics/grid_design/grid_rule.m`: rules `power` and `power3`, the existing primitives `grid_pow` and `grid_pow_u2` at 2 (or 3) written out as nodes. `diagnostics/grid_design/compare_grids.m`: a power-grid row. `+figures/compare.m`, `+figures/robustness.m`: the consumption panel also draws the reference households' mean gross income and income after tax, contributions and housing (grey); panel letters run on past z (aa, ab, ...).
