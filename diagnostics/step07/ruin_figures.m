@@ -395,7 +395,11 @@ function [ob, cbest] = objective_pi(r, t, x, h, pis)
 % consumption re-optimised for each equity share. Owner, no DC, no taxes.
 ob = zeros(size(pis)); cbest = ob;
 lw = state_w(r, t, x, h);
-cfl = min(max(1e-3, r.p.c_floor_frac / lw), 0.5);
+if isfield(r.p, 'c_floor_frac')                 % solves from before 15 October 2026
+    cfl = min(max(1e-3, r.p.c_floor_frac / lw), 0.5);
+else
+    cfl = r.p.phi_floor / (1 + x + h) / lw;      % the consumption floor, as a share of resources
+end
 for k = 1:numel(pis)
     f = @(c) -objective(r, t, x, h, c, pis(k));
     cg = linspace(cfl, 1 - 1e-6, 120);

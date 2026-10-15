@@ -171,7 +171,7 @@ for t = 1:T
     C_path(short, t) = F_t(short);
     fl_path(:,t) = short;
     n_floored    = n_floored + sum(short);
-    cb_path(:,t) = min(max(1e-3, p.c_floor_frac ./ (LW ./ W_path(:,t))), 0.5);
+    cb_path(:,t) = min(F_t ./ max(LW, realmin), 1);   % the floor as a share of resources
 
     if t == T
         % Liquid wealth left after consumption plus the house net of the sale

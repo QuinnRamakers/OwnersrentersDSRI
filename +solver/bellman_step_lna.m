@@ -162,8 +162,7 @@ end
 NC = p.N_c;
 pi_grid = linspace(0, 1, p.N_pi).';
 dp0 = pi_grid(min(2, p.N_pi)) - pi_grid(1);
-c_floor_frac = p.c_floor_frac;
-use_refine   = p.use_refine;
+use_refine = p.use_refine;
 
 algorithm = validatestring(p.fmincon_algorithm, {'active-set', 'sqp', 'interior-point'}, ...
                            'bellman_step_lna', 'p.fmincon_algorithm');
@@ -243,11 +242,9 @@ parfor k = 1:n_states
         continue
     end
 
-    % Lower bound of the consumption search: c >= c_floor_frac / LW_W, i.e.
-    % consumption of at least c_floor_frac of W. It binds in early life at the
-    % production calibration, so read early-life consumption with that in mind.
-    c_floor = max(1e-3, c_floor_frac / LW_W);
-    c_floor = min(c_floor, 0.5);
+    % Lower bound of the consumption search: the consumption floor,
+    % C >= phi_floor * Y, i.e. c >= F_W / LW_W. Here LW_W > F_W, so c_floor < 1.
+    c_floor = F_W / LW_W;
     c_grid  = linspace(c_floor, 1, NC).';
     dc0     = c_grid(2) - c_grid(1);
 

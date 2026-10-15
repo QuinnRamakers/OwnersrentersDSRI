@@ -8,8 +8,8 @@ function c = checks(p, sol, sim, s, profile, shocks)
 %   floored_share    household-years whose resources were topped up to the floor;
 %   floored_by_phase   ... at ages 25-39, 40 to retirement, and in retirement
 %   c_bound_25_39    share of households aged 25-39 consuming at the lower
-%                    bound of the consumption search (c_floor_frac). Where this
-%                    is large, early-life consumption is set by the bound
+%                    bound of the consumption search, the consumption floor
+%                    phi_floor * Y, without being short of resources
 %   ce_entry         the constant consumption, in multiples of entry income,
 %                    worth as much as the value at entry. A small number means
 %                    the value function is dominated by the floor states
@@ -82,8 +82,8 @@ if any(c.offgrid > 0)
         'widen that axis (GRIDS.md).'], sum(c.offgrid), c.offgrid);
 end
 if c.c_bound_25_39 > 0.05
-    c.notes{end+1} = sprintf(['%.0f%% of households aged 25-39 consume at the search bound: ' ...
-        'early-life consumption there is set by c_floor_frac, not chosen.'], 100 * c.c_bound_25_39);
+    c.notes{end+1} = sprintf(['%.0f%% of households aged 25-39 choose to consume only the floor ' ...
+        '(phi_floor x income) although they could afford more.'], 100 * c.c_bound_25_39);
 end
 if c.floored_share > 0.01
     c.notes{end+1} = sprintf('The consumption floor binds in %.1f%% of household-years.', ...

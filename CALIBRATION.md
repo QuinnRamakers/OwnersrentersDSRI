@@ -286,13 +286,13 @@ borrows to the ceiling.
 | Parameter | Value | Source |
 |---|---|---|
 | `phi_floor` | 1e-6 | Placeholder for the social minimum |
-| `c_floor_frac` | 0.01 | Lower bound of the consumption search, as a share of total wealth |
 
 When a household's liquid resources fall short of `phi_floor * Y_t`, the
 shortfall is paid from outside: it consumes the floor and saves nothing. The
-floor is a guarantee, not a mandate — a household that can afford it may still
-consume less. It is a share of current gross income so that the model stays
-homothetic; in retirement Y is constant, so it is a level floor where it binds.
+floor is also the lowest consumption a household can choose when it can afford
+more: the consumption search runs from the floor up to all liquid resources.
+It is a share of current gross income so that the model stays homothetic; in
+retirement Y is constant, so it is a level floor where it binds.
 
 Utility is unbounded below at gamma > 1, so the floor has to be positive. At
 1e-6 ruin stays nearly catastrophic: one floored year outweighs a lifetime of
@@ -306,13 +306,12 @@ cannot represent a level social minimum: setting it to the net AOW
 binds in 60% of household-years. The floor is the first calibration decision
 the research points to; see TODO.md.
 
-`c_floor_frac` is a numerical bound, but where households would consume less
-than 1% of total wealth it is the bound that sets consumption.
-`r.checks.c_bound_25_39` reports how often. Total wealth W includes the house
-(for renters the rent index), and the bound is capped at half of liquid
-resources, so where the house is large relative to cash it requires consuming
-at least half of that cash. `docs/SOLVER_BOUNDS.md` gives the exact rule and
-how often it binds.
+Until 15 October 2026 the lower bound of the consumption search was
+`c_floor_frac` = 1% of total wealth (house or rent index included), capped at
+half of liquid resources. On the converged step-7 grids it set the owner's
+consumption for most of the life cycle; `docs/SOLVER_BOUNDS.md` has the
+measurements. `r.checks.c_bound_25_39` now reports the share of households
+aged 25-39 who choose to consume only the floor.
 
 ## Entry state
 

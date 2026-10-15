@@ -89,7 +89,6 @@ p.tau_wealth     = 0;         % alternative box-3 levy on the liquid balance
 
 % Consumption floor and search guard
 p.phi_floor    = 1e-6;        % resources guaranteed each period, share of current gross income
-p.c_floor_frac = 0.01;        % lower bound of the consumption search, share of W
 
 % Entry state: liquid wealth at 25 in years of income
 p.b0    = 3400 / (33000 * 1.3031);   % median deposits under 25 over the age-25 wage

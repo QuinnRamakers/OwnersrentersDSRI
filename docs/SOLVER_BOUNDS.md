@@ -13,6 +13,19 @@ the current grid as run (16x16) and the reference, log-wealth 128x96
 
 ## 1. The lower bound of the consumption search
 
+**Changed on 15 October 2026.** The lower bound is now the consumption floor,
+C >= phi_floor * Y, so c >= phi_floor * Y / LW; `c_floor_frac` is gone. Below
+is the bound as it was, and what it did. On the step-7 owner, log-wealth
+32x32, removing it changed the answer: owners aged 25-30 now consume a median
+of 0.01-0.04% of income (EUR 5-20 a year, still above the floor of 1e-6 x
+income) and save everything else, building savings of 3.7 years of income by
+30; mean consumption at 40-55 rises by up to 100%, retirement consumption falls
+by 10-15% and liquid savings at 66 by 20%; floored household-years fall from
+0.59% to 0.06%; the value at entry rises from 6.6e-6 to 1.8e-5, as it must
+when a constraint is removed.
+
+The bound before the change:
+
 **The rule.** `+solver/bellman_step_lna.m`, lines 249-251. At every grid
 point the search over c, the share of liquid resources LW consumed, starts at
 
