@@ -36,6 +36,17 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Mortgage state, run 4: maintenance on the purchase price (spec: The mortgage as a state variable, q = H0/H)
+Changed: no code. `ladder.sensitivity('annuity')`, standard numerics (16x16x10x8, gh_n 5, 10,000 households, the reference's seed): step 7b with `maint_on_purchase = true`. Files and pages in `ladder/standard_16x16x10x8_gh5/sensitivity/` (gitignored): `07b_annuity_<arm>_maint_on_purchase_1.mat`, `sens_07b_annuity_<arm>_maint_on_purchase_1.png` and `sens_07b_annuity_<arm>_maint_on_purchase.png`.
+Expected: renter bit-identical; owner maintenance a constant EUR 2.4k; floor states mostly gone (4.64%, 67+ 10.35%); more consumption in retirement, less saving for old age; entry value above 0.84; off-grid 0; 13-15 minutes; the spike at 67 smaller or gone.
+Checks run:
+- Renter: bit-identical to 7b (V, c_pol, pi_pol, summary); 79 s.
+- Owner: 18 x 18 x 2 x 9 nodes, q a state at every age, 617 s. Housing cost EUR 8.9k a year to 54 (maintenance 2.4k plus the annuity 6.5k), 2.4k from 55 (7b: 13.3k at 54, 21.3k at 85, 30.9k at 95). Floored 0.0000 at every age (7b 4.64%; 67+ 10.35%). `c_bound_25_39` 0. `ce_entry` 0.951 (0.839). Off-grid [0 0 0 0].
+- Owner means against 7b: consumption +3% at 25, +9% at 30, +8% at 40, +7% at 66, +9% at 75, +19% at 85, +55% at 95; liquid savings EUR 18 against 5.8k at 30, 54k against 100k at 40, 438k against 593k at 66, 145k against 207k at 85; liquid equity share 0.82 against 0.76 at 60, 0.75 against 0.81 at 85. Consumption at 65-69 76.5k-81.5k-81.5k-81.2k-80.9k: the spike at 67 is gone (7b 76.9k, 97.2k, 80.4k at 66-68).
+Reading: all as expected. Maintenance growing with the house is what produces the old-age floor states at steps 7 and 7b; with it fixed on the purchase price no owner reaches the floor, they save a quarter to a third less for old age and consume more at every age, most in late retirement. The spike at 67 goes with the floor states, which fits the grid explanation of the run-3 entry (the corner nodes are no longer degenerate when a house alone is no longer ruinous).
+Commit: this entry, pushed to main.
+Open: the plan's q refinement for this test (8 against 16 base nodes; q is a state at every age and the median q at 85 is 0.13, between the nodes 0.051 and 0.204), not run. Whether maintenance belongs on the purchase price is Quinn's modelling choice (TODO.md item 1).
+
 ### 2026-10-15 Part of the grid study again with the real annuity; old against new mortgage on the same grids (spec: none, asked by Quinn in Claude Code)
 Quinn asked to rerun part of the step-7 grid study with the new mortgage, to see the convergence and whether the value-function problems go away; then, within ten minutes, the best grid system at a smaller and a larger size and one solve of each other grid system; then a comparison of the old and new mortgage on the same grids from saved solves. Maintenance is on the current house value throughout (7b as in the ladder).
 Changed: `diagnostics/grid_design/solve_grids.m` (option `step`), `compare_grids.m` (options `step`, `res`, `gd`; titles carry the step's number), `diagnostics/step07/ruin_figures.m` (figures 1-3 handle q: the value and the housing bill at the median simulated q per age, each solve's own bankruptcy line; figures 4-5 stop with an error when q is a state). Results under `ladder/standard_16x16x10x8_gh5/grid_design/` (gitignored); scripts for the runs in the session scratchpad (not kept).
