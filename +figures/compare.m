@@ -86,7 +86,10 @@ for j = 1:4
     ylabel(ax, series{j, 3});
     title(ax, sprintf('(%s)  %s', letters(j), series{j, 1}), 'FontSize', FT);
     if j == 1
-        legend(ax, h(1:n), labels, 'Location', 'northwest', 'FontSize', LFS, 'Interpreter', 'none');
+        hy = income_lines(ax, D{1}, scl(1));
+        title(ax, sprintf('(%s)  Consumption and income (black''s households)', letters(j)), 'FontSize', FT);
+        legend(ax, [h(1:n), hy], [labels(:).', {'gross income', 'income after tax, contributions and housing'}], ...
+            'Location', 'northwest', 'FontSize', LFS, 'Interpreter', 'none');
     end
 end
 
@@ -230,4 +233,12 @@ for i = 1:numel(rs)
             100 * max(abs(s.X.mean(wx) ./ ref.X.mean(wx) - 1))); %#ok<AGROW>
     end
 end
+end
+
+function h = income_lines(ax, d, sc)
+% Mean gross income and income after tax, contributions and housing costs of
+% the reference households, as thin grey lines behind consumption.
+c = [0.45 0.45 0.45];
+h(1) = plot(ax, d.ages, mean(d.Y, 1) * sc, '--', 'Color', c, 'LineWidth', 1.3);
+h(2) = plot(ax, d.ages, mean(d.disp_inc, 1) * sc, ':', 'Color', c, 'LineWidth', 1.6);
 end

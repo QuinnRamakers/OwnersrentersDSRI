@@ -32,6 +32,13 @@ function nodes = grid_rule(rule, N1, N2, p)
 switch rule
     case 'uniform'
         nodes = [];
+    case {'power', 'power3'}
+        % The existing primitives grid_pow and grid_pow_u2 (2, or 3 for power3),
+        % written out as nodes: u1 bunched toward its bottom, u2 toward 1.
+        q = 2 + strcmp(rule, 'power3');
+        [lo, hi] = u1_ends(p);
+        nodes = struct('u1', lo + (hi - lo) * linspace(0, 1, N1).' .^ q, ...
+                       'u2', 1 - (1 - linspace(0, 1, N2).') .^ q);
     case 'edge'
         th = p.theta; rm = p.r_m; n = p.N_mort;
         ks = [th + rm * (1 + rm)^n / ((1 + rm)^n - 1), th];        % before 55, after

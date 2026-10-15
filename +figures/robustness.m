@@ -38,13 +38,15 @@ for g = 1:ng
     % Consumption: level, then % difference
     ax = tile(tl, ret, FS);
     ref_band(ax, a, d0.C * sc);
+    hy = income_lines(ax, d0, sc);
     h = gobjects(1, n + 1);
     h(1) = plot(ax, a, C0 * sc, 'k-', 'LineWidth', 2.4);
     for i = 1:n
         h(i + 1) = plot(ax, a, mean(D{i}.C, 1) * sc, styles{i}, 'Color', cols(i, :), 'LineWidth', LWD);
     end
-    ylabel(ax, d0.unit); title(ax, sprintf('(%s)  %s: consumption', letter(1), G.name), 'FontSize', FT);
-    legend(ax, h, [{ref_name}, G.labels], 'Location', 'northwest', 'FontSize', LFS, 'Interpreter', 'none');
+    ylabel(ax, d0.unit); title(ax, sprintf('(%s)  %s: consumption and income', letter(1), G.name), 'FontSize', FT);
+    legend(ax, [h, hy], [{ref_name}, G.labels, {'gross income', 'income after tax, contributions and housing'}], ...
+        'Location', 'northwest', 'FontSize', LFS, 'Interpreter', 'none');
 
     ax = diff_tile(tl, ret, FS);
     for i = 1:n
@@ -144,4 +146,12 @@ if isfield(r.timing, 'pool') && isfield(r.timing.pool, 'type')
     if contains(r.timing.pool.type, 'Thread'), s = 'threads';
     elseif contains(r.timing.pool.type, 'Process'), s = 'processes'; end
 end
+end
+
+function h = income_lines(ax, d, sc)
+% Mean gross income and income after tax, contributions and housing costs of
+% the reference households, as thin grey lines behind consumption.
+c = [0.45 0.45 0.45];
+h(1) = plot(ax, d.ages, mean(d.Y, 1) * sc, '--', 'Color', c, 'LineWidth', 1.3);
+h(2) = plot(ax, d.ages, mean(d.disp_inc, 1) * sc, ':', 'Color', c, 'LineWidth', 1.6);
 end
