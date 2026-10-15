@@ -12,7 +12,8 @@ function G = case_gaps(r, ref)
 %     piw  largest |difference| in the equity share of liquid saving, all
 %          households' stock holdings over their liquid saving. Unlike the
 %          mean share it gives no weight to households that save nothing,
-%          whose share has no effect (computed when both results carry the
+%          whose share has no effect; ages where liquid saving is under 1%
+%          of income are left out (computed when both results carry the
 %          field piw, added by case_load)
 %   and the same over 26-95 as pi_all, C_all, X_all with the age where each
 %   is reached (pi_age, C_age, X_age). The ladder's stop rule is 0.02 in the

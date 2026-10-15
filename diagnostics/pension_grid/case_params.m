@@ -17,6 +17,7 @@ function p = case_params(step, arm, name)
 %     pow3      the same with power 3; on u1 close to even spacing in the log
 %               of total resources over income between 1 and about 300
 %     u1pow3    u1 at power 3, u2 at power 2
+%     u1only    u1 at power 3, u2 even; u2only the other way round
 %   u3 and q keep the standard base counts (10 and 8); without housing they
 %   collapse anyway. arm is 'renter' or 'owner' (the no-housing arms of the
 %   DC steps). Nothing here changes the model: only grid_dims, grid_pow,
@@ -35,6 +36,8 @@ switch rule
     case 'pow2',   p.grid_pow = 2; p.grid_pow_u2 = 2;
     case 'pow3',   p.grid_pow = 3; p.grid_pow_u2 = 3;
     case 'u1pow3', p.grid_pow = 3; p.grid_pow_u2 = 2;
+    case 'u1only', p.grid_pow = 3;        % power 3 on u1, u2 even
+    case 'u2only', p.grid_pow_u2 = 3;     % power 3 on u2, u1 even
     otherwise
         error('case_params:rule', 'unknown rule %s', rule);
 end
