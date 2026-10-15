@@ -36,6 +36,17 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-16 Pension steps 9-12 again, and a grid study of the DC branch: code, and expectations written before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: run the pension steps again; on 13 October they were not grid-converged around retirement. Do a full grid study to see whether problems remain, and if the pension fund is what makes the grid unstable, look overnight (until 7 am) for fixes that do not change the economics.
+Changed:
+- `+solver/bellman_step_lna.m`: without housing the u3 = 0 nodes with u2 > 0 are copied from u3 = 1 instead of solved. They describe a house the household cannot have; u3 = 0 is reached only with A = H = 0, where u2 = 0. Every reachable node and the simulated panel are unchanged; the DC steps solve in about half the time. GRIDS.md says so.
+- `diagnostics/pension_grid/` (new): `case_params` (a step on a named grid: `<rule>_<N1>x<N2>[_gh<n>][_makima]`, rules uniform, pow2, pow3, u1pow3 through the existing primitives `grid_pow` and `grid_pow_u2`), `solve_cases`, `case_load`, `case_gaps` (largest gaps by age band, 26-39, 40-66, 67-95), `convergence_figure` (gap to a reference against grid points, per step and rule), `occupancy_figure` (where households live on u1 and u2 by age, against each grid's points).
+Expectations:
+- Steps 6 and 9-12 re-run at standard numerics on today's code (consumption search from the floor to all liquid resources, the CE objective, pi = 1 where nothing is saved): within about 0.01 in the mean equity share and 1% in consumption of the 13 October results. Without housing the old 1%-of-W consumption bound did not bind.
+- Uniform refinement (32x32, 64x64) moves the DC steps by more than the stop rule (0.02 in pi, 2% in C) at 55-70: the pre-retirement liquid equity share rises and retirement liquid savings fall, as on 13 October. Step 6 stays within the stop rule. That would make the pension what breaks convergence.
+- Grids bunched toward low u1 and u2 near 1 (pow2, pow3) converge faster than uniform ones: at 32x32 within the stop rule of their 64x64 solves, and the uniform 64x64 close to them.
+Order: baseline (`ladder.run` 6, 9-12, compare, overlay); identity check of the solver change on steps 6, 9, 10; then the grid cases, step 12 first, both arms, then 10, 11, 9 and 6.
+
 ### 2026-10-16 Old and new mortgage, and maintenance on the purchase price, on log-wealth 32x32 (spec: none, asked by Quinn in Claude Code)
 Quinn asked for the old against the new mortgage, and the new mortgage against maintenance on the house value at purchase, on the larger log-wealth grid of the step-7 grid study (34 x 34 points), with dashboards, bankruptcy, value functions and the income decomposition.
 Changed: `+figures/dashboard.m`: the footnote and panel (l) name the mortgage contract and the base of maintenance (the old footnote said the payment is a rate on the current value). Results and pages in `ladder/standard_16x16x10x8_gh5/grid_design/log32_mortgage_maintenance/` (gitignored): three dashboards, two step dashboards, `overview_log32.png`, `ruin_1-3_*_7_vs_7b` and `ruin_1-3_*_maint`. The step-7 solve is the one of 15/16 October on today's code (`grid_design/07_housing/owner_logwealth_32x32.mat`); it reproduces the 15 October dashboard (floored 0.06%, entry 1.78e-5).

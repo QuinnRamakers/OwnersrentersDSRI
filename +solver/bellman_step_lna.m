@@ -13,7 +13,9 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   N_u1 x N_u2 x N_u3 x N_q. In a period where q enters neither this year's
 %   budget nor any later one, one slice is solved and copied to the others;
 %   where only the continuation does not depend on q, it is read in 3D off one
-%   slice. With N_q = 1 the step is the cube alone.
+%   slice. With N_q = 1 the step is the cube alone. Without housing the
+%   u3 = 0 nodes with u2 > 0 (a house the household cannot have) are copied
+%   from u3 = 1 rather than solved.
 %
 %   The value function is homothetic, V(W, u, q) = W^(1-gamma) V_tilde(u, q).
 %   The continuation is interpolated in its certainty equivalent per unit of
@@ -221,6 +223,18 @@ sH_pts  = SH_all(:);
 have_warm = ~isempty(pol_next) && isstruct(pol_next) && isfield(pol_next, 'c') ...
             && isequal(size(pol_next.c, 1:4), [N1 N2 N3 Nq]);
 
+% Without housing H = 0 on every path, so u3 = A/(A+H) is 1 wherever the
+% household holds a pension pot, and the u3 = 0 slice is reached only at
+% u2 = 0, where u3 changes nothing. Its other nodes describe a house the
+% household does not have: they are copied from u3 = 1 instead of solved.
+copy_u3 = p.h_mult == 0 && N3 == 2 && isequal(p.u3_grid(:), [0; 1]);
+if copy_u3
+    solve_k = find(U3(:) == 1 | U2(:) == 0);
+else
+    solve_k = (1:n_states).';
+end
+n_solve = numel(solve_k);
+
 % Annuity payout in retirement: the pot pays A/a_t each period.
 if is_retired
     ann_t      = ann_price(t);
@@ -241,11 +255,12 @@ for iq = slices
         cw_pts = nan(n_states, 1);
         pw_pts = nan(n_states, 1);
     end
-    V_flat  = zeros(n_states, 1);
-    c_flat  = zeros(n_states, 1);
-    pi_flat = zeros(n_states, 1);
+    V_sub  = zeros(n_solve, 1);
+    c_sub  = zeros(n_solve, 1);
+    pi_sub = zeros(n_solve, 1);
 
-    parfor k = 1:n_states
+    parfor j = 1:n_solve
+        k = solve_k(j);
         lam = lam_pts(k); sA = sA_pts(k); sH = sH_pts(k);
         sX  = 1 - lam - sA - sH;
         c_warm = cw_pts(k); pi_warm = pw_pts(k);
@@ -280,7 +295,7 @@ for iq = slices
             end
             best = -inf;
             if val > best, best = val; end
-            V_flat(k) = best; c_flat(k) = 1; pi_flat(k) = 1;   % nothing saved: 100% in equity, as below
+            V_sub(j) = best; c_sub(j) = 1; pi_sub(j) = 1;   % nothing saved: 100% in equity, as below
             continue
         end
 
@@ -338,16 +353,24 @@ for iq = slices
         end
 
         if V_opt > maxval
-            V_flat(k) = V_opt; c_flat(k) = x_opt(1); pi_flat(k) = x_opt(2);
+            V_sub(j) = V_opt; c_sub(j) = x_opt(1); pi_sub(j) = x_opt(2);
         else
-            V_flat(k) = maxval; c_flat(k) = c_seed; pi_flat(k) = pi_seed;
+            V_sub(j) = maxval; c_sub(j) = c_seed; pi_sub(j) = pi_seed;
         end
         % With nothing saved the equity share has no effect and every share ties.
         % Store 100% in equity, so that interpolation and next year's warm start
         % do not pick up an arbitrary share.
-        if c_flat(k) >= 1, pi_flat(k) = 1; end
+        if c_sub(j) >= 1, pi_sub(j) = 1; end
     end
 
+    V_flat  = zeros(n_states, 1); V_flat(solve_k)  = V_sub;
+    c_flat  = zeros(n_states, 1); c_flat(solve_k)  = c_sub;
+    pi_flat = zeros(n_states, 1); pi_flat(solve_k) = pi_sub;
+    if copy_u3
+        V_flat  = copy_u3_slice(V_flat, N1, N2, p.u2_grid);
+        c_flat  = copy_u3_slice(c_flat, N1, N2, p.u2_grid);
+        pi_flat = copy_u3_slice(pi_flat, N1, N2, p.u2_grid);
+    end
     V_t(:, :, :, iq)    = reshape(V_flat, N1, N2, N3);
     c_pol(:, :, :, iq)  = reshape(c_flat, N1, N2, N3);
     pi_pol(:, :, :, iq) = reshape(pi_flat, N1, N2, N3);
@@ -364,6 +387,15 @@ Nq = size(V, 4);
 V   = repmat(V(:, :, :, iq1), 1, 1, 1, Nq);
 c   = repmat(c(:, :, :, iq1), 1, 1, 1, Nq);
 pi_ = repmat(pi_(:, :, :, iq1), 1, 1, 1, Nq);
+end
+
+% ------------------------------------------------------------------------
+function v = copy_u3_slice(v, N1, N2, u2_grid)
+%COPY_U3_SLICE  Fill the unsolved u3 = 0 nodes (u2 > 0) from u3 = 1.
+v = reshape(v, N1, N2, 2);
+m = u2_grid(:).' > 0;
+v(:, m, 1) = v(:, m, 2);
+v = v(:);
 end
 
 % ------------------------------------------------------------------------

@@ -158,6 +158,12 @@ ladder solve in seconds. The q axis is the single node `q = 1` wherever q is
 not a state: renters, steps without housing, and the proportional mortgage of
 step 7.
 
+Without housing the solver also skips the u3 = 0 nodes with u2 > 0: they
+describe a house the household cannot have, and no path reaches them (u3 = 0
+only when A = H = 0, and then u2 = 0). They are filled with the u3 = 1 values.
+This halves the solve time of the DC steps and leaves every node that a
+household can reach, and so the simulated panel, unchanged.
+
 ## What it was measured against
 
 All arms at 3,240 nodes, production solver settings, distance from the
