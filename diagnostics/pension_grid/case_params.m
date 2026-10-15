@@ -35,15 +35,20 @@ switch rule
     case 'pow2',   p.grid_pow = 2; p.grid_pow_u2 = 2;
     case 'pow3',   p.grid_pow = 3; p.grid_pow_u2 = 3;
     case 'u1pow3', p.grid_pow = 3; p.grid_pow_u2 = 2;
-    case {'age', 'age32'}
+    case {'age', 'age32', 'ageq'}
         % Points that follow age (age_grid), placed from the panel of the same
         % step solved on the power-3 grid with the limit share: 16x16 for
-        % 'age' (a cheap pilot), 32x32 for 'age32'
+        % 'age' and 'ageq' (a cheap pilot), 32x32 for 'age32'. 'ageq' moves
+        % the points inside the band halfway to the households' percentiles.
         pilot = 'pow3_16x16_lim'; if strcmp(rule, 'age32'), pilot = 'pow3_32x32_lim'; end
         rp = case_load(step, arm, pilot);
         assert(~isempty(rp), 'case_params:pilot', 'the pilot %s of step %s %s is not solved.', pilot, string(step), arm);
         p.grid_pow = 3; p.grid_pow_u2 = 3;
-        p.grid_nodes = age_grid(rp, N1, N2);
+        if strcmp(rule, 'ageq')
+            p.grid_nodes = age_grid(rp, N1, N2, blend = 0.5, band = [1 99], d = 1e-3);
+        else
+            p.grid_nodes = age_grid(rp, N1, N2);
+        end
     otherwise
         error('case_params:rule', 'unknown rule %s', rule);
 end

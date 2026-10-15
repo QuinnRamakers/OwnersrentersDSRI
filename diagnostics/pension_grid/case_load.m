@@ -26,5 +26,5 @@ s = figures.panel_data(r).sim;
 warning(w);
 sav = max(s.LW - s.C, 0);
 r.piw = sum(s.pi .* sav, 1) ./ max(sum(sav, 1), realmin);
-r.piw(sum(sav, 1) < 1e-9 * sum(s.Y, 1)) = NaN;
+r.piw(sum(sav, 1) < 0.01 * sum(s.Y, 1)) = NaN;           % ages where saving is under 1% of income
 end

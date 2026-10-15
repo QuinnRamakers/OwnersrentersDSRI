@@ -11,10 +11,12 @@ function gn = age_grid(r, N1, N2, opts)
 %   percentiles of the pilot's panel, widened by pad on each side, at least
 %   0.5 wide), the rest evenly over the two stretches of the axis outside it,
 %   in proportion to their lengths, always including both ends. The u2 points
-%   likewise in y = -log(1 - u2 + d), d = 1e-5, so that points crowd toward
+%   likewise in y = -log(1 - u2 + d) (d = 1e-5 by default), so points crowd toward
 %   u2 = 1 (little liquid saving beside the pot) where households are; u2 = 0
 %   and u2 = 1 are always points. Returns grid_nodes fields u1_age (N1 x T)
-%   and u2_age (N2 x T). The axis ends are the pilot's.
+%   and u2_age (N2 x T). The axis ends are the pilot's. With blend > 0 the
+%   points inside the band move that share of the way from even spacing to
+%   the households' percentiles (equal numbers of households between points).
 
 arguments
     r (1,1) struct
@@ -23,12 +25,14 @@ arguments
     opts.share_in (1,1) double = 0.6
     opts.band (1,2) double = [0.5 99.5]
     opts.pad (1,1) double = 0.3
+    opts.blend (1,1) double = 0
+    opts.d (1,1) double = 1e-5
 end
 
 p = r.p; T = p.T;
 s = figures.panel_data(r).sim;
 u1 = s.lambda; u2 = (s.sA + s.sH) ./ max(1 - u1, 1e-12);
-d = 1e-5;
+d = opts.d;
 L1 = -log(min(p.u1_grid)); top1 = -log(max(p.u1_grid));
 L2 = -log(d);
 U1 = zeros(N1, T); U2 = zeros(N2, T);
@@ -67,6 +71,12 @@ end
 k_lo = k_lo + e_lo * (l_lo > 1e-9); k_hi = k_hi + (rest - e_lo) * (l_hi > 1e-9);
 n_in = N - k_lo - k_hi;
 z_in = linspace(b(1), b(2), n_in);
+if opts.blend > 0
+    % part of the way to equal shares of households between points
+    qz = prctile(x, linspace(opts.band(1), opts.band(2), n_in));
+    qz = min(max(qz, b(1)), b(2)); qz([1 end]) = b;
+    z_in = (1 - opts.blend) * z_in + opts.blend * qz;
+end
 z_lo = linspace(lo, b(1), k_lo + 1); z_lo = z_lo(1:end-1);
 z_hi = linspace(b(2), hi, k_hi + 1); z_hi = z_hi(2:end);
 z = [z_lo, z_in, z_hi].';
