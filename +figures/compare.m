@@ -51,8 +51,8 @@ styles = {'-', '-', '--', '-.', ':', '-'};
 lw = [2.4, 1.7 * ones(1, 5)];
 FS = 10; FT = 11; LFS = 9;
 
-fig = figure('Visible', 'off', 'Position', [30 30 2200 1300], 'Color', 'w');
-tl  = tiledlayout(fig, 3, 4, 'Padding', 'compact', 'TileSpacing', 'compact');
+fig = figure('Visible', 'off', 'Position', [30 30 2750 1300], 'Color', 'w');
+tl  = tiledlayout(fig, 3, 5, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {ttl, ['Black = ' labels{1} ' (the reference, with its 10th-90th percentile band); ' ...
     'lines are means across simulated households']}, 'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
 
@@ -64,10 +64,13 @@ series = {
 if pension_view
     series(3, :) = {'Pension account (DC)', @(d) d.A, unit, false, 'Pension account'};
 end
-letters = 'abcdefghijkl';
+letters = 'abcdefghijklmn';
 ret = rs{1}.p.retirement_age;
 
-% Row 1: levels
+% Row 1: where the reference households' income goes, then the levels
+ax = tile(tl, ret, FS);
+figures.income_decomposition(ax, D{1}, rs{1}.p, LFS - 1.5);
+title(ax, '(a)  Income and housing costs (black''s households)', 'FontSize', FT);
 for j = 1:4
     ax = tile(tl, ret, FS);
     h = gobjects(1, n);
@@ -84,16 +87,19 @@ for j = 1:4
     uistack(h(1), 'top');
     if series{j, 4}, ylim(ax, [0 1]); end
     ylabel(ax, series{j, 3});
-    title(ax, sprintf('(%s)  %s', letters(j), series{j, 1}), 'FontSize', FT);
+    title(ax, sprintf('(%s)  %s', letters(1 + j), series{j, 1}), 'FontSize', FT);
     if j == 1
         hy = income_lines(ax, D{1}, scl(1));
-        title(ax, sprintf('(%s)  Consumption and income (black''s households)', letters(j)), 'FontSize', FT);
+        title(ax, sprintf('(%s)  Consumption and income (black''s households)', letters(1 + j)), 'FontSize', FT);
         legend(ax, [h(1:n), hy], [labels(:).', {'gross income', 'income after tax, contributions and housing'}], ...
             'Location', 'northwest', 'FontSize', LFS, 'Interpreter', 'none');
     end
 end
 
-% Row 2: differences from the reference
+% Row 2: housing costs over income after tax and contributions, then the differences
+ax = tile(tl, ret, FS);
+burden_panel(ax, D{1});
+title(ax, '(f)  Housing costs over income after tax (black''s households)', 'FontSize', FT);
 for j = 1:4
     ax = tile(tl, ret, FS);
     yline(ax, 0, 'k-', 'LineWidth', 0.8, 'HandleVisibility', 'off');
@@ -120,7 +126,7 @@ for j = 1:4
     else
         ylabel(ax, '% difference from reference');
     end
-    title(ax, sprintf('(%s)  %s: difference from black', letters(4 + j), series{j, 5}), 'FontSize', FT);
+    title(ax, sprintf('(%s)  %s: difference from black', letters(6 + j), series{j, 5}), 'FontSize', FT);
 end
 
 % Row 3: the equity share policy at three ages, or in the pension view the
@@ -139,21 +145,21 @@ if pension_view
         plot(ax, a, mean(M, 1, 'omitnan'), styles{i}, 'Color', cols(i, :), 'LineWidth', lw(i));
     end
     ylim(ax, [0 1]); ylabel(ax, 'Stock share [0-1]');
-    title(ax, '(i)  Stock share of liquid saving plus pension account', 'FontSize', FT);
+    title(ax, sprintf('(%s)  Stock share of liquid saving plus pension account', letters(11)), 'FontSize', FT);
     ages = ages(2:3);
 end
 for j = 1:numel(ages)
     ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS;
     policy_panel(ax, rs, D, ages(j), cols, styles, lw);
-    title(ax, sprintf('(%s)  Equity share policy at age %d', letters(11 - numel(ages) + j), ages(j)), ...
+    title(ax, sprintf('(%s)  Equity share policy at age %d', letters(13 - numel(ages) + j), ages(j)), ...
         'FontSize', FT);
 end
 
 % Settings and checks
-ax = nexttile(tl); axis(ax, 'off');
+ax = nexttile(tl, [1 2]); axis(ax, 'off');
 text(ax, 0, 1, info_lines(rs, labels), 'Units', 'normalized', 'VerticalAlignment', 'top', ...
     'FontSize', FS - 1.5, 'Interpreter', 'none', 'FontName', 'Consolas');
-title(ax, '(l)  Settings and checks', 'FontSize', FT);
+title(ax, '(n)  Settings and checks', 'FontSize', FT);
 
 if ~isempty(file)
     axs = findall(fig, 'Type', 'axes');
@@ -241,4 +247,21 @@ function h = income_lines(ax, d, sc)
 c = [0.45 0.45 0.45];
 h(1) = plot(ax, d.ages, mean(d.Y, 1) * sc, '--', 'Color', c, 'LineWidth', 1.3);
 h(2) = plot(ax, d.ages, mean(d.disp_inc, 1) * sc, ':', 'Color', c, 'LineWidth', 1.6);
+end
+
+function burden_panel(ax, d)
+% Housing costs as a share of income received after tax and contributions
+% (wages or state pension, plus the private pension): mean and 10-90 band.
+if ~d.has_housing
+    text(ax, 0.5, 0.5, 'No housing at this step', 'Units', 'normalized', ...
+        'HorizontalAlignment', 'center', 'Color', [0.5 0.5 0.5]);
+    return
+end
+a = d.ages;
+M = 100 * d.housing_cost ./ max(d.takehome + d.annuity, 1e-12);
+fill(ax, [a, fliplr(a)], [quantile(M, 0.1, 1), fliplr(quantile(M, 0.9, 1))], [0.90 0.70 0.55], ...
+    'EdgeColor', 'none', 'FaceAlpha', 0.5, 'HandleVisibility', 'off');
+plot(ax, a, mean(M, 1), '-', 'Color', [0.65 0.25 0.10], 'LineWidth', 2);
+yline(ax, 100, 'k:', 'all income', 'LabelHorizontalAlignment', 'left', 'HandleVisibility', 'off');
+ylabel(ax, '% of income after tax and contributions');
 end
