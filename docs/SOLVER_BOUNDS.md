@@ -199,7 +199,17 @@ been tested.
    27-31% of grid points at steps 1-6, which the interpolation passed on to
    households who do save (spikes in the mean share at 26-29 and 88-99). The
    solver now stores a share of 1 wherever c = 1, the same as the limit the
-   1 - 1e-6 bound produced.
+   1 - 1e-6 bound produced at steps 1-6.
+
+   With a DC pot that limit is not always 1. At step 10 (all-stock fund) a
+   66-year-old with no liquid savings consumes everything, and the share
+   their first euro of saving would take is 0, since the annuity is already
+   all stock. The stored 1 at those grid points (u2 = 1) is interpolated into
+   the savers next to them (u2 about 0.97): their mean share at 66 is 0.46
+   with the 1 and 0.01 with the limit, on the same grid (16 October 2026).
+   `p.pi_nothing_saved = 'limit'` stores the limit share instead
+   (`limit_share` in the solver: the best share when 1e-6 of liquid resources
+   is saved). The value is unchanged either way.
 2. The floor has a minimum of 1e-12 of W (`FLOOR_EPS`, line 69).
 3. The survival probability in the pension fund's survival credit is bounded
    below by 1e-8 (`paths_lna.m`, line 202).
