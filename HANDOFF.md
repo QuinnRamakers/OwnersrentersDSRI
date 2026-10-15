@@ -30,6 +30,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Prompt for the mortgage as a state variable, saved, not started (spec: none, asked by Quinn in Claude Code)
+Quinn asked for a proposal to replace the proportional mortgage with a proper state, the ratio of the purchase price to the current house value, q = H0/H_t, and then to save it as a prompt for later. Decisions taken: a real annuity on the purchase price; step 7 keeps the proportional mortgage and a new step directly after it ("7b", step 8 by position) switches to the annuity, so production inherits it; a test with maintenance on the purchase price, run as the new step's sensitivity; no bequest netting yet.
+Changed: `docs/prompts/mortgage_state.md` (new): the model change, the q axis, new primitives (`mortgage`, `maint_on_purchase`, a fourth `grid_dims` entry, `q_hi`, `grid_pow_q`), the ladder change, the code changes file by file, checks, the runs with expectations and runtime estimates. No code changed.
+Checks run: none. MATLAB is not installed in this session's container. Range of q from the house-price process (0.1th-99.9th percentile): 0.53-1.44 at 29, 0.25-1.59 at 39, 0.10-1.45 at 54, 0.01-0.70 at 100; annuity factor 0.0408, payment 0.163 times entry income.
+Commit: this entry, pushed to claude/exciting-cori-8r29np (not main).
+Open: the implementation, and whether the new step keeps the number 8 or shows as 7b.
+
 ### 2026-10-15 Step-7 diagnostics with the new consumption bounds, in one PDF (spec: none, asked by Quinn in Claude Code)
 Changed: `diagnostics/grid_design/report_bounds.m` (new): figures 1-3 for the current grid coarse (16x16) against fine (32x16), figures 1-4 for the current against the log-wealth grid, figures 1-3 for the new against the old bounds, the overlay and robustness pages and two dashboards, in `ladder/standard_16x16x10_gh5/grid_design/lbfloor/step7_new_bounds.pdf` (11.7 MiB, gitignored). `ruin_figures` takes `fig1_pair=true` to draw only the first pair in figure 1.
 Checks run: step-7 owner solves with the new bounds (consumption from the floor to all liquid resources), standard numerics: current 16x16 89 s, floored 4.8% (5.5% with the old bounds), entry 0.68 (0.66); current 32x16 140 s, 3.0% (3.9%), 0.32 (0.034); log-wealth 16x16 76 s, 0.61% (2.0%), 0.31 (0.13); log-wealth 32x32 277 s, 0.06% (0.59%); power 2 32x32 283 s, 0.72% (3.8%). No household at the lower bound in any of them. The first PDF build stopped on a graphics timeout while a second MATLAB session was drawing; rebuilt alone.
