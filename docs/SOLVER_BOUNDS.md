@@ -153,20 +153,31 @@ How often this happens is not counted.
 
 ## 6. The limits of the local solver
 
-**The rule.** `+solver/bellman_step_lna.m`, lines 152-178 and 286-292.
+**The rule.** `+solver/bellman_step_lna.m`, lines 154-185 and 280-300.
 `fmincon` runs with at most 200 iterations and 500 objective evaluations
 (central differences). A run that stops at the limit (exit flag 0) is still
-accepted when it beats the sweep. The objective is divided by the median
-absolute value of next year's value function, while that value spans about
-25 orders of magnitude.
+accepted when it beats the sweep. What it minimises is set by
+`p.fmincon_objective`:
 
-**What it means.** Where the objective is very flat or very steep relative to
-the scaling, the tolerances are effectively loose or tight. This is how
-interior-point came to differ from active-set by up to 0.005 in the equity
-share at nodes where the share hardly matters (`HANDOFF.md`, 12 October).
+- `'ce'` (the default since 15 October 2026): -(rhs / rhs_seed)^(1/(1-gamma)),
+  the objective in certainty-equivalent units relative to the sweep's best
+  point. It equals -1 at that point at every node and stays finite as
+  consumption goes to zero.
+- `'utility'` (before): the objective in utility units divided by the median
+  absolute value of next year's value function, while that value spans about
+  25 orders of magnitude across nodes.
 
-**Decision needed.** None for now; the solver stop rule compares interior-point
-with active-set at every ladder step.
+**What it means.** With `'utility'`, where the objective is very flat or very
+steep relative to the one median, the tolerances are effectively loose or
+tight. This was the suspected cause of interior-point differing from
+active-set by up to 0.005 in the equity share at nodes where the share hardly
+matters (`HANDOFF.md`, 12 October). `'ce'` puts every node on the same scale.
+At standard numerics over steps 1-7 and 9-12 the two give the same answers in
+practice (`HANDOFF.md`, 15 October; `diagnostics/objective/compare_objective.m`).
+
+**Decision needed.** Which objective is the default. Whether `'ce'` removes the
+interior-point against active-set gap at the production calibration has not
+been tested.
 
 ## 7. Small technical bounds
 
