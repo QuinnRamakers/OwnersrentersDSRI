@@ -31,7 +31,9 @@ The simulation records the same bound (`+simulate/paths_lna.m`, line 174), and
 
 **Why it is there.** With gamma = 5, utility goes to minus infinity as
 consumption goes to zero, and the search is kept away from that region.
-`CALIBRATION.md` lists `c_floor_frac` as a numerical bound.
+`CALIBRATION.md` lists `c_floor_frac` as a numerical bound. In
+certainty-equivalent units the objective stays finite as consumption goes to
+zero, so this reason would go away (`docs/SOLVER_COMPARISON_MK.md`, section 1).
 
 **What it means economically.**
 
@@ -153,7 +155,9 @@ interior-point came to differ from active-set by up to 0.005 in the equity
 share at nodes where the share hardly matters (`HANDOFF.md`, 12 October).
 
 **Decision needed.** None for now; the solver stop rule compares interior-point
-with active-set at every ladder step.
+with active-set at every ladder step. `docs/SOLVER_COMPARISON_MK.md` proposes
+giving fmincon the objective in certainty-equivalent units instead, as the
+coauthor's code does, which removes the scaling problem; not yet tried.
 
 ## 7. Small technical bounds
 

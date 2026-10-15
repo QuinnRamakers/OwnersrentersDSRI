@@ -30,6 +30,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Solver comparison with the coauthor's housing model (spec: none, asked by Quinn in Claude Code)
+Quinn shared a coauthor's separate model (`cons_savings_housing_MK.zip`: Epstein-Zin, rent/buy/stay choice, two ratio states) and asked what numerical choices in its solver might be smarter than ours, for example the objective and the fmincon settings.
+Changed: `docs/SOLVER_COMPARISON_MK.md` (new): the two solvers side by side, what to take over, where ours already matches or does better, and small points in the MK code. `docs/SOLVER_BOUNDS.md` sections 1 and 6 point to it. No code changed.
+Checks run: none in MATLAB (this cloud container has no MATLAB). A one-node toy in Python, with an interior optimum near c = 0.52: the proposed objective transform keeps the maximiser for gamma 5, 10 and 0.5, equals -1 at the seed and is increasing in the objective; for gamma 5 the objective spans -3.1e25 to -814 over c in (0, 1), the transformed one -4.4 to -1e-5.
+Reading: the one real difference is the objective given to fmincon. MK's is in certainty-equivalent units (homogeneous of degree 1); ours is V_tilde in utility units, spanning about 25 orders of magnitude across nodes with one median scale per period. The CE transform is monotone, so the sweep is unchanged and only fmincon's view improves; it also stays finite as c goes to 0, which removes the numerical reason for `c_floor_frac`. Second, our 500-evaluation cap stops fmincon at about 100 iterations, before the 200-iteration cap; how often is not measured. FunctionTolerance has no effect under interior-point or sqp, in either code. Quadrature (5 Gauss-Hermite nodes per shock, Cholesky) and linear interpolation of a CE-type value are the same in both. MK has no global search, no exit-flag check, and a uniform 25 x 24 grid with the same gap above 24 times income that our grid study found.
+Commit: this entry, pushed to branch `claude/ecstatic-cray-71jg7e`, not to main: this session may push only to that branch. It equalled main before this commit, so main can fast-forward to it.
+Open: whether to try the CE objective (test plan in the new file, section 1: step 7 and step 11, old against new, then `ladder.robustness(7)` and the full `run_tests`), and whether to count fmincon exit flags in `model.checks`.
+
 ### 2026-10-15 The solver's numerical bounds, documented (spec: none, asked by Quinn in Claude Code)
 Quinn was worried by the consumption-search bound and asked for it, and any other unexpected bounds, to be documented.
 Changed: `docs/SOLVER_BOUNDS.md` (new): every limit in the solver and the simulation that is not economics, with file and line, what it does in economic terms, measurements, and whether it needs a decision. `TODO.md` items 1 and 6 and `CALIBRATION.md` (the `c_floor_frac` paragraph) point to it. No code changed.
