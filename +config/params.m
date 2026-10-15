@@ -102,6 +102,7 @@ p.N_c           = 41;         % sets the consumption step of the per-node search
 p.N_pi          = 41;         % sets the equity-share step of the per-node search
 p.use_refine    = true;       % global (c, pi) sweep before fmincon at every node
 p.fmincon_algorithm = 'interior-point';   % local solve: 'interior-point', 'active-set' or 'sqp'
+p.fmincon_objective = 'ce';   % what fmincon minimises: 'ce' (certainty-equivalent units) or 'utility'
 p.interp_method = 'linear';   % continuation interpolant: 'linear', 'makima' or 'spline'
 p.lambda_lo     = [];         % bottom of the u1 axis; [] = 0.0008, or 0.0002 with housing
 p.lambda_hi     = [];         % top of the u1 axis; [] = min(0.9, 3/(1+h_mult)), or 1 without housing

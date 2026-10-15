@@ -30,6 +30,19 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 The fmincon objective in certainty-equivalent units (spec: none, suggested by the coauthor, asked by Quinn in Claude Code)
+The suggestion: minimise -(rhs/rhs_seed)^(1/(1-gamma)) instead of -rhs divided by the median |V| of next period. A monotone transform, so the same optimum, on a scale of order one at every node (-1 at the seed) and finite as consumption goes to zero.
+Changed: `+solver/bellman_step_lna.m`: primitive `fmincon_objective`, 'ce' (new, default) or 'utility' (as before); after fmincon the Bellman value is recomputed at its answer and kept only if it beats the sweep, as before. `+config/params.m`, CALIBRATION.md. `diagnostics/objective/compare_objective.m` (new): every ladder step run in this chat (1-7, 9-12), each arm, solved with both objectives at standard numerics, everything else equal (including the consumption bounds of 15 October); an overlay per arm, a summary page and `ladder/standard_16x16x10_gh5/objective/objective_comparison.pdf` (gitignored).
+Checks run: `run_tests(solve=false)`: 0 of 8 checks failed (the full suite was not run, at Quinn's request). Largest gaps over ages 26-95, ce against utility:
+- Mean liquid equity share where mean liquid savings are at least 0.05 years of income: at most 0.001 at steps 1-6, 0.006 at step 7, 0.007-0.018 at steps 9, 11, 12, 0.06-0.08 at step 10 (all-stock pot, at 75 and 88-90). Over all ages the gap reaches 0.4-1.0 at several steps, always at 26-31 where liquid savings are about zero and the equity share applies to nothing.
+- Mean consumption: at most 0.1% at steps 1-6, 0.01% (renter) and 0.9% (owner, at 88) at step 7, 0.02-0.5% at steps 9-12.
+- Grid points whose value differs by more than 0.1% in certainty-equivalent terms: none at steps 1-6; at step 7 0.64% higher and 0.23% lower (renter), 0.18% higher and 0.75% lower (owner); at steps 9-12 at most 0.3% higher and 0.78% lower. Where the two differ, the new objective more often ends at the lower value. The median difference is 1e-8 to 1e-6.
+- Solve time unchanged (step 1 19 -> 11 s; steps 7 and 9-12 66-75 s either way).
+- The first run crashed MATLAB (access violation) while drawing an overlay, after its solves were saved; the script now solves first and draws in a separate session.
+Reading: the change makes no material difference at these steps, and where it does differ it is slightly more often worse. The scaling the suggestion targets is not what moves the answers here. Whether it explains the interior-point against active-set gap at the production calibration has not been tested.
+Commit: this entry, pushed to main.
+Open: Quinn's choice of the default ('ce' now, or back to 'utility').
+
 ### 2026-10-15 Step-7 diagnostics with the new consumption bounds, in one PDF (spec: none, asked by Quinn in Claude Code)
 Changed: `diagnostics/grid_design/report_bounds.m` (new): figures 1-3 for the current grid coarse (16x16) against fine (32x16), figures 1-4 for the current against the log-wealth grid, figures 1-3 for the new against the old bounds, the overlay and robustness pages and two dashboards, in `ladder/standard_16x16x10_gh5/grid_design/lbfloor/step7_new_bounds.pdf` (11.7 MiB, gitignored). `ruin_figures` takes `fig1_pair=true` to draw only the first pair in figure 1.
 Checks run: step-7 owner solves with the new bounds (consumption from the floor to all liquid resources), standard numerics: current 16x16 89 s, floored 4.8% (5.5% with the old bounds), entry 0.68 (0.66); current 32x16 140 s, 3.0% (3.9%), 0.32 (0.034); log-wealth 16x16 76 s, 0.61% (2.0%), 0.31 (0.13); log-wealth 32x32 277 s, 0.06% (0.59%); power 2 32x32 283 s, 0.72% (3.8%). No household at the lower bound in any of them. The first PDF build stopped on a graphics timeout while a second MATLAB session was drawing; rebuilt alone.

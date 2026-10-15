@@ -20,7 +20,8 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %     2. if p.use_refine, a global sweep over (c, pi) -- a 21 x 21 grid
 %        spanning both ranges, then three rounds shrinking around the best
 %        point -- whose best point replaces the seed;
-%     3. fmincon (p.fmincon_algorithm) from the seed, kept if it improves on it.
+%     3. fmincon (p.fmincon_algorithm) from the seed, on the objective in
+%        p.fmincon_objective units, kept if it improves on the seed.
 %   The objective has competing local peaks at a minority of nodes, mostly in
 %   retirement, and a local solve from the warm start alone settles on the
 %   wrong one there. The sweep is what finds the right basin.
@@ -149,8 +150,12 @@ else
     pp_z = @(a, b, c) max(pp_lin(a, b, c), z_min);
 end
 
-% fmincon minimises a scaled objective: |V| spans many orders of magnitude, and
-% unscaled the objective sits below fmincon's tolerances.
+% What fmincon minimises. 'ce': the objective in certainty-equivalent units
+% relative to the seed, -(rhs / rhs_seed)^(1/(1-gamma)), the same optimum on a
+% scale of order one at every node. 'utility': the objective in utility units,
+% divided by the median |V| of next period (it spans many orders of magnitude).
+use_ce = strcmp(validatestring(p.fmincon_objective, {'ce', 'utility'}, ...
+                               'bellman_step_lna', 'p.fmincon_objective'), 'ce');
 obj_scale = 1;
 absV = abs(V_next(isfinite(V_next) & V_next ~= 0));
 if ~isempty(absV)
@@ -275,15 +280,22 @@ parfor k = 1:n_states
     % Stage 3: local solve from the seed
     lb2 = [c_floor; 0];
     ub2 = [1; 1];
-    obj_cpi = @(x) -obj_scale * bellman_rhs(x(1), x(2), LW_W, Rf_at, R_S_at, ...
-                                            A_next_W, H_next_W, Y_next_W, ...
-                                            w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+    rhs_fun = @(x) bellman_rhs(x(1), x(2), LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
+                               w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
+    if use_ce
+        % Certainty-equivalent units relative to the seed: a monotone
+        % transform of the objective, equal to -1 at the seed at every node.
+        obj_cpi = @(x) -(rhs_fun(x) / maxval) ^ inv_omg;
+    else
+        obj_cpi = @(x) -obj_scale * rhs_fun(x);
+    end
     x0 = [min(max(c_seed, c_floor), 1); min(max(pi_seed, 0), 1)];
     V_opt = -inf; x_opt = x0;
     try
-        [x_try, neg_V_try, exitflag] = fmincon(obj_cpi, x0, [], [], [], [], lb2, ub2, [], opts_opt);
-        if (exitflag > 0 || exitflag == 0) && -neg_V_try/obj_scale > V_opt
-            V_opt = -neg_V_try/obj_scale; x_opt = x_try;
+        [x_try, ~, exitflag] = fmincon(obj_cpi, x0, [], [], [], [], lb2, ub2, [], opts_opt);
+        V_try = rhs_fun(x_try);
+        if (exitflag > 0 || exitflag == 0) && V_try > V_opt
+            V_opt = V_try; x_opt = x_try;
         end
     catch
     end
