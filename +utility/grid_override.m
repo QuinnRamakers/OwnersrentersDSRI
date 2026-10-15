@@ -6,12 +6,13 @@ function [dims, gh_n] = grid_override(dims_default, gh_default)
 %   Returns the defaults unless the environment sets CGM_STATE_GRID and/or
 %   CGM_GH_N, in which case those win:
 %
-%       setenv('CGM_STATE_GRID', '8 6 6')   % or '8,6,6'
+%       setenv('CGM_STATE_GRID', '8 6 6 4')   % or '8,6,6,4'
 %       setenv('CGM_GH_N', '3')
 %
 %   This exists so a smoke test can run the same code on a small grid without
 %   editing anything. Clear both variables (setenv(name, '')) before a run
-%   whose output is used. dims are base counts; see utility.build_state_grids.
+%   whose output is used. dims are base counts on (u1, u2, u3, q); see
+%   utility.build_state_grids.
 
 dims = dims_default;
 gh_n = gh_default;
@@ -19,9 +20,12 @@ gh_n = gh_default;
 raw = getenv('CGM_STATE_GRID');
 if ~isempty(raw)
     v = sscanf(strrep(raw, ',', ' '), '%f').';
-    assert(numel(v) == 3 && all(v == round(v)) && all(v >= 2), ...
+    assert(numel(v) ~= 3, 'grid_override:CGM_STATE_GRID', ...
+        ['CGM_STATE_GRID has three numbers ("%s"), but the grid has four axes, (u1, u2, u3, q): ' ...
+         'add the base nodes on q, e.g. "%s 4".'], raw, strtrim(raw));
+    assert(numel(v) == 4 && all(v == round(v)) && all(v >= 2), ...
         'grid_override:CGM_STATE_GRID', ...
-        'CGM_STATE_GRID must be three integers >= 2, e.g. "12 10 12" (got "%s").', raw);
+        'CGM_STATE_GRID must be four integers >= 2, e.g. "12 10 12 6" (got "%s").', raw);
     dims = v;
 end
 

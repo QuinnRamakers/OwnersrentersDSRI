@@ -29,7 +29,7 @@ for c = opts.cases
     tok = regexp(char(c), '^(\w+?)_(\d+)x(\d+)$', 'tokens', 'once');
     rule = tok{1}; N1 = str2double(tok{2}); N2 = str2double(tok{3});
     p = ladder.params(7); p.is_owner = opts.owner;
-    p.grid_dims = [N1 N2 10]; p.gh_n = 5;
+    p.grid_dims = [N1 N2 10 8]; p.gh_n = 5;
     p.grid_nodes = grid_rule(rule, N1, N2, p);
     p = config.derive(p);
     r = model.run(p, N_sim = 10000, verbose = false);

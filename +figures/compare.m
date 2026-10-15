@@ -182,9 +182,10 @@ end
 function policy_panel(ax, rs, D, age, cols, styles, lw)
 % pi(u1) at this age, drawn against W/Y = 1/u1 over the u1 range the
 % households occupy. Each result is read off its own grid with the
-% interpolant the simulator uses, at its own households' median (u2, u3), so
-% that steps with and without a pension or a house are each shown where their
-% households are; dotted lines mark each result's median household.
+% interpolant the simulator uses, at its own households' median (u2, u3) and
+% at q = 1, so that steps with and without a pension or a house are each shown
+% where their households are; dotted lines mark each result's median
+% household.
 t = age - rs{1}.p.age0 + 1;
 lo = inf; hi = 0; sl = zeros(numel(rs), 3);
 for i = 1:numel(rs)
@@ -196,7 +197,8 @@ end
 uq = exp(linspace(log(lo), log(hi), 200)).';
 for i = numel(rs):-1:1
     p = rs{i}.p; u2 = sl(i, 2); u3 = sl(i, 3);
-    F = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, rs{i}.sol.pi_pol(:, :, :, t), 'linear', 'nearest');
+    F = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, rs{i}.sol.pi_pol(:, :, :, p.q_grid == 1, t), ...
+        'linear', 'nearest');
     plot(ax, 1 ./ uq, F(uq, u2 * ones(size(uq)), u3 * ones(size(uq))), styles{i}, ...
         'Color', cols(i, :), 'LineWidth', lw(i));
     nodes = p.u1_grid(p.u1_grid >= lo & p.u1_grid <= hi);

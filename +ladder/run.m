@@ -1,8 +1,9 @@
 function R = run(steps, opts)
 %RUN  Solve and simulate ladder steps at fixed numerics, and save them.
 %
-%   ladder.run(k)                         % one step: number or name
-%   ladder.run(1:9)                       % several, in order
+%   ladder.run(8)                         % one step: number, '7b', or name
+%   ladder.run(1:7)                       % several, in order
+%   ladder.run({'housing', '7b', 8})
 %   ladder.run('all')
 %   ladder.run(k, numerics='quick')       % 'quick' | 'standard' (default) | 'fine'
 %   ladder.run(k, force=true)             % re-solve even if a current result exists
@@ -29,7 +30,7 @@ end
 S = ladder.steps();
 if ischar(steps) || isstring(steps)
     if strcmp(char(steps), 'all')
-        steps = num2cell(1:numel(S));
+        steps = {S.name};
     else
         steps = {char(steps)};
     end
@@ -45,7 +46,7 @@ for i = 1:numel(steps)
     p.grid_dims = num.dims;
     p.gh_n = num.gh_n;
     p = config.derive(p);
-    fprintf('\n=== Step %d: %s (%s) ===\n%s\n', k, S(k).name, S(k).label, S(k).note);
+    fprintf('\n=== Step %s: %s (%s) ===\n%s\n', ladder.number(k, S), S(k).name, S(k).label, S(k).note);
 
     arms = {false};
     if model.tenures_differ(p), arms = {false, true}; end
@@ -65,8 +66,8 @@ for i = 1:numel(steps)
             fprintf('%s: the saved result is for a different calibration; re-solving.\n', tenure);
         end
         r = model.run(pa, N_sim = num.N_sim, keep_sim = opts.keep_sim);
-        r.step = struct('index', k, 'name', S(k).name, 'label', S(k).label, ...
-                        'note', S(k).note, 'set', S(k).set);
+        r.step = struct('index', k, 'number', ladder.number(k, S), 'name', S(k).name, ...
+                        'label', S(k).label, 'note', S(k).note, 'set', S(k).set);
         r.numerics = num;
         if opts.keep_sim
             save(file, '-struct', 'r', '-v7.3');

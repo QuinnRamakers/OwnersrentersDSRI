@@ -1,7 +1,7 @@
 function R = robustness(step, opts)
 %ROBUSTNESS  Re-solve one ladder step under other optimisers and grids, and overlay them.
 %
-%   ladder.robustness(k)                        % against the step at standard numerics
+%   ladder.robustness(8)                        % against the step at standard numerics
 %   ladder.robustness('corr_SL', numerics='quick')
 %   ladder.robustness(k, force=true)            % re-solve variants already saved
 %   R = ladder.robustness(...)                  % R.<arm>.<variant> = result
@@ -16,9 +16,9 @@ function R = robustness(step, opts)
 %     search       the global sweep switched, for the reference's algorithm and
 %                  for active-set (interior-point when the reference is
 %                  active-set)
-%     grids        [9 9 6] and quick [12 12 8] with 3 quadrature nodes, fine
-%                  [20 20 12] and twice the reference's u1 nodes with 5, all
-%                  with the reference's algorithm and sweep setting
+%     grids        [9 9 6 5] and quick [12 12 8 6] with 3 quadrature nodes,
+%                  fine [20 20 12 8] and twice the reference's u1 nodes with 5,
+%                  all with the reference's algorithm and sweep setting
 %   Each variant is saved to <numerics dir>/robustness/NN_<step>_<arm>_<variant>.mat
 %   and reused while its calibration is unchanged. All three sets are drawn on
 %   one page per arm with figures.robustness, robust_NN_<step>_<arm>.png in the
@@ -52,15 +52,16 @@ partner = 'active-set';
 if strcmp(A0, 'active-set'), partner = 'interior-point'; end
 V(end+1) = solver_variant(A0, ~S0, 'search', dims, num.gh_n);
 V(end+1) = solver_variant(partner, ~S0, 'search', dims, num.gh_n);
-V(end+1) = variant('coarse',   'grid [9 9 6], 3 nodes',    'grids', [9 9 6],    3, A0, S0);
-V(end+1) = variant('quick',    'grid [12 12 8], 3 nodes',  'grids', [12 12 8],  3, A0, S0);
-V(end+1) = variant('fine',     'grid [20 20 12], 5 nodes', 'grids', [20 20 12], 5, A0, S0);
-V(end+1) = variant('dense_u1', sprintf('grid [%d %d %d], 5 nodes', 2 * dims(1), dims(2:3)), ...
-                   'grids', [2 * dims(1), dims(2:3)], 5, A0, S0);
+V(end+1) = variant('coarse',   'grid [9 9 6 5], 3 nodes',    'grids', [9 9 6 5],    3, A0, S0);
+V(end+1) = variant('quick',    'grid [12 12 8 6], 3 nodes',  'grids', [12 12 8 6],  3, A0, S0);
+V(end+1) = variant('fine',     'grid [20 20 12 8], 5 nodes', 'grids', [20 20 12 8], 5, A0, S0);
+V(end+1) = variant('dense_u1', sprintf('grid [%d %d %d %d], 5 nodes', 2 * dims(1), dims(2:4)), ...
+                   'grids', [2 * dims(1), dims(2:4)], 5, A0, S0);
 
-ref = ladder.run(k, numerics = opts.numerics);
+ref = ladder.run(S(k).name, numerics = opts.numerics);
 ref = ref{1};
-ref_label = sprintf('fmincon %s, grid [%d %d %d], %d quadrature nodes', solver_text(A0, S0), dims, num.gh_n);
+ref_label = sprintf('fmincon %s, grid [%d %d %d %d], %d quadrature nodes', solver_text(A0, S0), dims, num.gh_n);
+nk = ladder.number(k, S); fk = ladder.number(k, S, true);
 
 R = struct();
 for arm = fieldnames(ref).'
@@ -72,7 +73,7 @@ for arm = fieldnames(ref).'
         p.grid_dims = v.dims; p.gh_n = v.gh_n;
         p.fmincon_algorithm = v.algorithm; p.use_refine = v.refine;
         p = config.derive(p);
-        file = fullfile(dir, sprintf('%02d_%s_%s_%s.mat', k, S(k).name, a, v.name));
+        file = fullfile(dir, sprintf('%s_%s_%s_%s.mat', fk, S(k).name, a, v.name));
         if ~opts.force && isfile(file)
             old = load(file, 'p');
             if ladder.same_calibration(old.p, p)
@@ -95,9 +96,9 @@ for arm = fieldnames(ref).'
         G(g).rs = arrayfun(@(x) R.(a).(x.name), V(w), 'UniformOutput', false);
         G(g).labels = {V(w).label};
     end
-    ttl = sprintf('Step %d, %s: %s. Robustness to the optimiser, the global search and the grid', ...
-        k, S(k).label, a);
-    out = fullfile(dir, sprintf('robust_%02d_%s_%s.png', k, S(k).name, a));
+    ttl = sprintf('Step %s, %s: %s. Robustness to the optimiser, the global search and the grid', ...
+        nk, S(k).label, a);
+    out = fullfile(dir, sprintf('robust_%s_%s_%s.png', fk, S(k).name, a));
     figures.robustness(R.(a).reference, ref_label, G, ttl, out);
     fprintf('Wrote %s\n', out);
 end

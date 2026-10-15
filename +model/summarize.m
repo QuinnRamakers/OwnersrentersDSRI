@@ -9,9 +9,9 @@ function s = summarize(p, sim)
 %
 %   Each level field is a struct of 1 x T rows: mean, p10, p50, p90.
 %     C, Y, net_income (after tax and contributions, before housing),
-%     housing_cost, X (liquid), A (DC pot), H, home_equity (owner: house net of
-%     the outstanding mortgage; otherwise 0), net_worth = X + A + home_equity,
-%     ann_pay (gross annuity payout)
+%     housing_cost (sim.h_cost), X (liquid), A (DC pot), H, home_equity (owner:
+%     house net of the outstanding mortgage; otherwise 0), net_worth =
+%     X + A + home_equity, ann_pay (gross annuity payout)
 %   Shares, 1 x T:
 %     pi             mean liquid equity share (also pi_p10, pi_p50, pi_p90)
 %     c_frac         mean share of liquid resources consumed
@@ -26,25 +26,25 @@ N = sim.N; T = p.T;
 ages = sim.ages(:).';
 Y0 = sim.Y(1, 1);
 
-hc  = zeros(N, T);
+hc  = sim.h_cost;
 heq = zeros(N, T);
-if p.h_mult > 0
-    if p.is_owner
-        n  = p.N_mort; rm = p.r_m;
-        for t = 1:T
-            m_rate = 0;
-            if t <= numel(p.m_rate_path), m_rate = p.m_rate_path(t); end
-            hc(:, t) = (p.theta + m_rate) * sim.H(:, t);
-            e = t - 1;                                   % years since purchase
-            if e < n
-                owed = p.LTV * ((1 + rm)^n - (1 + rm)^e) / ((1 + rm)^n - 1);
-            else
-                owed = 0;
-            end
+if p.h_mult > 0 && p.is_owner
+    % The outstanding balance as a share of the loan's base: the purchase
+    % price with the annuity, the current house value with the proportional
+    % contract.
+    n  = p.N_mort; rm = p.r_m;
+    for t = 1:T
+        e = t - 1;                                   % years since purchase
+        if e < n
+            owed = p.LTV * ((1 + rm)^n - (1 + rm)^e) / ((1 + rm)^n - 1);
+        else
+            owed = 0;
+        end
+        if strcmp(p.mortgage, 'annuity')
+            heq(:, t) = sim.H(:, t) - owed * sim.H(:, 1);
+        else
             heq(:, t) = (1 - owed) * sim.H(:, t);
         end
-    else
-        hc = p.alpha * sim.H;
     end
 end
 net_income = sim.disp_inc + hc;

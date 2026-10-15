@@ -1,8 +1,8 @@
 function out = load(step, numerics)
 %LOAD  Saved results of one ladder step, one field per tenure.
 %
-%   out = ladder.load(k)                     % standard numerics
-%   out = ladder.load('housing', 'quick')
+%   out = ladder.load(8)                     % standard numerics
+%   out = ladder.load('housing', 'quick')    % or '7b', or a name
 %
 %   Returns a struct with one field per arm (model.tenure): nohousing,
 %   nohousing_renter and nohousing_owner, or renter and owner. Errors if the
@@ -22,11 +22,12 @@ for tenure = {'nohousing', 'nohousing_renter', 'nohousing_owner', 'renter', 'own
         q = p; q.is_owner = endsWith(tenure{1}, 'owner');
         if ~ladder.same_calibration(out.(tenure{1}).p, q)
             warning('ladder:stale', ['%s was solved for a different calibration than ' ...
-                'step %d now specifies; re-run ladder.run(%d).'], file, k, k);
+                'step %s now specifies; re-run ladder.run(''%s'').'], file, ...
+                ladder.number(k, S), S(k).name);
         end
     end
 end
 assert(~isempty(fieldnames(out)), 'ladder:not_run', ...
-    'Step %d (%s) has no saved results in %s; run ladder.run(%d, numerics=''%s'') first.', ...
-    k, S(k).name, num.dir, k, numerics);
+    'Step %s (%s) has no saved results in %s; run ladder.run(''%s'', numerics=''%s'') first.', ...
+    ladder.number(k, S), S(k).name, num.dir, S(k).name, numerics);
 end

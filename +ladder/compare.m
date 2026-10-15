@@ -1,9 +1,9 @@
 function compare(step, numerics, opts)
 %COMPARE  What one ladder step changed: overlay it on the step it builds on.
 %
-%   ladder.compare(k)                      % step k against its parent (ladder.parent)
+%   ladder.compare(8)                      % a step against its parent (ladder.parent)
 %   ladder.compare('pension', 'quick')
-%   ladder.compare(k, 'standard', against=1)  % against another step
+%   ladder.compare('7b', 'standard', against=1)  % against another step
 %
 %   One step dashboard per arm (figures.step_dashboard: both steps with their
 %   10th-90th percentile bands, and the parameters that differ), saved next to
@@ -22,27 +22,29 @@ end
 
 S = ladder.steps();
 k = ladder.index(step, S);
-if isempty(opts.against), j = max(ladder.parent(k, S), 1); else, j = ladder.index(opts.against, S); end
-cur  = ladder.load(k, numerics);
-prev = ladder.load(j, numerics);
+if isempty(opts.against), j = max(ladder.parent(S(k).name, S), 1); else, j = ladder.index(opts.against, S); end
+cur  = ladder.load(S(k).name, numerics);
+prev = ladder.load(S(j).name, numerics);
 num  = ladder.numerics(numerics);
+nk = ladder.number(k, S); nj = ladder.number(j, S);
 
 for tenure = fieldnames(cur).'
     t  = tenure{1};
     tp = ladder.matching_arm(t, prev);
     rs = {prev.(tp), cur.(t)};
-    labels = {sprintf('%d %s (%s)', j, S(j).name, tp), sprintf('%d %s (%s)', k, S(k).name, t)};
-    file = fullfile(num.dir, sprintf('compare_%02d_%02d_%s.png', j, k, t));
-    figures.step_dashboard(rs{1}, rs{2}, labels, sprintf('Step %d, %s: %s against step %d', ...
-        k, S(k).label, t, j), file, changes = [changed(rs{1}.p, rs{2}.p), {['Step ' num2str(k) ': ' S(k).note]}]);
+    labels = {sprintf('%s %s (%s)', nj, S(j).name, tp), sprintf('%s %s (%s)', nk, S(k).name, t)};
+    file = fullfile(num.dir, sprintf('compare_%s_%s_%s.png', ladder.number(j, S, true), ...
+        ladder.number(k, S, true), t));
+    figures.step_dashboard(rs{1}, rs{2}, labels, sprintf('Step %s, %s: %s against step %s', ...
+        nk, S(k).label, t, nj), file, changes = [changed(rs{1}.p, rs{2}.p), {['Step ' nk ': ' S(k).note]}]);
     print_table(rs, labels);
 end
 arms = fieldnames(cur);
 o = arms(endsWith(arms, 'owner')); n = arms(endsWith(arms, 'renter'));
 if isscalar(o) && isscalar(n)
-    figures.step_dashboard(cur.(n{1}), cur.(o{1}), {sprintf('%d %s (%s)', k, S(k).name, n{1}), ...
-        sprintf('%d %s (%s)', k, S(k).name, o{1})}, sprintf('Step %d, %s: renter and owner', k, S(k).label), ...
-        fullfile(num.dir, sprintf('owner_renter_%02d.png', k)), ...
+    figures.step_dashboard(cur.(n{1}), cur.(o{1}), {sprintf('%s %s (%s)', nk, S(k).name, n{1}), ...
+        sprintf('%s %s (%s)', nk, S(k).name, o{1})}, sprintf('Step %s, %s: renter and owner', nk, S(k).label), ...
+        fullfile(num.dir, sprintf('owner_renter_%s.png', ladder.number(k, S, true))), ...
         colours = [0.45 0.20 0.55; 0.20 0.60 0.30], changes = changed(cur.(n{1}).p, cur.(o{1}).p));
 end
 end

@@ -253,6 +253,8 @@ because tenure is fixed at t = 1 and no household ever faces both processes.
 | `r_m` | 0.0136 | ECB MIR, NL cost of borrowing for house purchase, May 2026: 3.66% nominal less 2.3% inflation |
 | `N_mort` | 30 | Standard Dutch annuity mortgage term |
 | `LTV` | 1.00 | Asserted — see below |
+| `mortgage` | `'annuity'` | The contract, see below. `'proportional'` at ladder step 7 |
+| `maint_on_purchase` | false | true charges maintenance on the purchase price (a test, step 7b) |
 | `sell_cost` | 0.025 | Seller transaction cost at bequest, Hambel et al. (2026). Inert while `chi = 0` |
 
 For a renter, `alpha` and `h_mult` enter only as the product `alpha * h_mult`:
@@ -261,13 +263,26 @@ and contributions. That committed outflow, which the household cannot reduce,
 is what makes early life ill-conditioned at this calibration (README). The
 owner's equivalent is maintenance plus the mortgage payment.
 
-The mortgage is a **homothetic approximation**: the annuity payment rate is
-applied to the current house value rather than the original one, so there is no
-mortgage-balance state. The payment therefore grows with the house price
-instead of staying level. Correcting this needs a fourth state variable. In the
-paper, present the institutional contract first and then state the
-approximation — it attenuates the fixed-versus-floating hedging asymmetry, so
-the owner/renter welfare gap is a lower bound along that dimension.
+The mortgage is a real annuity on the purchase price: a constant real payment
+of `LTV * H0` times the annuity factor of an `N_mort`-year loan at `r_m`, so its
+present value at `r_m` is the loan. A Dutch annuity mortgage fixes the nominal
+payment instead; the real contract was chosen on 15 October 2026. Because the
+payment is fixed while the house value moves, the owner carries a fourth state,
+`q = H0/H_t`, the purchase price over the current house value: `q = 1` at
+entry and `q_{t+1} = q_t / R_H`. The payment is `m * q * H_t`, so the model stays
+homothetic in wealth. `q` is a state only while it enters the budget: during
+the `N_mort` paying years, or at every age when `maint_on_purchase` is true.
+
+Ladder step 7 keeps the earlier contract, `mortgage = 'proportional'`: the same
+rate applied to the current house value, with no fourth state. That payment
+grows with the house price; at step 7 its present value at `r_m` was 1.71 times
+the loan. Step 7b switches to the annuity and every step built on it inherits
+it. The bequest is not netted for the outstanding balance, which waits for
+`chi > 0` (TODO.md, item 4).
+
+`maint_on_purchase = true` charges maintenance on the purchase price,
+`theta * H0`, instead of the current value. It is a test run as step 7b's
+sensitivity, not the production setting.
 
 `LTV` is asserted equal to 1.00 because that is the only value consistent with
 the rest of the model: the household is endowed with the house at `t = 1` with
@@ -371,7 +386,7 @@ Not calibration targets; accuracy choices, justified by convergence checks.
 
 | Parameter | Value | Note |
 |---|---|---|
-| `grid_dims` | [20 20 12] | Base nodes on (u1, u2, u3); the entry anchors add up to two on u1 and u2 |
+| `grid_dims` | [20 20 12 8] | Base nodes on (u1, u2, u3, q); the entry anchors add up to two on u1 and u2, and q = 1 one on q. Where q is not a state the q axis is the single node 1 |
 | `gh_n` | 5 | Gauss-Hermite nodes per shock; 3 and 5 gave the same policies wherever compared |
 | `use_refine` | true | Global (c, pi) sweep before fmincon at every node. Without it the local solve lands on the wrong peak: at step 2 the equity share at 93-99 was up to 0.09 too low, and at the production calibration (quick numerics) the mean liquid equity share was off by up to 0.24 |
 | `fmincon_algorithm` | `'interior-point'` | Local solve after the sweep (Quinn's choice). With the sweep, interior-point and active-set agree to 0.001 in the mean equity share at steps 1-2; at the production calibration they differed by up to 0.10 with neither reaching the higher value everywhere. `'active-set'` and `'sqp'` are robustness checks (`ladder.robustness`). Active-set and interior-point give the same answer on a thread pool and a process pool; sqp did not at step 1 |
@@ -381,6 +396,7 @@ Not calibration targets; accuracy choices, justified by convergence checks.
 | `lambda_lo` | `[]` | 0.0008, or 0.0002 with housing. With house prices at 3.73% real and 8.35% vol, owners reach u1 = 0.0005 at 85+; 0.0008 clipped 0.02% of their household-years |
 | `lambda_hi` | `[]` | `min(0.9, 3/(1 + h_mult))`, or 1 without housing |
 | `grid_pow`, `grid_pow_u2`, `u2_lo`, `u3_lo`, `u3_hi`, `grid_nodes` | uniform, full axes | Placement; see GRIDS.md |
+| `q_hi`, `grid_pow_q` | 2, 2 | The q axis: nodes `q_hi * s^grid_pow_q` for s uniform on [0, 1]. Owners' q from the house-price process, 0.1th-99.9th percentile: 0.53-1.44 at 29, 0.10-1.45 at 54; the most extreme quadrature node takes q = 1.6-1.95. Starting values, to be checked by refinement |
 
 At the default grid, behaviour from 40 on is stable to a few percent. Early
 life at the production calibration is not converged at any grid tried (README).

@@ -5,15 +5,18 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %
 %   Households enter at age p.age0 with income Y0 from the deterministic
 %   profile, liquid wealth X0_frac * Y0, H0 = h_mult * Y0 and no DC pot. Each
-%   period the policies are read off the cube at the household's coordinates
-%       u1 = lambda,  u2 = (s_A + s_H)/(1 - lambda),  u3 = s_A/(s_A + s_H)
-%   and the budget, taxes, floor and returns are applied exactly as in
+%   period the policies are read off the grid at the household's coordinates
+%       u1 = lambda,  u2 = (s_A + s_H)/(1 - lambda),  u3 = s_A/(s_A + s_H),
+%       q = H0/H
+%   (q only in the periods where the solution depends on it) and the budget,
+%   taxes, floor and returns are applied exactly as in
 %   solver.bellman_step_lna. Shocks are continuous draws, correlated through
 %   the same Cholesky factor as grids.shock_grid.
 %
-%   Fields, N x T unless noted: Y, X, A, H, W, lambda, sA, sH; c_frac and pi
-%   (the policies applied); C (consumption), LW (liquid resources before
-%   consumption), disp_inc (net income after housing cost), m_pay (mortgage
+%   Fields, N x T unless noted: Y, X, A, H, W, lambda, sA, sH, q; c_frac and
+%   pi (the policies applied); C (consumption), LW (liquid resources before
+%   consumption), disp_inc (net income after housing cost), h_cost (housing
+%   cost: rent, or maintenance plus the mortgage payment), m_pay (mortgage
 %   payment), ann_pay (gross annuity payout), c_bound (the lower bound of the
 %   consumption search at the household's state), floored (resources topped up
 %   to the floor); tau_A and reit_A (N x T-1, the DC fund's stock and REIT
@@ -46,6 +49,8 @@ pi_path  = zeros(N, T);
 C_path   = zeros(N, T);
 LW_path  = zeros(N, T);
 m_path   = zeros(N, T);
+hc_path  = zeros(N, T);
+q_path   = ones(N, T);
 ann_pay_path = zeros(N, T);
 disp_inc = zeros(N, T);
 cb_path  = zeros(N, T);
@@ -56,15 +61,26 @@ reit_A_path = zeros(N, T-1);
 R_S_path    = zeros(N, T-1);
 
 n_clamp_c = 0; n_clamp_pi = 0; n_negLW = 0; n_floored = 0;
-n_off = zeros(1, 3);
+n_off = zeros(1, 4);
 
+% Policies on the 4D grid where they depend on q (it enters this year or a
+% later one), and on the q = 1 slice elsewhere, where every slice is the same.
+q_grid  = p.q_grid(:);
+iq1     = find(q_grid == 1);
+q_dep   = numel(q_grid) > 1 & flipud(cummax(flipud(double(p.q_live(:))))) > 0;
+annuity = strcmp(p.mortgage, 'annuity');
 pp_c  = cell(T, 1);
 pp_pi = cell(T, 1);
 for t = 1:T
-    pp_c{t}  = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
-                                  sol.c_pol(:,:,:,t), 'linear', 'nearest');
-    pp_pi{t} = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
-                                  sol.pi_pol(:,:,:,t), 'linear', 'nearest');
+    if q_dep(t)
+        ax = {p.u1_grid, p.u2_grid, p.u3_grid, q_grid};
+        pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,:,t), 'linear', 'nearest');
+        pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,:,t), 'linear', 'nearest');
+    else
+        ax = {p.u1_grid, p.u2_grid, p.u3_grid};
+        pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,iq1,t), 'linear', 'nearest');
+        pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,iq1,t), 'linear', 'nearest');
+    end
 end
 
 logY_canon = config.income_profile(p);
@@ -116,11 +132,18 @@ for t = 1:T
     is_retired = (t >= p.t_ret);
     kappa_t = p.kappa(min(t, numel(p.kappa)));
 
+    % Housing cost as a share of H. The annuity is paid on the purchase price,
+    % q H = H0; the proportional contract on the current value. Maintenance
+    % likewise by maint_on_purchase.
     if is_owner
         if t <= numel(p.m_rate_path), m_rate_t = p.m_rate_path(t); else, m_rate_t = 0; end
-        h_cost_rate = p.theta + m_rate_t;
+        m_q  = m_rate_t;
+        th_q = p.theta;
+        if annuity, m_q = m_rate_t .* q_path(:,t); end
+        if p.maint_on_purchase, th_q = p.theta .* q_path(:,t); end
+        h_cost_rate = th_q + m_q;
     else
-        m_rate_t = 0;
+        m_q = 0;
         h_cost_rate = p.alpha;
     end
 
@@ -138,7 +161,8 @@ for t = 1:T
              - h_cost_rate .* H_path(:,t);
     end
     LW_path(:,t) = LW;
-    m_path(:,t)  = m_rate_t .* H_path(:,t);
+    m_path(:,t)  = m_q .* H_path(:,t);
+    hc_path(:,t) = h_cost_rate .* H_path(:,t);
     ann_pay_path(:,t) = ann_pay;
     disp_inc(:,t) = contrib_factor .* Y_path(:,t) + ann_pay_net - h_cost_rate .* H_path(:,t);
 
@@ -157,8 +181,16 @@ for t = 1:T
     u2q = min(max(u2_raw, p.u2_grid(1)), p.u2_grid(end));
     u3q = u3_raw;
 
-    cf_raw = pp_c{t}(u1q, u2q, u3q);
-    pi_raw = pp_pi{t}(u1q, u2q, u3q);
+    if q_dep(t)
+        q_raw = q_path(:,t);
+        n_off(4) = n_off(4) + sum(q_raw < q_grid(1) - 1e-12 | q_raw > q_grid(end) + 1e-12);
+        qq = min(max(q_raw, q_grid(1)), q_grid(end));
+        cf_raw = pp_c{t}(u1q, u2q, u3q, qq);
+        pi_raw = pp_pi{t}(u1q, u2q, u3q, qq);
+    else
+        cf_raw = pp_c{t}(u1q, u2q, u3q);
+        pi_raw = pp_pi{t}(u1q, u2q, u3q);
+    end
     cf  = max(min(cf_raw, 1), 0);
     pi_ = max(min(pi_raw, 1), 0);
     n_clamp_c  = n_clamp_c  + sum(abs(cf  - cf_raw)  > 1e-10);
@@ -210,6 +242,7 @@ for t = 1:T
     X_path(:,t+1) = R_X .* X_post;
     A_path(:,t+1) = R_A_with .* A_pre;
     H_path(:,t+1) = R_H_draw .* H_path(:,t);
+    q_path(:,t+1) = q_path(:,t) ./ R_H_draw;
 
     if t < p.t_ret - 1
         Y_path(:,t+1) = Y_path(:,t) .* exp(profile.mu_growth(t) + profile.sigma_l_log(t) .* eps_Y(:,t));
@@ -233,9 +266,10 @@ if n_clamp_pi > 0.001 * N * T
 end
 
 sim.Y = Y_path;  sim.X = X_path;  sim.A = A_path;  sim.H = H_path;  sim.W = W_path;
-sim.lambda = lam_path;  sim.sA = sA_path;  sim.sH = sH_path;
+sim.lambda = lam_path;  sim.sA = sA_path;  sim.sH = sH_path;  sim.q = q_path;
 sim.c_frac = c_path;  sim.pi = pi_path;
 sim.C = C_path;  sim.LW = LW_path;
+sim.h_cost = hc_path;
 sim.m_pay = m_path;
 sim.ann_pay = ann_pay_path;
 sim.disp_inc = disp_inc;
@@ -252,12 +286,12 @@ sim.X0_frac = X0_frac;
 sim.diagnostics = struct('n_clamp_c', n_clamp_c, 'n_clamp_pi', n_clamp_pi, ...
                          'n_negLW', n_negLW, 'n_floored', n_floored, ...
                          'n_offgrid_u1', n_off(1), 'n_offgrid_u2', n_off(2), ...
-                         'n_offgrid_u3', n_off(3));
+                         'n_offgrid_u3', n_off(3), 'n_offgrid_q', n_off(4));
 
 if any(n_off > 0)
     warning('paths_lna:offgrid', ...
         ['%d of %d household-year policy lookups fell outside the state grid ' ...
-         '(u1: %d, u2: %d, u3: %d) and were extrapolated flat from the edge. ' ...
-         'Widen the affected axis; see GRIDS.md.'], sum(n_off), N * T, n_off(1), n_off(2), n_off(3));
+         '(u1: %d, u2: %d, u3: %d, q: %d) and were extrapolated flat from the edge. ' ...
+         'Widen the affected axis; see GRIDS.md.'], sum(n_off), N * T, n_off(1), n_off(2), n_off(3), n_off(4));
 end
 end

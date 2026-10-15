@@ -14,8 +14,10 @@ function p = params(do_derive)
 %   The model is solved on a cube of normalised coordinates,
 %       u1 = Y/W,   u2 = (A+H)/(W-Y),   u3 = A/(A+H),   W = X + A + H + Y,
 %   with liquid wealth X, DC pot A, housing (owner) or rent index (renter) H
-%   and income Y. Choices: c, the share of liquid resources consumed, and pi,
-%   the equity share of liquid saving. The DC fund follows a glide path.
+%   and income Y. An owner with an annuity mortgage has a fourth state, the
+%   purchase price over the current house value, q = H0/H. Choices: c, the
+%   share of liquid resources consumed, and pi, the equity share of liquid
+%   saving. The DC fund follows a glide path.
 %
 %   Euro amounts are in 2025 prices.
 
@@ -66,7 +68,7 @@ p.corr_RL          = 0;       % corr(REIT return, income shock)
 p.corr_RS          = 0;       % corr(REIT return, stock return)
 p.corr_RH          = 0;       % corr(REIT return, H growth)
 
-% Housing. Renters pay alpha*H on a rent index H; owners pay (theta + mortgage)*H.
+% Housing. Renters pay alpha*H on a rent index H; owners pay maintenance and the mortgage.
 p.is_owner      = false;      % tenure; also selects the income fields without housing
 p.h_mult        = 4.0;        % H at entry as a multiple of income (placeholder); 0 removes housing
 p.alpha         = 0.06;       % rent as a share of the rent index
@@ -78,6 +80,8 @@ p.sigma_R_level = 0.0179;     % rent growth volatility
 p.r_m           = 0.0136;     % real mortgage rate
 p.N_mort        = 30;         % mortgage term, years
 p.LTV           = 1.00;       % only 1.00 is implemented
+p.mortgage      = 'annuity';  % 'annuity': fixed real payment on the purchase price; 'proportional': rate times current value (step 7)
+p.maint_on_purchase = false;  % true: maintenance theta times the purchase price (test)
 p.sell_cost     = 0.025;      % sale cost when the house is bequeathed
 
 % Taxes. EET on the DC pillar; box 3 on the liquid account only.
@@ -95,7 +99,7 @@ p.b0    = 3400 / (33000 * 1.3031);   % median deposits under 25 over the age-25 
 p.b_alt = 9800 / (33000 * 1.3031);   % same for ages 25-35
 
 % Numerics
-p.grid_dims     = [20 20 12]; % base nodes on (u1, u2, u3); the entry anchors add up to two on u1 and u2
+p.grid_dims     = [20 20 12 8]; % base nodes on (u1, u2, u3, q); the entry anchors add up to two on u1 and u2, and one on q
 p.gh_n          = 5;          % Gauss-Hermite nodes per shock
 p.gh_n_reit     = [];         % nodes for the REIT shock; [] uses gh_n
 p.N_c           = 41;         % sets the consumption step of the per-node search
@@ -111,6 +115,8 @@ p.grid_pow_u2   = 1;          % > 1 bunches u2 nodes toward 1
 p.u2_lo         = 0;          % bottom of the u2 axis
 p.u3_lo         = 0;          % bottom of the u3 axis
 p.u3_hi         = 1;          % top of the u3 axis
+p.q_hi          = 2;          % top of the q axis
+p.grid_pow_q    = 2;          % > 1 bunches q nodes toward 0
 p.grid_nodes    = [];         % explicit axis nodes, overriding the rules above
 
 if nargin < 1 || do_derive

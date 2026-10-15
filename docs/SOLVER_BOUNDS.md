@@ -127,11 +127,20 @@ affected.
 
 **The rule.** The value function and the policies are read beyond the grid
 by flat extrapolation from the nearest edge (`+solver/bellman_step_lna.m`,
-lines 143-144). The simulation clamps the state to the grid and counts the
-lookups that were outside (`+simulate/paths_lna.m`, lines 156-157;
-`model.checks` reports `offgrid`). With housing the u1 axis runs from 0.0002
-to 0.6, total wealth of 0.67 to 4,999 years of income; without housing from
-0.0008 to 1.
+where the continuation interpolant is built). The simulation clamps the state
+to the grid and counts the lookups that were outside (`+simulate/paths_lna.m`;
+`model.checks` reports `offgrid`, one count per axis: u1, u2, u3, q). With
+housing the u1 axis runs from 0.0002 to 0.6, total wealth of 0.67 to 4,999
+years of income; without housing from 0.0008 to 1.
+
+The q axis, q = H0/H for an owner with the annuity mortgage, runs from 0 to
+`q_hi` = 2. Its bottom is exact: q cannot fall below 0. At the top, a house
+worth less than half its purchase price is valued as if it were worth half.
+From the house-price process the 99.9th percentile of q is 1.44-1.59 at
+29-54, and the most extreme quadrature node at gh_n = 5 takes q to 1.6-1.95,
+so the edge is reached only by that node from the highest q nodes. The
+simulation counts q lookups only in the years where the solution depends on
+q.
 
 **What it means.** A household richer than 4,999 years of income, or with
 less than 0.67, is valued as if it sat on the edge. Off-grid lookups were 0
@@ -139,7 +148,7 @@ at step 7 and in its grid-study solves. Elsewhere: 24 and 31 of 760,000
 household-years at step 10 (renter, owner; all-stock pension pots), and 65 and
 70 in the constant-house-price variant of step 7.
 
-**Decision needed.** None while `offgrid` stays at 0.
+**Decision needed.** None while `offgrid` stays at 0, q included.
 
 ## 5. Non-finite values replaced by the worst value
 

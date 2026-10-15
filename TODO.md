@@ -48,9 +48,10 @@ Decisions open, to be settled before step 7 is rerun:
 1. **Owners' access to housing equity.** Let owners sell part of the house, or
    release equity, when cash runs short. This removes owner ruin while equity
    is positive and keeps three states.
-2. **The mortgage payment.** A payment tied to income, matched to a real
-   annuity on average (three states), or a real contract on the purchase price
-   (a fourth state, several times the solve cost). See also 5.
+2. **The mortgage payment.** Settled for this contract on 15 October 2026: a
+   real annuity on the purchase price, with q = H0/H as a fourth state, from
+   ladder step 7b on (CALIBRATION.md). Open: whether it removes enough of the
+   grid dependence at 25-39, which the step-7b runs measure.
 3. **Renters.** Cap the rent burden with housing benefit (huurtoeslag), at a
    share of income to be sourced, or let renters downsize as in Yao and Zhang
    (2005).
@@ -108,8 +109,8 @@ differences rather than levels.
   owner's house is purely a cost-saving device. Pick one: give `chi` a value,
   or change the rationale.
 - When `chi > 0` the bequest base is liquid wealth plus gross housing, with no
-  mortgage netting. Cocco and Yao–Zhang net out the debt. Decide jointly with
-  the mortgage contract.
+  mortgage netting. Cocco and Yao–Zhang net out the debt. With the annuity the
+  balance is known from q, so the netting can be added with `chi > 0`.
 - The terminal-period bequest is inconsistent with the recursion's: the
   recursion discounts by `beta` and applies one period of returns, the terminal
   step does neither. Dormant while `chi = 0`, wrong the moment it is switched
@@ -121,8 +122,6 @@ differences rather than levels.
   transitory shock. Partial persistence needs a fourth state dimension. If a
   transitory shock is added, retirement income must be keyed to the permanent
   component, as in CGM.
-- **Mortgage balance.** Not modelled; see `CALIBRATION.md`. What the
-  approximation costs is in 1.
 - **Free DC investment choice and glide-path comparisons.** Implemented on the
   research branch, parked until 1 is settled. The annuity there is priced off
   the plan's glide, not the chosen share; say which question a comparison
@@ -169,8 +168,8 @@ differences rather than levels.
 - **Coordinates.** State the cube the model is solved on, and never call `W`
   wealth for renters, whose `W` includes the rent index.
 - **Behaviour to state.** The DC return carries a survival credit from 25; the
-  retirement-transition income shock is zero; the mortgage is proportional to
-  the current house value; the first pillar is `replacement * Y_66`, not a flat
+  retirement-transition income shock is zero; the mortgage is a real annuity,
+  not the Dutch fixed nominal payment; the first pillar is `replacement * Y_66`, not a flat
   AOW, which makes planner results somewhat pessimistic.
 - **Minor.** Housing volatility "3.7^2%" should be 3.7%; the wealth tax "1.97"
   is missing a percent sign; the ECB MIR series is the all-mortgages

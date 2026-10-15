@@ -10,8 +10,8 @@ function d = panel_data(r)
 %
 %   N x T fields: Y, C, X, A, H, c_frac, pi, disp_inc, ann_pay (gross),
 %   takehome (wages or AOW after contributions and tax), annuity (after tax),
-%   rent, maintenance, mortgage (the model's payment, a rate on the current
-%   house value), M_balance and H_net (a fixed-payment mortgage on the house at
+%   rent, maintenance, mortgage (the model's payment, sim.m_pay), M_balance
+%   and H_net (a fixed-payment mortgage on the house at
 %   entry, for the wealth panels), HC (human capital: the expected present
 %   value of future income), net_worth = X + A + H_net, eq_liquid and eq_pension
 %   (stock held in the liquid account after consumption and in the DC fund),
@@ -52,7 +52,7 @@ d.maintenance = zeros(N, T);
 d.mortgage    = zeros(N, T);
 if d.has_housing
     if p.is_owner
-        d.maintenance = p.theta .* sim.H;
+        d.maintenance = sim.h_cost - sim.m_pay;
         d.mortgage    = sim.m_pay;
     else
         d.rent = p.alpha .* sim.H;

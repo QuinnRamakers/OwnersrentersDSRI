@@ -3,6 +3,7 @@ function overlay(steps, numerics, opts)
 %
 %   ladder.overlay([6 9 10 11 12])                  % standard numerics
 %   ladder.overlay({'corr_SL', 'dc_bonds'}, 'quick')
+%   ladder.overlay({7, '7b', 8})
 %   ladder.overlay(steps, 'standard', view='pension', name='dc_fund')
 %
 %   figures.compare with the first step as the black reference and up to five
@@ -22,9 +23,9 @@ S = ladder.steps();
 if isnumeric(steps), steps = num2cell(steps); end
 k = cellfun(@(s) ladder.index(s, S), steps);
 num = ladder.numerics(numerics);
-R = arrayfun(@(j) ladder.load(j, numerics), k, 'UniformOutput', false);
+R = arrayfun(@(j) ladder.load(S(j).name, numerics), k, 'UniformOutput', false);
 name = opts.name;
-if isempty(name), name = strjoin(arrayfun(@(j) sprintf('%02d', j), k, 'UniformOutput', false), '_'); end
+if isempty(name), name = strjoin(arrayfun(@(j) ladder.number(j, S, true), k, 'UniformOutput', false), '_'); end
 
 for arm = fieldnames(R{end}).'
     a = arm{1};
@@ -32,10 +33,10 @@ for arm = fieldnames(R{end}).'
     for i = 1:numel(k)
         ta = ladder.matching_arm(a, R{i});
         rs{i} = R{i}.(ta);
-        labels{i} = sprintf('%d %s: %s', k(i), S(k(i)).name, S(k(i)).label);
+        labels{i} = sprintf('%s %s: %s', ladder.number(k(i), S), S(k(i)).name, S(k(i)).label);
     end
     file = fullfile(num.dir, sprintf('overlay_%s_%s.png', name, a));
-    figures.compare(rs, labels, sprintf('Steps %s: %s', strjoin(arrayfun(@num2str, k, ...
+    figures.compare(rs, labels, sprintf('Steps %s: %s', strjoin(arrayfun(@(j) ladder.number(j, S), k, ...
         'UniformOutput', false), ', '), a), file, view = opts.view);
     fprintf('Wrote %s\n', file);
 end

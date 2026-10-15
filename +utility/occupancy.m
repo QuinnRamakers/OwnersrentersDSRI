@@ -23,7 +23,12 @@ function occ = occupancy(p, s, ages, sol)
 %   non-income wealth leaves u2 and u3 undefined -- are dropped per axis rather
 %   than for the whole row, so one bad coordinate does not discard the other
 %   two.
+%
+%   Only for a solution without the q axis (p.N_q = 1).
 
+assert(~isfield(p, 'N_q') || p.N_q == 1, 'occupancy:q_axis', ...
+    ['utility.occupancy measures (u1, u2, u3) only, and this calibration has a q axis ' ...
+     '(N_q = %d). Set the q axis with q_hi and grid_pow_q instead.'], p.N_q);
 lam = s.lambda; sA = s.sA; sH = s.sH;
 T = size(lam, 2);
 if nargin < 3 || isempty(ages), ages = 1:T; end
@@ -68,6 +73,7 @@ function c = curvature(p, sol)
 %   one grid serves all of them.
 g = p.gamma;
 Z = real(((1 - g) * sol.V) .^ (1/(1 - g)));
+Z = reshape(Z, size(Z, 1), size(Z, 2), size(Z, 3), []);   % drop the single q node
 Z(~isfinite(Z)) = 0;
 ax = {p.u1_grid(:), p.u2_grid(:), p.u3_grid(:)};
 c = struct('u1', [], 'u2', [], 'u3', []);

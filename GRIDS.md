@@ -20,7 +20,11 @@ relative to the population is what decides whether the early-life policies
 converge, so the axes cannot be a set of constants carried between
 calibrations.
 
-There are three ways to set them, in increasing order of effort.
+There are three ways to set them, in increasing order of effort. An owner with
+the annuity mortgage also has a fourth axis, `q = H0 / H` on `[0, q_hi]`,
+bunched toward 0 by `grid_pow_q`, with `q = 1` spliced in as the entry node;
+it is set by hand and checked by refinement, and the automatic route below
+refuses a calibration that has it.
 
 ## 1. Automatic
 
@@ -150,7 +154,9 @@ u2 = u3 = 0 on every path; without housing u3 is 0 or 1; without a DC pillar
 it is 0. `utility.build_state_grids` gives such axes the two nodes {0, 1}
 whatever the requested size, since the solve on the occupied line does not
 depend on the nodes removed. This is why the first steps of the calibration
-ladder solve in seconds.
+ladder solve in seconds. The q axis is the single node `q = 1` wherever q is
+not a state: renters, steps without housing, and the proportional mortgage of
+step 7.
 
 ## What it was measured against
 

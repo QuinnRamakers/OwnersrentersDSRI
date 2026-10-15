@@ -10,6 +10,12 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-10-15 The mortgage as a state variable, q = H0/H
+Written in Claude Code on 15 Oct as `docs/prompts/mortgage_state.md` (against e87d7d2, cherry-picked onto main as ab313ee); Quinn pasted the start instructions into Claude Code, which copied the spec here in short.
+Change: replace the proportional mortgage with a real annuity on the purchase price, carrying q = H0/H as a fourth state (axis q_hi * s^grid_pow_q, 8 base nodes, q = 1 spliced in; a single node where q is not a state). Step 7 keeps the proportional contract; a new step `annuity` directly after it, shown as 7b (Quinn's choice, 15 Oct: later steps keep their numbers), switches to the annuity, and production inherits it. Test: maintenance on the purchase price (`maint_on_purchase`), as 7b's sensitivity. No bequest netting yet.
+Why: the payment tied to the house price is one of the two causes of step 7's grid dependence (HANDOFF, 12 Oct).
+Checks that must pass: full `run_tests` 0 failures, with the new checks (flat prices: annuity = proportional at q = 1 within 1e-10; N_q by arm; payment m LTV H0 to N_mort with present value 1.00 times the loan to 1e-12; the step's parents). Step 7, both tenures, small grid, bit-identical to 6f61c85 (Quinn, 15 Oct: 6f61c85 instead of e87d7d2, since main moved on). Then the plan's runs one at a time at standard numerics, with an expectation before each and `model.checks` read after, stopping for Quinn after each.
+
 ### 2026-10-12 Calibration ladder, part 1: CGM core, DHS income, market, income-stock correlation
 Written by chat on 12 Oct against d8efb70; Quinn pasted it into Claude Code, which copied it here in short. Values from calibration_notes.pdf (12 Oct 2026), Tables 2-4.
 Answers to the plan's questions 1-4:
@@ -29,6 +35,25 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-15 The mortgage as a state variable: code, tests, regression, run 1 (spec: The mortgage as a state variable, q = H0/H)
+Changed, in the plan's order:
+- `+config/params.m`, CALIBRATION.md: primitives `mortgage` ('annuity'), `maint_on_purchase` (false), a fourth `grid_dims` entry (8), `q_hi` (2), `grid_pow_q` (2); the "homothetic approximation" paragraph replaced by the contract and the q state.
+- `+config/derive.m`: checks the two switches, derives `p.q_live`. `+utility/build_state_grids.m`: the q axis, a single node q = 1 where q is never a state, `grid_nodes.q`; `+config/insert_anchor_nodes.m` splices q = 1; `+utility/welfare_anchor.m` reads at q = 1; `+utility/grid_override.m` takes four numbers, and three is an error that says so.
+- `+solver/bellman_step_lna.m`: housing cost per q node; q' = q/R_H at each shock node; 4D interpolation where the continuation depends on q, 3D on one slice otherwise; one slice solved and copied where q enters neither this year nor later; the terminal period loops over q. `+solver/solve_lifecycle_lna.m`: N1 x N2 x N3 x N_q x T, warm start per slice, probe at q = 1.
+- `+simulate/paths_lna.m`: `sim.q`, `sim.h_cost`, payment m q H (= m H0), maintenance by the switch, 4D lookups where the solution depends on q, `n_offgrid_q`. `+model/summarize.m` (housing cost from `sim.h_cost`; home equity H - owed LTV H0 for the annuity), `+model/checks.m` (`offgrid` has four entries; entry value at q = 1), `+model/run.m`.
+- Ladder: step 7 sets `mortgage = 'proportional'`; new step `annuity`, shown as 7b (step field `num`, `ladder.number`), varying `maint_on_purchase`. Numbers given to `ladder.run(8)` and the like, and in file names and titles, are the shown numbers; `ladder.index` maps them to positions, and internal calls go by name. Numerics have four dims; folders are `<numerics>_16x16x10x8_gh5`. Grid variants in `robustness` and `grid_axes` have four entries; `grid_axes` adds 'q x2' when the owner has q.
+- Figures: `compare` (policy panel at q = 1), `mortgage` (labelled by contract; the annuity lies on the real annuity), `panel_data` (maintenance from `h_cost`), `dashboard` (step number). `utility.occupancy` and `auto_state_grids` stop with an error when q is a state; `grid_from_occupancy` needs nothing (it places one axis). `diagnostics/step07/solve_cases.m`, `diagnostics/grid_design/solve_grids.m`: four-entry grids.
+- Tests: four-entry grids, step loops by name; new `q_axis_where_live`, `annuity_flat_prices`, `annuity_payment_pv`; `ladder_branches` checks 7b's parents, numbers and contracts; `nohousing_ignores_housing` also changes `mortgage` and `maint_on_purchase`; `figures_render` draws the mortgage figure.
+- Docs: README, TODO.md (item 1 decision 2 settled for this contract; the mortgage-balance item removed; bequest netting; paper note), GRIDS.md, `docs/SOLVER_BOUNDS.md` section 4, CLAUDE.md.
+Checks run:
+- `run_tests(solve=false)`: 0 of 9 checks failed.
+- `run_tests` (full): 1 of 16 checks failed, `smoke_both_tenures`: the production owner (grid [6 5 4 3], gh_n 3, 500 households) had 1 of 38,000 policy lookups with q above q_hi = 2 (off-grid [0 0 0 1]). The first run reported it as "Formatted arguments must be scalar", a bug in the off-grid warning, fixed. All new checks passed: flat prices within 1e-10, payment and its present value within 1e-12.
+- How often q passes q_hi at standard numerics, from the simulator's own draws (10,000 households, ages 25-54, no solve): step 7b owner 2 of 300,000 household-years above 2 (max 2.037), none above 2.5; step 8 the same (max 2.061).
+- Regression against 6f61c85 (a git worktree), step 7, both tenures, grid [8 6 6] (new code [8 6 6 4]), gh_n 3, 2,000 households: V, c_pol and pi_pol bit-identical (the new arrays carry a singleton q dimension), all 26 numeric panel fields, the summary, `ce_entry` (renter 0.79687019074520726, owner 0.8752164955205356) and `c_bound_25_39` identical; off-grid 0.
+- Run 1, `ladder.run(7)`, standard numerics (16x16x10x8, gh_n 5, 10,000 households). Expected: owner floored 4.8%, entry 0.68; renter 0.36%, 0.67 (15 Oct, before the CE objective and the equity-share rule). Got: renter floored 0.22% (67+: 0.49%), `c_bound_25_39` 0, `ce_entry` 0.680, off-grid 0, 99 s; owner floored 4.78% (40-66: 0.08%, 67+: 10.6%), `c_bound_25_39` 0, `ce_entry` 0.680, off-grid 0, 83 s.
+Commit: this entry, pushed to main.
+Open: `q_hi` (2 leaves 2 q lookups off the grid at step 7b, 2.5 none), Quinn's choice before run 2; then runs 2-4. The scripts in `diagnostics/grid_axes`, `diagnostics/objective` and `diagnostics/retirement` index the steps by number as positions; they need `ladder.index` before they are run again.
 
 ### 2026-10-15 Prompt for the mortgage as a state variable, saved, not started (spec: none, asked by Quinn in Claude Code)
 Quinn asked for a proposal to replace the proportional mortgage with a proper state, the ratio of the purchase price to the current house value, q = H0/H_t, and then to save it as a prompt for later. Decisions taken: a real annuity on the purchase price; step 7 keeps the proportional mortgage and a new step directly after it ("7b", step 8 by position) switches to the annuity, so production inherits it; a test with maintenance on the purchase price, run as the new step's sensitivity; no bequest netting yet.

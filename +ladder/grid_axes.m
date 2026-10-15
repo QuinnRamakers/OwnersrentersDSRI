@@ -1,25 +1,29 @@
 function R = grid_axes(step, opts)
 %GRID_AXES  Re-solve one ladder step with one grid axis refined at a time.
 %
-%   ladder.grid_axes(k)                     % each axis doubled, standard numerics
-%   ladder.grid_axes(k, ladders=true)       % also refinement ladders on u1 and u2
-%   ladder.grid_axes(k, numerics='quick', force=true)
+%   ladder.grid_axes(12)                    % each axis doubled, standard numerics
+%   ladder.grid_axes(12, ladders=true)      % also refinement ladders on u1 and u2
+%   ladder.grid_axes('7b', numerics='quick', force=true)
 %   R = ladder.grid_axes(...)               % R.<arm>.<variant> = result
 %
-%   The state grid has three axes and the shocks a fourth:
+%   The state grid has four axes and the shocks a fifth:
 %     u1 = Y/W              income over total resources (liquid savings, pension
 %                           account, house and this year's income); 1/u1 is total
 %                           resources in years of income
 %     u2 = (A+H)/(W-Y)      the share of wealth held in the pension account and the
 %                           house rather than in liquid savings
 %     u3 = A/(A+H)          the pension account's share of pension plus house
+%     q = H0/H              the purchase price over the current house value
+%                           (owners with the annuity mortgage)
 %     gh_n                  Gauss-Hermite nodes per shock (income, stocks, house)
 %   Without housing u3 is 0 or 1 and its axis is collapsed to two nodes, so
 %   refining it changes nothing; without housing and a DC pillar u2 is too.
+%   q is a single node wherever it is not a state.
 %
 %   Variants, all with the reference's solver, households and seed:
-%     one axis doubled   u1, u2 and u3 base nodes doubled one at a time, and 7
-%                        quadrature nodes instead of 5
+%     one axis doubled   u1, u2 and u3 base nodes doubled one at a time, q too
+%                        when the owner has it, and 7 quadrature nodes instead
+%                        of 5
 %     ladders=true adds  u1 at 1.5, 2, 3 and 4 times its base nodes, and the
 %                        base u1 nodes bunched toward its bottom (grid_pow 2);
 %                        u2 at 1.5, 2 and 3 times, and its base nodes bunched
@@ -47,42 +51,47 @@ dir = fullfile(num.dir, 'robustness');
 if ~isfolder(dir), mkdir(dir); end
 b = num.dims; g = num.gh_n;
 
+po = p0; po.is_owner = true; po = config.derive(po);
 V = struct('name', {}, 'label', {}, 'set', {}, 'dims', {}, 'gh_n', {}, 'pow', {}, 'pow2', {});
-V(end+1) = variant('u1 x2', 'one', [2 * b(1), b(2:3)], g);
-V(end+1) = variant('u2 x2', 'one', [b(1), 2 * b(2), b(3)], g);
-V(end+1) = variant('u3 x2', 'one', [b(1:2), 2 * b(3)], g);
+V(end+1) = variant('u1 x2', 'one', [2 * b(1), b(2:4)], g);
+V(end+1) = variant('u2 x2', 'one', [b(1), 2 * b(2), b(3:4)], g);
+V(end+1) = variant('u3 x2', 'one', [b(1:2), 2 * b(3), b(4)], g);
+if po.N_q > 1
+    V(end+1) = variant('q x2', 'one', [b(1:3), 2 * b(4)], g);
+end
 V(end+1) = variant(sprintf('%d shock nodes', g + 2), 'one', b, g + 2);
 if opts.ladders
     for m = [1.5 2 3 4]
-        V(end+1) = variant(sprintf('u1 x%g', m), 'u1', [round(m * b(1)), b(2:3)], g); %#ok<AGROW>
+        V(end+1) = variant(sprintf('u1 x%g', m), 'u1', [round(m * b(1)), b(2:4)], g); %#ok<AGROW>
     end
     V(end+1) = variant('u1 bunched low', 'u1', b, g, 2, 1);
     for m = [1.5 2 3]
-        V(end+1) = variant(sprintf('u2 x%g', m), 'u2', [b(1), round(m * b(2)), b(3)], g); %#ok<AGROW>
+        V(end+1) = variant(sprintf('u2 x%g', m), 'u2', [b(1), round(m * b(2)), b(3:4)], g); %#ok<AGROW>
     end
     V(end+1) = variant('u2 bunched toward 1', 'u2', b, g, 1, 2);
-    V(end+1) = variant('u1 x2, u2 x2', 'both', [2 * b(1), 2 * b(2), b(3)], g);
-    V(end+1) = variant('u1 x4, u2 x2', 'both', [4 * b(1), 2 * b(2), b(3)], g);
+    V(end+1) = variant('u1 x2, u2 x2', 'both', [2 * b(1), 2 * b(2), b(3:4)], g);
+    V(end+1) = variant('u1 x4, u2 x2', 'both', [4 * b(1), 2 * b(2), b(3:4)], g);
     V(end+1) = variant('both bunched', 'both', b, g, 2, 2);
 end
 
-ref = ladder.run(k, numerics = opts.numerics);
+ref = ladder.run(S(k).name, numerics = opts.numerics);
 ref = ref{1};
-ref_label = sprintf('fmincon %s with global sweep %d, grid [%d %d %d], %d quadrature nodes', ...
+ref_label = sprintf('fmincon %s with global sweep %d, grid [%d %d %d %d], %d quadrature nodes', ...
     p0.fmincon_algorithm, p0.use_refine, b, g);
+nk = ladder.number(k, S); fk = ladder.number(k, S, true);
 
 R = struct();
 for arm = fieldnames(ref).'
     a = arm{1};
     R.(a).reference = ref.(a);
-    saved = dir_runs(dir, k, S(k).name, a);
+    saved = dir_runs(dir, fk, S(k).name, a);
     for i = 1:numel(V)
         v = V(i);
         p = p0;
         p.is_owner = endsWith(a, 'owner');
         p.grid_dims = v.dims; p.gh_n = v.gh_n; p.grid_pow = v.pow; p.grid_pow_u2 = v.pow2;
         p = config.derive(p);
-        file = fullfile(dir, sprintf('%02d_%s_%s_%s.mat', k, S(k).name, a, file_tag(v)));
+        file = fullfile(dir, sprintf('%s_%s_%s_%s.mat', fk, S(k).name, a, file_tag(v)));
         r = [];
         if ~opts.force
             for f = [{file}, saved]
@@ -114,8 +123,8 @@ for arm = fieldnames(ref).'
         G(end+1) = struct('name', names{s}, 'rs', {arrayfun(@(j) V(j).r.(a), w, 'UniformOutput', false)}, ...
                           'labels', {arrayfun(@(j) describe(V(j)), w, 'UniformOutput', false)}); %#ok<AGROW>
     end
-    ttl = sprintf('Step %d, %s: %s. Which grid axis matters', k, S(k).label, a);
-    out = fullfile(dir, sprintf('robust_axes_%02d_%s_%s.png', k, S(k).name, a));
+    ttl = sprintf('Step %s, %s: %s. Which grid axis matters', nk, S(k).label, a);
+    out = fullfile(dir, sprintf('robust_axes_%s_%s_%s.png', fk, S(k).name, a));
     figures.robustness(R.(a).reference, ref_label, G, ttl, out);
     fprintf('Wrote %s\n', out);
     print_gaps(R.(a).reference, V, a);
@@ -130,20 +139,20 @@ v = struct('name', '', 'label', label, 'set', set, 'dims', dims, 'gh_n', gh_n, '
 end
 
 function t = file_tag(v)
-t = sprintf('g%dx%dx%d_gh%d', v.dims, v.gh_n);
+t = sprintf('g%dx%dx%dx%d_gh%d', v.dims, v.gh_n);
 if v.pow ~= 1, t = sprintf('%s_pow%g', t, v.pow); end
 if v.pow2 ~= 1, t = sprintf('%s_powu2%g', t, v.pow2); end
 end
 
 function s = describe(v)
-s = sprintf('%s: grid [%d %d %d], %d nodes', v.label, v.dims, v.gh_n);
+s = sprintf('%s: grid [%d %d %d %d], %d nodes', v.label, v.dims, v.gh_n);
 if v.pow ~= 1, s = sprintf('%s, grid_pow %g', s, v.pow); end
 if v.pow2 ~= 1, s = sprintf('%s, grid_pow_u2 %g', s, v.pow2); end
 end
 
-function F = dir_runs(dir, k, name, arm)
+function F = dir_runs(dir, fk, name, arm)
 % Saved robustness runs of this step and arm, under any name.
-L = dir_list(fullfile(dir, sprintf('%02d_%s_%s_*.mat', k, name, arm)));
+L = dir_list(fullfile(dir, sprintf('%s_%s_%s_*.mat', fk, name, arm)));
 F = fullfile(dir, L);
 end
 

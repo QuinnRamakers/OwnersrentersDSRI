@@ -8,7 +8,8 @@ follows a random walk around a deterministic age profile. Retirement income is
 the state pension (AOW), a fixed share of final income, plus an annuity paid out
 of the DC pot. The DC fund follows a glide path. A renter pays rent on a rent
 index that grows on its own process; an owner holds a house financed by a
-30-year annuity mortgage and pays maintenance. Housing is a passive asset: it
+30-year real annuity mortgage on the purchase price and pays maintenance.
+Housing is a passive asset: it
 costs money each year and, for owners, can be bequeathed, but it is not chosen
 and does not enter utility.
 
@@ -33,12 +34,13 @@ ladder.report('quick')
 
 `run_model` writes `results_<tenure>.mat` and a dashboard PNG per tenure to
 the output directory: `CGM_OUTPUT_DIR` if set, otherwise the current folder.
-At the default grid (`p.grid_dims = [20 20 12]`, `gh_n = 5`) a tenure takes
-about 8 minutes on 16 cores. For a quick look, shrink the grid through the
-environment and clear it afterwards:
+At the default grid (`p.grid_dims = [20 20 12 8]`, `gh_n = 5`) a renter takes
+about 8 minutes on 16 cores. An owner takes several times longer, because the
+mortgage adds the q axis for 30 years (not yet measured at this grid). For a
+quick look, shrink the grid through the environment and clear it afterwards:
 
 ```matlab
-setenv('CGM_STATE_GRID', '8 6 6'); setenv('CGM_GH_N', '3');
+setenv('CGM_STATE_GRID', '8 6 6 4'); setenv('CGM_GH_N', '3');
 run_model
 setenv('CGM_STATE_GRID', ''); setenv('CGM_GH_N', '');
 ```
@@ -76,8 +78,9 @@ each checked on the baseline without the other:
 | 4 | `income` | 3 | DHS income cubic in euros and permanent shock std, separately for owners and renters |
 | 5 | `market` | 4 | real rate 1.15%, equity premium 4.56%, equity vol 21.6% |
 | 6 | `corr_SL` | 5 | income-stock correlation 0.04 |
-| 7 | `housing` | 6 | housing at 4x entry income; house prices 3.73% (vol 8.35%), rents 0.99% (vol 1.79%) |
-| 8 | `housing_corr` | 7 | correlations of the house price (owners) or rent (renters) with income and stocks |
+| 7 | `housing` | 6 | housing at 4x entry income; house prices 3.73% (vol 8.35%), rents 0.99% (vol 1.79%); the mortgage payment a rate on the current house value |
+| 7b | `annuity` | 7 | the mortgage a real annuity on the purchase price, with q = H0/H as an owner's state; sensitivity: maintenance on the purchase price |
+| 8 | `housing_corr` | 7b | correlations of the house price (owners) or rent (renters) with income and stocks |
 | 9 | `dc_bonds` | 6 | DC contributions of 18.6% above the franchise, fund all in bonds, annuity at 67; first pillar still 68% |
 | 10 | `dc_stocks` | 9 | DC fund all in stocks, in retirement too |
 | 11 | `dc_glide` | 10 | DC fund on the production glide (0.8, to 0 at 67, bonds in retirement) |
@@ -88,9 +91,11 @@ each checked on the baseline without the other:
 
 Step 15 is `config.params()` exactly; `run_tests` checks this. To change the
 calibration, edit a value in a step or append a step after `box3` (a floor
-level, a housing multiple from data, the REIT leg). `ladder.params(k)`
-returns the calibration at step k, and an override that names a field that is
-not a primitive is an error.
+level, a housing multiple from data, the REIT leg). A step inserted between
+two others takes a letter (7b), so the steps after it keep their numbers.
+`ladder.params(8)`, `ladder.params('7b')` or `ladder.params('annuity')`
+returns the calibration at that step, and an override that names a field that
+is not a primitive is an error.
 
 `ladder.run` solves a step for each tenure it has, at numerics held fixed
 along the ladder so that differences between steps come from the calibration.
@@ -100,13 +105,15 @@ have their own income process, so steps 4–6 have two (`nohousing_renter`,
 
 | numerics | grid | gh_n | households | step with housing and DC, per tenure (16 cores) |
 |---|---|---|---|---|
-| `quick` | [12 12 8] | 3 | 4,000 | under a minute; the whole ladder in 6 minutes |
-| `standard` | [16 16 10] | 5 | 10,000 | about 4 minutes |
-| `fine` | [20 20 12] | 5 | 10,000 | about 8 minutes |
+| `quick` | [12 12 8 6] | 3 | 4,000 | under a minute; the whole ladder in 6 minutes |
+| `standard` | [16 16 10 8] | 5 | 10,000 | about 4 minutes |
+| `fine` | [20 20 12 8] | 5 | 10,000 | about 8 minutes |
 
-Steps 1-6 have no housing. Their u2 and u3 axes cannot move, so they collapse
-to two nodes and solve in seconds; steps 7-8 have no DC pillar and steps 9-12
-no housing, so both collapse u3. Results are saved under
+The times are from before the q axis; an owner from step 7b on takes several
+times longer. Steps 1-6 have no housing. Their u2 and u3 axes cannot move, so
+they collapse to two nodes and solve in seconds; steps 7-8 have no DC pillar
+and steps 9-12 no housing, so both collapse u3. The q axis is a single node
+except for owners from step 7b on. Results are saved under
 `<output dir>/ladder/<numerics>/` as `NN_<name>_<tenure>.mat`, each with a
 twelve-panel dashboard (`figures.dashboard`). A saved step is reused until its
 calibration changes; editing a step re-solves it and every step built on it on
@@ -167,13 +174,19 @@ is homothetic, V(W, u) = W^(1-gamma) V_tilde(u), and is solved on the cube
 
     u1 = Y/W,   u2 = (A+H)/(W-Y),   u3 = A/(A+H),
 
-on which every point is a feasible state. The continuation is interpolated
-linearly in its certainty equivalent z = ((1-gamma) V_tilde)^(1/(1-gamma)).
+on which every point is a feasible state. An owner's mortgage is a real
+annuity on the purchase price H0, so an owner has a fourth state while it
+runs, q = H0/H, which starts at 1 and moves as q' = q/R_H whatever the
+household does; V(W, u, q) = W^(1-gamma) V_tilde(u, q). The continuation is
+interpolated linearly in its certainty equivalent
+z = ((1-gamma) V_tilde)^(1/(1-gamma)).
 
 Each period. Working: take-home income is (1 - kappa_t)(1 - tau_inc) Y, the
 contribution kappa_t Y goes to the DC pot (EET), and the housing cost (rent
-alpha*H, or maintenance plus mortgage (theta + m_t) H) is paid out of liquid
-resources. Retired: AOW and the annuity A/a_t are taxed as income. If
+alpha*H, or maintenance plus mortgage theta H + m_t H0) is paid out of liquid
+resources. Ladder step 7 charges the mortgage on the current value instead,
+m_t H, with no fourth state. Retired: AOW and the annuity A/a_t are taxed as
+income. If
 resources fall below phi_floor * Y the household consumes that floor and saves
 nothing. The liquid account earns the risk-free rate and equity, after box-3
 tax; the DC fund holds the glide path's equity share pre-tax and earns the

@@ -199,7 +199,7 @@ end
 function t = title_text(r)
 t = r.tenure;
 if isfield(r, 'step')
-    t = sprintf('Step %d, %s: %s', r.step.index, r.step.label, r.tenure);
+    t = sprintf('Step %s, %s: %s', r.step.number, r.step.label, r.tenure);
 end
 end
 

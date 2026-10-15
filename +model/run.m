@@ -37,8 +37,8 @@ restore  = onCleanup(@() maxNumCompThreads(nthreads));
 [profile, shocks, ann_price] = config.model_inputs(p);
 tenure = model.tenure(p);
 if opts.verbose
-    fprintf('Solving %s on %d x %d x %d nodes, gh_n = %d ...\n', ...
-        tenure, p.N_u1, p.N_u2, p.N_u3, p.gh_n);
+    fprintf('Solving %s on %d x %d x %d x %d nodes (u1, u2, u3, q), gh_n = %d ...\n', ...
+        tenure, p.N_u1, p.N_u2, p.N_u3, p.N_q, p.gh_n);
 end
 
 t0  = tic;

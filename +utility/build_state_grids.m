@@ -1,14 +1,14 @@
 function p = build_state_grids(p, dims, gh_n)
-%BUILD_STATE_GRIDS  Build the (u1, u2, u3) state grid, entry anchors included.
+%BUILD_STATE_GRIDS  Build the (u1, u2, u3, q) state grid, entry anchors included.
 %
 %   p = utility.build_state_grids(p, dims)
 %   p = utility.build_state_grids(p, dims, gh_n)
 %   p = utility.build_state_grids(p)          % rebuild at p.grid_dims
 %
-%   dims are BASE node counts. The two entry-state anchors (p.b0, p.b_alt) are
-%   spliced into u1 and u2 as exact nodes afterwards, so those axes can come
-%   back up to two nodes longer: read the realised sizes off p.N_u1, p.N_u2,
-%   p.N_u3. A third argument sets p.gh_n.
+%   dims are four BASE node counts. The two entry-state anchors (p.b0, p.b_alt)
+%   are spliced into u1 and u2 as exact nodes afterwards, and the entry q = 1
+%   into q, so those axes can come back longer: read the realised sizes off
+%   p.N_u1, p.N_u2, p.N_u3, p.N_q. A third argument sets p.gh_n.
 %
 %   Placement, per axis, unless p.grid_nodes supplies the axis outright:
 %     u1  [lambda_lo, lambda_hi], bunched toward the bottom when grid_pow > 1.
@@ -18,12 +18,15 @@ function p = build_state_grids(p, dims, gh_n)
 %         its liquid wealth down reaches lambda = 1 exactly.
 %     u2  [u2_lo, 1], bunched toward 1 when grid_pow_u2 > 1.
 %     u3  [u3_lo, u3_hi], uniform.
+%     q   [0, q_hi], bunched toward 0 when grid_pow_q > 1.
 %
 %   Axes that the model cannot move along are collapsed to the two nodes
 %   {0, 1}. Without housing and without a DC pillar A = H = 0, so u2 = u3 = 0
 %   always. Without housing u3 = A/(A+H) is 0 or 1; without a DC pillar it is
 %   0. The solve on the occupied line does not depend on the nodes removed, so
-%   this changes nothing but the runtime.
+%   this changes nothing but the runtime. The q axis is the single node q = 1
+%   when q is a state in no period (p.q_live, config.derive), and the solver
+%   then works on the (u1, u2, u3) cube alone.
 %
 %   Beyond the last node griddedInterpolant extrapolates 'nearest', which is
 %   flat: a household pushed off an axis gets a continuation value with no
@@ -38,14 +41,16 @@ end
 if nargin < 2 || isempty(dims)
     dims = p.grid_dims;
 end
-assert(isnumeric(dims) && numel(dims) == 3 && all(dims == round(dims)) && all(dims >= 2), ...
-    'build_state_grids:dims', 'dims must be three integers >= 2 (got %s).', mat2str(dims));
-N1 = dims(1); N2 = dims(2); N3 = dims(3);
+assert(isnumeric(dims) && numel(dims) == 4 && all(dims == round(dims)) && all(dims >= 2), ...
+    'build_state_grids:dims', ['dims must be four integers >= 2, base nodes on (u1, u2, u3, q) ' ...
+    '(got %s).'], mat2str(dims));
+N1 = dims(1); N2 = dims(2); N3 = dims(3); Nq = dims(4);
 
 no_housing = field_or(p, 'h_mult', 0) == 0;
 no_dc      = field_or(p, 'kappa_base', 0) == 0;
 collapse_u2 = no_housing && no_dc;
 collapse_u3 = no_housing || no_dc;
+collapse_q  = ~any(field_or(p, 'q_live', false));
 
 [lam_lo, lam_hi] = lambda_bounds(p);
 given = node_override(p);
@@ -77,9 +82,22 @@ else
     p.u3_grid = linspace(lo, hi, N3).';
 end
 
+if collapse_q
+    p.q_grid = 1;
+elseif ~isempty(given.q)
+    p.q_grid = given.q;
+else
+    q_hi = field_or(p, 'q_hi', 2);
+    assert(q_hi >= 1, 'build_state_grids:q_hi', ...
+        'q_hi must be at least 1, the entry state (got %.4g).', q_hi);
+    q = max(1, field_or(p, 'grid_pow_q', 1));
+    p.q_grid = q_hi * linspace(0, 1, Nq).' .^ q;
+end
+
 p.N_u1 = numel(p.u1_grid);
 p.N_u2 = numel(p.u2_grid);
 p.N_u3 = numel(p.u3_grid);
+p.N_q  = numel(p.q_grid);
 
 p = config.insert_anchor_nodes(p);
 check_anchors(p);
@@ -105,12 +123,12 @@ end
 % ------------------------------------------------------------------------
 function g = node_override(p)
 %NODE_OVERRIDE  Axis vectors supplied on p.grid_nodes, validated.
-g = struct('u1', [], 'u2', [], 'u3', []);
+g = struct('u1', [], 'u2', [], 'u3', [], 'q', []);
 if ~isfield(p, 'grid_nodes') || isempty(p.grid_nodes), return; end
 gn = p.grid_nodes;
 assert(isstruct(gn), 'build_state_grids:grid_nodes', ...
-    'p.grid_nodes must be a struct with fields u1, u2 and/or u3.');
-f = {'u1', 'u2', 'u3'};
+    'p.grid_nodes must be a struct with fields u1, u2, u3 and/or q.');
+f = {'u1', 'u2', 'u3', 'q'};
 for i = 1:numel(f)
     if ~isfield(gn, f{i}) || isempty(gn.(f{i})), continue; end
     v = double(gn.(f{i})(:));
@@ -121,6 +139,9 @@ for i = 1:numel(f)
     if strcmp(f{i}, 'u1')
         assert(min(v) > 0, 'build_state_grids:grid_nodes', ...
             'p.grid_nodes.u1 must be strictly positive (got %.4g).', min(v));
+    elseif strcmp(f{i}, 'q')
+        assert(min(v) >= 0, 'build_state_grids:grid_nodes', ...
+            'p.grid_nodes.q must be non-negative (got %.4g).', min(v));
     else
         assert(min(v) >= 0 && max(v) <= 1, 'build_state_grids:grid_nodes', ...
             'p.grid_nodes.%s must lie in [0, 1] (got [%.4g, %.4g]).', f{i}, min(v), max(v));
@@ -131,7 +152,9 @@ end
 
 % ------------------------------------------------------------------------
 function check_anchors(p)
-%CHECK_ANCHORS  Both entry anchors must be exact nodes of u1 and u2.
+%CHECK_ANCHORS  Both entry anchors must be exact nodes of u1 and u2, and q = 1 of q.
+assert(any(p.q_grid == 1), 'build_state_grids:anchor_missing', ...
+    'the entry state q = 1 is not an exact node of the q axis.');
 if ~all(isfield(p, {'b0', 'b_alt', 'h_mult'})), return; end
 b = [p.b0, p.b_alt];
 for a = 1:2

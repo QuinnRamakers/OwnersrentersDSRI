@@ -5,8 +5,9 @@ function p = derive(p)
 %
 %   Rebuilds, from the primitives alone: the log-return moments of the three
 %   lognormal processes, the retirement period, the DC glide path, the
-%   contribution-rate profile, the mortgage schedule, and the state grid with
-%   the entry-state anchors. Nothing is carried over from an earlier call, so
+%   contribution-rate profile, the mortgage schedule, the periods in which the
+%   purchase-price ratio q is a state, and the state grid with the entry-state
+%   anchors. Nothing is carried over from an earlier call, so
 %   it is safe to run after any override -- change a primitive, call this, and
 %   no derived field is left stale.
 
@@ -55,11 +56,24 @@ p.kappa  = zeros(p.T, 1);
 work_t   = 1 : (p.t_ret - 1);
 p.kappa(work_t) = p.kappa_base .* max(Y_det(work_t) - p.franchise, 0) ./ Y_det(work_t);
 
-% Annuity mortgage, applied as a rate on the current house value for N_mort
-% years (no balance state).
+% Mortgage payment per euro of purchase price for N_mort years: LTV times the
+% annuity factor at r_m. The annuity charges it on the purchase price, q*H;
+% the proportional contract on the current house value, H.
+assert((ischar(p.mortgage) || isstring(p.mortgage)) && ...
+    any(strcmp(char(p.mortgage), {'annuity', 'proportional'})), 'derive:mortgage', ...
+    'mortgage must be ''annuity'' or ''proportional'' (got %s).', mat2str(p.mortgage));
+assert(isscalar(p.maint_on_purchase) && any(p.maint_on_purchase == [0 1]), ...
+    'derive:maint_on_purchase', 'maint_on_purchase must be true or false.');
 amort_rate    = p.LTV * p.r_m * (1 + p.r_m)^p.N_mort / ((1 + p.r_m)^p.N_mort - 1);
 p.m_rate_path = zeros(p.T - 1, 1);
 p.m_rate_path(1 : min(p.N_mort, p.T - 1)) = amort_rate;
+
+% q = H0/H is a state in the periods where it enters an owner's budget: while
+% the annuity is paid, and at every age when maintenance is on the purchase
+% price.
+pays     = (1 : p.T).' <= min(p.N_mort, p.T - 1);
+annuity  = strcmp(char(p.mortgage), 'annuity');
+p.q_live = (p.is_owner && p.h_mult > 0) & ((annuity & pays) | logical(p.maint_on_purchase));
 
 p = utility.build_state_grids(p, p.grid_dims, p.gh_n);
 end

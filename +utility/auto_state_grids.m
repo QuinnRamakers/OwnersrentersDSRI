@@ -26,8 +26,11 @@ function [p, rep] = auto_state_grids(p, dims, gh_n, opt)
 %   income profile, the return process and the horizon together. A formula over
 %   the calibration would be another set of constants to go stale.
 %
+%   It places (u1, u2, u3) only, so it refuses a calibration in which q is a
+%   state (p.q_live); dims and pilot_dims take four entries, the last unused.
+%
 %   opt fields, all optional:
-%     pilot_dims  cube for pass 1                     [10 10 8]
+%     pilot_dims  cube for pass 1                     [10 10 8 2]
 %     pilot_gh    quadrature nodes for pass 1         3
 %     n_sim       households simulated in pass 1      4000
 %     seed        simulation seed                     20260919
@@ -47,8 +50,11 @@ function [p, rep] = auto_state_grids(p, dims, gh_n, opt)
 if nargin < 2, dims = []; end
 if nargin < 3, gh_n = []; end
 if nargin < 4 || isempty(opt), opt = struct; end
+assert(~any(getf(p, 'q_live', false)), 'auto_state_grids:q_axis', ...
+    ['utility.auto_state_grids places (u1, u2, u3) only, and q = H0/H is a state in this ' ...
+     'calibration. Set the q axis with q_hi and grid_pow_q, and the other axes by hand.']);
 
-pilot_dims = getf(opt, 'pilot_dims', [10 10 8]);
+pilot_dims = getf(opt, 'pilot_dims', [10 10 8 2]);
 pilot_gh   = getf(opt, 'pilot_gh',   3);
 n_sim      = getf(opt, 'n_sim',      4000);
 seed       = getf(opt, 'seed',       20260919);

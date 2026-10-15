@@ -2,9 +2,9 @@ function R = sensitivity(step, opts)
 %SENSITIVITY  Re-solve one ladder step with single primitives moved, and draw them against it.
 %
 %   ladder.sensitivity('aow')                    % the step's own vary list, standard numerics
-%   ladder.sensitivity(k, numerics='quick')
-%   ladder.sensitivity(k, vary=struct('replacement', [0.2 0.4]))
-%   ladder.sensitivity(k, force=true)            % re-solve variants already saved
+%   ladder.sensitivity('7b', numerics='quick')
+%   ladder.sensitivity(12, vary=struct('replacement', [0.2 0.4]))
+%   ladder.sensitivity(12, force=true)           % re-solve variants already saved
 %   R = ladder.sensitivity(...)                  % R.<arm>.<variant> = result
 %
 %   Each field of vary is a primitive of config.params and each of its values
@@ -33,8 +33,9 @@ S = ladder.steps();
 [p0, k] = ladder.params(step);
 vary = opts.vary;
 if isempty(vary), vary = S(k).vary; end
+nk = ladder.number(k, S); fk = ladder.number(k, S, true);
 assert(isstruct(vary) && ~isempty(fieldnames(vary)), 'ladder:no_vary', ...
-    'Step %d (%s) lists nothing to vary; pass vary=struct(...).', k, S(k).name);
+    'Step %s (%s) lists nothing to vary; pass vary=struct(...).', nk, S(k).name);
 prim = config.params(false);
 for f = fieldnames(vary).'
     assert(isfield(prim, f{1}), 'ladder:unknown_field', ...
@@ -46,7 +47,7 @@ p0 = config.derive(p0);
 dir = fullfile(num.dir, 'sensitivity');
 if ~isfolder(dir), mkdir(dir); end
 
-ref = ladder.run(k, numerics = opts.numerics);
+ref = ladder.run(S(k).name, numerics = opts.numerics);
 ref = ref{1};
 R = struct();
 for arm = fieldnames(ref).'
@@ -54,7 +55,7 @@ for arm = fieldnames(ref).'
     R.(a).reference = ref.(a);
     for f = fieldnames(vary).'
         fld = f{1};
-        ref_label = sprintf('%d %s: %s = %s (the step)', k, S(k).name, fld, val(p0.(fld)));
+        ref_label = sprintf('%s %s: %s = %s (the step)', nk, S(k).name, fld, val(p0.(fld)));
         rs = {ref.(a)}; labels = {ref_label};
         for v = vary.(fld)(:).'
             name = sprintf('%s_%s', fld, strrep(sprintf('%g', v), '.', 'p'));
@@ -62,7 +63,7 @@ for arm = fieldnames(ref).'
             p.is_owner = endsWith(a, 'owner');
             p.(fld) = v;
             p = config.derive(p);
-            file = fullfile(dir, sprintf('%02d_%s_%s_%s.mat', k, S(k).name, a, name));
+            file = fullfile(dir, sprintf('%s_%s_%s_%s.mat', fk, S(k).name, a, name));
             r = [];
             if ~opts.force && isfile(file)
                 old = load(file, 'p');
@@ -81,13 +82,13 @@ for arm = fieldnames(ref).'
             label = sprintf('%s = %s', fld, val(v));
             rs{end+1} = r; labels{end+1} = label; %#ok<AGROW>
             figures.step_dashboard(ref.(a), r, {ref_label, label}, ...
-                sprintf('Step %d, %s: %s with %s against the step', k, S(k).label, a, label), ...
-                fullfile(dir, sprintf('sens_%02d_%s_%s_%s.png', k, S(k).name, a, name)), ...
+                sprintf('Step %s, %s: %s with %s against the step', nk, S(k).label, a, label), ...
+                fullfile(dir, sprintf('sens_%s_%s_%s_%s.png', fk, S(k).name, a, name)), ...
                 changes = {sprintf('%s: %s -> %s', fld, val(p0.(fld)), val(v))});
         end
-        out = fullfile(dir, sprintf('sens_%02d_%s_%s_%s.png', k, S(k).name, a, fld));
-        figures.compare(rs, labels, sprintf('Step %d, %s: %s, sensitivity to %s', ...
-            k, S(k).label, a, fld), out, view = opts.view);
+        out = fullfile(dir, sprintf('sens_%s_%s_%s_%s.png', fk, S(k).name, a, fld));
+        figures.compare(rs, labels, sprintf('Step %s, %s: %s, sensitivity to %s', ...
+            nk, S(k).label, a, fld), out, view = opts.view);
         fprintf('Wrote %s\n', out);
     end
 end

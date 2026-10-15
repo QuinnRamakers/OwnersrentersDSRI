@@ -40,7 +40,7 @@ Use the session-start skill at the beginning and the session-end skill at the en
 - Quote MATLAB package folders in the shell, for example `'+config'`, because of the `+`.
 - `*.mat`, `*.png`, `*.csv`, `*.pdf` and `*.txt` are gitignored. Write notes in `.md` files.
 - Stage files by name. Never run `git add .`. The folders `demo - Copy/` and `demo - Copy.zip` are leftovers and must not be committed.
-- For a quick look at a solve, shrink the grid with `setenv('CGM_STATE_GRID','8 6 6'); setenv('CGM_GH_N','3')` and clear both afterwards.
+- For a quick look at a solve, shrink the grid with `setenv('CGM_STATE_GRID','8 6 6 4'); setenv('CGM_GH_N','3')` and clear both afterwards.
 
 ## Writing
 

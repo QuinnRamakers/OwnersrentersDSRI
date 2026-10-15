@@ -1,16 +1,30 @@
 function k = index(step, S)
-%INDEX  Step number from a number or a name.
-if nargin < 2, S = ladder.steps(); end
+%INDEX  Position of a step in the ladder, from its number or its name.
+%
+%   k = ladder.index(8)           % the step numbered 8
+%   k = ladder.index('7b')        % a number with a letter, as text
+%   k = ladder.index('housing')   % or its name
+%
+%   Numbers are the ones shown in titles, tables and file names
+%   (ladder.number), not positions: step 7b sits at position 8, and the step
+%   numbered 8 at position 9. Positions index S.
+if nargin < 2 || isempty(S), S = ladder.steps(); end
 names = {S.name};
+nums  = arrayfun(@(j) ladder.number(j, S), 1:numel(S), 'UniformOutput', false);
 assert(numel(unique(names)) == numel(names), 'ladder:duplicate_name', ...
     'Step names must be unique.');
+assert(numel(unique(nums)) == numel(nums), 'ladder:duplicate_number', ...
+    'Step numbers must be unique.');
+list = strjoin(strcat(nums, {' '}, names), ', ');
 if ischar(step) || isstring(step)
     k = find(strcmp(names, char(step)), 1);
-    assert(~isempty(k), 'ladder:unknown_step', 'No step named %s. Steps: %s.', ...
-        char(step), strjoin(names, ', '));
+    if isempty(k), k = find(strcmp(nums, char(step)), 1); end
+    assert(~isempty(k), 'ladder:unknown_step', 'No step named or numbered %s. Steps: %s.', ...
+        char(step), list);
 else
-    k = step;
-    assert(isscalar(k) && k == round(k) && k >= 1 && k <= numel(S), ...
-        'ladder:step_range', 'Step must be 1..%d.', numel(S));
+    assert(isscalar(step) && step == round(step), 'ladder:step_range', ...
+        'A step number must be a whole number, or text such as ''7b''.');
+    k = find(strcmp(nums, sprintf('%d', step)), 1);
+    assert(~isempty(k), 'ladder:step_range', 'No step numbered %d. Steps: %s.', step, list);
 end
 end

@@ -5,10 +5,12 @@ function fig = mortgage(r, file, opts)
 %   figures.mortgage(r_owner, file, inflation=0.023)
 %   figures.mortgage(r_owner, file, panels='payment', nominal=false)
 %
-%   The model has no mortgage balance state: each year it charges the annuity
-%   rate of an N_mort-year loan at r_m times the current house value, so the
-%   payment grows and varies with house prices. Two real contracts on the same
-%   loan (LTV times the house at entry) are drawn against it:
+%   The model's contract is p.mortgage. With 'annuity' it charges the annuity
+%   rate of an N_mort-year loan at r_m on the purchase price, so its line lies
+%   on the real annuity. With 'proportional' (ladder step 7) it charges that
+%   rate on the current house value, so the payment grows and varies with
+%   house prices. Two real contracts on the same loan (LTV times the house at
+%   entry) are drawn against it:
 %     real annuity      the same rate and term on the price at entry: a payment
 %                       constant in real terms
 %     nominal annuity   the Dutch fixed-payment annuity at the nominal rate
@@ -42,13 +44,18 @@ owed = @(i, e) (e < n) .* ((1 + i)^n - (1 + i).^e) / ((1 + i)^n - 1);   % balanc
 
 e = 0:T-1;                                      % years since purchase
 on = e < n;                                     % paying years
+annuity = strcmp(p.mortgage, 'annuity');
 % Payments, real euros
-pay_model = d.mortgage;                          % m_rate * H_t, from the simulation
+pay_model = d.mortgage;                          % from the simulation
 pay_real  = (L * ann(rm)) .* on;
 pay_nom   = (L * ann(rn)) .* on ./ (1 + pin).^(e + 1);   % paid at the end of each year
 % Balances at the start of each year, real euros
-bal_model = owed(rm, e) .* d.H * p.LTV;          % the model's convention: a share of the current house
 bal_real  = L .* owed(rm, e);
+if annuity
+    bal_model = repmat(bal_real, size(d.H, 1), 1);
+else
+    bal_model = owed(rm, e) .* d.H * p.LTV;      % a share of the current house
+end
 bal_nom   = L .* owed(rn, e) ./ (1 + pin).^e;
 % Present value at entry of all payments, at r_m, each paid at the end of its year
 disc = (1 + rm).^(-(e + 1));                     % payments at the end of each year
@@ -60,22 +67,27 @@ st = figures.style();
 cm = [0.65 0.15 0.15]; cr = st.series(1, :); cn = st.series(2, :);
 FS = 10; FT = 11; LWD = 2;
 nom = opts.nominal;
-step = ''; if isfield(r, 'step'), step = sprintf('Step %d, %s: ', r.step.index, r.step.label); end
+step = ''; if isfield(r, 'step'), step = sprintf('Step %s, %s: ', r.step.number, r.step.label); end
+if annuity
+    base = 'purchase price'; model_leg = 'model: real annuity on the purchase price';
+else
+    base = 'current house value'; model_leg = 'model: rate x current house value';
+end
 key = sprintf('Red = model (mean, 10-90 band); blue = real annuity at %.2f%% real', 100 * rm);
 if nom
     key = [key sprintf('; orange = nominal annuity at %.2f%% with %.1f%% inflation, in real euros', 100 * rn, 100 * pin)];
 end
 ttl = {sprintf('%sthe model''s mortgage against a real annuity mortgage (owner)', step), ...
-    sprintf('Loan %.0f%% of the house at entry (EUR %.0fk), %d years. Model: %.2f%% of the current house value each year.', ...
-    100 * p.LTV, H0 * sc, n, 100 * ann(rm)), key};
-leg = {'model: rate x current house value', 'real annuity on the price at entry', 'nominal annuity, in real euros'};
+    sprintf('Loan %.0f%% of the house at entry (EUR %.0fk), %d years. Model: %.2f%% of the %s each year.', ...
+    100 * p.LTV, H0 * sc, n, 100 * ann(rm), base), key};
+leg = {model_leg, 'real annuity on the price at entry', 'nominal annuity, in real euros'};
 if ~nom, leg = leg(1:2); end
 
 if strcmp(opts.panels, 'payment')
     fig = figure('Visible', 'off', 'Position', [30 30 1300 700], 'Color', 'w');
     ax = axes(fig); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS + 1;
     xlabel(ax, 'Age');
-    leg(1:2) = {'Model approximation (rate*current house value)', 'Fixed rate mortgage'};
+    leg(1:2) = {sprintf('Model (rate x %s)', base), 'Fixed rate mortgage'};
     payment_panel(ax, a, pay_model, pay_real, pay_nom, sc, nom, cm, cr, cn, LWD, d.unit, leg);
     title(ax, 'Annual mortgage payment', 'FontSize', FT + 2);
 else
@@ -99,7 +111,7 @@ else
     plot(ax, a, bal_real * sc, '-', 'Color', cr, 'LineWidth', LWD);
     if nom, plot(ax, a, bal_nom * sc, '-', 'Color', cn, 'LineWidth', LWD); end
     xlim(ax, [25 60]); ylabel(ax, d.unit);
-    title(ax, '(c)  Outstanding balance (model: its share of the current house)', 'FontSize', FT);
+    title(ax, sprintf('(c)  Outstanding balance (model: its share of the %s)', base), 'FontSize', FT);
 
     ax = tile(tl, FS);
     band(ax, a, cumsum(pay_model, 2) * sc, cm, LWD);

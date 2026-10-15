@@ -6,11 +6,16 @@ function p = insert_anchor_nodes(p)
 %       u1 = 1/(1 + h_mult + b),   u2 = h_mult/(h_mult + b),   u3 = 0.
 %   Splicing these in as exact nodes makes the value at entry a solved number
 %   rather than an interpolation, which is what utility.welfare_anchor reads.
-%   u3 = 0 is already the first node of every u3 axis.
+%   u3 = 0 is already the first node of every u3 axis. Every household enters
+%   at q = H0/H = 1, which is spliced into the q axis the same way.
 %
 %   Idempotent. The grids become non-uniform, which is harmless: everything
 %   downstream reads them through griddedInterpolant.
 
+if isfield(p, 'q_grid')
+    p.q_grid = merge_nodes(p.q_grid, 1);
+    p.N_q    = numel(p.q_grid);
+end
 if ~all(isfield(p, {'b0', 'b_alt', 'h_mult', 'u1_grid', 'u2_grid'}))
     return
 end

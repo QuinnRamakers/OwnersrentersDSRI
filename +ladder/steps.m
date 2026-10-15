@@ -10,7 +10,7 @@ function S = steps()
 %   last step reproduces config.params().
 %
 %   The ladder branches at step 6, the baseline without housing:
-%       6 -> 7 housing -> 8 housing correlations
+%       6 -> 7 housing -> 7b annuity mortgage -> 8 housing correlations
 %       6 -> 9 DC all bonds -> 10 DC all stocks -> 11 DC glide -> 12 AOW
 %       8 -> 13 housing with AOW and DC -> 14 income tax -> 15 box 3
 %   so housing and the DC pension are each checked on the baseline before
@@ -20,6 +20,10 @@ function S = steps()
 %   end -- for example a consumption-floor level, a housing multiple from data,
 %   or the REIT leg. Fields:
 %     name    identifier used in file names; unique
+%     num     the number shown in titles, tables and file names, and taken by
+%             ladder.run(8) and the like; '' numbers the step one after the
+%             last numbered step. A step inserted after another takes its
+%             number and a letter (7b), so the later steps keep theirs
 %     label   one line for titles
 %     note    where the values come from, one line
 %     set     parameter overrides; every field must be a primitive of
@@ -36,7 +40,7 @@ function S = steps()
 %   which gives each its own; from there on a step without housing is solved
 %   for both (model.tenures_differ).
 
-S = struct('name', {}, 'label', {}, 'note', {}, 'set', {}, 'parent', {}, 'vary', {});
+S = struct('name', {}, 'num', {}, 'label', {}, 'note', {}, 'set', {}, 'parent', {}, 'vary', {});
 
 cgm_coef = [0.530339, 0.16818, -0.323371, 0.19704];
 S(end+1) = step('cgm', 'CGM (2005) core', ...
@@ -80,11 +84,19 @@ S(end+1) = step('corr_SL', 'Income-stock correlation', ...
 
 S(end+1) = step('housing', 'Housing', ...
     ['H at 4x entry income (placeholder). Owners: house prices 3.73% real, vol 8.35% ' ...
-     '(NVM repeat sales, 1996-2024), 1.5% maintenance, 30-year annuity mortgage at ' ...
-     '1.36% (placeholder). Renters: 6% rent on a rent index growing 0.99% real, ' ...
-     'vol 1.79% (CBS regulated rents, 1983-2025). No housing correlations'], ...
+     '(NVM repeat sales, 1996-2024), 1.5% maintenance, the 30-year annuity rate at ' ...
+     '1.36% (placeholder) on the current house value. Renters: 6% rent on a rent ' ...
+     'index growing 0.99% real, vol 1.79% (CBS regulated rents, 1983-2025). No ' ...
+     'housing correlations'], ...
     struct('h_mult', 4, 'mu_H_level', 0.0373, 'sigma_H_level', 0.0835, ...
-           'mu_R_level', 0.0099, 'sigma_R_level', 0.0179));
+           'mu_R_level', 0.0099, 'sigma_R_level', 0.0179, 'mortgage', 'proportional'));
+
+S(end+1) = step('annuity', 'Real annuity mortgage', ...
+    '30-year real annuity at 1.36% on the purchase price (placeholder rate and term)', ...
+    struct('mortgage', 'annuity'));
+S(end).num = '7b';
+% Maintenance on the purchase price instead of the current value: a test
+S(end).vary = struct('maint_on_purchase', true);
 
 S(end+1) = step('housing_corr', 'Housing correlations', ...
     ['Correlations of the H shock, gross income, 2002-2023: owners house price with ' ...
@@ -126,10 +138,18 @@ S(end+1) = step('inctax', 'Income tax', ...
 S(end+1) = step('box3', 'Box-3 tax', ...
     '36% on the liquid account''s returns, no loss offset', ...
     struct('tau_cg_bond', 0.36, 'tau_cg_stock', 0.36));
+
+n = 0;
+for k = 1:numel(S)
+    if isempty(S(k).num)
+        n = n + 1;
+        S(k).num = sprintf('%d', n);
+    end
+end
 end
 
 function s = step(name, label, note, set, parent)
 if nargin < 5, parent = ''; end
-s = struct('name', name, 'label', label, 'note', note, 'set', set, 'parent', parent, ...
+s = struct('name', name, 'num', '', 'label', label, 'note', note, 'set', set, 'parent', parent, ...
            'vary', struct());
 end

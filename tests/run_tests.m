@@ -13,10 +13,11 @@ arguments
 end
 
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
-          @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure};
+          @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live};
 if opts.solve
     checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
-                       @nohousing_arms_corr, @figures_render}];
+                       @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
+                       @figures_render}];
 end
 n_fail = 0;
 for i = 1:numel(checks)
@@ -53,7 +54,7 @@ end
 function ladder_reaches_production()
 % The last step of the default ladder is the production calibration.
 S = ladder.steps();
-p = ladder.params(numel(S));
+p = ladder.params(S(end).name);
 assert(ladder.same_calibration(p, config.params()), ...
     'the last ladder step differs from config.params');
 end
@@ -61,7 +62,7 @@ end
 function ladder_fields()
 % Every step builds, and a misspelt override is refused.
 S = ladder.steps();
-for k = 1:numel(S), ladder.params(k); end
+for k = 1:numel(S), ladder.params(S(k).name); end
 assert(ladder.index('housing') > ladder.index('cgm'), 'step order');
 bad = S(1); bad.set = struct('gama', 5);
 threw = false;
@@ -75,18 +76,28 @@ end
 
 function ladder_branches()
 % The DC steps build on the baseline without housing and the housing steps
-% have no DC pillar; the combined step has both. The three funds are all
-% bonds, all stocks, and the production glide.
+% have no DC pillar; the combined step has both. The annuity mortgage is a
+% step of its own between housing and the housing correlations, numbered 7b,
+% so the steps after it keep their numbers. The three funds are all bonds,
+% all stocks, and the production glide.
+S = ladder.steps();
 assert(ladder.parent('dc_bonds') == ladder.index('corr_SL'), 'dc_bonds parent');
 assert(ladder.parent('pension') == ladder.index('housing_corr'), 'pension parent');
 assert(ladder.parent('housing') == ladder.index('corr_SL'), 'housing parent');
+assert(ladder.parent('annuity') == ladder.index('housing'), 'annuity parent');
+assert(ladder.parent('housing_corr') == ladder.index('annuity'), 'housing_corr parent');
+assert(ladder.index('7b') == ladder.index('annuity') && ladder.index(8) == ladder.index('housing_corr') ...
+    && ladder.index(15) == numel(S), 'step numbers');
+assert(strcmp(ladder.params('housing').mortgage, 'proportional') && ...
+    strcmp(ladder.params('annuity').mortgage, 'annuity') && ...
+    strcmp(ladder.params('housing_corr').mortgage, 'annuity'), 'mortgage contract along the ladder');
 for k = ladder.index('dc_bonds') : ladder.index('aow')
-    p = ladder.params(k);
-    assert(p.h_mult == 0 && p.kappa_base == 0.186, 'step %d: DC pillar without housing', k);
+    p = ladder.params(S(k).name);
+    assert(p.h_mult == 0 && p.kappa_base == 0.186, '%s: DC pillar without housing', S(k).name);
 end
-for k = [ladder.index('housing'), ladder.index('housing_corr')]
-    p = ladder.params(k);
-    assert(p.kappa_base == 0 && p.replacement == 0.68212, 'step %d: housing without DC', k);
+for k = [ladder.index('housing'), ladder.index('annuity'), ladder.index('housing_corr')]
+    p = ladder.params(S(k).name);
+    assert(p.kappa_base == 0 && p.replacement == 0.68212, '%s: housing without DC', S(k).name);
 end
 p = ladder.params('pension');
 assert(p.h_mult > 0 && p.kappa_base > 0 && p.replacement == 0.307, 'pension combines both');
@@ -124,7 +135,7 @@ function tenure_arms()
 % once they differ, a step without housing has a renter and an owner arm.
 S = ladder.steps();
 for k = 1:numel(S)
-    p = ladder.params(k);
+    p = ladder.params(S(k).name);
     split = ~isequal(p.income_coef, p.income_coef_rent) || p.sigma_l_log ~= p.sigma_l_log_rent;
     assert(model.tenures_differ(p) == (p.h_mult > 0 || split), 'step %d arms', k);
     if k < ladder.index('income')
@@ -148,9 +159,10 @@ function housing_corr_by_tenure()
 % At the housing-correlation step the quadrature nodes carry the tenure's
 % correlations of the H shock with income and with the stock return, and
 % the step before it has none.
+S = ladder.steps();
 for k = [ladder.index('housing'), ladder.index('housing_corr')]
     for owner = [false true]
-        p = ladder.params(k); p.is_owner = owner; p = config.derive(p);
+        p = ladder.params(S(k).name); p.is_owner = owner; p = config.derive(p);
         sk = grids.shock_grid(p); w = sk.joint.w(:) / sum(sk.joint.w);
         lh = log(sk.joint.R_H(:)); ly = sk.joint.eps_Y_unit(:); ls = log(sk.joint.R_S(:));
         wc = @(x, y) sum(w .* (x - sum(w .* x)) .* (y - sum(w .* y))) / ...
@@ -167,6 +179,27 @@ p = ladder.params('housing_corr'); q = p; q.is_owner = true;
 assert(isequal([a b c d], [0.06 0.43 0.09 0.24]), 'tenure selection of the housing correlations');
 end
 
+function q_axis_where_live()
+% q = H0/H is a state only for an owner with the annuity mortgage, while it
+% runs, or with maintenance on the purchase price, at every age. Renters,
+% steps without housing and step 7 keep the single node q = 1.
+for name = {'corr_SL', 'housing', 'annuity', 'housing_corr'}
+    for owner = [false true]
+        p = ladder.params(name{1}); p.is_owner = owner; p = config.derive(p);
+        live = owner && any(strcmp(name{1}, {'annuity', 'housing_corr'}));
+        assert((p.N_q > 1) == live, '%s, owner %d: %d q nodes', name{1}, owner, p.N_q);
+        if live
+            assert(isequal(find(p.q_live).', 1:p.N_mort), '%s: q live in the wrong years', name{1});
+        else
+            assert(isequal(p.q_grid, 1) && ~any(p.q_live), '%s, owner %d: q axis', name{1}, owner);
+        end
+    end
+end
+p = ladder.params('annuity'); p.is_owner = true; p.maint_on_purchase = true; p = config.derive(p);
+assert(all(p.q_live) && any(p.q_grid == 1) && p.N_q == p.grid_dims(4) + 1, ...
+    'maintenance on the purchase price: q live at every age, with q = 1 spliced in');
+end
+
 function collapsed_axes_exact()
 % Without housing and DC, u2 = u3 = 0 on every path. Solving on the collapsed
 % {0,1} axes must give the same policy on that line as a fuller cube. Solved
@@ -175,7 +208,7 @@ function collapsed_axes_exact()
 % and the objective scaling differs between the two cubes, so it would test the
 % optimiser's tolerance rather than the axes.
 p = ladder.params('cgm');
-p.grid_dims = [8 6 5]; p.gh_n = 3;
+p.grid_dims = [8 6 5 3]; p.gh_n = 3;
 p.fmincon_algorithm = 'active-set'; p.use_refine = true;
 p = config.derive(p);
 assert(p.N_u2 == 2 && p.N_u3 == 2, 'axes did not collapse');
@@ -196,10 +229,11 @@ function nohousing_ignores_housing()
 % solution bit-identical, for both tenures.
 for owner = [false true]
     p = ladder.params('corr_SL'); p.is_owner = owner;
-    p.grid_dims = [6 5 4]; p.gh_n = 3; p = config.derive(p);
+    p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
     q = p;
     q.mu_H_level = 0.01; q.sigma_H_level = 0.2; q.mu_R_level = 0.03; q.sigma_R_level = 0.1;
     q.alpha = 0.1; q.theta = 0.05; q.r_m = 0.05; q.sell_cost = 0.1;
+    q.mortgage = 'proportional'; q.maint_on_purchase = true;
     q.corr_HL = 0.5; q.corr_HL_rent = 0.5; q.corr_SH = 0.5; q.corr_SH_rent = 0.5;
     q = config.derive(q);
     [pf, sk, an] = config.model_inputs(p);
@@ -215,7 +249,7 @@ function smoke_both_tenures()
 % A small solve and simulation for each tenure: finite, in range, on the grid.
 for owner = [false true]
     p = config.params();
-    p.grid_dims = [6 5 4]; p.gh_n = 3; p.is_owner = owner;
+    p.grid_dims = [6 5 4 3]; p.gh_n = 3; p.is_owner = owner;
     p = config.derive(p);
     r = model.run(p, N_sim = 500, verbose = false);
     assert(all(isfinite(r.sol.V(:))), 'non-finite value');
@@ -233,7 +267,7 @@ function nohousing_arms_corr()
 % that differ, and the correlation on the quadrature nodes and in the panel
 % equal to corr_SL.
 p = ladder.params('corr_SL');
-p.grid_dims = [6 5 4]; p.gh_n = 3;
+p.grid_dims = [6 5 4 3]; p.gh_n = 3;
 C = struct();
 for owner = [false true]
     pa = p; pa.is_owner = owner; pa = config.derive(pa);
@@ -247,13 +281,49 @@ assert(isfield(C, 'nohousing_renter') && isfield(C, 'nohousing_owner'), 'arm lab
 assert(~isequal(C.nohousing_renter.sol.c_pol, C.nohousing_owner.sol.c_pol), 'the arms should differ');
 end
 
+function annuity_flat_prices()
+% With flat house prices q stays at 1, so on the q = 1 slice the annuity and
+% the proportional contract are the same problem: V, c and pi agree to 1e-10
+% (V relative to its size).
+p = ladder.params('annuity'); p.is_owner = true;
+p.mu_H_level = 0; p.sigma_H_level = 0;
+p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
+q = p; q.mortgage = 'proportional'; q = config.derive(q);
+assert(p.N_q > 1 && q.N_q == 1, 'q nodes: annuity %d, proportional %d', p.N_q, q.N_q);
+[pf, sk, an] = config.model_inputs(p);
+A = solver.solve(p, pf, sk, an, false);
+B = solver.solve(q, pf, sk, an, false);
+at1 = @(X) reshape(X(:, :, :, p.q_grid == 1, :), [], 1);
+dV  = max(abs(at1(A.V) - B.V(:)) ./ abs(B.V(:)));
+dc  = max(abs(at1(A.c_pol) - B.c_pol(:)));
+dpi = max(abs(at1(A.pi_pol) - B.pi_pol(:)));
+assert(dV < 1e-10 && dc < 1e-10 && dpi < 1e-10, ...
+    'annuity against proportional at q = 1: dV %.2g, dc %.2g, dpi %.2g', dV, dc, dpi);
+end
+
+function annuity_payment_pv()
+% In the step-7b owner panel each household pays m * LTV * H0 in every year
+% to N_mort and nothing after, and the payments are worth the loan at r_m.
+p = ladder.params('annuity'); p.is_owner = true;
+p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
+r = model.run(p, N_sim = 200, keep_sim = true, verbose = false);
+n = p.N_mort; H0 = r.sim.H(:, 1); pay = r.sim.m_pay;
+dpay = max(abs(pay(:, 1:n) ./ (p.m_rate_path(1) * H0) - 1), [], 'all');
+assert(dpay < 1e-12, 'payment differs from m * LTV * H0 by %.2g', dpay);
+assert(all(pay(:, n+1:end) == 0, 'all'), 'a payment after year %d', n);
+pv = sum(pay(:, 1:n) ./ (1 + p.r_m) .^ (1:n), 2);
+dpv = max(abs(pv ./ (p.LTV * H0) - 1));
+assert(dpv < 1e-12, 'present value differs from the loan by %.2g', dpv);
+assert(sum(r.checks.offgrid) == 0, 'off-grid lookups: %s', mat2str(r.checks.offgrid));
+end
+
 function figures_render()
 % The dashboard and the overlay draw for a no-housing step and for an owner
 % with housing and DC, and the overlay takes results on different grids and
-% optimisers.
-q = ladder.params('cgm'); q.grid_dims = [6 5 4]; q.gh_n = 3; q = config.derive(q);
-p = config.params(false); p.is_owner = true; p.grid_dims = [6 5 4]; p.gh_n = 3; p = config.derive(p);
-p2 = p; p2.grid_dims = [7 5 4]; p2.fmincon_algorithm = 'sqp'; p2 = config.derive(p2);
+% optimisers. The mortgage figure draws for the owner.
+q = ladder.params('cgm'); q.grid_dims = [6 5 4 3]; q.gh_n = 3; q = config.derive(q);
+p = config.params(false); p.is_owner = true; p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
+p2 = p; p2.grid_dims = [7 5 4 3]; p2.fmincon_algorithm = 'sqp'; p2 = config.derive(p2);
 r = {model.run(q, N_sim = 300, verbose = false), model.run(p, N_sim = 300, verbose = false), ...
      model.run(p2, N_sim = 300, verbose = false)};
 d = tempname; mkdir(d); cleanup = onCleanup(@() rmdir(d, 's'));
@@ -264,6 +334,7 @@ figures.compare(r([1 2]), {'cgm', 'production'}, 'test', fullfile(d, 'd.png'));
 figures.step_dashboard(r{1}, r{2}, {'cgm', 'production'}, 'test', fullfile(d, 'e.png'), changes = {'x: 1 -> 2'});
 G = struct('name', {'A', 'B'}, 'rs', {{r{3}}, {r{3}, r{2}}}, 'labels', {{'sqp'}, {'sqp', 'same'}});
 figures.robustness(r{2}, 'reference', G, 'test', fullfile(d, 'f.png'));
-assert(all(isfile(fullfile(d, {'a.png', 'b.png', 'c.png', 'd.png', 'e.png', 'f.png'}))), ...
+figures.mortgage(r{2}, fullfile(d, 'g.png'));
+assert(all(isfile(fullfile(d, {'a.png', 'b.png', 'c.png', 'd.png', 'e.png', 'f.png', 'g.png'}))), ...
     'a figure was not written');
 end

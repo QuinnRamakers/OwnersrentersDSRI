@@ -3,7 +3,7 @@ function c = checks(p, sol, sim, s, profile, shocks)
 %
 %   c = model.checks(p, sol, sim, summary, profile, shocks)
 %
-%   offgrid          policy lookups past the end of an axis (u1, u2, u3);
+%   offgrid          policy lookups past the end of an axis (u1, u2, u3, q);
 %                    those households were given another state's policy
 %   floored_share    household-years whose resources were topped up to the floor;
 %   floored_by_phase   ... at ages 25-39, 40 to retirement, and in retirement
@@ -32,7 +32,7 @@ function c = checks(p, sol, sim, s, profile, shocks)
 ages = s.ages;
 d = sim.diagnostics;
 c = struct();
-c.offgrid = [d.n_offgrid_u1, d.n_offgrid_u2, d.n_offgrid_u3];
+c.offgrid = [d.n_offgrid_u1, d.n_offgrid_u2, d.n_offgrid_u3, d.n_offgrid_q];
 c.floored_share = mean(sim.floored(:));
 young = ages <= 39;
 mid   = ages >= 40 & ages < p.retirement_age;
@@ -44,7 +44,7 @@ c.c_bound_25_39 = mean(s.at_c_bound(young));
 % and a constant stream c_bar is worth u(c_bar) * D, with D the discounted
 % survival-weighted horizon, so c_bar = W0 * z * D^(1/(g-1)).
 g  = p.gamma;
-Vt = utility.welfare_anchor(p, sol.V(:,:,:,1), p.b0);
+Vt = utility.welfare_anchor(p, sol.V(:,:,:,:,1), p.b0);
 z  = ((1 - g) * Vt)^(1 / (1 - g));
 S  = cumprod([1; profile.p_surv(1:end-1)]);
 D  = sum(p.beta .^ (0:p.T-1).' .* S);
@@ -78,7 +78,7 @@ c.thin_u1_40 = mean(c.cov_u1(m40) < 2);
 
 c.notes = {};
 if any(c.offgrid > 0)
-    c.notes{end+1} = sprintf(['%d policy lookups fell off the grid (u1 %d, u2 %d, u3 %d); ' ...
+    c.notes{end+1} = sprintf(['%d policy lookups fell off the grid (u1 %d, u2 %d, u3 %d, q %d); ' ...
         'widen that axis (GRIDS.md).'], sum(c.offgrid), c.offgrid);
 end
 if c.c_bound_25_39 > 0.05

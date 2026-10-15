@@ -3,7 +3,7 @@ function solve_cases(opts)
 %
 %   solve_cases()                       every case below (about 25 minutes)
 %   solve_cases(cases="owner_floor_020")
-%   solve_cases(cases="owner_floor_020", grids={[8 6 6], [10 6 6]}, gh_n=3, out=tempdir)
+%   solve_cases(cases="owner_floor_020", grids={[8 6 6 4], [10 6 6 4]}, gh_n=3, out=tempdir)
 %
 %   Each case is step 7 (ladder.params(7)) with the primitives listed below
 %   changed, solved at standard numerics with N_sim = 10000 on the standard
@@ -14,7 +14,7 @@ function solve_cases(opts)
 
 arguments
     opts.cases (1,:) string = string.empty
-    opts.grids cell = {[16 16 10], [32 16 10]}
+    opts.grids cell = {[16 16 10 8], [32 16 10 8]}
     opts.gh_n (1,1) double = 5
     opts.out (1,:) char = ''
 end
@@ -35,8 +35,8 @@ C = {
   'owner_floor_030',      true,  struct('phi_floor', 0.3),                        {}
   'owner_floor_050',      true,  struct('phi_floor', 0.5),                        {}
   'renter_floor_010',     false, struct('phi_floor', 0.1),                        {}
-  'renter_u2_doubled',    false, struct(),                                        {[16 32 10]}
-  'renter_both_doubled',  false, struct(),                                        {[32 32 10]}
+  'renter_u2_doubled',    false, struct(),                                        {[16 32 10 8]}
+  'renter_both_doubled',  false, struct(),                                        {[32 32 10 8]}
   };
 bad = setdiff(opts.cases, string(C(:, 1)));
 assert(isempty(bad), 'solve_cases:name', 'unknown case: %s', strjoin(bad, ', '));
