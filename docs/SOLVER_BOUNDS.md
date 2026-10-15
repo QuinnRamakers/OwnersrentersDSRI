@@ -134,13 +134,14 @@ housing the u1 axis runs from 0.0002 to 0.6, total wealth of 0.67 to 4,999
 years of income; without housing from 0.0008 to 1.
 
 The q axis, q = H0/H for an owner with the annuity mortgage, runs from 0 to
-`q_hi` = 2. Its bottom is exact: q cannot fall below 0. At the top, a house
-worth less than half its purchase price is valued as if it were worth half.
+`q_hi` = 2.5. Its bottom is exact: q cannot fall below 0. At the top, a house
+worth less than 40% of its purchase price is valued as if it were worth 40%.
 From the house-price process the 99.9th percentile of q is 1.44-1.59 at
 29-54, and the most extreme quadrature node at gh_n = 5 takes q to 1.6-1.95,
-so the edge is reached only by that node from the highest q nodes. The
-simulation counts q lookups only in the years where the solution depends on
-q.
+so the edge is reached only by that node from the highest q nodes. In the
+standard panel (10,000 owners, ages 25-54) the largest q is 2.04-2.06, which a
+top of 2 left off the grid twice. The simulation counts q lookups only in the
+years where the solution depends on q.
 
 **What it means.** A household richer than 4,999 years of income, or with
 less than 0.67, is valued as if it sat on the edge. Off-grid lookups were 0

@@ -115,7 +115,7 @@ p.grid_pow_u2   = 1;          % > 1 bunches u2 nodes toward 1
 p.u2_lo         = 0;          % bottom of the u2 axis
 p.u3_lo         = 0;          % bottom of the u3 axis
 p.u3_hi         = 1;          % top of the u3 axis
-p.q_hi          = 2;          % top of the q axis
+p.q_hi          = 2.5;        % top of the q axis
 p.grid_pow_q    = 2;          % > 1 bunches q nodes toward 0
 p.grid_nodes    = [];         % explicit axis nodes, overriding the rules above
 

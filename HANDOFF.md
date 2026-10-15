@@ -36,6 +36,21 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Mortgage state, run 2: step 7b against step 7 (spec: The mortgage as a state variable, q = H0/H)
+Quinn set `q_hi` to 2.5 (the tail numbers of the entry below).
+Changed: `+config/params.m` (`q_hi` 2.5), `+utility/build_state_grids.m` (its fallback), CALIBRATION.md (numerics table, with the tail numbers), `docs/SOLVER_BOUNDS.md` section 4, README (7b owner's solve time).
+Checks run:
+- `run_tests` (full): 0 of 16 checks failed (`smoke_both_tenures` now passes).
+- `ladder.run(7)` again, since `q_hi` is a primitive and the saved step 7 was flagged stale: V, c_pol, pi_pol, summary and `ce_entry` bit-identical to the run with `q_hi` 2, both tenures.
+- Run 2, `ladder.run('annuity')` and `ladder.compare('annuity')`, standard numerics (16x16x10x8, gh_n 5, 10,000 households). Pages in `ladder/standard_16x16x10x8_gh5/` (gitignored): `compare_07_07b_owner.png`, `compare_07_07b_renter.png`, `owner_renter_07b.png`, `mortgage_07_owner.png`, `mortgage_07b_owner.png`.
+- Renter: bit-identical to step 7 (V, c_pol, pi_pol, summary); floored 0.22%, `ce_entry` 0.680, off-grid 0, 99 s.
+- Owner: 18 x 18 x 2 x 9 nodes, 366 s (step 7: 83 s). Mortgage payment EUR 6.49k at every age 25-54 for every household, 0 from 55; present value 1.0000 times the loan (step 7: mean 18.64k at 54, p10 9.87k, p90 29.42k; present value 1.71). Floored 4.64% (step 7 4.78%): 25-39 0, 40-66 0.02% (0.08%), 67+ 10.35% (10.63%). `c_bound_25_39` 0. `ce_entry` 0.839 (0.680). Off-grid [0 0 0 0].
+- Owner, means, 7b against 7: consumption +27% at 25, +16% at 30, +9% at 35, +5% at 40, +1% at 50, equal from 54 (largest gap 23.4% at 26); liquid savings EUR 5.8k against 40.3k at 30, 99.9k against 177.4k at 40, 376k against 388k at 54, equal at 60 (510k), 1-3% lower at 75-95; housing cost 13.3k against 25.5k at 54, equal from 55; home equity 186.7k against 123.3k at 40, equal from 55; liquid equity share 0.997 against 0.841 at 40 (largest gap 0.16 at 43), equal from about 55.
+- Against the expectation: payment, present value, renter, old-age floor states (near step 7), entry value (up), bound and off-grid as expected. Not as expected: the consumption gain is at 25-45, not 40-54, and liquid savings before 55 are lower, not higher, and only equal after. Not foreseen: the liquid equity share stays near 1 to about 50 instead of falling to 0.84.
+Reading: with the payment tied to the house price, owners saved early against payments that rise with house prices and held less equity against that risk. With a fixed real payment both motives go: they consume more when young, save less until 55, hold more equity, and from 55, when the mortgage is paid off, the two steps coincide. The old-age floor states are untouched, as they come from maintenance on a growing house.
+Commit: this entry, pushed to main.
+Open: run 3 (grid check of the 7b owner, with the q refinement 8 against 16 base nodes) and run 4 (maintenance on the purchase price), each after Quinn.
+
 ### 2026-10-15 The mortgage as a state variable: code, tests, regression, run 1 (spec: The mortgage as a state variable, q = H0/H)
 Changed, in the plan's order:
 - `+config/params.m`, CALIBRATION.md: primitives `mortgage` ('annuity'), `maint_on_purchase` (false), a fourth `grid_dims` entry (8), `q_hi` (2), `grid_pow_q` (2); the "homothetic approximation" paragraph replaced by the contract and the q state.

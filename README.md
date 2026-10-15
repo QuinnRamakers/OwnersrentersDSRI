@@ -110,7 +110,8 @@ have their own income process, so steps 4–6 have two (`nohousing_renter`,
 | `fine` | [20 20 12 8] | 5 | 10,000 | about 8 minutes |
 
 The times are from before the q axis; an owner from step 7b on takes several
-times longer. Steps 1-6 have no housing. Their u2 and u3 axes cannot move, so
+times longer (step 7b at standard: 366 s, against 83 s at step 7). Steps 1-6
+have no housing. Their u2 and u3 axes cannot move, so
 they collapse to two nodes and solve in seconds; steps 7-8 have no DC pillar
 and steps 9-12 no housing, so both collapse u3. The q axis is a single node
 except for owners from step 7b on. Results are saved under

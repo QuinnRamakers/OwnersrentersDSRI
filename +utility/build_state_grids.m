@@ -87,7 +87,7 @@ if collapse_q
 elseif ~isempty(given.q)
     p.q_grid = given.q;
 else
-    q_hi = field_or(p, 'q_hi', 2);
+    q_hi = field_or(p, 'q_hi', 2.5);
     assert(q_hi >= 1, 'build_state_grids:q_hi', ...
         'q_hi must be at least 1, the entry state (got %.4g).', q_hi);
     q = max(1, field_or(p, 'grid_pow_q', 1));
