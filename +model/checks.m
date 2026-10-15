@@ -154,7 +154,8 @@ n1 = nan(1, T); n2 = nan(1, T);
 for t = 3 : T - 1
     b1 = prctile(u1(:, t), [1 99]);
     b2 = prctile(u2(:, t), [1 99]);
-    n1(t) = sum(p.u1_grid >= b1(1) & p.u1_grid <= b1(2));
-    n2(t) = sum(p.u2_grid >= b2(1) & p.u2_grid <= b2(2));
+    [g1, g2] = utility.grid_at(p, t);
+    n1(t) = sum(g1 >= b1(1) & g1 <= b1(2));
+    n2(t) = sum(g2 >= b2(1) & g2 <= b2(2));
 end
 end

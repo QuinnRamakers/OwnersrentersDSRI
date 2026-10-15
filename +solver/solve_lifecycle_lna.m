@@ -38,8 +38,9 @@ for t = T-1 : -1 : 1
         solver.bellman_step_lna(t, V(:,:,:,:,t+1), p, profile, shocks, ann_price, pol_next);
     period_sec(t) = toc(t_step);
     if verbose && (mod(t, 10) == 0 || t == T-1 || t == 1)
-        Fc  = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, c_pol(:,:,:,iq1,t), 'linear', 'nearest');
-        Fpi = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, pi_pol(:,:,:,iq1,t), 'linear', 'nearest');
+        [g1, g2] = utility.grid_at(p, t);
+        Fc  = griddedInterpolant({g1, g2, p.u3_grid}, c_pol(:,:,:,iq1,t), 'linear', 'nearest');
+        Fpi = griddedInterpolant({g1, g2, p.u3_grid}, pi_pol(:,:,:,iq1,t), 'linear', 'nearest');
         fprintf('  t=%2d (age %d): c=%.4f, pi=%.4f at u=(%.2f, %.2f, %.2f)  [%.1f s]\n', ...
                 t, p.age0 + t - 1, Fc(probe), Fpi(probe), probe, period_sec(t));
     end

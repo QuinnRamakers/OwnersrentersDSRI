@@ -197,11 +197,12 @@ end
 uq = exp(linspace(log(lo), log(hi), 200)).';
 for i = numel(rs):-1:1
     p = rs{i}.p; u2 = sl(i, 2); u3 = sl(i, 3);
-    F = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, rs{i}.sol.pi_pol(:, :, :, p.q_grid == 1, t), ...
+    [g1, g2] = utility.grid_at(p, t);
+    F = griddedInterpolant({g1, g2, p.u3_grid}, rs{i}.sol.pi_pol(:, :, :, p.q_grid == 1, t), ...
         'linear', 'nearest');
     plot(ax, 1 ./ uq, F(uq, u2 * ones(size(uq)), u3 * ones(size(uq))), styles{i}, ...
         'Color', cols(i, :), 'LineWidth', lw(i));
-    nodes = p.u1_grid(p.u1_grid >= lo & p.u1_grid <= hi);
+    nodes = g1(g1 >= lo & g1 <= hi);
     plot(ax, 1 ./ nodes, F(nodes, u2 * ones(size(nodes)), u3 * ones(size(nodes))), 'o', ...
         'Color', cols(i, :), 'MarkerSize', 4, 'MarkerFaceColor', 'w', 'HandleVisibility', 'off');
     xline(ax, 1 / sl(i, 1), ':', 'Color', cols(i, :), 'LineWidth', 1, 'HandleVisibility', 'off');

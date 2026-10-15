@@ -72,12 +72,13 @@ annuity = strcmp(p.mortgage, 'annuity');
 pp_c  = cell(T, 1);
 pp_pi = cell(T, 1);
 for t = 1:T
+    [g1, g2] = utility.grid_at(p, t);
     if q_dep(t)
-        ax = {p.u1_grid, p.u2_grid, p.u3_grid, q_grid};
+        ax = {g1, g2, p.u3_grid, q_grid};
         pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,:,t), 'linear', 'nearest');
         pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,:,t), 'linear', 'nearest');
     else
-        ax = {p.u1_grid, p.u2_grid, p.u3_grid};
+        ax = {g1, g2, p.u3_grid};
         pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,iq1,t), 'linear', 'nearest');
         pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,iq1,t), 'linear', 'nearest');
     end
@@ -173,12 +174,13 @@ for t = 1:T
     u1_raw = lam_path(:,t);
     u2_raw = sAH ./ max(1 - lam_path(:,t), 1e-12);
     u3_raw = min(max(sA_path(:,t) ./ max(sAH, 1e-12), 0), 1);
-    n_off(1) = n_off(1) + sum(u1_raw < p.u1_grid(1) - 1e-12 | u1_raw > p.u1_grid(end) + 1e-12);
-    n_off(2) = n_off(2) + sum(u2_raw < p.u2_grid(1) - 1e-12 | u2_raw > p.u2_grid(end) + 1e-12);
+    [g1, g2] = utility.grid_at(p, t);
+    n_off(1) = n_off(1) + sum(u1_raw < g1(1) - 1e-12 | u1_raw > g1(end) + 1e-12);
+    n_off(2) = n_off(2) + sum(u2_raw < g2(1) - 1e-12 | u2_raw > g2(end) + 1e-12);
     n_off(3) = n_off(3) + sum(u3_raw < p.u3_grid(1) - 1e-12 | u3_raw > p.u3_grid(end) + 1e-12);
 
-    u1q = min(max(u1_raw, p.u1_grid(1)), p.u1_grid(end));
-    u2q = min(max(u2_raw, p.u2_grid(1)), p.u2_grid(end));
+    u1q = min(max(u1_raw, g1(1)), g1(end));
+    u2q = min(max(u2_raw, g2(1)), g2(end));
     u3q = u3_raw;
 
     if q_dep(t)

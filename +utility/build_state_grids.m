@@ -101,6 +101,43 @@ p.N_q  = numel(p.q_grid);
 
 p = config.insert_anchor_nodes(p);
 check_anchors(p);
+p = age_grids(p, collapse_u2);
+end
+
+% ------------------------------------------------------------------------
+function p = age_grids(p, collapse_u2)
+%AGE_GRIDS  Grid points that follow age, from p.grid_nodes.u1_age and u2_age:
+%   one column of base points per period (T columns). The entry anchors are
+%   spliced into every column, so every column must come back the same length.
+%   The first column becomes p.u1_grid and p.u2_grid, which is the grid at
+%   entry that utility.welfare_anchor reads. Without these fields
+%   p.u1_grid_age and p.u2_grid_age are empty and the grid is fixed.
+p.u1_grid_age = []; p.u2_grid_age = [];
+if ~isfield(p, 'grid_nodes') || ~isstruct(p.grid_nodes), return; end
+gn = p.grid_nodes;
+has1 = isfield(gn, 'u1_age') && ~isempty(gn.u1_age);
+has2 = isfield(gn, 'u2_age') && ~isempty(gn.u2_age) && ~collapse_u2;
+if ~has1 && ~has2, return; end
+T = p.T;
+if has1, A1 = gn.u1_age; else, A1 = repmat(p.u1_grid, 1, T); end
+if has2, A2 = gn.u2_age; else, A2 = repmat(p.u2_grid, 1, T); end
+assert(size(A1, 2) == T && size(A2, 2) == T, 'build_state_grids:age_grid', ...
+    'grid_nodes.u1_age and u2_age need one column per period (%d).', T);
+b = [p.b0, p.b_alt];
+G1 = cell(1, T); G2 = cell(1, T);
+for t = 1:T
+    G1{t} = sort(uniquetol([1 ./ (1 + p.h_mult + b(:)); A1(:, t)], 1e-12, 'DataScale', 1));
+    G2{t} = sort(uniquetol([p.h_mult ./ max(p.h_mult + b(:), realmin); A2(:, t)], 1e-12, 'DataScale', 1));
+end
+n1 = cellfun(@numel, G1); n2 = cellfun(@numel, G2);
+assert(all(n1 == n1(1)) && all(n2 == n2(1)), 'build_state_grids:age_grid', ...
+    'after the entry anchors the age columns differ in length (u1 %d-%d, u2 %d-%d).', ...
+    min(n1), max(n1), min(n2), max(n2));
+assert(all(cellfun(@(g) g(1) > 0, G1)) && all(cellfun(@(g) g(1) >= 0 && g(end) <= 1, G2)), ...
+    'build_state_grids:age_grid', 'u1_age must be positive and u2_age in [0, 1].');
+p.u1_grid_age = [G1{:}]; p.u2_grid_age = [G2{:}];
+p.u1_grid = p.u1_grid_age(:, 1); p.u2_grid = p.u2_grid_age(:, 1);
+p.N_u1 = n1(1); p.N_u2 = n2(1);
 end
 
 % ------------------------------------------------------------------------

@@ -40,7 +40,8 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   (c = 1), the equity share is stored as 1, or with p.pi_nothing_saved =
 %   'limit' as the share of a vanishing saving (limit_share).
 
-N1 = numel(p.u1_grid); N2 = numel(p.u2_grid); N3 = numel(p.u3_grid);
+[g1, g2] = utility.grid_at(p, t);              % this period's points (they can follow age)
+N1 = numel(g1); N2 = numel(g2); N3 = numel(p.u3_grid);
 q_grid = p.q_grid(:); Nq = numel(q_grid);
 iq1    = find(q_grid == 1);
 V_t    = nan(N1, N2, N3, Nq);
@@ -53,7 +54,7 @@ q_now  = Nq > 1 && any(p.q_live(t:end));
 q_cont = Nq > 1 && t < p.T && any(p.q_live(t+1:end));
 if q_now, slices = 1:Nq; else, slices = iq1; end
 
-[U1, U2, U3] = ndgrid(p.u1_grid, p.u2_grid, p.u3_grid);
+[U1, U2, U3] = ndgrid(g1, g2, p.u3_grid);
 Lam_all = U1;
 SA_all  = U2 .* (1 - Lam_all) .* U3;
 SH_all  = U2 .* (1 - Lam_all) .* (1 - U3);
@@ -171,11 +172,12 @@ z_min = min(z_finite);
 z_next(isnan(z_next)) = z_min;
 interp_method = validatestring(p.interp_method, {'linear', 'makima', 'spline'}, ...
                                'bellman_step_lna', 'p.interp_method');
+[n1, n2] = utility.grid_at(p, t + 1);         % next period's points, where V_next lives
 if q_cont
-    pp_lin = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid, q_grid}, ...
+    pp_lin = griddedInterpolant({n1, n2, p.u3_grid, q_grid}, ...
                                 z_next, interp_method, 'nearest');
 else
-    pp_lin = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, ...
+    pp_lin = griddedInterpolant({n1, n2, p.u3_grid}, ...
                                 z_next(:, :, :, iq1), interp_method, 'nearest');
 end
 if strcmp(interp_method, 'linear')
@@ -380,9 +382,9 @@ for iq = slices
     c_flat  = zeros(n_states, 1); c_flat(solve_k)  = c_sub;
     pi_flat = zeros(n_states, 1); pi_flat(solve_k) = pi_sub;
     if copy_u3
-        V_flat  = copy_u3_slice(V_flat, N1, N2, p.u2_grid);
-        c_flat  = copy_u3_slice(c_flat, N1, N2, p.u2_grid);
-        pi_flat = copy_u3_slice(pi_flat, N1, N2, p.u2_grid);
+        V_flat  = copy_u3_slice(V_flat, N1, N2, g2);
+        c_flat  = copy_u3_slice(c_flat, N1, N2, g2);
+        pi_flat = copy_u3_slice(pi_flat, N1, N2, g2);
     end
     V_t(:, :, :, iq)    = reshape(V_flat, N1, N2, N3);
     c_pol(:, :, :, iq)  = reshape(c_flat, N1, N2, N3);
