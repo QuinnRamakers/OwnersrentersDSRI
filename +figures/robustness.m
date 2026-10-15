@@ -33,7 +33,7 @@ title(tl, {ttl, ['Black line = the reference: the step as solved in the ladder, 
 for g = 1:ng
     G = groups(g); n = numel(G.rs);
     D = cellfun(@figures.panel_data, G.rs, 'UniformOutput', false);
-    letter = @(k) char('a' + 7 * (g - 1) + k - 1);
+    letter = @(k) panel_letter(7 * (g - 1) + k);
 
     % Consumption: level, then % difference
     ax = tile(tl, ret, FS);
@@ -154,4 +154,9 @@ function h = income_lines(ax, d, sc)
 c = [0.45 0.45 0.45];
 h(1) = plot(ax, d.ages, mean(d.Y, 1) * sc, '--', 'Color', c, 'LineWidth', 1.3);
 h(2) = plot(ax, d.ages, mean(d.disp_inc, 1) * sc, ':', 'Color', c, 'LineWidth', 1.6);
+end
+
+function s = panel_letter(i)
+% a, b, ..., z, then aa, ab, ...
+if i <= 26, s = char('a' + i - 1); else, s = [char('a' + floor((i - 1) / 26) - 1), char('a' + mod(i - 1, 26))]; end
 end

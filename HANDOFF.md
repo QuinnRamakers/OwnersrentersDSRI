@@ -30,6 +30,18 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Grid design for step 7: the power grid, and income on the comparison pages (spec: none, asked by Quinn in Claude Code)
+Quinn asked about the runtimes and the earlier power grid, and to plot income on the dashboards from now on.
+Changed: `diagnostics/grid_design/grid_rule.m`: rules `power` and `power3`, the existing primitives `grid_pow` and `grid_pow_u2` at 2 (or 3) written out as nodes. `diagnostics/grid_design/compare_grids.m`: a power-grid row. `+figures/compare.m`, `+figures/robustness.m`: the consumption panel also draws the reference households' mean gross income and income after tax, contributions and housing (grey); panel letters run on past z (aa, ab, ...).
+Runtimes: `solve_sec` is the whole backward induction over the 76 ages for one tenure, without the simulation; about 0.1 s per state-grid point (u1 x u2 x 2) for the full model, whatever the placement (current 16x16 64 s, 64x48 649 s; log-wealth 128x96 2,062 s).
+Checks run (gaps to log-wealth 128x96 over ages 26-95: mean pi, mean C %, mean liquid savings in years of income; floored %; entry value; solve s):
+- power 2: 16x16 0.95, 338%, 47; 2.5%; 0.0029; 86 s. 32x32 0.47, 251%, 38; 3.8%; 8.1e-6; 223 s. 64x48 0.12, 28%, 8.4; 0.36%; 3.2e-6; 616 s.
+- power 3: 16x16 0.94, 303%, 47; 1.8%; 0.0036; 67 s. 32x32 0.56, 178%, 34; 2.4%; 6.4e-6; 212 s.
+- For comparison, log-wealth 64x48: 0.13, 55%, 12; 0.37%; 3.2e-6; 658 s.
+- `run_tests(solve=false)`: 0 of 8 checks failed.
+Reading: power 2 at 64x48 is the closest of all grids to the reference, and it reaches it from a different placement, which supports the reference as the model's answer. At 32x32 the power grids under-resolve old-age bankruptcy (3.8% and 2.4% of household-years against 0.35%; 17% of households at 100 with power 2) where log-wealth 32x32 does not (0.59%). Power 2 needs no new primitive, only grid_pow = grid_pow_u2 = 2 and a 64x48 base grid (about 10 minutes per tenure per step).
+Commit: this entry, pushed to main.
+
 ### 2026-10-15 Grid design for step 7: a log-wealth grid converges, and shows the young owners' answer is a corner (spec: none, asked by Quinn in Claude Code)
 Quinn: come up with a more appropriate grid; show figures 1-3 and the dashboards. Floor kept at 1e-6 (Quinn: no other floors).
 Changed: `diagnostics/grid_design/` (new: `grid_rule.m`, `solve_grids.m`, `compare_grids.m`, README), `diagnostics/step07/ruin_figures.m` (takes any four saved solves, draws a chosen subset of figures). No model code; grids set through the existing primitive `p.grid_nodes`; the production grid is unchanged. Results and figures under `ladder/standard_16x16x10_gh5/grid_design/` (gitignored).
