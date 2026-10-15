@@ -30,6 +30,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Prompt for the mortgage as a state variable, saved, not started (spec: none, asked by Quinn in Claude Code)
+Quinn asked for a proposal to replace the proportional mortgage with a proper state, the ratio of the purchase price to the current house value, q = H0/H_t, and then to save it as a prompt for later. Decisions taken: a real annuity on the purchase price; step 7 keeps the proportional mortgage and a new step directly after it ("7b", step 8 by position) switches to the annuity, so production inherits it; a test with maintenance on the purchase price, run as the new step's sensitivity; no bequest netting yet.
+Changed: `docs/prompts/mortgage_state.md` (new): the model change, the q axis, new primitives (`mortgage`, `maint_on_purchase`, a fourth `grid_dims` entry, `q_hi`, `grid_pow_q`), the ladder change, the code changes file by file, checks, the runs with expectations and runtime estimates. No code changed.
+Checks run: none. MATLAB is not installed in this session's container. Range of q from the house-price process (0.1th-99.9th percentile): 0.53-1.44 at 29, 0.25-1.59 at 39, 0.10-1.45 at 54, 0.01-0.70 at 100; annuity factor 0.0408, payment 0.163 times entry income.
+Commit: this entry, pushed to claude/exciting-cori-8r29np, then cherry-picked onto main.
+Open: the implementation, and whether the new step keeps the number 8 or shows as 7b.
+
 ### 2026-10-15 Nothing saved: 100% in equity (spec: Quinn in Claude Code)
 Fixes the equity-share spikes of the entry below while keeping the consumption upper bound at 1.
 Changed: `+solver/bellman_step_lna.m`: wherever the chosen c is 1, and at grid points below the floor, the stored equity share is 1 instead of whatever the search returned (0). The value is unchanged, since with nothing saved the share has no effect. `docs/SOLVER_BOUNDS.md` sections 3 and 7.
