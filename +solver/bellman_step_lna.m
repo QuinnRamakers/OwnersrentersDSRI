@@ -248,12 +248,12 @@ parfor k = 1:n_states
     % production calibration, so read early-life consumption with that in mind.
     c_floor = max(1e-3, c_floor_frac / LW_W);
     c_floor = min(c_floor, 0.5);
-    c_grid  = linspace(c_floor, 1 - 1e-6, NC).';
+    c_grid  = linspace(c_floor, 1, NC).';
     dc0     = c_grid(2) - c_grid(1);
 
     % Stage 1: seed from next period's policy, or two fixed points without one.
     if isfinite(c_warm) && isfinite(pi_warm)
-        cand = [min(max(c_warm, c_floor), 1 - 1e-6), min(max(pi_warm, 0), 1)];
+        cand = [min(max(c_warm, c_floor), 1), min(max(pi_warm, 0), 1)];
     else
         cand = [0.5, 0.5; 0.15, 1.0];
     end
@@ -277,11 +277,11 @@ parfor k = 1:n_states
 
     % Stage 3: local solve from the seed
     lb2 = [c_floor; 0];
-    ub2 = [1 - 1e-6; 1];
+    ub2 = [1; 1];
     obj_cpi = @(x) -obj_scale * bellman_rhs(x(1), x(2), LW_W, Rf_at, R_S_at, ...
                                             A_next_W, H_next_W, Y_next_W, ...
                                             w_join, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac);
-    x0 = [min(max(c_seed, c_floor), 1 - 1e-6); min(max(pi_seed, 0), 1)];
+    x0 = [min(max(c_seed, c_floor), 1); min(max(pi_seed, 0), 1)];
     V_opt = -inf; x_opt = x0;
     try
         [x_try, neg_V_try, exitflag] = fmincon(obj_cpi, x0, [], [], [], [], lb2, ub2, [], opts_opt);
@@ -346,10 +346,10 @@ c_b = c0; p_b = p0; v_b = v0;
 dc = dc0 / 4; dp = max(dp0, 0.05);
 for r = 1:4
     if r == 1
-        c_loc = unique([linspace(c_floor, 1 - 1e-6, 21), c0]);
+        c_loc = unique([linspace(c_floor, 1, 21), c0]);
         p_loc = unique([linspace(0, 1, 21), p0]);
     else
-        c_loc = unique(min(max(c_b + dc * (-1 : 0.25 : 1), c_floor), 1 - 1e-6));
+        c_loc = unique(min(max(c_b + dc * (-1 : 0.25 : 1), c_floor), 1));
         p_loc = unique(min(max(p_b + dp * (-1 : 0.25 : 1), 0), 1));
         dc = dc / 4; dp = dp / 4;
     end

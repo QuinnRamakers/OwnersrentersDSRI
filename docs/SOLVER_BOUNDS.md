@@ -21,7 +21,7 @@ point the search over c, the share of liquid resources LW consumed, starts at
 with W = X + A + H + Y (liquid savings, pension pot, house or rent index, and
 this year's gross income) and LW = liquid resources after take-home income and
 housing costs. The global sweep and `fmincon` both search c in
-[c_floor, 1 - 1e-6], so the lowest consumption the solver can choose is
+[c_floor, 1], so the lowest consumption the solver can choose is
 
     C_min = max( 0.1% of LW, min( 1% of W, 50% of LW ) ).
 
@@ -157,8 +157,9 @@ with active-set at every ladder step.
 
 ## 7. Small technical bounds
 
-1. Consumption at most 1 - 1e-6 of liquid resources (`bellman_step_lna.m`,
-   line 251): no borrowing, with a margin.
+1. Consumption at most all liquid resources (`bellman_step_lna.m`, lines 251
+   and 280): no borrowing. Until 15 October the limit was 1 - 1e-6 of liquid
+   resources.
 2. The floor has a minimum of 1e-12 of W (`FLOOR_EPS`, line 69).
 3. The survival probability in the pension fund's survival credit is bounded
    below by 1e-8 (`paths_lna.m`, line 202).

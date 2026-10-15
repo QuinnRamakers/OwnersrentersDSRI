@@ -30,6 +30,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Consumption search: upper bound 1 instead of 1 - 1e-6 (spec: none, asked by Quinn in Claude Code)
+Changed: `+solver/bellman_step_lna.m`: the consumption share c may now reach 1 (all liquid resources) in the per-node grid, the sweep and fmincon; it was capped at 1 - 1e-6. `docs/SOLVER_BOUNDS.md` updated.
+Checks run: `run_tests` (full): 0 of 13 checks failed. Step-7 owner on log-wealth 32x32 (258 s) against the saved solve with the old cap: mean consumption within 0.004%, mean liquid savings within 2e-5 years of income, floored share 0.59%, share of 25-39 at the lower bound 96.3% and entry value 6.55e-6 all unchanged. On the grid, c moved by more than 0.01 at 70 of 175,712 points; pi moved by more than 0.05 at 9,585 points, 8,520 of which consume everything, where pi applies to nothing. The largest gap in the mean equity share, 0.041 at age 99, comes from those households. 26,712 points now consume everything, against 26,632 at 1 - 2e-6 before.
+Reading: the change does not matter economically. Where nothing is saved the equity share is undetermined, which moves the mean equity share at very old ages; it would be cleaner to report the share only for households that save.
+Commit: this entry, pushed to main.
+
 ### 2026-10-15 The solver's numerical bounds, documented (spec: none, asked by Quinn in Claude Code)
 Quinn was worried by the consumption-search bound and asked for it, and any other unexpected bounds, to be documented.
 Changed: `docs/SOLVER_BOUNDS.md` (new): every limit in the solver and the simulation that is not economics, with file and line, what it does in economic terms, measurements, and whether it needs a decision. `TODO.md` items 1 and 6 and `CALIBRATION.md` (the `c_floor_frac` paragraph) point to it. No code changed.
