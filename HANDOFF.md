@@ -30,6 +30,17 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Grid study for the step-7 renter; income-decomposition panels; one PDF of the recent plots (spec: none, asked by Quinn in Claude Code)
+Quinn: run the renter on the grids that make sense; redraw the owner pages with a separate income-decomposition panel with the housing costs; a PDF of all recent plots.
+Changed: `+figures/income_decomposition.m` (new, the twelve-panel dashboard's panel (c) as a function); `+figures/compare.m`: five columns, (a) income and housing costs and (f) housing costs over income after tax and contributions (mean, 10-90 band), both for the reference's households; `+figures/dashboard.m` uses the new function; `diagnostics/grid_design/recent_pdf.m` (new): `ladder/standard_16x16x10_gh5/grid_design/step7_grid_study.pdf` (22 MiB, gitignored). Figures 1-3 for the log-wealth and dense pairs redrawn with the current script.
+Checks run: `run_tests(solve=false)`: 0 of 8 checks failed. Renter solves (step 7, standard numerics) and gaps to renter log-wealth 128x96 over ages 26-95 (mean pi; mean C %; liquid savings in years of income; renters 25-39 at the consumption bound; floored %; entry value; solve s):
+- current 16x16 (as run): 0.94; 1061%; 5.5; 0%; 0.36%; 0.67; 79 s. current 64x48: 0.72; 393%; 2.7; 29%; 0.002%; 8.9e-5; 620 s.
+- log-wealth 32x32: 0.54; 479%; 3.4; 0.1%; 0.01%; 0.017; 206 s. log-wealth 64x48: 0.64; 319%; 2.4; 32%; 0.0005%; 3.5e-5; 569 s.
+- power 2, 32x32: 0.72; 460%; 3.1; 11%; 0.005%; 6.4e-4; 246 s. power 2, 64x48: 0.57; 247%; 2.0; 40%; 0.0003%; 1.8e-5; 618 s.
+- log-wealth 128x96: reference; 78% at the bound; 0 floored; 7.1e-6; 2,206 s.
+Reading: renters almost never go bankrupt, and from about 40 on every grid agrees (consumption within a few percent, the equity share from about 55, the policies at 55 and 75 on top of each other); the gaps are at 25-40 and in the level of liquid savings (10-25% below the reference). Young renters do not converge: the share at the consumption bound rises with every refinement (0% at 16x16, 11-32% at 32x32, 29-40% at 64x48, 78% at 128x96). This is the early-life rent-obligation problem of TODO.md item 1 (rent 24% of income at 25), not old-age bankruptcy, and no grid placement fixes it. The owner's converged corner and the renter's moving early life both say the housing outflow with a 1e-6 floor has no interior answer for the young.
+Commit: this entry, pushed to main.
+
 ### 2026-10-15 Handoff: step 7, the state grid, and what waits on Quinn (spec: none, asked by Quinn in Claude Code)
 A standalone handoff for chat and the next session: `docs/HANDOFF_2026-10-15.md`. It covers 12-15 October: where the ladder stands, the step-7 mechanism, the grid study (current, log-wealth, edge-aligned and power grids against log-wealth 128x96), the converged corner for young owners, the open decisions in order, how to reproduce everything, where the scripts and results are, and how Quinn wants results shown. No code changed.
 Checks run: none needed (a document).
