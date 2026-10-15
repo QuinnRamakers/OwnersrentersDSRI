@@ -108,6 +108,7 @@ p.use_refine    = true;       % global (c, pi) sweep before fmincon at every nod
 p.fmincon_algorithm = 'interior-point';   % local solve: 'interior-point', 'active-set' or 'sqp'
 p.fmincon_objective = 'ce';   % what fmincon minimises: 'ce' (certainty-equivalent units) or 'utility'
 p.interp_method = 'linear';   % continuation interpolant: 'linear', 'makima' or 'spline'
+p.pi_nothing_saved = 'one';   % equity share stored where nothing is saved: 'one' or 'limit' (the first euro's share)
 p.lambda_lo     = [];         % bottom of the u1 axis; [] = 0.0008, or 0.0002 with housing
 p.lambda_hi     = [];         % top of the u1 axis; [] = min(0.9, 3/(1+h_mult)), or 1 without housing
 p.grid_pow      = 1;          % > 1 bunches u1 nodes toward the bottom

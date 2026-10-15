@@ -19,4 +19,12 @@ end
 if ~isfile(file), r = []; return; end
 r = load(file);
 r.case_name = name;
+% The equity share of liquid saving, aggregated over households (1 x T):
+% stocks held over liquid saving. Households that save nothing carry no weight.
+w = warning('off', 'all');
+s = figures.panel_data(r).sim;
+warning(w);
+sav = max(s.LW - s.C, 0);
+r.piw = sum(s.pi .* sav, 1) ./ max(sum(sav, 1), realmin);
+r.piw(sum(sav, 1) < 1e-9 * sum(s.Y, 1)) = NaN;
 end

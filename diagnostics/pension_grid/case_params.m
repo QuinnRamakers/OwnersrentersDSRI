@@ -5,7 +5,9 @@ function p = case_params(step, arm, name)
 %   p = case_params('dc_stocks', 'renter', 'uniform_64x64_gh7')
 %
 %   name is <rule>_<N1>x<N2>, optionally followed by _gh<n> (quadrature nodes
-%   per shock, 5 otherwise) and _makima (the continuation interpolant). The
+%   per shock, 5 otherwise), _makima (the continuation interpolant) and _lim
+%   (pi_nothing_saved = 'limit': the share of the first euro saved where
+%   nothing is saved, instead of 1). The
 %   rule places the base nodes of u1 (income over total resources) and u2
 %   (the pension pot's share of non-income wealth) with existing primitives:
 %     uniform   evenly spaced, as the ladder's numerics
@@ -39,5 +41,6 @@ end
 g = regexp(extra, '_gh(\d+)', 'tokens', 'once');
 if ~isempty(g), p.gh_n = str2double(g{1}); end
 if contains(extra, '_makima'), p.interp_method = 'makima'; end
+if contains(extra, '_lim'), p.pi_nothing_saved = 'limit'; end
 p = config.derive(p);
 end

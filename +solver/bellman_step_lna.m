@@ -37,7 +37,8 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %
 %   Where liquid resources fall short of the floor phi_floor * Y, the
 %   household consumes the floor and saves nothing. Wherever nothing is saved
-%   (c = 1), the equity share is stored as 1.
+%   (c = 1), the equity share is stored as 1, or with p.pi_nothing_saved =
+%   'limit' as the share of a vanishing saving (limit_share).
 
 N1 = numel(p.u1_grid); N2 = numel(p.u2_grid); N3 = numel(p.u3_grid);
 q_grid = p.q_grid(:); Nq = numel(q_grid);
@@ -235,6 +236,10 @@ else
 end
 n_solve = numel(solve_k);
 
+% The equity share stored where nothing is saved (c = 1)
+pi_limit = isfield(p, 'pi_nothing_saved') && strcmp(validatestring(p.pi_nothing_saved, ...
+    {'one', 'limit'}, 'bellman_step_lna', 'p.pi_nothing_saved'), 'limit');
+
 % Annuity payout in retirement: the pot pays A/a_t each period.
 if is_retired
     ann_t      = ann_price(t);
@@ -358,9 +363,17 @@ for iq = slices
             V_sub(j) = maxval; c_sub(j) = c_seed; pi_sub(j) = pi_seed;
         end
         % With nothing saved the equity share has no effect and every share ties.
-        % Store 100% in equity, so that interpolation and next year's warm start
-        % do not pick up an arbitrary share.
-        if c_sub(j) >= 1, pi_sub(j) = 1; end
+        % Store a share that interpolation and next year's warm start can use:
+        % 100% in equity, or with p.pi_nothing_saved = 'limit' the share the
+        % household would choose for its first euro of saving.
+        if c_sub(j) >= 1
+            if pi_limit
+                pi_sub(j) = limit_share(LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
+                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac);
+            else
+                pi_sub(j) = 1;
+            end
+        end
     end
 
     V_flat  = zeros(n_states, 1); V_flat(solve_k)  = V_sub;
@@ -387,6 +400,30 @@ Nq = size(V, 4);
 V   = repmat(V(:, :, :, iq1), 1, 1, 1, Nq);
 c   = repmat(c(:, :, :, iq1), 1, 1, 1, Nq);
 pi_ = repmat(pi_(:, :, :, iq1), 1, 1, 1, Nq);
+end
+
+% ------------------------------------------------------------------------
+function p_b = limit_share(LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
+                           w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac)
+%LIMIT_SHARE  The equity share of a vanishing saving: the best share when
+%   1e-6 of liquid resources is saved, from 21 shares and three rounds
+%   shrinking around the best. To first order in the saving the objective is
+%   linear in the share, so the answer is normally 0 or 1: the sign of the
+%   marginal-utility-weighted equity premium.
+c = 1 - 1e-6;
+f = @(pi_) bellman_rhs(c, pi_, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
+                       w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac);
+grid_ = linspace(0, 1, 21);
+v = arrayfun(f, grid_);
+[v_b, i] = max(v); p_b = grid_(i);
+dp = 0.05;
+for r = 1:3
+    loc = unique(min(max(p_b + dp * (-1 : 0.25 : 1), 0), 1));
+    v = arrayfun(f, loc);
+    [mv, i] = max(v);
+    if mv > v_b, v_b = mv; p_b = loc(i); end
+    dp = dp / 4;
+end
 end
 
 % ------------------------------------------------------------------------

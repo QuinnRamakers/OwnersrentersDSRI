@@ -393,6 +393,7 @@ Not calibration targets; accuracy choices, justified by convergence checks.
 | `fmincon_objective` | `'ce'` | What the local solve minimises. `'ce'`: the Bellman objective in certainty-equivalent units relative to the seed, `-(rhs/rhs_seed)^(1/(1-gamma))`, a monotone transform with the same optimum, equal to -1 at the seed at every node and finite as consumption goes to zero (suggested by the coauthor, 15 October 2026). `'utility'`: the objective in utility units divided by the median absolute value of next period's V, as before 15 October 2026 |
 | `N_c`, `N_pi` | 41 | Set the step sizes of the sweep's shrinking rounds |
 | `interp_method` | `'linear'` | Linear in z. `'makima'` serves as a structural error check |
+| `pi_nothing_saved` | `'one'` | The equity share stored at grid points where nothing is saved (c = 1), where it has no effect on the value. `'one'`: 100% in equity (Quinn, 15 October 2026). `'limit'`: the share the household would choose for a vanishing saving, as the solver found it before 15 October with the upper bound 1 - 1e-6. It matters through interpolation: a household that does save, in a cell next to such a point, takes part of its share |
 | `lambda_lo` | `[]` | 0.0008, or 0.0002 with housing. With house prices at 3.73% real and 8.35% vol, owners reach u1 = 0.0005 at 85+; 0.0008 clipped 0.02% of their household-years |
 | `lambda_hi` | `[]` | `min(0.9, 3/(1 + h_mult))`, or 1 without housing |
 | `grid_pow`, `grid_pow_u2`, `u2_lo`, `u3_lo`, `u3_hi`, `grid_nodes` | uniform, full axes | Placement; see GRIDS.md |
