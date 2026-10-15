@@ -18,10 +18,12 @@ function p = case_params(step, arm, name)
 %               of total resources over income between 1 and about 300
 %     u1pow3    u1 at power 3, u2 at power 2
 %     u1only    u1 at power 3, u2 even; u2only the other way round
+%     age, ageq, age32   points that follow age (age_grid), placed from a
+%               pilot solve of the same step (see the case below)
 %   u3 and q keep the standard base counts (10 and 8); without housing they
 %   collapse anyway. arm is 'renter' or 'owner' (the no-housing arms of the
 %   DC steps). Nothing here changes the model: only grid_dims, grid_pow,
-%   grid_pow_u2, gh_n and interp_method are set.
+%   grid_pow_u2, grid_nodes, gh_n, interp_method and pi_nothing_saved are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
 assert(~isempty(tok), 'case_params:name', 'case name %s is not <rule>_<N1>x<N2>[_gh<n>][_makima]', name);
