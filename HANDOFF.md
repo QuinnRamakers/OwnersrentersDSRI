@@ -30,6 +30,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 The bounds of the consumption decision, ours and MK's (spec: none, asked by Quinn in Claude Code)
+Quinn asked for the lower and upper bounds of the consumption choice, because they came up in another chat.
+Changed: `docs/SOLVER_BOUNDS.md` section 1 now covers both bounds: the rule in euros, where the solver does not search, how the simulation applies and counts the bound, and the coauthor's (MK) bounds. `docs/SOLVER_COMPARISON_MK.md`: the table row corrected and an upper-bound row added. No code changed.
+Checks run: none in MATLAB (this container has none). Read from the code: C is searched in [min(1% of W, 50% of LW), (1 - 1e-6) LW]. The 0.001 inside c_floor (`bellman_step_lna.m`, line 249) never binds, because LW <= W at every state (annuity price a_t = 1 + p_t a_{t+1}/E[R] >= 1) and points at or below the floor skip the search; the earlier text said it applied near LW = 0. The simulation clamps c to [0, 1], not to the search range, and does not count households at the upper bound.
+Reading: the lower bound is numerical and binds for converged step-7 owners (section 1 table). The upper bound is the no-borrowing constraint of Cocco, Gomes and Maenhout. MK: 1e-4 <= c <= 1 as shares of W, the lower bound 100 times smaller with no cap. Through the budget and an 80% LTV that can be refinanced every year, the effective upper bound is renter 0.8 W, buyer 1 - 0.275 q, stayer 1 - 0.215 q. So MK's owners can consume home equity down to 20% of the house, which is option 1 of TODO item 1, built in.
+Commit: this entry, pushed to branch `claude/ecstatic-cray-71jg7e`, not to main (this session may push only to that branch).
+Open: the decisions listed at the end of `docs/SOLVER_BOUNDS.md` section 1, and a counter for the upper bound in `model.checks`.
+
 ### 2026-10-15 Solver comparison with the coauthor's housing model (spec: none, asked by Quinn in Claude Code)
 Quinn shared a coauthor's separate model (`cons_savings_housing_MK.zip`: Epstein-Zin, rent/buy/stay choice, two ratio states) and asked what numerical choices in its solver might be smarter than ours, for example the objective and the fmincon settings.
 Changed: `docs/SOLVER_COMPARISON_MK.md` (new): the two solvers side by side, what to take over, where ours already matches or does better, and small points in the MK code. `docs/SOLVER_BOUNDS.md` sections 1 and 6 point to it. No code changed.

@@ -37,7 +37,8 @@ how the search is protected against local peaks.
 | Objective scale | 1e6 / (smallest v of the period just solved) | 1 / median abs(V_tilde) of next period (154-159) |
 | Choice variables | renter (c, b), buyer (c, b, q), stayer (c, b); s is the residual | (c, pi) |
 | Constraints | linear inequalities A x <= b for s >= 0 and the LTV limit, with the right-hand side moved in by TolCon (1e-8) so fmincon's allowed violation cannot make s negative | box only: c in [c_floor, 1 - 1e-6], pi in [0, 1]. Every point is feasible |
-| Lowest consumption | c >= 1e-4 of W | c >= 1e-2 of W, but at least 0.1% and at most 50% of LW (249-250) |
+| Lowest consumption | c >= 1e-4 of W | C >= min(1% of W, 50% of LW) (249-250); the 0.1% of LW inside the code never binds (`docs/SOLVER_BOUNDS.md`, section 1) |
+| Highest consumption | c <= 1 of W, tightened by the budget and an 80% LTV that can be refinanced every year: renter 0.8 W, buyer 1 - 0.275 q, stayer 1 - 0.215 q | C <= (1 - 1e-6) LW: no borrowing against income, house or pension |
 | Guard against negative wealth | next-period wealth growth clamped at 1e-4 inside the objective | not needed: every part of next-period wealth is non-negative; explicit floor phi_floor |
 | fmincon algorithm | interior-point | interior-point (active-set and sqp as checks) |
 | Tolerances | TolX 1e-8, TolCon 1e-8, TolFun 1e-8; OptimalityTolerance at its default 1e-6 | StepTolerance 1e-9, OptimalityTolerance 1e-8, FunctionTolerance 1e-10 |

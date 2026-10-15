@@ -11,25 +11,55 @@ Measurements are from the step-7 solves of the grid study (standard numerics,
 the current grid as run (16x16) and the reference, log-wealth 128x96
 (`diagnostics/grid_design/`).
 
-## 1. The lower bound of the consumption search
+## 1. The bounds of the consumption search
 
-**The rule.** `+solver/bellman_step_lna.m`, lines 249-251. At every grid
-point the search over c, the share of liquid resources LW consumed, starts at
+**The rule.** `+solver/bellman_step_lna.m`, lines 249-251 and 279-280. The
+choice c is the share of liquid resources LW consumed. LW is liquid savings
+plus take-home income (in retirement, plus the net annuity) less the housing
+cost. W = X + A + H + Y is total wealth: liquid savings, pension pot, house or
+rent index, and this year's gross income. At every grid point where LW is
+above the consumption floor, the sweep (lines 349-353) and `fmincon` both
+search c in
 
-    c_floor = min( max(0.001, c_floor_frac * W / LW), 0.5 ),   c_floor_frac = 0.01
+    [c_floor, 1 - 1e-6],   c_floor = min( max(0.001, c_floor_frac * W / LW), 0.5 ),   c_floor_frac = 0.01
 
-with W = X + A + H + Y (liquid savings, pension pot, house or rent index, and
-this year's gross income) and LW = liquid resources after take-home income and
-housing costs. The global sweep and `fmincon` both search c in
-[c_floor, 1 - 1e-6], so the lowest consumption the solver can choose is
+In euros, consumption C = c * LW is searched in
 
-    C_min = max( 0.1% of LW, min( 1% of W, 50% of LW ) ).
+    C_min = min( 1% of W, 50% of LW )   to   C_max = (1 - 1e-6) * LW.
 
-The simulation records the same bound (`+simulate/paths_lna.m`, line 174), and
-`model.checks` reports the share of households aged 25-39 at it
-(`c_bound_25_39`).
+The 0.001 inside c_floor never binds, so it is left out of C_min. LW is at
+most W at every state (take-home income is at most gross income, the annuity
+price is at least 1, housing costs are not negative), so 1% of W is at least
+1% of LW. Grid points with LW at or below the floor never reach this line
+(line 226). An earlier version of this file said the 0.1% applied where LW is
+near zero; it does not apply anywhere.
 
-**Why it is there.** With gamma = 5, utility goes to minus infinity as
+The lower bound is a numerical choice (`c_floor_frac`). The upper bound is
+economics: the no-borrowing constraint of Cocco, Gomes and Maenhout (2005).
+The household cannot consume more than its liquid resources, and cannot
+borrow against income, the house or the pension pot. The margin of 1e-6
+keeps next year's liquid wealth positive.
+
+Where the solver does not search:
+
+1. Below the floor, consumption is the floor, phi_floor times gross income;
+   the solver stores c = 1 and pi = 0 (section 3).
+2. At 100, the household consumes all of LW (c = 1, lines 81-107). With a
+   bequest motive (chi > 0, not used) c has a closed form, clamped to
+   [1e-6, 1].
+
+In the simulation (`+simulate/paths_lna.m`, lines 160-174), c is read by
+linear interpolation between grid points and clamped to [0, 1], not to the
+search range. Consumption is c * max(LW, 0), or the floor where LW is below it.
+A simulated household can therefore sit slightly below the bound at its own
+state, or consume all of LW. The simulation records the lower bound at each
+household's state (line 174). `model.checks` counts a household-year as at
+the bound when it is not floored and c is at most 1.02 times that bound
+(`+model/summarize.m`, line 89), and reports the share at ages 25-39
+(`c_bound_25_39`). How often households sit at the upper bound is not
+counted anywhere.
+
+**Why the lower bound is there.** With gamma = 5, utility goes to minus infinity as
 consumption goes to zero, and the search is kept away from that region.
 `CALIBRATION.md` lists `c_floor_frac` as a numerical bound. In
 certainty-equivalent units the objective stays finite as consumption goes to
@@ -48,11 +78,12 @@ zero, so this reason would go away (`docs/SOLVER_COMPARISON_MK.md`, section 1).
    cannot let them save more than half of their cash. These are the
    households closest to bankruptcy, who would save the most.
 3. For renters, W includes the rent index (4 years of income at entry), which
-   is not wealth. Their minimum consumption scales with their rent.
-4. The 0.1% minimum only applies where LW is negative or near zero; those
-   households are at the consumption floor anyway.
+   is not wealth. Their minimum consumption scales with their rent. A renter
+   at entry must also consume at least 5.1% of income, about EUR 1,500.
+4. W also includes the DC pot, so once the DC pillar is on the minimum grows
+   with the pot, which cannot be spent before 67.
 
-**How often it binds** (share of simulated household-years at the bound,
+**How often the lower bound binds** (share of simulated household-years at the bound,
 excluding households at the consumption floor):
 
 | Solve | Ages 25-39 | 40-66 | 67+ | 50% cap in force, 67+ | At the cap |
@@ -71,12 +102,43 @@ bound never binds, because that grid does not see the old-age bankruptcy risk
 that makes households want to consume less. The 50% cap is in force for 17%
 of the current-grid owners' retirement years but no one sits at it there.
 
-**Decision needed.** Whether the household should be allowed to consume less
-than 1% of total wealth, whether the bound should be a share of LW or of
-income instead of W, and whether the 50% cap should go. Decide together with
-the consumption floor (`TODO.md`, item 1): with a floor of 1e-6 times income,
-the household wants to consume almost nothing to avoid later floor states,
-so any lower bound will bind.
+**The coauthor's model (MK).** There c is a share of total wealth W (which
+also includes the house and this year's income), with bounds 1e-4 <= c <= 1
+(`main_jmp.m`, lines 80-81). The lower bound is 100 times smaller than ours,
+a fixed share of W, and has no cap. Its objective is in certainty-equivalent
+units, which stay finite as consumption goes to zero, so there the bound is
+only a guard. The budget and loan-to-value constraints set a tighter upper
+bound (`opt_rent_buy.m`, lines 17-18 and 52-55; `main_jmp.m`, lines 325-328):
+
+1. Renter: c <= 0.8 of W. The rent is tied to consumption, so consumption
+   plus rent can take all of W.
+2. Buyer: c <= 1 - 0.275 q, with q >= 0.1 the new house as a share of W.
+3. Stayer: c <= 1 - 0.215 q, with q the current house.
+
+The 0.275 and 0.215 are the house's price, purchase cost (6%) and maintenance
+(1.5%) less the 80% the household may borrow against it. The mortgage can be
+raised to 80% of the house every year, so MK's owners can consume their home
+equity down to 20% of the house. That is option 1 under `TODO.md` item 1
+(owners' access to housing equity), built in. Ours cannot touch the house.
+How often MK's bounds bind is not measured (no MATLAB in this container).
+With an EIS of 0.1, a lower bound of 1e-4 of W is unlikely to bind.
+
+**Decision needed.**
+
+1. The lower bound: whether the household may consume less than 1% of total
+   wealth, whether the bound should be a share of LW or of income instead of
+   W (W holds the house, the rent index and the DC pot), and whether the 50%
+   cap should go. Decide together with the consumption floor (`TODO.md`,
+   item 1): with a floor of 1e-6 times income, the household wants to
+   consume almost nothing to avoid later floor states, so any lower bound
+   will bind. If the bound is lowered, give `fmincon` the objective in
+   certainty-equivalent units first (`docs/SOLVER_COMPARISON_MK.md`,
+   section 1), so that a bound near zero is numerically safe.
+2. The upper bound: keep no borrowing, as in Cocco, Gomes and Maenhout,
+   unless owners get access to their housing equity. Then the owner's upper
+   bound rises above LW, as in MK.
+3. Either way, count the household-years at the upper bound (c >= 0.999,
+   not floored) in `model.checks`, alongside `c_bound_25_39`.
 
 ## 2. The sweep's step in consumption
 
@@ -162,7 +224,7 @@ coauthor's code does, which removes the scaling problem; not yet tried.
 ## 7. Small technical bounds
 
 1. Consumption at most 1 - 1e-6 of liquid resources (`bellman_step_lna.m`,
-   line 251): no borrowing, with a margin.
+   line 251): no borrowing, with a margin (section 1).
 2. The floor has a minimum of 1e-12 of W (`FLOOR_EPS`, line 69).
 3. The survival probability in the pension fund's survival credit is bounded
    below by 1e-8 (`paths_lna.m`, line 202).
