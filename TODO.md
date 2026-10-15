@@ -72,9 +72,11 @@ agree within the stop rule (2 points in the equity share, 2% in consumption).
 If none of this is taken up, report ages 40+ only and state that accumulation
 is not identified.
 
-Related: `c_floor_frac`, the lower bound of the consumption search, binds in
-early life at this calibration and its effect changes sign across grids. It is
-a modelling choice in disguise; decide it together with the floor.
+Related: `c_floor_frac`, the lower bound of the consumption search, is a
+modelling choice in disguise; decide it together with the floor. On the
+converged step-7 grids it binds for every owner aged 25-39, 99% of owner
+household-years at 40-66 and 48% from 67, and for 78% of renters aged 25-39
+(`docs/SOLVER_BOUNDS.md`, section 1).
 
 ## 2. Calibration inputs still missing
 
@@ -128,6 +130,13 @@ differences rather than levels.
 
 ## 6. Numerics
 
+- `docs/SOLVER_BOUNDS.md` lists every limit in the solver and the simulation
+  that is not part of the economics. Open there: the consumption-search bound
+  (1% of total wealth including the house, capped at half of liquid
+  resources), which sets the converged step-7 owner's consumption through
+  working life and half of retirement; the sweep's consumption step; the
+  policy stored at grid points below the floor; a counter for non-finite
+  values.
 - Early-life convergence waits on 1; no numerical lever fixes it.
 - The retirement equity share needs nodes where retirees live, at low u1.
   `utility.auto_state_grids` places them from a simulated panel (GRIDS.md);

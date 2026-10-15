@@ -307,8 +307,12 @@ binds in 60% of household-years. The floor is the first calibration decision
 the research points to; see TODO.md.
 
 `c_floor_frac` is a numerical bound, but where households would consume less
-than 1% of total wealth, which is early life at this calibration, it is the
-bound that sets consumption. `r.checks.c_bound_25_39` reports how often.
+than 1% of total wealth it is the bound that sets consumption.
+`r.checks.c_bound_25_39` reports how often. Total wealth W includes the house
+(for renters the rent index), and the bound is capped at half of liquid
+resources, so where the house is large relative to cash it requires consuming
+at least half of that cash. `docs/SOLVER_BOUNDS.md` gives the exact rule and
+how often it binds.
 
 ## Entry state
 
