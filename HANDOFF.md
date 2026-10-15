@@ -30,6 +30,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Step-7 PDF with starting savings of 1 year of income (spec: none, asked by Quinn in Claude Code)
+Quinn asked for the same PDF with a higher starting wealth (thought the simulations started from zero; they start from b0 = 0.079 years of gross income, about EUR 3,100 for owners and 2,400 for renters). Chosen: 1 year of gross income.
+Changed: `diagnostics/step07/restart_sim.m` (new): a saved result simulated again from other starting savings, summary and checks recomputed, solution unchanged. `ruin_figures` and `compare_grids` take `b0=`; `compare_grids` takes `out=` and reports the share aged 25-39 at the consumption bound; `recent_pdf` takes the folders, the cover's starting-savings line and the gap tables; `diagnostics/grid_design/report_b0.m` (new) draws every page and the PDF: `ladder/standard_16x16x10_gh5/grid_design/b1/step7_grid_study_b1.pdf` (gitignored). Figure 3's household dots are now solid with a white edge, so they show on dark blue (Quinn asked whether households sat at different house values on the two grids: they do not; at 85 the house-to-income ratios are identical, max difference 0, and the finer grid's households with big houses hold more savings and sat on dark blue where the old semi-transparent dots vanished).
+Checks run: `checkcode` on the five scripts, no messages. Gaps to log-wealth 128x96 (b0 = 1 against 0.079):
+- Owner: reference bankrupt household-years 0.32% (0.35%), owners 25-39 at the bound 100% (100%), entry value 3.0e-6 (2.9e-6). power 2 64x48: pi gap 0.12 (0.12), floored 0.33% (0.36%). current 16x16: 0.71 (0.72), 5.5% (5.5%), entry 0.69 (0.66).
+- Renter: reference at the bound 75% (78%). Largest pi gap at 64x48 0.32-0.43 (0.57-0.72); at the bound 23-35% (29-40%).
+Reading: a starting buffer of one year of income changes almost nothing. Young owners still all consume at the bound, and the renters' early life still moves with the grid. The corner is driven by the old-age housing cost (owners) and the rent obligation (renters), not by starting with little cash.
+Commit: this entry, pushed to main.
+
 ### 2026-10-15 Grid study for the step-7 renter; income-decomposition panels; one PDF of the recent plots (spec: none, asked by Quinn in Claude Code)
 Quinn: run the renter on the grids that make sense; redraw the owner pages with a separate income-decomposition panel with the housing costs; a PDF of all recent plots.
 Changed: `+figures/income_decomposition.m` (new, the twelve-panel dashboard's panel (c) as a function); `+figures/compare.m`: five columns, (a) income and housing costs and (f) housing costs over income after tax and contributions (mean, 10-90 band), both for the reference's households; `+figures/dashboard.m` uses the new function; `diagnostics/grid_design/recent_pdf.m` (new): `ladder/standard_16x16x10_gh5/grid_design/step7_grid_study.pdf` (22 MiB, gitignored). Figures 1-3 for the log-wealth and dense pairs redrawn with the current script.

@@ -5,6 +5,8 @@ function ruin_figures(phi, opts)
 %   ruin_figures([], files={c, f, c0, f0}, names=..., tag='_x', figures=1:3)
 %                      any four saved solves: a coarse and a fine one, then a
 %                      contrast pair; figure 1 then shows all four
+%   ruin_figures(..., b0=1)  every solve simulated from starting savings of 1
+%                      year of gross income instead of p.b0 (restart_sim)
 %   Five figures, each comparing the standard grid with the income axis doubled:
 %   ruin_1_why (bankruptcy rate by age), ruin_2_cliff, ruin_3_landscape,
 %   ruin_4_cut and ruin_5_choice. Figures 2-4 share one linear range, house
@@ -21,6 +23,7 @@ arguments
     opts.tag (1,:) char = ''
     opts.out (1,:) char = ''
     opts.figures double = 1:5
+    opts.b0 double = []
 end
 pth = step07_paths();
 cd(pth.repo);
@@ -50,6 +53,7 @@ else
     tag = sprintf('_floor%03d', round(100 * phi)); main = sprintf('floor %g', phi); alt = 'floor 10^{-6} (before)';
     notes_on = false; zw = 'on the floor';
 end
+if ~isempty(opts.b0), R = cellfun(@(r) restart_sim(r, opts.b0), R, 'UniformOutput', false); end
 YLO = 1e-7; YHI = 1e2;                                  % value axis in the cut figures
 HY = 'house value (years of household income)';
 XY = 'savings (years of household income)';
@@ -177,7 +181,8 @@ for zoom = [false true]
             [xn, hn] = nodes_xh(R{i}.p);
             in = xn <= XR & hn <= H3;
             plot(ax, hn(in), xn(in), 'o', 'MarkerSize', 3.5, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'w', 'LineWidth', 0.4);
-            scatter(ax, P{i}.h(1:5:end, t), P{i}.x(1:5:end, t), 4, [0.90 0.20 0.65], 'filled', 'MarkerFaceAlpha', 0.45);
+            scatter(ax, P{i}.h(1:5:end, t), P{i}.x(1:5:end, t), 10, [0.95 0.25 0.70], 'filled', ...
+                'MarkerEdgeColor', 'w', 'LineWidth', 0.3);
             m = xb <= XR;
             plot(ax, hb(m), xb(m), 'r-', 'LineWidth', 2);
             plot(ax, EH(i, k), EX(i, k), 'p', 'MarkerSize', 16, 'MarkerFaceColor', cW, 'MarkerEdgeColor', 'k', 'LineWidth', 1);
@@ -331,7 +336,11 @@ end
 
 % ------------------------------------------------------------------------
 function P = panel(r)
-sim = simulate.forward(r.p, r.profile, r.sol, r.ann_price, r.timing.N_sim, r.timing.seed, r.p.b0);
+if isfield(r, 'sim')
+    sim = r.sim;
+else
+    sim = simulate.forward(r.p, r.profile, r.sol, r.ann_price, r.timing.N_sim, r.timing.seed, r.p.b0);
+end
 P.sim = sim; P.ages = sim.ages(:).';
 P.x = sim.X ./ sim.Y; P.h = sim.H ./ sim.Y;
 P.xmed = median(P.x, 1); P.hmed = median(P.h, 1);
