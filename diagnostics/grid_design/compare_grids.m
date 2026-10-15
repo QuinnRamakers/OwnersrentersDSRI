@@ -15,6 +15,10 @@ function T = compare_grids(opts)
 %
 %   T = compare_grids(b0=1, out=folder)   every solve simulated from starting
 %   savings of 1 year of gross income (restart_sim); figures go to folder.
+%
+%   T = compare_grids(step='annuity', res=folder, gd=folder)   another ladder
+%   step: its ladder solve and income-axis-doubled solve from res (and
+%   res/robustness), the solve_grids results from gd.
 
 arguments
     opts.ref (1,:) char = 'logwealth_64x48'
@@ -22,20 +26,31 @@ arguments
     opts.dashboards (1,1) logical = true
     opts.b0 double = []
     opts.out (1,:) char = ''
+    opts.step (1,:) char = 'housing'
+    opts.res (1,:) char = ''
+    opts.gd (1,:) char = ''
 end
 
 repo = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 cd(repo);
 addpath(fullfile(repo, 'diagnostics', 'step07'));
-res = fullfile(repo, 'ladder', 'standard_16x16x10_gh5');
-gd  = fullfile(res, 'grid_design');
+res = opts.res; if isempty(res), res = fullfile(repo, 'ladder', 'standard_16x16x10_gh5'); end
+gd  = opts.gd;  if isempty(gd), gd = fullfile(res, 'grid_design'); end
 figdir = gd; if ~isempty(opts.out), figdir = opts.out; end
 if ~isfolder(figdir), mkdir(figdir); end
 ten = 'renter'; if opts.owner, ten = 'owner'; end
+k = ladder.index(opts.step); S = ladder.steps();
+stem = sprintf('%s_%s_%s', ladder.number(k, S, true), S(k).name, ten);
+step_label = sprintf('Step %s', ladder.number(k, S));
 
 R = struct('name', {}, 'r', {});
-R(end+1) = struct('name', 'uniform_16x16', 'r', load(fullfile(res, sprintf('07_housing_%s.mat', ten))));
-R(end+1) = struct('name', 'uniform_32x16', 'r', load(fullfile(res, 'robustness', sprintf('07_housing_%s_dense_u1.mat', ten))));
+R(end+1) = struct('name', 'uniform_16x16', 'r', load(fullfile(res, [stem '.mat'])));
+for f32 = {[stem '_dense_u1.mat'], [stem '_g32x16x10x8_gh5.mat']}
+    if isfile(fullfile(res, 'robustness', f32{1}))
+        R(end+1) = struct('name', 'uniform_32x16', 'r', load(fullfile(res, 'robustness', f32{1}))); %#ok<AGROW>
+        break
+    end
+end
 f = dir(fullfile(gd, sprintf('%s_*.mat', ten)));
 for i = 1:numel(f)
     s = load(fullfile(gd, f(i).name));
@@ -60,7 +75,7 @@ for i = 1:numel(R)
         'max_dX_inc', 'floored_pct', 'floored_85_95_pct', 'bound_25_39_pct', 'entry_value', 'solve_s'})]; %#ok<AGROW>
 end
 T = sortrows(T, {'N_u1', 'grid'});
-fprintf('\nStep 7 %s, gaps to %s over ages 26-95\n', ten, opts.ref);
+fprintf('\n%s %s, gaps to %s over ages 26-95\n', step_label, ten, opts.ref);
 disp(T);
 
 if ~opts.dashboards, return; end
@@ -76,11 +91,11 @@ cur = setdiff(cur, string(opts.ref), 'stable');
 groups = struct('name', {'Current grid', 'Log-wealth grid', 'Edge-aligned grid', 'Power grid'}, ...
                 'rs', {pick(cur), pick(new), pick(edg), pick(pw)}, 'labels', {lab(cur), lab(new), lab(edg), lab(pw)});
 groups = groups(~cellfun(@isempty, {groups.rs}));
-ttl = sprintf('Step 7 %s: every grid against the %s solve', ten, strrep(opts.ref, '_', ' '));
+ttl = sprintf('%s %s: every grid against the %s solve', step_label, ten, strrep(opts.ref, '_', ' '));
 figures.robustness(R(iref).r, strrep(opts.ref, '_', ' '), groups, ttl, ...
     fullfile(figdir, sprintf('robustness_%s_vs_%s.png', ten, opts.ref)));
 ov = [string(opts.ref), setdiff(intersect(["logwealth_64x48", "power_64x48", "logwealth_32x32", "power_32x32", ...
     "uniform_16x16"], string({R.name}), 'stable'), string(opts.ref), 'stable')];
-figures.compare(pick(ov), lab(ov), sprintf('Step 7 %s: current, log-wealth and power grids', ten), ...
+figures.compare(pick(ov), lab(ov), sprintf('%s %s: current, log-wealth and power grids', step_label, ten), ...
     fullfile(figdir, sprintf('compare_%s.png', ten)));
 end

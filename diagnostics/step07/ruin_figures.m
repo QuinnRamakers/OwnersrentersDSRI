@@ -61,6 +61,11 @@ HY = 'house value (years of household income)';
 XY = 'savings (years of household income)';
 P = cell(1, 4);
 for i = 1:4, P{i} = panel(R{i}); end
+% With the annuity mortgage the value and the housing bill also depend on
+% q = H0/H. Figures 2 and 3 read both at the median simulated q at each age.
+has_q = any(cellfun(@(r) numel(q_axis(r.p)) > 1, R));
+assert(~(has_q && any(opts.figures >= 4)), 'ruin_figures:q', ...
+    'Figures 4 and 5 do not handle the purchase-price state q; draw figures 1-3 for these solves.');
 ages = P{1}.ages; g = R{1}.p.gamma;
 clo = floor(log10(R{1}.p.phi_floor));                 % bottom of the colour scale in figure 3
 show_ages = [27 45 85];
@@ -118,7 +123,8 @@ Zw = [upper(zw(1)) zw(2:end)];
 for k = 1:size(cl_cases, 1)
     i0 = cl_cases{k, 1}; t = find(ages == cl_cases{k, 2});
     ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on');
-    hb = (1 - R{i0}.p.phi_floor) / cost_rate(R{i0}.p, t);
+    qm = P{i0}.qmed(t);
+    hb = (1 - R{i0}.p.phi_floor) / cost_rate(R{i0}.p, t, qm);
     patch(ax, [hb HR HR hb], [YLO YLO YHI YHI], [0.9 0.3 0.3], 'FaceAlpha', 0.12, 'EdgeColor', 'none', ...
         'HandleVisibility', 'off');
     hist_strip(ax, linspace(0, HR, 81), P{i0}.h(:, t), YLO, 2);
@@ -126,23 +132,29 @@ for k = 1:size(cl_cases, 1)
     lines = gobjects(1, 2);
     for j = 0:1
         r = R{i0 + j}; cc = col{i0 + j};
-        F = z_interp(r, t); Dh = horizon(r, t)^(1 / (g - 1));
+        F = z_interp(r, t, qm); Dh = horizon(r, t)^(1 / (g - 1));
         u1 = 1 ./ (1 + hh);
         ce = F(u1, ones(size(u1)), zeros(size(u1))) ./ u1 * Dh;
         lines(j + 1) = plot(ax, hh, ce, sty{i0 + j}, 'Color', cc, 'LineWidth', 1.8);
         u1n = r.p.u1_grid(:); hn = 1 ./ u1n - 1;
-        zn = z_nodes(r, t); zn = zn(:, end, 1);          % u2 = 1 (no liquid savings), u3 = 0
+        zn = z_nodes(r, t, qm); zn = zn(:, end, 1);      % u2 = 1 (no liquid savings), u3 = 0
         cen = zn ./ u1n * Dh;
         plot(ax, hn, cen, 'o', 'Color', cc, 'MarkerFaceColor', cc, 'MarkerSize', 5, 'HandleVisibility', 'off');
     end
     hmax_obs = max([P{i0}.h(:, t); P{i0 + 1}.h(:, t)]);   % the same on both grids: nobody chooses the house
     plot(ax, hmax_obs * [1 1], [YLO YHI], '--', 'Color', [0.3 0.3 0.3], 'LineWidth', 1.4, 'HandleVisibility', 'off');
+    hb2 = (1 - R{i0 + 1}.p.phi_floor) / cost_rate(R{i0 + 1}.p, t, qm);   % the second solve's edge, if it differs
+    edge2 = '';
+    if abs(hb2 - hb) > 0.5
+        plot(ax, hb2 * [1 1], [YLO YHI], ':', 'Color', col{i0 + 1}, 'LineWidth', 2.2, 'HandleVisibility', 'off');
+        edge2 = sprintf('; dotted: %.0f for %s', hb2, nm{i0 + 1});
+    end
     value_axis(ax, YLO, YHI, horizon(R{i0}, t), g);
     xlim(ax, [0 HR]);
     xlabel(ax, HY); ylabel(ax, 'value function (log scale)');
     legend(ax, lines, nm(i0 + [0 1]), 'Location', 'northeast', 'FontSize', 9);
-    title(ax, {sprintf('(%s)  %sage %d', char('a' + k - 1), cl_cases{k, 3}, cl_cases{k, 2}), ...
-        sprintf('(%s when the house price exceeds %.0f years of household income)', Zw, hb)});
+    title(ax, {sprintf('(%s)  %sage %d%s', char('a' + k - 1), cl_cases{k, 3}, cl_cases{k, 2}, q_note(has_q, qm)), ...
+        sprintf('(%s when the house price exceeds %.0f years of household income%s)', Zw, hb, edge2)});
 end
 save_fig(fig, fullfile(out, ['ruin_2_cliff' tag '.png']));
 end
@@ -164,9 +176,8 @@ for zoom = [false true]
         'FontSize', 12, 'FontWeight', 'bold');
     [Hg, Xg] = meshgrid(linspace(0, H3, 400), linspace(0, XR, 300));
     for k = 1:numel(show_ages)
-        t = find(ages == show_ages(k)); kr = cost_rate(R{1}.p, t);
-        hb = linspace((1 - R{1}.p.phi_floor) / kr, H3, 100); xb = kr * hb - 1 + R{1}.p.phi_floor;   % the bankruptcy line
-        L = {log10(ce_at(R{1}, t, Xg, Hg)), log10(ce_at(R{2}, t, Xg, Hg))};
+        t = find(ages == show_ages(k));
+        L = {log10(ce_at(R{1}, t, Xg, Hg, P{1}.qmed(t))), log10(ce_at(R{2}, t, Xg, Hg, P{2}.qmed(t)))};
         if zoom                                         % this age's own range, shared by both grids
             lim = [floor(4 * min([L{1}(:); L{2}(:)])), ceil(4 * max([L{1}(:); L{2}(:)]))] / 4;
             if diff(lim) >= 3, tk = ceil(lim(1)):floor(lim(2)); else, tk = linspace(lim(1), lim(2), 6); end
@@ -185,12 +196,15 @@ for zoom = [false true]
             plot(ax, hn(in), xn(in), 'o', 'MarkerSize', 3.5, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'w', 'LineWidth', 0.4);
             scatter(ax, P{i}.h(1:5:end, t), P{i}.x(1:5:end, t), 10, [0.95 0.25 0.70], 'filled', ...
                 'MarkerEdgeColor', 'w', 'LineWidth', 0.3);
+            kr = cost_rate(R{i}.p, t, P{i}.qmed(t));      % this solve's bankruptcy line
+            hb = linspace((1 - R{i}.p.phi_floor) / kr, H3, 100); xb = kr * hb - 1 + R{i}.p.phi_floor;
             m = xb <= XR;
             plot(ax, hb(m), xb(m), 'r-', 'LineWidth', 2);
             plot(ax, EH(i, k), EX(i, k), 'p', 'MarkerSize', 16, 'MarkerFaceColor', cW, 'MarkerEdgeColor', 'k', 'LineWidth', 1);
             set(ax, 'Layer', 'top'); xlim(ax, [0 H3]); ylim(ax, [0 XR]);
             xlabel(ax, HY); ylabel(ax, XY);
-            title(ax, sprintf('(%s)  age %d, %s', char('a' + 2 * (k - 1) + i - 1), show_ages(k), nm{i}));
+            title(ax, sprintf('(%s)  age %d, %s%s', char('a' + 2 * (k - 1) + i - 1), show_ages(k), nm{i}, ...
+                q_note(has_q, P{i}.qmed(t))));
         end
     end
     save_fig(fig, fullfile(out, ['ruin_3_landscape' ftag tag '.png']));
@@ -346,33 +360,63 @@ end
 P.sim = sim; P.ages = sim.ages(:).';
 P.x = sim.X ./ sim.Y; P.h = sim.H ./ sim.Y;
 P.xmed = median(P.x, 1); P.hmed = median(P.h, 1);
+if isfield(sim, 'q'), P.q = sim.q; else, P.q = ones(size(sim.Y)); end
+P.qmed = median(P.q, 1);
 end
 
-function k = cost_rate(p, t)
+function qg = q_axis(p)
+if isfield(p, 'q_grid'), qg = p.q_grid(:); else, qg = 1; end
+end
+
+function s = q_note(has_q, q)
+s = '';
+if has_q, s = sprintf(', at the median q = H_0/H of %.2f', q); end
+end
+
+function k = cost_rate(p, t, q)
+% The housing bill as a share of the current house value at q = H0/H: the
+% annuity is paid on the purchase price q H, and so is maintenance when it is
+% charged on the purchase price. q may be a vector.
+if nargin < 3, q = 1; end
 m = 0; if t <= numel(p.m_rate_path), m = p.m_rate_path(t); end
-k = p.theta + m;
+th = p.theta;
+if isfield(p, 'mortgage') && strcmp(p.mortgage, 'annuity'), m = m * q; end
+if isfield(p, 'maint_on_purchase') && p.maint_on_purchase, th = th * q; end
+k = th + m;
 end
 
-function ce = ce_at(r, t, x, h)
+function ce = ce_at(r, t, x, h, q)
 % CE consumption stream (years of current income) at liquid savings x and
-% house h relative to income, for an owner without a DC pot.
+% house h relative to income, for an owner without a DC pot, at q = H0/H.
+if nargin < 5, q = 1; end
 p = r.p; g = p.gamma;
-F = z_interp(r, t);
+F = z_interp(r, t, q);
 u1 = 1 ./ (1 + x + h); u2 = h ./ max(x + h, 1e-12);
 zq = F(u1, u2, zeros(size(u1)));
 ce = zq ./ u1 * horizon(r, t)^(1 / (g - 1));
 end
 
-function z = z_nodes(r, t)
-g = r.p.gamma;
-arg = (1 - g) * r.sol.V(:, :, :, t); arg(arg <= 0 | ~isfinite(arg)) = NaN;
+function z = z_nodes(r, t, q)
+% z on the (u1, u2, u3) grid at age t; with a q axis, linear in q at q, as the
+% solver interpolates.
+if nargin < 3, q = 1; end
+g = r.p.gamma; qg = q_axis(r.p);
+if numel(qg) == 1, V = r.sol.V(:, :, :, t); else, V = r.sol.V(:, :, :, :, t); end
+arg = (1 - g) * V; arg(arg <= 0 | ~isfinite(arg)) = NaN;
 z = arg .^ (1 / (1 - g));
 z(isnan(z)) = min(z(:), [], 'omitnan');            % as the solver does
+if numel(qg) > 1
+    qc = min(max(q, qg(1)), qg(end));
+    j = min(find(qg <= qc, 1, 'last'), numel(qg) - 1);
+    w = (qc - qg(j)) / (qg(j + 1) - qg(j));
+    z = (1 - w) * z(:, :, :, j) + w * z(:, :, :, j + 1);
+end
 end
 
-function F = z_interp(r, t)
+function F = z_interp(r, t, q)
+if nargin < 3, q = 1; end
 p = r.p;
-F = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, z_nodes(r, t), 'linear', 'nearest');
+F = griddedInterpolant({p.u1_grid, p.u2_grid, p.u3_grid}, z_nodes(r, t, q), 'linear', 'nearest');
 end
 
 function D = horizon(r, t)
@@ -511,7 +555,7 @@ end
 
 function [h, x] = most_exposed(Pi, p, t)
 % The simulated household with the least cash left after the housing bill.
-cash = Pi.x(:, t) + 1 - cost_rate(p, t) * Pi.h(:, t);
+cash = Pi.x(:, t) + 1 - cost_rate(p, t, Pi.q(:, t)) .* Pi.h(:, t);
 [~, j] = min(cash);
 h = Pi.h(j, t); x = Pi.x(j, t);
 end
