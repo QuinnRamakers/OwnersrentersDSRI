@@ -108,9 +108,10 @@ about 2.5% of liquid resources. Not measured.
 
 ## 3. The policy stored at grid points below the floor
 
-**The rule.** `+solver/bellman_step_lna.m`, line 242. At grid points where
-liquid resources are below the floor, the solver stores c = 1 and pi = 0 (the
-household consumes the floor and saves nothing).
+**The rule.** `+solver/bellman_step_lna.m`, line 247. At grid points where
+liquid resources are below the floor, the solver stores c = 1 and pi = 1 (the
+household consumes the floor and saves nothing; the share was 0 until 15
+October, see section 7).
 
 **What it means.** The simulation reads c and pi by linear interpolation
 between grid points (`+simulate/paths_lna.m`, lines 160-163). A solvent
@@ -181,9 +182,14 @@ been tested.
 
 ## 7. Small technical bounds
 
-1. Consumption at most all liquid resources (`bellman_step_lna.m`, lines 251
-   and 280): no borrowing. Until 15 October the limit was 1 - 1e-6 of liquid
-   resources.
+1. Consumption at most all liquid resources (`bellman_step_lna.m`, lines 254
+   and 283): no borrowing. Until 15 October the limit was 1 - 1e-6 of liquid
+   resources. At c = 1 nothing is saved and the equity share has no effect,
+   so every share ties and the search returned 0, the first share it tries:
+   27-31% of grid points at steps 1-6, which the interpolation passed on to
+   households who do save (spikes in the mean share at 26-29 and 88-99). The
+   solver now stores a share of 1 wherever c = 1, the same as the limit the
+   1 - 1e-6 bound produced.
 2. The floor has a minimum of 1e-12 of W (`FLOOR_EPS`, line 69).
 3. The survival probability in the pension fund's survival credit is bounded
    below by 1e-8 (`paths_lna.m`, line 202).

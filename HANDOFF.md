@@ -30,6 +30,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-15 Nothing saved: 100% in equity (spec: Quinn in Claude Code)
+Fixes the equity-share spikes of the entry below while keeping the consumption upper bound at 1.
+Changed: `+solver/bellman_step_lna.m`: wherever the chosen c is 1, and at grid points below the floor, the stored equity share is 1 instead of whatever the search returned (0). The value is unchanged, since with nothing saved the share has no effect. `docs/SOLVER_BOUNDS.md` sections 3 and 7.
+Checks run: `run_tests`: 0 of 13 checks failed. Steps 1-6, every arm, standard numerics, today's defaults ('ce' objective), against 12 October: largest gap in the mean equity share 0.0000-0.0022 (it was 0.03-1.00 without the rule); mean consumption within 0.06%. At every grid point where c = 1 before the last age, the 12 October share was at least 0.99, except one grid corner no household reaches at these steps (no liquid savings, all wealth in a pension pot that steps 1-6 do not have), where it was 0. PDF: `ladder/standard_16x16x10_gh5/zero_savings/zero_savings.pdf` (gitignored).
+Not re-run: step 7 and steps 9-12. Their saved solves since this morning (objective comparison, step-7 new-bounds PDF) still have the spikes.
+
 ### 2026-10-15 Equity-share spikes at steps 1-6: the upper bound of 1 on consumption (diagnosis only, asked by Quinn in Claude Code)
 Quinn saw the equity share jump between 0 and 1 at steps 1-6 in the objective comparison.
 Cause: a0ae181, the consumption search's upper bound raised from 1 - 1e-6 to 1 of liquid resources. Where the household is borrowing-constrained it now consumes everything and saves nothing, so the equity share affects nothing and the search returns 0, the first point it tries. Before, it saved 1e-6 of its resources and the share took the limit as savings go to zero, 100% at these nodes. At steps 1-6 the nodes at exactly c = 1 went from 1.3% (only the last age) to 27-31% of the grid, and every grid point whose share moved by more than 0.1 is one of them. Interpolating between them passes the 0 on to simulated households, including some who do save (step 2, age 99: mean share 0.97 before, 0.41 now). Ages 26-29 and 88-99 are hit.

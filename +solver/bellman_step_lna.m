@@ -27,7 +27,8 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   wrong one there. The sweep is what finds the right basin.
 %
 %   Where liquid resources fall short of the floor phi_floor * Y, the
-%   household consumes the floor and saves nothing.
+%   household consumes the floor and saves nothing. Wherever nothing is saved
+%   (c = 1), the equity share is stored as 1.
 
 N1 = numel(p.u1_grid); N2 = numel(p.u2_grid); N3 = numel(p.u3_grid);
 V_t    = nan(N1, N2, N3);
@@ -243,7 +244,7 @@ parfor k = 1:n_states
         end
         best = -inf;
         if val > best, best = val; end
-        V_flat(k) = best; c_flat(k) = 1; pi_flat(k) = 0;
+        V_flat(k) = best; c_flat(k) = 1; pi_flat(k) = 1;   % nothing saved: 100% in equity, as below
         continue
     end
 
@@ -305,6 +306,10 @@ parfor k = 1:n_states
     else
         V_flat(k) = maxval; c_flat(k) = c_seed; pi_flat(k) = pi_seed;
     end
+    % With nothing saved the equity share has no effect and every share ties.
+    % Store 100% in equity, so that interpolation and next year's warm start
+    % do not pick up an arbitrary share.
+    if c_flat(k) >= 1, pi_flat(k) = 1; end
 end
 
 V_t(:)    = V_flat;
@@ -343,7 +348,7 @@ end
 function [c_b, p_b, v_b] = sweep_cpi(c0, p0, v0, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
                                      w, pp_z, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0)
 %SWEEP_CPI  Derivative-free search of the (c, pi) objective.
-%   Round 1 evaluates 21 points of c across [c_floor, 1) against 21 points of
+%   Round 1 evaluates 21 points of c across [c_floor, 1] against 21 points of
 %   pi across [0, 1], plus the seed; rounds 2-4 search a 9 x 9 window around
 %   the incumbent, shrinking by four each round. Returns the seed unchanged
 %   unless something beats v0.
