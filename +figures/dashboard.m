@@ -153,9 +153,14 @@ text(ax, 0.0, 1.0, info_text(r, d), 'Units', 'normalized', 'VerticalAlignment', 
 title(ax, '(l)  Calibration and checks', 'FontSize', FT);
 
 if d.has_housing && p.is_owner
-    annotation(fig, 'textbox', [0.01 0.00 0.98 0.02], 'String', ...
-        ['Panels (a) and (c) use the model''s mortgage payment, a rate on the current home value. ' ...
-         'Panels (d), (f) and (g) use a fixed-payment schedule on the house at entry.'], ...
+    if strcmp(p.mortgage, 'annuity')
+        note = ['The mortgage is a real annuity on the purchase price; panels (d), (f) and (g) use its ' ...
+                'balance. Maintenance is charged on the ' maint_base(p) '.'];
+    else
+        note = ['Panels (a) and (c) use the model''s mortgage payment, a rate on the current home value. ' ...
+                'Panels (d), (f) and (g) use a fixed-payment schedule on the house at entry.'];
+    end
+    annotation(fig, 'textbox', [0.01 0.00 0.98 0.02], 'String', note, ...
         'FontSize', 7, 'EdgeColor', 'none', 'Color', [0.4 0.4 0.4], 'HorizontalAlignment', 'center');
 end
 
@@ -196,6 +201,10 @@ else,                              c = [0.25 0.45 0.75];
 end
 end
 
+function s = maint_base(p)
+if p.maint_on_purchase, s = 'purchase price'; else, s = 'current value'; end
+end
+
 function t = title_text(r)
 t = r.tenure;
 if isfield(r, 'step')
@@ -223,8 +232,9 @@ end
 L{end+1} = sprintf('Income tax %.1f%%   |   box 3 bond/stock %.0f%%/%.0f%%, loss offset %d', ...
     100 * p.tau_inc, 100 * p.tau_cg_bond, 100 * p.tau_cg_stock, p.cg_loss_offset);
 if d.has_housing && p.is_owner
-    L{end+1} = sprintf('Owner: house %.1f\\times income, LTV %.0f%%, r_m %.2f%%, maintenance %.1f%%', ...
-        p.h_mult, 100 * p.LTV, 100 * p.r_m, 100 * p.theta);
+    L{end+1} = sprintf('Owner: house %.1f\\times income, LTV %.0f%%, r_m %.2f%%, %s mortgage', ...
+        p.h_mult, 100 * p.LTV, 100 * p.r_m, p.mortgage);
+    L{end+1} = sprintf('Maintenance %.1f%% of the %s', 100 * p.theta, maint_base(p));
 elseif d.has_housing
     L{end+1} = sprintf('Renter: rent %.1f%% of a rent index at %.1f\\times income', 100 * p.alpha, p.h_mult);
 else
