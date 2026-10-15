@@ -4,7 +4,8 @@ function ruin_figures(phi, opts)
 %   ruin_figures(phi)  step 7 at floor phi (0.1, 0.2, 0.3 or 0.5), step 7 as run as the contrast
 %   ruin_figures([], files={c, f, c0, f0}, names=..., tag='_x', figures=1:3)
 %                      any four saved solves: a coarse and a fine one, then a
-%                      contrast pair; figure 1 then shows all four
+%                      contrast pair; figure 1 then shows all four, or only the
+%                      first pair with fig1_pair=true
 %   ruin_figures(..., b0=1)  every solve simulated from starting savings of 1
 %                      year of gross income instead of p.b0 (restart_sim)
 %   Five figures, each comparing the standard grid with the income axis doubled:
@@ -24,6 +25,7 @@ arguments
     opts.out (1,:) char = ''
     opts.figures double = 1:5
     opts.b0 double = []
+    opts.fig1_pair (1,1) logical = false
 end
 pth = step07_paths();
 cd(pth.repo);
@@ -37,7 +39,7 @@ all_in_fig1 = false;
 if ~isempty(opts.files)
     R = cellfun(@load_result, opts.files, 'UniformOutput', false);
     nm = opts.names; tag = opts.tag; main = opts.main; alt = opts.alt;
-    notes_on = true; zw = 'bankrupt'; all_in_fig1 = true;
+    notes_on = true; zw = 'bankrupt'; all_in_fig1 = ~opts.fig1_pair;
     col = {cS, cD, [0.55 0.55 0.55], [0.95 0.65 0.45]}; sty = {'-', '-', '--', '--'};
 elseif isempty(phi)
     FL = load(fullfile(pth.data, 'owner_flat_prices.mat'));
