@@ -1,10 +1,13 @@
-function fig = robustness(ref, ref_label, groups, ttl, file)
+function fig = robustness(ref, ref_label, groups, ttl, file, ref_what)
 %ROBUSTNESS  One page of a step's robustness runs against the step as solved.
 %
 %   figures.robustness(r_ref, ref_label, groups, title, file)
+%   figures.robustness(..., ref_what)    % what black is, if not the step as solved
 %
 %   r_ref is the step as the ladder solved it (the reference, drawn in black
 %   with its 10th-90th percentile band); ref_label describes its settings.
+%   ref_what names the reference in the title and legend ('the step as
+%   solved in the ladder' by default).
 %   groups is a struct array with fields name (row title), rs (cell of
 %   results) and labels (cell of names). One row per group, seven columns:
 %   consumption, liquid savings and the liquid equity share, each as a level
@@ -20,12 +23,13 @@ d0 = figures.panel_data(ref); a = d0.ages; ret = ref.p.retirement_age; sc = d0.s
 C0 = mean(d0.C, 1); X0 = mean(d0.X, 1); P0 = mean(d0.pi, 1);
 small = X0 < 0.01 * max(X0);         % % gaps on near-zero savings say nothing
 w = 1:numel(a) - 1;
-ref_name = 'black: the step as solved (reference)';
+if nargin < 6 || isempty(ref_what), ref_what = 'the step as solved in the ladder'; end
+ref_name = sprintf('black: %s (reference)', erase(ref_what, ' in the ladder'));
 
 ng = numel(groups);
 fig = figure('Visible', 'off', 'Position', [30 30 3300 480 * ng], 'Color', 'w');
 tl  = tiledlayout(fig, ng, 7, 'Padding', 'compact', 'TileSpacing', 'compact');
-title(tl, {ttl, ['Black line = the reference: the step as solved in the ladder, ' ref_label ...
+title(tl, {ttl, ['Black line = the reference: ' ref_what ', ' ref_label ...
     '. Grey band = its 10th-90th percentile range. Coloured lines = the same step solved another way. ' ...
     'All lines are means across the same simulated households']}, 'FontSize', 14, 'FontWeight', 'bold', ...
     'Interpreter', 'none');
@@ -91,7 +95,7 @@ for g = 1:ng
 
     % Settings and checks
     ax = nexttile(tl); axis(ax, 'off');
-    L = [{'black (reference): the step as solved'}, strcat({'  '}, strsplit(ref_label, ', ')), ...
+    L = [{sprintf('black (reference): %s', erase(ref_what, ' in the ladder'))}, strcat({'  '}, strsplit(ref_label, ', ')), ...
          {sprintf('  %s, %.0f s, entry value %.3g', pool_name(ref), ref.timing.solve_sec, ref.checks.ce_entry), ''}];
     for i = 1:n
         r = G.rs{i}; p = r.p; c = r.checks; s = r.summary;
