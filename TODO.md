@@ -140,7 +140,16 @@ differences rather than levels.
 - The retirement equity share needs nodes where retirees live, at low u1.
   `utility.auto_state_grids` places them from a simulated panel (GRIDS.md);
   from a trusted panel it beat hand-set values, from its own coarse pilot it
-  did not. Not yet the default.
+  did not. Not yet the default. For the DC steps see the next item.
+- The DC steps 9-12 are not converged on the ladder's standard grid
+  (HANDOFF.md, 16 October 2026): liquid saving 30-50% too high, consumption
+  up to 9-11% too high at 66, while step 6 is converged on the same grid.
+  Points bunched toward low u1 and u2 near 1 (`grid_pow` 3, `grid_pow_u2` 3)
+  with `pi_nothing_saved = 'limit'` converge: 32x32 is within about 1% in
+  consumption, 64x64 within the stop rule. To decide: the default of
+  `pi_nothing_saved`; whether `ladder.numerics` carries the placement (every
+  saved ladder result would re-solve); whether points that follow age
+  (`grid_nodes.u1_age`, tried at step 12 only) stay as an option.
 - The global (c, pi) sweep is most of the solve time. A cheaper search that
   keeps its accuracy would make the fine grid routine.
 - With the sweep, interior-point and active-set agree within the solver stop
