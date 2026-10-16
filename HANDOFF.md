@@ -36,6 +36,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-16 An interactive dashboard of the pension grid study (spec: none, asked by Quinn in Claude Code)
+Quinn asked what was actually done overnight and for a more intuitive dashboard, mainly to see how grid size changes the results before and after the fix, and what the fix is.
+Changed: `diagnostics/pension_grid/export_dashboard.m` (new): writes the grid study's numbers from the saved solves as four JSON row files (life-cycle paths by step, household, grid and age; gaps to each step's finest grid; where households sit by age; the grid points). The dashboard is a private claude.ai artifact, "Pension grid study" (https://claude.ai/artifact/3oYdyKJHjfTPUkHKxBBMdP), built on those files: pick a step (6, 9-12), a household and a measure (liquid savings, consumption, equity share of liquid saving); one line per grid size before the fix and after it on the same scale; the answer at one age against grid size, before and after; where the grid points sit against where households are, old and bunched grid at 16 points each; the step-10 stored equity share with 1 and with the limit share on the same grid; what was done overnight. No model or solver code changed.
+Checks run: the repo script reproduces the four uploaded files byte for byte. Headline figures it shows, renter/owner, liquid savings at 60 and consumption at 66 against the finest grid: old grid +29.1/+36.5% and +6.2/+9.0% at step 12, fix at 32x32 +3.4/+4.7% and +0.8/+1.1%; step 6 within 0.3%. `run_tests(solve=false)`: 0 of 9 failed.
+Commit: this entry with the script, pushed to main.
+Open: as in the entry below.
+
 ### 2026-10-16 Grid study of step 7b with maintenance on the purchase price (spec: none, asked by Quinn in Claude Code)
 Quinn asked for the grid study with maintenance on the purchase price, to show the owner is now roughly grid-invariant. Owner only (maintenance does not reach renters).
 Changed: no code. Solves in `ladder/standard_16x16x10x8_gh5/grid_design/maint_on_purchase_study/` with the pages `robust_maint_on_purchase.png`, `compare_grids_maint_on_purchase.png` and `ruin_1-3_*_maint_study.png` (gitignored). Scripts in the session scratchpad (not kept).
