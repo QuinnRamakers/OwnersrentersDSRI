@@ -147,6 +147,27 @@ Two things are worth looking at before trusting a solve:
 (`r.checks.cov_u1_min`, `cov_u2_min`), and the research branch's
 `diagnostics/fig_occupancy.m` draws both.
 
+## The DC steps
+
+With a DC pot, retirees hold 15 to 60 years of income in total resources and
+little liquid saving beside the pot, so they live at low u1 and at u2 near 1.
+The uniform axes have no point between 14.8 and 1,250 years of income and two
+points above u2 = 0.93. On the ladder's standard grid [16 16] every DC step
+(9-12) saves 30-50% too much liquid wealth and consumes up to 9-11% too much
+at 66, while step 6 converges on the same grid (16 October 2026,
+`diagnostics/pension_grid/`, HANDOFF.md). Both axes need the points:
+
+```matlab
+p.grid_pow = 3; p.grid_pow_u2 = 3;   % points bunched toward low u1 and toward u2 = 1
+p.pi_nothing_saved = 'limit';
+p.grid_dims = [32 32 10 8];          % [64 64 10 8] for numbers to quote
+p = config.derive(p);
+```
+
+At 32x32 consumption is within about 1% of 64x64 at every DC step; 64x64 is
+within the ladder's stop rule. The same placement leaves step 6 within its
+stop rule.
+
 ## What this does not fix
 
 The automatic grid puts nodes where the population is. It does not remove the
