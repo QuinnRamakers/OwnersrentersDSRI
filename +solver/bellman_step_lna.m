@@ -15,7 +15,8 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   where only the continuation does not depend on q, it is read in 3D off one
 %   slice. With N_q = 1 the step is the cube alone. Without housing the
 %   u3 = 0 nodes with u2 > 0 (a house the household cannot have) are copied
-%   from u3 = 1 rather than solved.
+%   from u3 = 1 rather than solved; without a DC pillar, the u3 = 1 nodes
+%   with u2 > 0 (a pension pot it cannot have) from u3 = 0.
 %
 %   The value function is homothetic, V(W, u, q) = W^(1-gamma) V_tilde(u, q).
 %   The continuation is interpolated in its certainty equivalent per unit of
@@ -230,9 +231,19 @@ have_warm = ~isempty(pol_next) && isstruct(pol_next) && isfield(pol_next, 'c') .
 % household holds a pension pot, and the u3 = 0 slice is reached only at
 % u2 = 0, where u3 changes nothing. Its other nodes describe a house the
 % household does not have: they are copied from u3 = 1 instead of solved.
-copy_u3 = p.h_mult == 0 && N3 == 2 && isequal(p.u3_grid(:), [0; 1]);
-if copy_u3
-    solve_k = find(U3(:) == 1 | U2(:) == 0);
+% Without a DC pillar it is the other way round: A = 0 on every path, so
+% u3 = 0, and the u3 = 1 nodes with u2 > 0 describe a pension pot the
+% household does not have: they are copied from u3 = 0.
+two_u3  = N3 == 2 && isequal(p.u3_grid(:), [0; 1]);
+no_dc   = isfield(p, 'kappa_base') && p.kappa_base == 0;
+u3_keep = 0;                                  % the u3 slice solved; 0: both
+if two_u3 && p.h_mult == 0
+    u3_keep = 2;
+elseif two_u3 && no_dc
+    u3_keep = 1;
+end
+if u3_keep > 0
+    solve_k = find(U3(:) == p.u3_grid(u3_keep) | U2(:) == 0);
 else
     solve_k = (1:n_states).';
 end
@@ -381,10 +392,10 @@ for iq = slices
     V_flat  = zeros(n_states, 1); V_flat(solve_k)  = V_sub;
     c_flat  = zeros(n_states, 1); c_flat(solve_k)  = c_sub;
     pi_flat = zeros(n_states, 1); pi_flat(solve_k) = pi_sub;
-    if copy_u3
-        V_flat  = copy_u3_slice(V_flat, N1, N2, g2);
-        c_flat  = copy_u3_slice(c_flat, N1, N2, g2);
-        pi_flat = copy_u3_slice(pi_flat, N1, N2, g2);
+    if u3_keep > 0
+        V_flat  = copy_u3_slice(V_flat, N1, N2, g2, u3_keep);
+        c_flat  = copy_u3_slice(c_flat, N1, N2, g2, u3_keep);
+        pi_flat = copy_u3_slice(pi_flat, N1, N2, g2, u3_keep);
     end
     V_t(:, :, :, iq)    = reshape(V_flat, N1, N2, N3);
     c_pol(:, :, :, iq)  = reshape(c_flat, N1, N2, N3);
@@ -429,11 +440,12 @@ end
 end
 
 % ------------------------------------------------------------------------
-function v = copy_u3_slice(v, N1, N2, u2_grid)
-%COPY_U3_SLICE  Fill the unsolved u3 = 0 nodes (u2 > 0) from u3 = 1.
+function v = copy_u3_slice(v, N1, N2, u2_grid, keep)
+%COPY_U3_SLICE  Fill the unsolved nodes (u2 > 0) of the other u3 slice from
+%   the solved one, keep (1: u3 = 0, 2: u3 = 1).
 v = reshape(v, N1, N2, 2);
 m = u2_grid(:).' > 0;
-v(:, m, 1) = v(:, m, 2);
+v(:, m, 3 - keep) = v(:, m, keep);
 v = v(:);
 end
 

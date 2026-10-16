@@ -36,6 +36,19 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-16 Does the bunched grid work with housing? Step 7b: code, and expectations written before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: will the pension steps' grid fix keep working when housing and later features come back, or does the bunching need to change, since a log-wealth grid worked for housing; run the test now, and also the smaller grids, with how long they take.
+Changed:
+- `+solver/bellman_step_lna.m`: the exact speed-up of the DC steps gets its mirror case. Without a DC pillar A = 0 on every path, so u3 = 0, and the u3 = 1 nodes with u2 > 0 (a pension pot the household cannot have) are copied from u3 = 0 instead of solved. Steps 7, 7b and 8 should solve in about half the time with unchanged answers.
+- `diagnostics/pension_grid/case_params.m`: rule `logw` (the step-7 study's log-wealth rule) and the suffix `_mop` (maint_on_purchase); `case_load.m`: 'standard' for housing steps and 'standard_mop' (the saved sensitivity run).
+Runs: step 7b with maintenance on the purchase price (the variant without the ruin cliff), standard numerics otherwise (gh_n 5, 10,000 households, the ladder's seed), limit share, renter and owner: power 3 on both axes at 16x16, 24x24, 32x32, 48x48 and 64x64; log-wealth at 16x16, 32x32 and 64x48. Reference: power-3 64x64, with its gap to log-wealth 64x48 as the uncertainty. Two processes, smallest grids first.
+Expectations:
+- The speed-up: V on the solved nodes, the simulated summary and the entry value identical to the 15 October solves of this variant; owner solve time about half. Checked before the runs: identical for both (entry value 0.68036960878573 renter, 0.95109216285305 owner); 50 s against 79 s (renter), 350 s against 617 s (owner).
+- Power 3 and log-wealth converge to the same answer from 40 on; their finest grids within the stop rule (0.02 in the equity share, 2% in consumption) of each other.
+- Owner: the smallest power-3 grid within the stop rule from 40 on is 32x32. Log-wealth is at least as good in old age, where house-rich retirees sit at 50-5,000 years of income and log-wealth has more points. Before 40 the owners' answer moves more (the 16 October comparison of the uniform 16x16 grid with log-wealth 32x32 showed 2.9% in consumption at 26-39).
+- Renter: from 40 on every grid agrees within the stop rule, as in the step-7 renter study; before 40 no grid need converge (the rent obligation, TODO.md item 1).
+- Owner solve times with the speed-up, one process alone: about 5, 10, 20, 40 and 75 minutes at 16, 24, 32, 48 and 64 points per axis; renters a few minutes each.
+
 ### 2026-10-16 The grid study of the pension steps in five pages (spec: none, asked by Quinn in Claude Code)
 Quinn asked for the essence of the grid study in clear, familiar graphs.
 Changed: `diagnostics/pension_grid/essence_pdf.m` (new) draws a summary page and five pages in the comparison-page style (black = the finest grid with its 10th-90th band): (1) step 12 owner, figures.robustness with a row before the fix (evenly spaced 16, 32, 64) and a row after (bunched 16, 32, 48, limit share); (2-3) steps 12, 11, 10, 9 and 6 for owner and renter, liquid savings, consumption with income, and the equity share of liquid saving, the ladder's standard grid against the finest and the fixed grid (bunched 48x48); (4) step 10 at 55-80, the equity share stored where nothing is saved, 100% against the limit share on the same grid; (5) step 12 owner, households against the grid points on both axes, evenly spaced and bunched at 16 points each. `+figures/robustness.m`: optional sixth argument naming the black reference (default, as before, the step as solved in the ladder). Output, gitignored: `ladder/standard_16x16x10x8_gh5/pension_grid/essence/grid_study_essence.pdf`.

@@ -20,10 +20,14 @@ function p = case_params(step, arm, name)
 %     u1only    u1 at power 3, u2 even; u2only the other way round
 %     age, ageq, age32   points that follow age (age_grid), placed from a
 %               pilot solve of the same step (see the case below)
-%   u3 and q keep the standard base counts (10 and 8); without housing they
-%   collapse anyway. arm is 'renter' or 'owner' (the no-housing arms of the
-%   DC steps). Nothing here changes the model: only grid_dims, grid_pow,
-%   grid_pow_u2, grid_nodes, gh_n, interp_method and pi_nothing_saved are set.
+%     logw      the log-wealth rule of the step-7 grid study
+%               (diagnostics/grid_design/grid_rule.m, on the path)
+%   u3 and q keep the standard base counts (10 and 8); without housing or a
+%   DC pillar u3 collapses anyway. arm is 'renter' or 'owner'. The suffix
+%   _mop sets maint_on_purchase (maintenance on the purchase price), the
+%   variant of step 7b that converges. Nothing else here changes the model:
+%   only grid_dims, grid_pow, grid_pow_u2, grid_nodes, gh_n, interp_method
+%   and pi_nothing_saved are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
 assert(~isempty(tok), 'case_params:name', 'case name %s is not <rule>_<N1>x<N2>[_gh<n>][_makima]', name);
@@ -54,6 +58,9 @@ switch rule
         end
     case 'u1only', p.grid_pow = 3;        % power 3 on u1, u2 even
     case 'u2only', p.grid_pow_u2 = 3;     % power 3 on u2, u1 even
+    case 'logw'
+        % The log-wealth rule of the step-7 grid study (diagnostics/grid_design)
+        p.grid_nodes = grid_rule('logwealth', N1, N2, config.derive(p));
     otherwise
         error('case_params:rule', 'unknown rule %s', rule);
 end
@@ -61,5 +68,6 @@ g = regexp(extra, '_gh(\d+)', 'tokens', 'once');
 if ~isempty(g), p.gh_n = str2double(g{1}); end
 if contains(extra, '_makima'), p.interp_method = 'makima'; end
 if contains(extra, '_lim'), p.pi_nothing_saved = 'limit'; end
+if contains(extra, '_mop'), p.maint_on_purchase = true; end
 p = config.derive(p);
 end

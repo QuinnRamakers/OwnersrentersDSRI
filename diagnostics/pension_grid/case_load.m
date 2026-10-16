@@ -5,13 +5,21 @@ function r = case_load(step, arm, name)
 %   r = case_load(12, 'owner', 'standard')     % the ladder's own result
 %
 %   'standard' is the step as ladder.run saved it at standard numerics
-%   (uniform 16x16, the same calibration as uniform_16x16).
+%   (uniform 16x16, the same calibration as uniform_16x16); 'standard_mop'
+%   the step's maint_on_purchase variant as ladder.sensitivity saved it.
 
 num = ladder.numerics('standard');
 S = ladder.steps();
 k = ladder.index(step, S);
-if strcmp(name, 'standard')
-    file = ladder.result_file(num, k, S(k).name, ['nohousing_' arm]);
+if startsWith(name, 'standard')
+    ten = arm;
+    if ladder.params(S(k).name).h_mult == 0, ten = ['nohousing_' arm]; end
+    if strcmp(name, 'standard_mop')
+        file = fullfile(num.dir, 'sensitivity', sprintf('%s_%s_%s_maint_on_purchase_1.mat', ...
+            ladder.number(k, S, true), S(k).name, ten));
+    else
+        file = ladder.result_file(num, k, S(k).name, ten);
+    end
 else
     file = fullfile(num.dir, 'pension_grid', sprintf('%s_%s_%s_%s.mat', ...
         ladder.number(k, S, true), S(k).name, arm, name));
