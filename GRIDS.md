@@ -153,10 +153,10 @@ With a DC pot, retirees hold 15 to 60 years of income in total resources and
 little liquid saving beside the pot, so they live at low u1 and at u2 near 1.
 The uniform axes have no point between 14.8 and 1,250 years of income and two
 points above u2 = 0.93. On the ladder's standard grid [16 16] every DC step
-(9-12) holds 10-40% too much liquid wealth in working life (more around 67)
-and consumes 3-11% too much
-at 66, while step 6 converges on the same grid (16 October 2026,
-`diagnostics/pension_grid/`, HANDOFF.md). Both axes need the points:
+(9-12) holds 10-40% too much liquid wealth in working life, more around 67,
+and consumes 3-11% too much at 66, while step 6 converges on the same grid
+(16 October 2026, `diagnostics/pension_grid/`, HANDOFF.md). Both axes need
+the points:
 
 ```matlab
 p.grid_pow = 3; p.grid_pow_u2 = 3;   % points bunched toward low u1 and toward u2 = 1
