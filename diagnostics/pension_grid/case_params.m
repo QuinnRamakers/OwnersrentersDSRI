@@ -23,11 +23,15 @@ function p = case_params(step, arm, name)
 %     logw      the log-wealth rule of the step-7 grid study
 %               (diagnostics/grid_design/grid_rule.m, on the path)
 %   u3 and q keep the standard base counts (10 and 8); without housing or a
-%   DC pillar u3 collapses anyway. arm is 'renter' or 'owner'. The suffix
-%   _mop sets maint_on_purchase (maintenance on the purchase price), the
-%   variant of step 7b that converges. Nothing else here changes the model:
-%   only grid_dims, grid_pow, grid_pow_u2, grid_nodes, gh_n, interp_method
-%   and pi_nothing_saved are set.
+%   DC pillar u3 collapses anyway. arm is 'renter' or 'owner'. More suffixes:
+%     _mop      maint_on_purchase (maintenance on the purchase price), the
+%               housing variant without the ruin cliff; it changes the model
+%     _u3x2     u3 (pension against house) at twice its base points
+%     _nosweep  the global (c, pi) grid search before fmincon switched off
+%               (use_refine = false)
+%   Apart from _mop nothing here changes the model: only grid_dims, grid_pow,
+%   grid_pow_u2, grid_nodes, gh_n, interp_method, use_refine and
+%   pi_nothing_saved are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
 assert(~isempty(tok), 'case_params:name', 'case name %s is not <rule>_<N1>x<N2>[_gh<n>][_makima]', name);
@@ -69,5 +73,7 @@ if ~isempty(g), p.gh_n = str2double(g{1}); end
 if contains(extra, '_makima'), p.interp_method = 'makima'; end
 if contains(extra, '_lim'), p.pi_nothing_saved = 'limit'; end
 if contains(extra, '_mop'), p.maint_on_purchase = true; end
+if contains(extra, '_u3x2'), p.grid_dims(3) = 2 * p.grid_dims(3); end      % pension-against-house axis doubled
+if contains(extra, '_nosweep'), p.use_refine = false; end                  % fmincon from the warm start, no grid search
 p = config.derive(p);
 end
