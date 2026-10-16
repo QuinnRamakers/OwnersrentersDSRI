@@ -36,6 +36,22 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-16 Does the bunched grid work with housing? Step 7b: results (spec: none, asked by Quinn in Claude Code)
+Follows the entry below (code and expectations).
+Changed: `diagnostics/pension_grid/housing_pdf.m` (new): the pages of this test (a robustness page per household with rows for the ladder's grid, the bunched grids and the log-wealth grids; the largest gap to the finest grid and the solve time against grid size; the 7b owner against the grid points). Interim versions were sent to Quinn as runs landed. Output, gitignored: `ladder/standard_16x16x10x8_gh5/pension_grid/housing/grid_study_housing.pdf`; solves `pension_grid/07b_annuity_<arm>_<case>_lim_mop.mat`.
+Checks run:
+- The no-DC speed-up: identical answers (entry value 0.68036960878573 renter, 0.95109216285305 owner); `run_tests` (full) 0 of 16 failed.
+- Step 7b, maintenance on the purchase price, limit share, standard numerics otherwise. Reference bunched 64x64; for the owner log-wealth 64x48 lies within 0.4% in consumption, 0.004 in the equity share of liquid saving and 0.03 years of income in liquid savings of it. Largest gaps to the reference, ages 26-39 / 40-66 / 67-95 (consumption; share; savings in years of income):
+  - Owner, the ladder's grid (evenly spaced 16x16, 100% stored, the 15 October sensitivity run): 3.1 / 1.6 / 5.1%; 0.001 / 0.027 / 0.128; 0.19 / 0.52 / 0.76.
+  - Owner, bunched 16x16: 1.6 / 0.4 / 0.3%; at most 0.008; at most 0.06. 24x24: 0.8 / 0.2 / 0.1%. 32x32: 0.6 / 0.2 / 0.1%. 48x48: 0.3 / 0.1 / 0.1%.
+  - Owner, log-wealth 16x16: 0.8 / 0.6 / 2.6%; 0.010 in retirement; 0.30 in retirement. 32x32: 0.4 / 0.1 / 0.5%.
+  - Renter, from 40 on (before 40 the consumption gap is in the thousands of percent on every grid: young renters on fine grids consume almost nothing): bunched 16 / 24 / 32 / 48: 6.7 / 5.1 / 3.7 / 1.6% at 40-66, share 0.35 / 0.20 / 0.13 / 0.05; log-wealth 16 / 32 / 64x48: 6.3 / 3.4 / 1.0%, share 0.32 / 0.14 / 0.06; liquid savings still 0.4 years of income off at 48x48 and 64x48. The ladder's grid: 8.0%, 0.45.
+- Solve times, two or three runs at a time (alone about a third shorter), owner: bunched 16, 24, 32, 48, 64: 10, 16, 30, 77, 133 minutes; log-wealth 16, 32, 64x48: 7, 27, 117 minutes. Renter: 1.5, 2, 3, 5, 9 minutes; log-wealth 1, 2.6, 6 minutes.
+- Against the expectations: speed-up identical and about half, as expected; the two rules converge to the same answer, as expected. Wrong: the owner's smallest passing bunched grid is 16x16, not 32x32; log-wealth is worse, not better, in old age at 16x16 (2.6% against 0.3%); the renter does not agree across grids from 40 on, because the savings built by hoarding young renters carry into mid-life.
+Reading: the bunching carries over to housing. Power 3 on both axes with the limit share works for the pension steps and for the housing step that converges, and at small grids it beats the log-wealth rule. What no grid rule fixes is economics: the renter's rent obligation with the near-zero floor (TODO item 1), and, at step 7 as calibrated, maintenance on a growing house. Step 13 (housing with the pension) is not run: it waits on the housing decision, and its grid is about ten times larger than 7b's (the pension-against-house axis is live; owner 16x16 has 29,160 points, about an hour per solve).
+Commit: this entry with the page script, pushed to main.
+Open: whether to run the step-13 grid test (maintenance on the purchase price) overnight, Quinn's call; the defaults of `pi_nothing_saved` and the ladder's grid placement, as in the entries of the overnight results.
+
 ### 2026-10-16 Does the bunched grid work with housing? Step 7b: code, and expectations written before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: will the pension steps' grid fix keep working when housing and later features come back, or does the bunching need to change, since a log-wealth grid worked for housing; run the test now, and also the smaller grids, with how long they take.
 Changed:
