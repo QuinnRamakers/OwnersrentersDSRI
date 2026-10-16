@@ -142,8 +142,9 @@ differences rather than levels.
   from a trusted panel it beat hand-set values, from its own coarse pilot it
   did not. Not yet the default. For the DC steps see the next item.
 - The DC steps 9-12 are not converged on the ladder's standard grid
-  (HANDOFF.md, 16 October 2026): liquid saving 30-50% too high, consumption
-  up to 9-11% too high at 66, while step 6 is converged on the same grid.
+  (HANDOFF.md, 16 October 2026): liquid saving 10-40% too high in working
+  life and more around 67, consumption
+  3-11% too high at 66, while step 6 is converged on the same grid.
   Points bunched toward low u1 and u2 near 1 (`grid_pow` 3, `grid_pow_u2` 3)
   with `pi_nothing_saved = 'limit'` converge: 32x32 is within about 1% in
   consumption, 64x64 within the stop rule. To decide: the default of
