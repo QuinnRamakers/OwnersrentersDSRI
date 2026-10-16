@@ -36,6 +36,17 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-16 Grid test at step 13, housing with the pension: expectations written before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: run step 13 now; report the convergence and the run time of each grid; quadrature always 5 nodes; if time is left, the stability with and without the grid search before fmincon. The plan is `docs/prompts/step13_grid_test.md` (6d5dd58).
+Changed: nothing in the model or the solver. The page script of the 7b test gets a step argument (next entry).
+Runs: step 13 (`pension`) with maintenance on the purchase price and the limit share, power 3 on both axes, gh_n 5, standard numerics otherwise (10,000 households, the ladder's seed). Two processes. A: owner 16x16, 24x24, 32x32. B: renter 16x16, 24x24, 32x32, 48x48; u3 doubled at 16x16, renter then owner; without the grid search at 16x16, renter then owner, and renter 32x32. Reference per household: the finest grid solved.
+Expectations:
+- Owner: from 40 on, 24x24 or 32x32 is the smallest grid within the stop rule (0.02 in the equity share, 2% in consumption) of the finest. That is between step 7b (16x16 passed) and the DC steps without housing (48x48 needed): the house moves owners away from the corner where the pension made the DC steps hard, but the pot's share of pension plus house now varies across owners. Before 40 within 2% at 24x24.
+- Renter: as at 7b. From 40 on consumption converges slowly (a few percent between 16x16 and 48x48, falling with the grid); the equity share and liquid savings do not reach the stop rule by 48x48. Before 40 nothing converges (the rent obligation, TODO item 1).
+- u3 doubled: within the stop rule of u3 at 10 points for both households. The pot's share of pot plus house moves slowly along a life, and the value is smooth in it.
+- Without the grid search: consumption within 1%; the equity share off by 0.1 or more at a few ages, most at 26-30 and in the last years, as at the DC steps on 12 October.
+- Solve times, beside a second process: owner 16x16 about 1.5 h, 24x24 about 3 h, 32x32 about 5 h; renter 16x16 about 10 min, 48x48 about 1.5 h; u3 doubled about twice the 16x16 time; without the grid search about a third shorter.
+
 ### 2026-10-16 Does the bunched grid work with housing? Step 7b: results (spec: none, asked by Quinn in Claude Code)
 Follows the entry below (code and expectations).
 Changed: `diagnostics/pension_grid/housing_pdf.m` (new): the pages of this test (a robustness page per household with rows for the ladder's grid, the bunched grids and the log-wealth grids; the largest gap to the finest grid and the solve time against grid size; the 7b owner against the grid points). Interim versions were sent to Quinn as runs landed. Output, gitignored: `ladder/standard_16x16x10x8_gh5/pension_grid/housing/grid_study_housing.pdf`; solves `pension_grid/07b_annuity_<arm>_<case>_lim_mop.mat`.
