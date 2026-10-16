@@ -97,6 +97,17 @@ Nodes must be finite, distinct and sorted; `u2` and `u3` must lie in `[0, 1]`
 and `u1` must be strictly positive. A violation is an error at the call site,
 not a silent clamp later.
 
+### Points that follow age
+
+`p.grid_nodes.u1_age` and `u2_age` give each period its own points, one column
+per period (N1 x T and N2 x T). The solver solves period t on its own points and
+reads next year's value on period t+1's points; the simulation reads each
+year's policy on that year's points (`utility.grid_at`). The entry anchors are
+spliced into every column, so all columns must come back the same length. The
+first column is `p.u1_grid` and `p.u2_grid`. `diagnostics/pension_grid/age_grid.m`
+places such points from a solved panel. It was tried on step 12 only
+(16 October 2026) and is not a default.
+
 ## 3. Manual, by rule
 
 Primitives of `config.params`, all at their full-axis, uniform defaults except

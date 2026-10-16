@@ -10,9 +10,11 @@ function report(cover_lines, opts)
 %     grid_NN_<step>_<arm>.png  robustness_pages: every grid against the reference
 %     occ_<arm>.png             occupancy_figure: where households live, against
 %                               the standard grid and the fix's 32x32 grid
-%     overlay_fix_<arm>.png     steps 6, 9-12 on the fix's 32x32 grid (figures.compare,
+%     overlay_fix_<arm>.png     steps 6, 9-12 on the fix's 64x64 grid (figures.compare,
 %                               pension view); overlay_asis_<arm>.png the same on
 %                               the standard grid as the ladder solved it
+%     step_JJ_KK_<arm>.png      each DC step against its parent on the 64x64 grid
+%                               (figures.step_dashboard)
 %   and pension_grid_study.pdf (cover, then the pages) in pension_grid/.
 %   The fix is pi_nothing_saved = 'limit' with power-3 grids (case names
 %   pow3_NxN_lim); the reference is pow3_96x96_lim where solved, else
@@ -65,7 +67,7 @@ if opts.pages
         occupancy_figure([6 9 10 11 12], a{1}, 'pow3_64x64_lim', {'uniform_16x16', 'pow3_32x32_lim'}, ...
             fullfile(out, sprintf('occ_%s.png', a{1})));
         for v = {'fix', 'asis'}
-            if strcmp(v{1}, 'fix'), names = {'standard', 'pow3_32x32_lim', 'pow3_32x32_lim', 'pow3_32x32_lim', 'pow3_32x32_lim'};
+            if strcmp(v{1}, 'fix'), names = [{best6(a{1})}, repmat({'pow3_64x64_lim'}, 1, 4)];
             else, names = repmat({'standard'}, 1, 5); end
             st5 = [6 9 10 11 12];
             rs = cell(1, 5); labels = cell(1, 5);
@@ -77,8 +79,19 @@ if opts.pages
             if any(cellfun(@isempty, rs)), continue; end
             f = fullfile(out, sprintf('overlay_%s_%s.png', v{1}, a{1}));
             figures.compare(rs, labels, sprintf('Steps 6, 9-12, %s: %s', a{1}, ...
-                strrep(strrep(v{1}, 'asis', 'standard grid as solved'), 'fix', 'the fix (limit share, power-3 32x32)')), ...
+                strrep(strrep(v{1}, 'asis', 'standard grid as solved'), 'fix', 'the fix (limit share, power-3 64x64)')), ...
                 f, view = 'pension');
+            if strcmp(v{1}, 'fix')
+                % Each DC step against the step it builds on, as ladder.compare draws them
+                for i = 2:5
+                    kP = ladder.index(st5(i - 1), S); kK = ladder.index(st5(i), S);
+                    f = fullfile(out, sprintf('step_%s_%s_%s.png', ladder.number(kP, S, true), ...
+                        ladder.number(kK, S, true), a{1}));
+                    figures.step_dashboard(rs{i - 1}, rs{i}, labels(i - 1:i), sprintf(['Step %s, %s: %s ' ...
+                        'against step %s, on the converged grid (limit share, power-3 64x64)'], ...
+                        ladder.number(kK, S), S(kK).label, a{1}, ladder.number(kP, S)), f);
+                end
+            end
         end
     end
 end
@@ -103,6 +116,12 @@ end
 for a = arms
     pages{end+1} = fullfile(out, sprintf('overlay_asis_%s.png', a{1})); %#ok<AGROW>
     pages{end+1} = fullfile(out, sprintf('overlay_fix_%s.png', a{1})); %#ok<AGROW>
+end
+for a = arms
+    for j = [6 9 10 11; 9 10 11 12]
+        pages{end+1} = fullfile(out, sprintf('step_%s_%s_%s.png', ladder.number(ladder.index(j(1), S), S, true), ...
+            ladder.number(ladder.index(j(2), S), S, true), a{1})); %#ok<AGROW>
+    end
 end
 
 pdf = fullfile(num.dir, 'pension_grid', 'pension_grid_study.pdf');
@@ -136,4 +155,10 @@ ax = axes(fig, 'Position', [0 0 1 1]);
 image(ax, I); axis(ax, 'image', 'off');
 exportgraphics(fig, pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 110);
 close(fig);
+end
+
+function n = best6(arm)
+% Step 6 has no pension and is converged on every grid; its finest solve
+n = 'uniform_64x64';
+if isempty(case_load(6, arm, n)), n = 'standard'; end
 end
