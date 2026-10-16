@@ -4,7 +4,8 @@ function occupancy_figure(steps, arm, panel_name, grids, file)
 %   occupancy_figure([6 9 10 11 12], 'owner', 'pow3_96x96', ...
 %                    {'uniform_16x16', 'pow3_32x32'}, 'occ_owner.png')
 %
-%   One column per step, from the simulated panel of the case panel_name.
+%   One column per step, from the simulated panel of the case panel_name
+%   (uniform_64x64, then the standard solve, where a step lacks it).
 %   Row 1: total resources over income, W/Y = 1/u1, log scale, the shading
 %   the share of households at each age. Row 2: liquid savings over liquid
 %   savings plus the pension pot, 1 - u2, log scale (u2 near 1 is little
@@ -26,6 +27,9 @@ title(tl, {sprintf('Where %s households live on the grid, age by age (panel of %
 for j = 1:n
     k = ladder.index(steps(j), S);
     r = case_load(steps(j), arm, panel_name);
+    for alt = {'uniform_64x64', 'standard'}               % steps without that solve
+        if isempty(r), r = case_load(steps(j), arm, alt{1}); end
+    end
     if isempty(r), continue; end
     s = figures.panel_data(r).sim; ages = s.ages(:).';
     u1 = s.lambda; u2 = (s.sA + s.sH) ./ max(1 - u1, 1e-12);
