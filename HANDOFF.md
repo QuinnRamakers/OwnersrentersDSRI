@@ -36,6 +36,21 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-16 Grid study of step 7b with maintenance on the purchase price (spec: none, asked by Quinn in Claude Code)
+Quinn asked for the grid study with maintenance on the purchase price, to show the owner is now roughly grid-invariant. Owner only (maintenance does not reach renters).
+Changed: no code. Solves in `ladder/standard_16x16x10x8_gh5/grid_design/maint_on_purchase_study/` with the pages `robust_maint_on_purchase.png`, `compare_grids_maint_on_purchase.png` and `ruin_1-3_*_maint_study.png` (gitignored). Scripts in the session scratchpad (not kept).
+Checks run (standard numerics: gh_n 5, 10,000 households, same draws; reference log-wealth 32x32 of the entry below; largest gaps in the mean equity share and mean consumption):
+- current 16x16 (run 4): entry 0.951; 26-39 pi 0.002, C 2.9%; 40-66 0.015, 1.6%; 67-95 0.146, 4.9%.
+- log-wealth 16x16 (814 s): entry 0.921; 0.002, 0.6%; 0.009, 0.6%; 0.016, 2.1%.
+- power 2 16x16 (1,387 s): entry 0.933; 0.002, 1.5%; 0.004, 0.5%; 0.014, 0.6%. Within the stop rule at every age.
+- current 32x16 (5,336 s): entry 0.940; 0.003, 2.1%; 0.010, 1.0%; 0.011, 2.3%.
+- q axis: current 16x16 with 16 base q nodes against 8 (5,563 s): consumption within 0.26% at every age, equity share within 0.021 (one point at 40-66; 0.008 elsewhere), entry 0.95112 against 0.95109, no q lookups off the grid.
+- Floored 0, `c_bound_25_39` 0 and off-grid 0 on every grid; the reference's entry value is 0.918.
+- Not run to the end: power 2 32x32. Another session's MATLAB jobs shared the machine from 00:35 (the solves ran at a third to a half of full speed), and the merge of its work into this checkout at about 04:00 changed solver files while that solve was running, so it was stopped. The four solves above finished before the merge; the merged code keeps their behaviour by default (`pi_nothing_saved = 'one'`, no age-following grid).
+Reading: with maintenance on the purchase price the owner is roughly grid-invariant. Three grid systems at 16x16 agree with log-wealth 32x32 within about 2% in consumption and 0.02 in the equity share at every age, except the coarse current grid after 67, and refining that grid (32x16) brings it within 0.011 and 2.3%. Under maintenance on the current value the same grids differed by 0.9 in the equity share and a factor of 2,000 in the entry value.
+Commit: this entry, pushed to main.
+Open: a second fine grid (power 2 32x32) to confirm the reference; whether maintenance on the purchase price becomes the model (TODO.md item 1).
+
 ### 2026-10-16 Pension steps 9-12 again and the grid study of the DC branch: results, and numerical fixes (spec: none, asked by Quinn in Claude Code)
 Follows the entry below (code and expectations). Overnight run, until 7 am.
 Changed (on top of cdb2ddf):
