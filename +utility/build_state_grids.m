@@ -19,6 +19,9 @@ function p = build_state_grids(p, dims, gh_n)
 %     u2  [u2_lo, 1], bunched toward 1 when grid_pow_u2 > 1.
 %     u3  [u3_lo, u3_hi], uniform.
 %     q   [0, q_hi], bunched toward 0 when grid_pow_q > 1.
+%   p.grid_nodes.u1_age and u2_age (one column per period) give each period
+%   its own u1 and u2 points instead (p.u1_grid_age, p.u2_grid_age; read them
+%   with utility.grid_at); p.u1_grid and p.u2_grid are then the first column.
 %
 %   Axes that the model cannot move along are collapsed to the two nodes
 %   {0, 1}. Without housing and without a DC pillar A = H = 0, so u2 = u3 = 0
