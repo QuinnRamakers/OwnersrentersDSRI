@@ -22,12 +22,17 @@ function p = case_params(step, arm, name)
 %               pilot solve of the same step (see the case below)
 %     logw      the log-wealth rule of the step-7 grid study
 %               (diagnostics/grid_design/grid_rule.m, on the path)
-%   u3 and q keep the standard base counts (10 and 8); without housing or a
-%   DC pillar u3 collapses anyway. arm is 'renter' or 'owner'. More suffixes:
+%   u3 and q keep the standard base counts (10 and 8) unless a suffix below
+%   sets them; without housing or a DC pillar u3 collapses anyway, and q is a
+%   single node where it is not a state (renters). arm is 'renter' or 'owner'.
+%   More suffixes:
 %     _mop      maint_on_purchase (maintenance on the purchase price), the
 %               housing variant without the ruin cliff; it changes the model
 %     _u3x2     u3 (pension against house) at twice its base points
+%     _u3n<n>   u3 at n base points instead of 10
 %     _u3p<n>   u3 bunched toward 0 with grid_pow_u3 = n
+%     _qn<n>    q (purchase price over house) at n base points instead of 8;
+%               q = 1 is spliced in on top
 %     _nosweep  the global (c, pi) grid search before fmincon switched off
 %               (use_refine = false)
 %   Apart from _mop nothing here changes the model: only grid_dims, grid_pow,
@@ -75,6 +80,10 @@ if contains(extra, '_makima'), p.interp_method = 'makima'; end
 if contains(extra, '_lim'), p.pi_nothing_saved = 'limit'; end
 if contains(extra, '_mop'), p.maint_on_purchase = true; end
 if contains(extra, '_u3x2'), p.grid_dims(3) = 2 * p.grid_dims(3); end      % pension-against-house axis doubled
+g = regexp(extra, '_u3n(\d+)', 'tokens', 'once');
+if ~isempty(g), p.grid_dims(3) = str2double(g{1}); end                     % u3 base points
+g = regexp(extra, '_qn(\d+)', 'tokens', 'once');
+if ~isempty(g), p.grid_dims(4) = str2double(g{1}); end                     % q base points
 g = regexp(extra, '_u3p(\d+)', 'tokens', 'once');
 if ~isempty(g), p.grid_pow_u3 = str2double(g{1}); end                      % u3 bunched toward 0
 if contains(extra, '_nosweep'), p.use_refine = false; end                  % fmincon from the warm start, no grid search

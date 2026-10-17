@@ -36,6 +36,22 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-18 Smallest accurate grid at step 16, per axis: expectations before the runs (spec: none; open decision 2 of docs/HANDOFF_2026-10-17.md, asked by Quinn in Claude Code)
+Quinn wants the cheapest grid that is still accurate at production (step 16), per axis and per tenure, to set the ladder's numerics. With housing only square u1 x u2 sizes were tested, and u3 and q only by doubling, so the minimum per axis is unknown.
+Changed (diagnostics only): `diagnostics/pension_grid/case_params.m` takes `_u3n<n>` and `_qn<n>` (base points on u3 and q). `case_gaps.m` takes the age bands as an optional third argument. New `size_table.m`: per case the realised nodes, the nodes per age while q is a state and after, solve time, entry value, floored share; the largest gap to a reference in mean consumption and the mean liquid equity share in the bands 25-39, 40-54, 55-66, 67-89 and 90-95 (stop rule 2% and 0.02); the same for the equity share of liquid saving; and the roughness, the largest second difference over age inside each band of mean consumption (% of income) and of the equity share (Quinn: a bad grid also shows as a non-smooth profile).
+Plan. Every case is `pow3_<N1>x<N2>_lim_u3p2` (grid_pow 3, grid_pow_u2 3, the limit share, u3 at power 2), two MATLAB processes side by side:
+1. A: owner 32x32 (reference), then 32x16. B: owner 20x20, 24x16, 16x24, then renter 24x24 and 32x32.
+2. On the smallest u1 x u2 shape that passes from 40 on: the owner with u3 at 6 points (power 2: 0, 0.04, 0.16, 0.36, 0.64, 1) and with q at 4 base points (0, 0.28, 1.11, 2.5, with 1 spliced in), each against the same shape at full u3 and q and against the reference. Renter 48x48 (reference) and 48x24.
+3. `size_table` for each tenure.
+Times, scaled by nodes from 80 minutes at 24x24 (60,840 nodes per age to 54, 6,760 after): owner 32x32 about 140 minutes, 32x16 about 70, 20x20, 24x16 and 16x24 about 55 each; u3 at 6 points and q at 4 points each about 0.6 of the shape's time (q is a state to 54 and its stage is most of the solve). Renter about 14, 24 and 53 minutes at 24, 32 and 48 (as at step 13), 48x24 about 30. About 5 hours in all.
+Expectations:
+1. Owner 24x24 against 32x32: within the stop rule from 40 on, as at step 13. Outside at 25-39, where owners consume about 0 before 33.
+2. Owner shapes: u1 is the axis that pays (at the DC steps 64x32 matched 48x48 and 32x64 was no better than 32x32). So 32x16 passes from 40 on; 24x16 close, perhaps just outside in the share at 55-66; 16x24 fails at 55-66 (step 13 at 16x16 missed by 2.3% in consumption at 66 and 0.06 in the share at 55-62); 20x20 marginal.
+3. u3 at 6 points: within the rule to 89, perhaps outside in the share at 90-95 (at step 13 the owner's share past 88 was the part that moved with u3).
+4. q at 4 points: q is a state only to 54 and the payment is linear in it, so within the rule from 40 on, any gap at 40-54. Not sure: the axis has no point between 1.11 and 2.5.
+5. Renter: no convergence before 40 (the entry value falls with each refinement). From 40 on, 32x32 within 2% in consumption of 48x48, the share perhaps outside at 40-66 (0.05 at step 13); 24x24 outside; 48x24 close to 48x48 if u1 dominates as for owners.
+6. Roughness flags a bad grid but is not a pass rule. On the two step-16 owner solves already saved, the ladder's 16x16 grid is 51% off the bunched 24x24 in consumption at 40-54 and is smoother there (largest second difference 0.19% of income against 0.21%); it is rougher only at 67-89 (26.4% against 0.50%). On 10 September a smoothness ranking put grids in the wrong order.
+
 ### 2026-10-17 Owner, steps 15 and 16 on the bunched grid: results (spec: none, asked by Quinn in Claude Code)
 Follows the expectations entry below (0b445fe).
 Ran: `solve_cases('15:owner:pow3_24x24_lim_u3p2')` and the same for 16, two MATLAB processes side by side (the first launch failed on Windows quoting of the string argument; relaunched with char): 82 and 80 minutes. `start_vs_grid('pow3_24x24_lim_u3p2', {'owner'})`; the script now takes a grid-study case and also draws step 16 on the ladder's grid against the case (`levels_16_owner_<case>.png`).

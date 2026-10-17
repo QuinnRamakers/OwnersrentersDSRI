@@ -1,10 +1,12 @@
-function G = case_gaps(r, ref)
+function G = case_gaps(r, ref, bands)
 %CASE_GAPS  Largest gaps of one solve to a reference, by age band.
 %
 %   G = case_gaps(r, ref)
+%   G = case_gaps(r, ref, {[25 39], [40 54], [55 66], [67 89], [90 95]})
 %
 %   Means over the same simulated households (same seed and size). Bands are
-%   ages 26-39, 40-66 and 67-95. Fields, each 1 x 3 (one per band):
+%   ages 26-39, 40-66 and 67-95 unless given as a cell of [first last] ages.
+%   Fields, each 1 x the number of bands:
 %     pi   largest |difference| in the mean liquid equity share
 %     C    largest |difference| in mean consumption, share of the reference
 %     X    largest |difference| in mean liquid savings, in years of the
@@ -19,9 +21,11 @@ function G = case_gaps(r, ref)
 %   is reached (pi_age, C_age, X_age). The ladder's stop rule is 0.02 in the
 %   equity share and 2% in consumption.
 
+if nargin < 3, bands = {[26 39], [40 66], [67 95]}; end
 s0 = ref.summary; s1 = r.summary;
 a = s0.ages;
-bands = {a >= 26 & a <= 39, a >= 40 & a <= 66, a >= 67 & a <= 95};
+nb = numel(bands);
+bands = cellfun(@(b) a >= b(1) & a <= b(2), bands, 'UniformOutput', false);
 if isfield(r, 'piw') && isfield(ref, 'piw')
     dpw = abs(r.piw - ref.piw);
 else
@@ -30,8 +34,8 @@ end
 dpi = abs(s1.pi - s0.pi);
 dC  = abs(s1.C.mean ./ s0.C.mean - 1);
 dX  = abs(s1.X.mean - s0.X.mean) ./ s0.Y.mean;
-G = struct('pi', zeros(1, 3), 'C', zeros(1, 3), 'X', zeros(1, 3), 'piw', zeros(1, 3));
-for b = 1:3
+G = struct('pi', zeros(1, nb), 'C', zeros(1, nb), 'X', zeros(1, nb), 'piw', zeros(1, nb));
+for b = 1:nb
     w = bands{b};
     G.pi(b) = max(dpi(w)); G.C(b) = max(dC(w)); G.X(b) = max(dX(w)); G.piw(b) = max(dpw(w));
 end
