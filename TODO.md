@@ -81,7 +81,7 @@ setting the floor also sets the search bound.
 
 | Input | Status |
 |---|---|
-| `h_mult` | Production uses the Nibud 2026 maximum mortgage at entry income (`h_rule = 'nibud'`, ladder step 16): 4.45 owners, 4.16 renters. To decide: the test rate (`r_m` is real, the norm's rate nominal); box 1 or box 3 (the model has no interest deduction); the 2025 tables for the price year; the EUR 17,000 increase; whether renters follow the rule. Still wanted: an income-contingent assignment fitted on LISS, with the Nibud rule as its ceiling |
+| `h_mult` | Production uses the Nibud 2026 maximum mortgage at entry income (`h_rule = 'nibud'`, ladder step 16): 4.45 owners, 4.16 renters; `h_fixed` 4.0 at steps 7-15 is a placeholder. To decide: the test rate (`r_m` is real, the norm's rate nominal); box 1 or box 3 (the model has no interest deduction); the 2025 tables for the price year; the EUR 17,000 increase; whether renters follow the rule. Still wanted: an income-contingent assignment fitted on LISS, with the Nibud rule as its ceiling |
 | `kappa_base` | Single OECD figure. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie) |
 | Housing level | `theta` 1.5% is a placeholder; `h_mult`, see above. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.48% (CALIBRATION.md). The housing dynamics and correlations are calibrated (Tables 1 and 3) |
 | `b0`, `b_alt` | Placeholders. The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now DHS household-head income (EUR 39,763 owners, 30,098 renters at 25), so the denominator, and possibly a buffer by tenure, should follow |

@@ -5,7 +5,7 @@ function p = derive(p)
 %
 %   Rebuilds, from the primitives alone: the log-return moments of the three
 %   lognormal processes, the retirement period, the DC glide path, the
-%   contribution-rate profile, the house at entry under the Nibud rule, the
+%   contribution-rate profile, the house at entry (h_mult, from h_rule), the
 %   mortgage schedule, the periods in which the
 %   purchase-price ratio q is a state, and the state grid with the entry-state
 %   anchors. Nothing is carried over from an earlier call, so
@@ -57,16 +57,24 @@ p.kappa  = zeros(p.T, 1);
 work_t   = 1 : (p.t_ret - 1);
 p.kappa(work_t) = p.kappa_base .* max(Y_det(work_t) - p.franchise, 0) ./ Y_det(work_t);
 
-% House at entry. 'nibud' replaces h_mult with the largest mortgage the Nibud
-% norms allow at the tenure's gross income at age0 and the mortgage rate;
-% with LTV = 1 the loan is the house. 'fixed' keeps h_mult. Under either rule
-% h_mult = 0 removes housing.
-assert((ischar(p.h_rule) || isstring(p.h_rule)) && any(strcmp(char(p.h_rule), {'fixed', 'nibud'})), ...
-    'derive:h_rule', 'h_rule must be ''fixed'' or ''nibud'' (got %s).', mat2str(p.h_rule));
-if strcmp(char(p.h_rule), 'nibud') && p.h_mult > 0
-    assert(~strcmp(p.income_source, 'poly'), 'derive:poly_nibud', ...
-        'The Nibud rule needs income in euros: use income_source = ''dhs'' or ''table''.');
-    p.h_mult = config.nibud_lti(Y_det(1), p.r_m, p.nibud_extra);
+% House (owner) or rent index (renter) at entry as a multiple of income, h_mult.
+% 'none': no housing, h_mult = 0. 'fixed': h_fixed. 'nibud': the largest
+% mortgage the Nibud norms allow at the tenure's gross income at age0 and the
+% mortgage rate; with LTV = 1 the loan is the house. The rest of the model
+% reads h_mult, and h_mult = 0 means no housing.
+assert((ischar(p.h_rule) || isstring(p.h_rule)) && any(strcmp(char(p.h_rule), {'none', 'fixed', 'nibud'})), ...
+    'derive:h_rule', 'h_rule must be ''none'', ''fixed'' or ''nibud'' (got %s).', mat2str(p.h_rule));
+switch char(p.h_rule)
+    case 'none'
+        p.h_mult = 0;
+    case 'fixed'
+        assert(p.h_fixed > 0, 'derive:h_fixed', ...
+            'h_rule = ''fixed'' needs h_fixed > 0 (got %g); use h_rule = ''none'' for no housing.', p.h_fixed);
+        p.h_mult = p.h_fixed;
+    case 'nibud'
+        assert(~strcmp(p.income_source, 'poly'), 'derive:poly_nibud', ...
+            'The Nibud rule needs income in euros: use income_source = ''dhs'' or ''table''.');
+        p.h_mult = config.nibud_lti(Y_det(1), p.r_m, p.nibud_extra);
 end
 
 % Mortgage payment per euro of purchase price for N_mort years: LTV times the

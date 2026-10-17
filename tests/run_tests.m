@@ -40,12 +40,14 @@ end
 
 % ------------------------------------------------------------------------
 function params_derive()
-% derive is idempotent and every derived field is rebuilt from primitives.
+% derive is idempotent and every derived field is rebuilt from primitives,
+% also when the primitives change on an already-derived p.
 p = config.params();
 assert(isequaln(config.derive(p), p), 'derive changed an already-derived p');
-q = config.params(false);
-q.r = 0.02; q.retirement_age = 65; q.kappa_base = 0.1; q.h_mult = 9; q.h_rule = 'fixed';
+q = config.params();
+q.r = 0.02; q.retirement_age = 65; q.kappa_base = 0.1; q.h_rule = 'fixed'; q.h_fixed = 9;
 q = config.derive(q);
+assert(q.h_mult == 9, 'h_mult not rebuilt from h_fixed');
 assert(abs(q.Rf - 1.02) < 1e-15, 'Rf not rebuilt');
 assert(q.t_ret == 41 && numel(q.tau_S) == q.T - 1 && q.tau_S(41) == 0, 'glide not rebuilt');
 assert(all(q.kappa(q.t_ret:end) == 0) && max(q.kappa) < 0.1, 'kappa not rebuilt');
@@ -228,14 +230,39 @@ for owner = [true false]
         assert(q.h_mult == 4, '%s, owner %d: house not at 4 times income', name{1}, owner);
     end
 end
-q = ladder.params('cgm'); q.h_mult = 4; q.h_rule = 'nibud';
-threw = false;
-try
-    config.derive(q);
-catch err
-    threw = strcmp(err.identifier, 'derive:poly_nibud');
+% h_mult is derived, so a calibration comparison does not depend on whether
+% p was derived again after a tenure switch (ladder.load, ladder.report), and
+% switching the rule on a derived p returns to h_fixed.
+p = config.params();
+q = p; q.is_owner = true;
+o = config.derive(q);
+assert(ladder.same_calibration(o, q) && o.h_mult ~= p.h_mult, 'tenure switch: same_calibration depends on derive');
+q = p; q.h_rule = 'fixed'; q = config.derive(q);
+assert(q.h_mult == q.h_fixed, 'switching to fixed kept the Nibud multiple');
+q = p; q.h_rule = 'none'; q = config.derive(q);
+assert(q.h_mult == 0 && strcmp(model.tenure(q), 'nohousing_renter'), 'h_rule none');
+% model.run refuses a tenure switch without derive, also where kappa is the
+% same for both tenures (no DC pillar)
+q = ladder.params('housing_corr'); q.h_rule = 'nibud'; q = config.derive(q);
+q.is_owner = true;
+assert(threw_id(@() model.run(q, verbose = false), 'model:run_not_derived'), ...
+    'model.run accepted an underived tenure switch');
+% refusals: Nibud with income not in euros, 'fixed' without a multiple, an unknown rule
+q = ladder.params('cgm'); q.h_rule = 'nibud';
+assert(threw_id(@() config.derive(q), 'derive:poly_nibud'), 'the Nibud rule accepted income not in euros');
+q = config.params(false); q.h_rule = 'fixed'; q.h_fixed = 0;
+assert(threw_id(@() config.derive(q), 'derive:h_fixed'), 'fixed with h_fixed = 0 accepted');
+q = config.params(false); q.h_rule = 'nibud2025';
+assert(threw_id(@() config.derive(q), 'derive:h_rule'), 'unknown h_rule accepted');
 end
-assert(threw, 'the Nibud rule accepted income not in euros');
+
+function tf = threw_id(f, id)
+tf = false;
+try
+    f();
+catch err
+    tf = strcmp(err.identifier, id);
+end
 end
 
 function collapsed_axes_exact()
@@ -271,7 +298,7 @@ for owner = [false true]
     q = p;
     q.mu_H_level = 0.01; q.sigma_H_level = 0.2; q.mu_R_level = 0.03; q.sigma_R_level = 0.1;
     q.alpha = 0.1; q.theta = 0.05; q.r_m = 0.05; q.sell_cost = 0.1;
-    q.mortgage = 'proportional'; q.maint_on_purchase = true;
+    q.mortgage = 'proportional'; q.maint_on_purchase = true; q.h_fixed = 9; q.nibud_extra = false;
     q.corr_HL = 0.5; q.corr_HL_rent = 0.5; q.corr_SH = 0.5; q.corr_SH_rent = 0.5;
     q = config.derive(q);
     [pf, sk, an] = config.model_inputs(p);
@@ -285,11 +312,24 @@ end
 
 function smoke_both_tenures()
 % A small solve and simulation for each tenure: finite, in range, on the grid.
+% Households enter with the house (owner) or rent index (renter) at the
+% tenure's Nibud multiple, at an exact node of the grid; the owner's first
+% payment is the annuity on that house.
 for owner = [false true]
     p = config.params();
     p.grid_dims = [6 5 4 3]; p.gh_n = 3; p.is_owner = owner;
     p = config.derive(p);
-    r = model.run(p, N_sim = 500, verbose = false);
+    r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
+    Y0 = exp(config.income_profile(p)); Y0 = Y0(1);
+    assert(p.h_mult == config.nibud_lti(Y0, p.r_m, p.nibud_extra), 'not the Nibud multiple');
+    s = r.sim;
+    assert(max(abs(s.H(:, 1) ./ (p.h_mult * s.Y(:, 1)) - 1)) < 1e-12, 'H0 is not h_mult * Y0');
+    assert(any(abs(p.u1_grid - 1 / (1 + p.h_mult + p.b0)) < 1e-14) && ...
+           any(abs(p.u2_grid - p.h_mult / (p.h_mult + p.b0)) < 1e-14), 'entry state is not a node');
+    if owner
+        assert(max(abs(s.m_pay(:, 1) ./ (p.m_rate_path(1) * s.H(:, 1)) - 1)) < 1e-12, 'first payment');
+    end
+    r.sim = [];
     assert(all(isfinite(r.sol.V(:))), 'non-finite value');
     % fmincon respects bounds to its tolerance, so allow a hair either side;
     % the simulator clamps.

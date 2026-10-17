@@ -249,9 +249,13 @@ because tenure is fixed at t = 1 and no household ever faces both processes.
 |---|---|---|
 | `alpha` | 0.056 | Rent-to-price ratio. Government report (reference to add) |
 | `theta` | 0.015 | Placeholder. Maintenance, Yao & Zhang (2005); Nibud's 1% plus local taxes |
-| `h_mult` | 4.0 | `H_0 = h_mult * Y_0` under `h_rule = 'fixed'` (ladder steps 7–15). Placeholder |
-| `h_rule` | `'nibud'` | `H_0` is the Nibud 2026 maximum mortgage at entry income, see below |
+| `h_rule` | `'nibud'` | How `H_0 = h_mult * Y_0` is set: `'nibud'` the Nibud 2026 maximum mortgage at entry income (below), `'fixed'` `h_fixed`, `'none'` no housing |
+| `h_fixed` | 4.0 | `h_mult` under `h_rule = 'fixed'` (ladder steps 7–15). Placeholder |
 | `nibud_extra` | true | The Nibud EUR 17,000 increase is included, see below |
+
+`h_mult`, the house (owner) or rent index (renter) at entry as a multiple of
+income, is derived from these three by `config.derive`, separately for each
+tenure; the rest of the model reads it, and `h_mult = 0` means no housing.
 | `r_m` | 0.0348 | The total real mortgage rate, not a spread: `r` plus the mean spread between the MIR home-purchase lending rate and the 3-month interbank rate, 2000–2024 |
 | `N_mort` | 30 | Standard Dutch annuity mortgage term |
 | `LTV` | 1.00 | Asserted — see below |
@@ -299,8 +303,7 @@ With `h_rule = 'nibud'` the house at entry is the largest mortgage a lender
 may grant under the Nibud financing-cost norms for 2026 (Nibud,
 *Financieringslastnormen 2026*, bijlage, version 251110; `config.nibud_lti`).
 With `LTV` = 1 the loan is the house, so `config.derive` sets `h_mult` to that
-loan over the tenure's deterministic gross income at 25. `h_mult = 0` still
-removes housing.
+loan over the tenure's deterministic gross income at 25.
 
 The norm caps the monthly payment of a 30-year annuity at a share of gross
 income, the financieringslastpercentage, read from a table by income and test
@@ -312,9 +315,11 @@ M = flp(Y, i) * Y / 12 / a,   a = (i/12) (1 + i/12)^360 / ((1 + i/12)^360 - 1)
 
 The row is the last income at or below `Y` (EUR 30,000 to 125,000 in steps of
 1,000; lower incomes use the first row) and the column the rate bracket. This
-is the workbook's own calculator, and it reproduces the workbook's
-maximum-mortgage table; one cell of that table disagrees with the workbook's
-share table, and the share is used.
+is the workbook's own calculator: run in Excel, the calculator agrees with the
+code to rounding, including incomes off the table and rates on bracket
+boundaries, and the code reproduces the workbook's maximum-mortgage table. One
+cell of that table disagrees with the workbook's share table; the share is
+used.
 
 | Choice | Value | Reason |
 |---|---|---|
@@ -413,7 +418,7 @@ exact grid nodes.
 | `mu_S_level`, `sigma_S_level` | 0.04, 0.157 | CGM (2005) |
 | `corr_SL` | 0 | CGM (2005) baseline |
 | `corr_HL`, `corr_HL_rent`, `corr_SH`, `corr_SH_rent` | 0 | No housing correlations until step 8 |
-| `h_mult`, `kappa_base` | 0 | No housing, no DC pillar |
+| `h_rule`, `kappa_base` | `'none'`, 0 | No housing, no DC pillar |
 | taxes | 0 | None |
 
 Renters and owners share this income process until the income step (4), so
@@ -423,7 +428,7 @@ no transitory income shock.
 
 The rest of the ladder: 4 income (the DHS values above), 5 market (`r`,
 `mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.04. From step 6 it
-branches. Housing: 7 housing (`h_mult` 4 and the housing dynamics above, no
+branches. Housing: 7 housing (`h_fixed` 4 and the housing dynamics above, no
 housing correlations), 8 the housing correlations above. DC pension, without
 housing: 9 `kappa_base` 0.186 with an all-bond fund (`glide_cap` 0), 10 an
 all-stock fund (`glide_cap` 1, `glide_span` 1, `tau_decum` 1), 11 the

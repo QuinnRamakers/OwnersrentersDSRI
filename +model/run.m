@@ -27,8 +27,9 @@ arguments
     opts.verbose (1,1) logical = true
 end
 
-assert(isequal(config.derive(p).kappa, p.kappa), 'model:run_not_derived', ...
-    'p.kappa does not match the tenure''s income; call config.derive after setting is_owner.');
+d = config.derive(p);
+assert(isequal(d.kappa, p.kappa) && isequal(d.h_mult, p.h_mult), 'model:run_not_derived', ...
+    'p.kappa or p.h_mult does not match the tenure''s income; call config.derive after setting is_owner.');
 
 if isempty(gcp('nocreate')), utility.start_pool(); end
 nthreads = maxNumCompThreads(1);              % BLAS on one thread while the parfor runs

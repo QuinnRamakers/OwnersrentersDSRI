@@ -6,8 +6,8 @@ function p = params(do_derive)
 %
 %   Everything set here is an input. What follows from the inputs -- the
 %   log-return moments, the retirement period, the DC glide path, the
-%   contribution-rate profile, the house at entry under the Nibud rule, the
-%   mortgage schedule and the state grid -- is
+%   contribution-rate profile, the house at entry as a multiple of income
+%   (h_mult), the mortgage schedule and the state grid -- is
 %   built by config.derive, which this calls last. To change the calibration,
 %   override fields on p and call config.derive(p) again; the calibration
 %   ladder (+ladder) does exactly that. Sources are in CALIBRATION.md.
@@ -71,8 +71,8 @@ p.corr_RH          = 0;       % corr(REIT return, H growth)
 
 % Housing. Renters pay alpha*H on a rent index H; owners pay maintenance and the mortgage.
 p.is_owner      = false;      % tenure; also selects the income fields without housing
-p.h_mult        = 4.0;        % H at entry as a multiple of income under h_rule 'fixed' (placeholder); 0 removes housing
-p.h_rule        = 'nibud';    % 'nibud': derive sets h_mult to the Nibud 2026 maximum mortgage at entry income and r_m; 'fixed': h_mult as set
+p.h_rule        = 'nibud';    % H at entry: 'nibud' the Nibud 2026 maximum mortgage at entry income and r_m; 'fixed' h_fixed times income; 'none' no housing
+p.h_fixed       = 4.0;        % 'fixed' only: H at entry as a multiple of income (placeholder)
 p.nibud_extra   = true;       % 'nibud' only: include the EUR 17,000 increase for a single earner
 p.alpha         = 0.056;      % rent as a share of the rent index
 p.theta         = 0.015;      % owner maintenance, share of H (placeholder)

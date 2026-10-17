@@ -36,6 +36,19 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 Nibud rule: tested against the workbook, and h_mult made a derived field (spec: none, asked by Quinn in Claude Code)
+Quinn asked whether the Nibud rule (88b2e28) had been tested properly. It had not been tested enough, and testing found a bug.
+Bug: in 88b2e28 `config.derive` overwrote the primitive `h_mult` with the Nibud multiple. `ladder.load` and `ladder.report` switch tenure without deriving again before `ladder.same_calibration`, so a saved step-16 owner result would have been reported as stale (the renter's 4.155 against the owner's 4.446). Switching `h_rule` to 'fixed' on a derived p kept the Nibud multiple instead of 4.
+Changed: `h_mult` is now derived, like `kappa`. New primitives `h_rule` ('none', 'fixed' or 'nibud') and `h_fixed` (the multiple under 'fixed'); `nibud_extra` as before. Every reader of `h_mult` is unchanged, and `h_mult = 0` still means no housing. `+config/params.m`, `+config/derive.m`; `+ladder/steps.m` (step 1 `h_rule` 'none', step 7 'fixed' with `h_fixed` 4); `+model/run.m` refuses a p whose `h_mult` does not match its tenure (before, only `kappa` was checked, which is the same for both tenures without a DC pillar); `tests/run_tests.m`; CALIBRATION.md, TODO.md.
+Checks run:
+- The share table in `config.nibud_lti` is identical to the workbook's (96 x 12). Against the workbook's maximum-mortgage table, 1,151 of 1,152 cells agree to 5.4e-14; the other is the workbook cell at odds with its own share.
+- The workbook's calculator run in Excel (copy, read-only, macros off), 360 cases: incomes 15,000-160,000 including 29,999.99, 30,000, 30,000.01, 30,098, 39,763 and 125,000; rates 0.5%-9% including 1.5%, 1.500999%, 1.501%, 3.5% and 3.501%; the increase on and off. Largest gap to the code 8.9e-14. At the model's entry incomes Excel gives factors 4.4460 and 4.1554.
+- Steps 1-15, both tenures: every derived field equal (isequaln) to the pre-Nibud commit f96f576, 0 of 30 structs differ.
+- `run_tests(solve=false)` 0 of 10 failed; full `run_tests` 0 of 17 failed (`smoke_both_tenures` 82 s). New in it: the tenure switch, the rule switch, 'none', the refusals, and in the production smoke solve that every simulated household enters with H0 = h_mult * Y0 at an exact grid node and the owner's first payment is the annuity on that house.
+Not tested: no ladder step solved at standard numerics; behaviour at step 16 is unknown.
+Commit: this entry with the eight files, pushed to main.
+Open: the choices in the entry below.
+
 ### 2026-10-17 House at entry from the Nibud 2026 norms (spec: none, asked by Quinn in Claude Code)
 Quinn: add the mortgage loan-to-income assignment from the Nibud workbook (Bijlage financieringslastnormen 2026, version 251110).
 Changed:
