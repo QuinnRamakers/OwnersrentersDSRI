@@ -1,7 +1,7 @@
 # Prompt: grid test at step 13, housing with the pension
 
-Saved on 16 Oct 2026. Not started. To start, open a Claude Code session on
-this repo (branch main) and point it to this file.
+Saved on 16 Oct 2026. Run on 16-17 Oct 2026 in Claude Code; the results are
+in HANDOFF.md (17 October entry).
 
 ## Goal
 

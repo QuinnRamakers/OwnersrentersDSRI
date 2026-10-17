@@ -169,6 +169,22 @@ At 32x32 consumption is within about 1% of 64x64 at every DC step; 64x64 is
 within the ladder's stop rule. The same placement leaves step 6 within its
 stop rule.
 
+## Housing, and housing with the pension
+
+The same placement works with housing. Tested at step 7b (16 October 2026) and
+step 13 (17 October), both with maintenance on the purchase price and the limit
+share (HANDOFF.md):
+
+- The owner is within the stop rule of the finest grid solved at 16x16 at step
+  7b and at 24x24 at step 13.
+- The renter is not, at either step, before 40. From 40 on consumption is within
+  2% at 32x32. That is the rent obligation (next section), not the grid.
+
+With the house and the pension together, u3 (the pot against pot plus house) is
+a live axis. Its 10 evenly spaced points are enough except for the equity share
+of owners past about 88, whose pot has fallen below the first point above zero
+(0.11). Doubling u3 doubles the solve time.
+
 ## What this does not fix
 
 The automatic grid puts nodes where the population is. It does not remove the

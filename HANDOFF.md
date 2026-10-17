@@ -36,6 +36,46 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 Grid test at step 13, housing with the pension: results (spec: none, asked by Quinn in Claude Code)
+Follows the entry below (expectations).
+Changed: `diagnostics/pension_grid/housing_pdf.m` takes a step (`housing_pdf(cover, 13)`); for step 13 it adds a u3 row to the grid-points page and a page per check (u3 doubled, no grid search) against the same grid; the 7b pages rebuilt with it are unchanged. GRIDS.md: a section on housing and housing with the pension. Output, gitignored: `ladder/standard_16x16x10x8_gh5/pension_grid/housing_13/grid_study_housing_13.pdf`; solves `pension_grid/13_pension_<arm>_<case>.mat`. Interim versions were sent to Quinn as runs landed.
+Checks run:
+- Step 13, maintenance on the purchase price, limit share, bunched (power 3 on both axes), gh_n 5, standard numerics otherwise. `model.checks` on every solve: offgrid [0 0 0 0]; floored 0 for the owner, 0.03-0.07% of renter household-years. MATLAB printed a few "matrix close to singular" warnings per solve (15 in all), as in one 7b solve; source not traced.
+- Owner, largest gaps to 32x32 by age band 26-39 / 40-66 / 67-95 (consumption; equity share of liquid saving; liquid savings in years of income):
+  - 16x16: 1.2 / 2.3 / 1.3%; 0.003 / 0.055 / 0.009; 0.05 / 0.14 / 0.30.
+  - 24x24: 0.7 / 0.8 / 0.4%; 0.008 / 0.013 / 0.005; 0.03 / 0.05 / 0.11. Within the stop rule at every age.
+  - Entry value 0.815, 0.807, 0.802 at 16, 24, 32.
+- Renter, largest gaps to 48x48:
+  - 16x16: 77 / 4.7 / 2.1%; 0.54 / 0.16 / 0.03; 0.8-0.9 years.
+  - 24x24: 57 / 3.0 / 1.1%; 0.54 / 0.09 / 0.02.
+  - 32x32: 37 / 1.7 / 0.7%; 0.47 / 0.05 / 0.01; 0.3-0.4 years.
+  - Entry value 0.60, 0.54, 0.47, 0.27 at 16, 24, 32, 48. On each finer grid young renters consume less and save more.
+- u3 at 20 points against 10, on 16x16:
+  - Owner: consumption within 0.4%, savings within 0.10 years. Share within 0.01 up to 86, then 0.02 at 88, 0.08 at 93 and 0.14 at 95 (the pot is under a tenth of pot plus house there, below the first u3 point above zero, 0.11).
+  - Renter: 3.0 / 0.2 / 0.7%; share 0.06 at 38-40, within 0.02 from 50, in the same direction as a finer grid on u1 and u2.
+- Without the grid search before fmincon, against the same grid with it:
+  - Renter: within the stop rule at 16x16 (0.3%, 0.009, 0.08 years) and at 32x32 (0.1%, 0.006, 0.02 years).
+  - Owner at 16x16: consumption within 0.2%, savings within 0.01 years, share of liquid saving 0.03 at 26-39 and within 0.004 after. The mean share (savers or not) is 0.35 off at 27. Entry value 0.812 against 0.815.
+- Solve times, two processes at a time (the owner's 32x32 alone for its last 2.5 hours):
+  - Renter 16, 24, 32, 48: 7, 14, 24, 53 minutes.
+  - Owner 16, 24, 32: 70, 151, 236 minutes.
+  - u3 doubled: renter 13, owner 143.
+  - No grid search: renter 3.8 (16x16) and 13 (32x32), owner 37.
+- Against the expectations:
+  - Right: the owner's smallest passing grid is 24x24; the renter behaves as at 7b; u3 doubled takes about twice as long.
+  - Wrong: u3 at 10 points is not enough for the share of the oldest owners. Without the grid search the gap is smaller than expected (only the mean share of young owners who barely save) and the time saving larger (half, not a third). The owner solves were faster than expected (1.2, 2.5, 3.9 h against 1.5, 3, 5 h).
+Reading:
+- The bunched grid carries over to step 13 for the owner: 24x24 is converged, between step 7b (16x16) and the DC steps without housing (48x48).
+- The renter waits on TODO item 1, as at step 7b. The pension does not change that.
+- Two numerical options are worth a decision before the ladder's numerics are set:
+  1. Bunch u3 toward zero (not built; u3 is always evenly spaced).
+  2. Drop the grid search at step 13, which halves the time at almost no cost in the answer here. That differs from the DC steps on 12 October, so it is step-specific.
+Commit: this entry, pushed to main.
+Open, Quinn's call:
+- The defaults of `pi_nothing_saved` and the ladder's grid placement (as before).
+- Whether to add a power option for u3.
+- Whether the ladder keeps the grid search.
+
 ### 2026-10-16 Grid test at step 13, housing with the pension: expectations written before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: run step 13 now; report the convergence and the run time of each grid; quadrature always 5 nodes; if time is left, the stability with and without the grid search before fmincon. The plan is `docs/prompts/step13_grid_test.md` (6d5dd58).
 Changed: nothing in the model or the solver. The page script of the 7b test gets a step argument (next entry).
