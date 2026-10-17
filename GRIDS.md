@@ -120,6 +120,7 @@ Primitives of `config.params`, all at their full-axis, uniform defaults except
 | `u2_lo` | `u2` | 0 | bottom of the illiquid axis |
 | `grid_pow_u2` | `u2` | 1 | `> 1` bunches nodes toward 1 |
 | `u3_lo`, `u3_hi` | `u3` | 0, 1 | ends of the pension-share axis |
+| `grid_pow_u3` | `u3` | 1 | `> 1` bunches nodes toward the bottom |
 
 The research branch also has `grid_space = 'logratio'`; it lost to uniform
 spacing on accuracy at working resolution and is not carried here.

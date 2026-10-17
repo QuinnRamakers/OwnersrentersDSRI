@@ -397,6 +397,7 @@ Not calibration targets; accuracy choices, justified by convergence checks.
 | `lambda_lo` | `[]` | 0.0008, or 0.0002 with housing. With house prices at 3.73% real and 8.35% vol, owners reach u1 = 0.0005 at 85+; 0.0008 clipped 0.02% of their household-years |
 | `lambda_hi` | `[]` | `min(0.9, 3/(1 + h_mult))`, or 1 without housing |
 | `grid_pow`, `grid_pow_u2`, `u2_lo`, `u3_lo`, `u3_hi`, `grid_nodes` | uniform, full axes | Placement; see GRIDS.md |
+| `grid_pow_u3` | 1 | The u3 axis: nodes `u3_lo + (u3_hi - u3_lo) * s^grid_pow_u3` for s uniform on [0, 1]; above 1 the nodes bunch toward u3 = 0, where the oldest owners' pension pot is small beside the house. 1 is evenly spaced. See GRIDS.md |
 | `q_hi`, `grid_pow_q` | 2.5, 2 | The q axis: nodes `q_hi * s^grid_pow_q` for s uniform on [0, 1]. Owners' q from the house-price process, 0.1th-99.9th percentile: 0.53-1.44 at 29, 0.10-1.45 at 54; the most extreme quadrature node takes q = 1.6-1.95. `q_hi` was 2 at first; in the simulator's own draws at standard numerics (10,000 owners, ages 25-54, steps 7b and 8) q passed 2 in 2 of 300,000 household-years (largest 2.04-2.06) and never passed 2.5 (Quinn, 15 October 2026). `grid_pow_q` is a starting value, to be checked by refinement |
 
 At the default grid, behaviour from 40 on is stable to a few percent. Early

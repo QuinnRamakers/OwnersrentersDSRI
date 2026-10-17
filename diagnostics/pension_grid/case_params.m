@@ -27,10 +27,11 @@ function p = case_params(step, arm, name)
 %     _mop      maint_on_purchase (maintenance on the purchase price), the
 %               housing variant without the ruin cliff; it changes the model
 %     _u3x2     u3 (pension against house) at twice its base points
+%     _u3p<n>   u3 bunched toward 0 with grid_pow_u3 = n
 %     _nosweep  the global (c, pi) grid search before fmincon switched off
 %               (use_refine = false)
 %   Apart from _mop nothing here changes the model: only grid_dims, grid_pow,
-%   grid_pow_u2, grid_nodes, gh_n, interp_method, use_refine and
+%   grid_pow_u2, grid_pow_u3, grid_nodes, gh_n, interp_method, use_refine and
 %   pi_nothing_saved are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
@@ -74,6 +75,8 @@ if contains(extra, '_makima'), p.interp_method = 'makima'; end
 if contains(extra, '_lim'), p.pi_nothing_saved = 'limit'; end
 if contains(extra, '_mop'), p.maint_on_purchase = true; end
 if contains(extra, '_u3x2'), p.grid_dims(3) = 2 * p.grid_dims(3); end      % pension-against-house axis doubled
+g = regexp(extra, '_u3p(\d+)', 'tokens', 'once');
+if ~isempty(g), p.grid_pow_u3 = str2double(g{1}); end                      % u3 bunched toward 0
 if contains(extra, '_nosweep'), p.use_refine = false; end                  % fmincon from the warm start, no grid search
 p = config.derive(p);
 end

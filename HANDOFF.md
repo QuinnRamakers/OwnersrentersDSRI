@@ -36,6 +36,21 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 u3 bunched toward zero at step 13: code, and expectations written before the runs (spec: none, asked by Quinn in Claude Code)
+Follows the step-13 results below: u3 at 10 evenly spaced points misses the equity share of the oldest owners, whose pot falls below the first point above zero (0.11).
+Changed:
+- `+config/params.m`, `+utility/build_state_grids.m`: new primitive `grid_pow_u3` (default 1). u3 is placed at lo + (hi - lo) * s^grid_pow_u3 for s evenly spaced on [0, 1]; above 1 the points bunch toward u3 = 0. At 1 the axis is the old one bit for bit. The collapsed axes ({0, 1} without housing or without a DC pillar) are untouched. CALIBRATION.md (numerics table) and GRIDS.md (placement table), one line each.
+- `+utility/auto_state_grids.m`: `grid_pow_u3` joins the placement fields left out of the pilot's cache key, as `grid_pow` and `grid_pow_u2` are.
+- `diagnostics/pension_grid/case_params.m`: suffix `_u3p<n>` (grid_pow_u3 = n).
+Checked before the runs: at power 2 the 10 points are 0, 0.012, 0.049, 0.111, 0.198, 0.309, 0.444, 0.605, 0.790, 1. `ladder.same_calibration` tells power 1 from power 2. `run_tests(solve=false)`: 0 of 9 failed.
+Where households sit on u3 (u3 doubled, 16x16): owners 0.02 at 26, 0.3-0.75 (5th-95th) at 40-67, then falling: below 0.11 for 32% at 88, 63% at 93 and 73% at 95; below 0.05 for 20% at 93 and 30% at 95. Renters 0.2-0.85 from 40 on, below 0.11 for 2% at 95.
+Runs: step 13 with maintenance on the purchase price, limit share, power 3 on u1 and u2 at 16x16, u3 at 10 points with power 2 (`pow3_16x16_lim_mop_u3p2`), gh_n 5, standard numerics otherwise. Owner, then renter beside it. Compared with u3 evenly spaced at 10 points (`pow3_16x16_lim_mop`) and at 20 (`_u3x2`).
+Expectations:
+- Owner, 88-95: within 0.02 of u3 doubled in the equity share of liquid saving, where evenly spaced 10 points were 0.02-0.14 off. Below 0.11 power 2 has three intervals and u3 doubled two, with nearly the same points at 0.05 and 0.11. A gap of 0.02-0.04 is possible at 93-95 for the fifth to third of owners below 0.05, where u3 doubled has no point and power 2 has two; it would not say which of the two is closer to the answer.
+- Owner, 26-87: within the stop rule of u3 doubled (0.02 in the share, 2% in consumption). From 40 to 80 owners sit at 0.3-0.75, where power 2 has points 0.14-0.19 apart against 0.11, but evenly spaced 10 points were already within 0.4% and 0.007 of u3 doubled there.
+- Renter: not better than evenly spaced. From 40 on renters sit at 0.2-0.85, where power 2 is coarser. The share gap to u3 doubled 0.05-0.10 at 40-66 (0.056 evenly spaced), consumption within 1% from 40. Before 40 nothing converges (the rent obligation, TODO item 1).
+- Solve time as the evenly spaced 16x16, since the number of points is the same: owner about 70 minutes, renter about 7, beside a second process.
+
 ### 2026-10-17 Grid test at step 13, housing with the pension: results (spec: none, asked by Quinn in Claude Code)
 Follows the entry below (expectations).
 Changed: `diagnostics/pension_grid/housing_pdf.m` takes a step (`housing_pdf(cover, 13)`); for step 13 it adds a u3 row to the grid-points page and a page per check (u3 doubled, no grid search) against the same grid; the 7b pages rebuilt with it are unchanged. GRIDS.md: a section on housing and housing with the pension. Output, gitignored: `ladder/standard_16x16x10x8_gh5/pension_grid/housing_13/grid_study_housing_13.pdf`; solves `pension_grid/13_pension_<arm>_<case>.mat`. Interim versions were sent to Quinn as runs landed.

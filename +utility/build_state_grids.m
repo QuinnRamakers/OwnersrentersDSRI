@@ -17,7 +17,7 @@ function p = build_state_grids(p, dims, gh_n)
 %         income share, and to 1 without housing, where a household that spends
 %         its liquid wealth down reaches lambda = 1 exactly.
 %     u2  [u2_lo, 1], bunched toward 1 when grid_pow_u2 > 1.
-%     u3  [u3_lo, u3_hi], uniform.
+%     u3  [u3_lo, u3_hi], bunched toward the bottom when grid_pow_u3 > 1.
 %     q   [0, q_hi], bunched toward 0 when grid_pow_q > 1.
 %   p.grid_nodes.u1_age and u2_age (one column per period) give each period
 %   its own u1 and u2 points instead (p.u1_grid_age, p.u2_grid_age; read them
@@ -80,9 +80,10 @@ if collapse_u3
 elseif ~isempty(given.u3)
     p.u3_grid = given.u3;
 else
+    q  = max(1, field_or(p, 'grid_pow_u3', 1));
     lo = max(0, min(0.5, field_or(p, 'u3_lo', 0)));
     hi = min(1, max(lo + 0.1, field_or(p, 'u3_hi', 1)));
-    p.u3_grid = linspace(lo, hi, N3).';
+    p.u3_grid = lo + (hi - lo) * (linspace(0, 1, N3).' .^ q);
 end
 
 if collapse_q
