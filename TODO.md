@@ -50,8 +50,11 @@ Decisions open, to be settled before step 7 is rerun:
    is positive and keeps three states.
 2. **The mortgage payment.** Settled for this contract on 15 October 2026: a
    real annuity on the purchase price, with q = H0/H as a fourth state, from
-   ladder step 7b on (CALIBRATION.md). Open: whether it removes enough of the
-   grid dependence at 25-39, which the step-7b runs measure.
+   ladder step 7b on (CALIBRATION.md). Measured on 16-17 October with
+   maintenance on the purchase price: for owners the grid dependence is gone
+   (bunched 16x16 converged at step 7b, 24x24 at step 13, at every age);
+   renters still do not converge before 40 at either step
+   (`docs/HANDOFF_2026-10-17.md`).
 3. **Renters.** Cap the rent burden with housing benefit (huurtoeslag), at a
    share of income to be sourced, or let renters downsize as in Yao and Zhang
    (2005).
@@ -73,11 +76,9 @@ agree within the stop rule (2 points in the equity share, 2% in consumption).
 If none of this is taken up, report ages 40+ only and state that accumulation
 is not identified.
 
-Related: `c_floor_frac`, the lower bound of the consumption search, is a
-modelling choice in disguise; decide it together with the floor. On the
-converged step-7 grids it binds for every owner aged 25-39, 99% of owner
-household-years at 40-66 and 48% from 67, and for 78% of renters aged 25-39
-(`docs/SOLVER_BOUNDS.md`, section 1).
+Related: since 15 October the lower bound of the consumption search is the
+floor itself, C >= phi_floor * Y (`docs/SOLVER_BOUNDS.md`, section 1), so
+setting the floor also sets the search bound.
 
 ## 2. Calibration inputs still missing
 
@@ -130,12 +131,10 @@ differences rather than levels.
 ## 6. Numerics
 
 - `docs/SOLVER_BOUNDS.md` lists every limit in the solver and the simulation
-  that is not part of the economics. Open there: the consumption-search bound
-  (1% of total wealth including the house, capped at half of liquid
-  resources), which sets the converged step-7 owner's consumption through
-  working life and half of retirement; the sweep's consumption step; the
-  policy stored at grid points below the floor; a counter for non-finite
-  values.
+  that is not part of the economics. Open there: the sweep's consumption
+  step; the policy stored at grid points below the floor; a counter for
+  non-finite values. (The consumption-search bound is now the floor, see
+  item 1.)
 - Early-life convergence waits on 1; no numerical lever fixes it.
 - The retirement equity share needs nodes where retirees live, at low u1.
   `utility.auto_state_grids` places them from a simulated panel (GRIDS.md);
@@ -147,12 +146,18 @@ differences rather than levels.
   converged on the same grid.
   Points bunched toward low u1 and u2 near 1 (`grid_pow` 3, `grid_pow_u2` 3)
   with `pi_nothing_saved = 'limit'` converge: 32x32 is within about 1% in
-  consumption, 64x64 within the stop rule. To decide: the default of
-  `pi_nothing_saved`; whether `ladder.numerics` carries the placement (every
-  saved ladder result would re-solve); whether points that follow age
-  (`grid_nodes.u1_age`, tried at step 12 only) stay as an option.
+  consumption, 48x48 within the stop rule. The same placement converges the
+  owner at housing step 7b (16x16) and at step 13 (24x24); there u3 also
+  needs points near zero (`grid_pow_u3 = 2`) for the oldest owners
+  (`docs/HANDOFF_2026-10-17.md`). To decide: the defaults of
+  `pi_nothing_saved` and `grid_pow_u3`; whether `ladder.numerics` carries the
+  placement (every saved ladder result would re-solve); whether points that
+  follow age (`grid_nodes.u1_age`, tried at step 12 only) stay as an option.
 - The global (c, pi) sweep is most of the solve time. A cheaper search that
-  keeps its accuracy would make the fine grid routine.
+  keeps its accuracy would make the fine grid routine. At step 13 dropping it
+  (`use_refine = false`) keeps the answer within the stop rule and halves the
+  time; at the DC steps (12 October) it moved the equity share by up to 0.4.
+  To decide: keep it everywhere or drop it per step.
 - With the sweep, interior-point and active-set agree within the solver stop
   rule at every ladder step run so far (1-7; within 0.001 in the mean equity
   share at step 7) but differed by up to 0.10 at the production calibration, with neither reaching the higher value at every

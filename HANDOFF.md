@@ -36,6 +36,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 The grid work of 16-17 October in one document (spec: none, asked by Quinn in Claude Code)
+Quinn: document what was found these two days, then start a new session.
+Changed: `docs/HANDOFF_2026-10-17.md` (new): where the ladder stands, what was found (the pension steps, housing at 7b and 13, the u3 axis, the grid search, the renter, run times), the decisions open in order, what can be quoted, how to reproduce, where things are. TODO.md: item 1 records what the step-7b and step-13 runs measured; the stale note on `c_floor_frac` (gone since 15 October) is replaced; section 6 adds steps 7b and 13, `grid_pow_u3` and the grid search per step.
+Checks run: none (documents only).
+Commit: this entry with the two files, pushed to main.
+Open, Quinn's call: the six decisions in section 3 of the new document, item 1 (the floor and the rent burden) first.
+
 ### 2026-10-17 u3 bunched toward zero at step 13: results (spec: none, asked by Quinn in Claude Code)
 Follows the entry below (code and expectations, ab720bb).
 Changed: `diagnostics/pension_grid/housing_pdf.m`: the check pages split into one for the u3 axis (rows u3 doubled and u3 power 2, against u3 at 10 evenly spaced points) and one without the grid search; the grid-points page draws the power-2 u3 points beside the base and doubled ones. GRIDS.md: the step-13 paragraph. Output, gitignored: `ladder/standard_16x16x10x8_gh5/pension_grid/housing_13/grid_study_housing_13.pdf` (u3 pages: `housing_5.png` owner, `housing_7.png` renter); solves `pension_grid/13_pension_<arm>_pow3_16x16_lim_mop_u3p2.mat`.
