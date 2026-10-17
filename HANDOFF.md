@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 Owner, steps 15 and 16 on the bunched grid: expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: do the converged owner comparison of steps 15 and 16 here.
+Plan: `solve_cases(["15:owner:pow3_24x24_lim_u3p2", "16:owner:pow3_24x24_lim_u3p2"])` (diagnostics/pension_grid), two MATLAB processes side by side: grid_pow 3, grid_pow_u2 3, pi_nothing_saved 'limit', grid_pow_u3 2, 24x24 on (u1, u2), u3 10, q 8, gh_n 5. Then the start-against-grid split of `diagnostics/nibud/start_vs_grid.m` on these two solutions. About 1.5 hours per solve: step 13 took 151 minutes at 24x24 with maintenance on the purchase price, where q is a state at every age; here q is a state only to 54, and the standard solves took 60% of step 13's time.
+Expectations:
+1. Grid effect (solution 16 against 15 from the same start): within the stop rule (2 points in the equity share, 2% in consumption) from 40 on. Possibly outside it before 40 or after 90: step 13 converged at 24x24 with maintenance on the purchase price, and these steps charge it on the current value, which leaves the old-age floor risk in place.
+2. Starting-house effect on consumption as on the standard grid within 1-2 points (-9% at 30, -6% at 40, -4 to -5% from 50 on), since there it already agreed between the two solutions.
+3. Levels against the standard grid: liquid saving lower at 55-75, consumption at 66 lower by 3-11% (the standard grid's error at the DC steps); no jump in the equity share at 55.
+
 ### 2026-10-17 Steps 15 and 16 (Nibud house): results (spec: none, asked by Quinn in Claude Code)
 Follows the expectations entry below (1a86291).
 Ran: `ladder.run(15)` and `ladder.run(16)` at standard numerics, two MATLAB processes side by side: step 15 52 minutes (renter 575 s, owner 2,518 s), step 16 the same (581 s, 2,536 s). `ladder.compare(16)`. New `diagnostics/nibud/start_vs_grid.m`: h_mult enters the solve only through the grid, so it simulates each saved solution again from both starting houses (same seed and panel; the re-simulation on its own solution and start reproduces the saved panel exactly). Within one solution the gap is the starting house; from one start the gap between solutions is the grid.
