@@ -36,6 +36,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 b0 and b_alt marked as placeholders (spec: none, asked by Quinn in Claude Code)
+Quinn: keep b0 and b_alt as they are, mark them as placeholders, and note the stale wage divisor.
+Changed: CALIBRATION.md, entry state: both rows marked as placeholders, and a paragraph on the divisor (the BKV men's wage, while income is now DHS household-head income, EUR 39,763 owners and 30,098 renters at 25). `+config/params.m`: the two comments. TODO.md, section 2: the row says placeholders. No value changed.
+Checks run: `run_tests(solve=false)` 0 of 9 failed. The full suite was not rerun: only comments changed in `+config` (it passed 0 of 16 on the values entry below).
+Commit: this entry with the three files, pushed to main.
+
 ### 2026-10-17 Parameters: mortgage rate 3.48%, rent share 5.6%, the floor is not calibrated (spec: none, asked by Quinn in Claude Code)
 Quinn: taxes off for now; work on the parameters. The mortgage rate is 3.48% in total, not a spread: r (1.15%, NL 3-month interbank, 1982-2024, monthly) plus the mean spread between the MIR home-purchase series and the 3-month interbank rate, 2000-2024. `alpha` is 5.6%, from a government report. `phi_floor` is not a placeholder: it is a numerical bound (1e-4 would also do), not a calibration exercise. All other open inputs are placeholders for now.
 Changed: `+config/params.m`: `r_m` 0.0136 to 0.0348, `alpha` 0.06 to 0.056; the comments mark `chi`, `kappa_base` and `theta` as placeholders and `phi_floor` as a numerical bound. `+ladder/steps.m`: the notes of steps 7 and 7b. CALIBRATION.md: the rows of `alpha`, `r_m`, `theta`, `chi`, `kappa_base` and `phi_floor`; the rent burden at entry; the floor paragraph. TODO.md: item 1 (the burden; the floor settled); section 2, the housing row. CLAUDE.md: the known limits wait on the housing outflow, not on a floor.

@@ -333,13 +333,18 @@ aged 25-39 who choose to consume only the floor.
 
 | Parameter | Value | Derivation |
 |---|---|---|
-| `b0` | 0.0791 | EUR 3,400 median deposits (main earner under 25) / EUR 43,002 men's age-25 wage in 2024 euros |
-| `b_alt` | 0.2279 | Same with the 25–35 deposits cell, EUR 9,800 |
+| `b0` | 0.0791 | Placeholder. EUR 3,400 median deposits (main earner under 25) / EUR 43,002 men's age-25 wage in 2024 euros |
+| `b_alt` | 0.2279 | Placeholder. Same with the 25–35 deposits cell, EUR 9,800 |
 
 Deposits are CBS 83834NED component 1.1.1, stock at 1-1-2024, the latest
 published year. Both sides are in 2024 euros deliberately: CPI scaling cancels
 in the ratio. The denominator is the men's wage because the model runs
 `sex = 1`, and the buffer is measured in years of the modelled agent's income.
+
+The denominator is out of date. It is the BKV men's wage, while the income
+profile is now DHS household-head income (EUR 39,763 for owners and 30,098 for
+renters at 25), so both values stay placeholders until the buffer is measured
+against the DHS income, possibly by tenure (TODO.md, section 2).
 
 Simulated households enter with `b0` years of income in liquid wealth, and the
 value at entry is read there (`utility.welfare_anchor`); both entry states are
