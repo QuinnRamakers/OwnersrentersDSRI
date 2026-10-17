@@ -32,7 +32,7 @@ only come from a part-year CPI average that CBS will revise.
 | `sex` | 1 (men) | Selects the BKV income table (`'table'`) only; unused by the DHS profile. The life table is unisex |
 | `gamma` | 5 | Production choice. CGM (2005) use 10; the ladder starts there |
 | `beta` | 0.96 | Larsen et al. (2023) |
-| `chi` | 0 | Bequest motive off in the baseline |
+| `chi` | 0 | Placeholder. Bequest motive off in the baseline |
 
 ## Labour income
 
@@ -103,7 +103,7 @@ giving about 10.0% at 25 rising to 14.0% at 50 on the owners' DHS profile, and
 
 | Parameter | Value | Source |
 |---|---|---|
-| `kappa_base` | 0.186 | OECD *Pensions at a Glance*: the 2022 country note gives 18.6% as the rate above the franchise; the 2025 edition (Table 3.4) repeats the number without restating that |
+| `kappa_base` | 0.186 | Placeholder. OECD *Pensions at a Glance*: the 2022 country note gives 18.6% as the rate above the franchise; the 2025 edition (Table 3.4) repeats the number without restating that |
 | `franchise` | EUR 18,475 | Minimum AOW-franchise per 1-1-2025, art. 18a lid 3 Wet LB, Belastingdienst CAP. The 2026 figure is EUR 19,172 and belongs only with a 2026 income factor |
 | `glide_cap`, `glide_span` | 0.8, 35 | Fund equity share `min(0.8, years to retirement / 35)`: 0.8 until 39, linear to 0 at 67. A stylised lifecycle fund |
 | `tau_decum` | `[]` | Fund equity share in retirement; empty keeps the glide's 0 (an all-bond fund) |
@@ -182,7 +182,7 @@ are real, and the correlations come from the same pipeline as the moments.
 
 | Parameter | Value | Source |
 |---|---|---|
-| `r` | 0.0115 | Real NL 3-month interbank rate (FRED IR3TIB01NLM156N) deflated by the CBS CPI, mean 1982–2024. Calibration notes, Table 2 |
+| `r` | 0.0115 | Real NL 3-month interbank rate (FRED IR3TIB01NLM156N, monthly) deflated by the CBS CPI, mean 1982–2024. Calibration notes, Table 2 |
 | `mu_S_level` | 0.0456 | Real stock return less `r`, mean 2000–2024. Calibration notes, Table 2 |
 | `sigma_S_level` | 0.2161 | Standard deviation of real stock returns, 2000–2024. An arithmetic std, as `sigma_S_level` is. Calibration notes, Table 2 |
 | `mu_H_level` | 0.0373 | Real house-price growth, mean, NVM repeat sales of individual houses, 1996–2024. Calibration tables, Table 1 |
@@ -247,10 +247,10 @@ because tenure is fixed at t = 1 and no household ever faces both processes.
 
 | Parameter | Value | Source |
 |---|---|---|
-| `alpha` | 0.06 | Rent-to-price ratio, Yao & Zhang (2005) and Fischer |
-| `theta` | 0.015 | Maintenance, Yao & Zhang (2005); Nibud's 1% plus local taxes |
+| `alpha` | 0.056 | Rent-to-price ratio. Government report (reference to add) |
+| `theta` | 0.015 | Placeholder. Maintenance, Yao & Zhang (2005); Nibud's 1% plus local taxes |
 | `h_mult` | 4.0 | `H_0 = h_mult * Y_0`. Placeholder |
-| `r_m` | 0.0136 | ECB MIR, NL cost of borrowing for house purchase, May 2026: 3.66% nominal less 2.3% inflation |
+| `r_m` | 0.0348 | The total real mortgage rate, not a spread: `r` plus the mean spread between the MIR home-purchase lending rate and the 3-month interbank rate, 2000–2024 |
 | `N_mort` | 30 | Standard Dutch annuity mortgage term |
 | `LTV` | 1.00 | Asserted — see below |
 | `mortgage` | `'annuity'` | The contract, see below. `'proportional'` at ladder step 7 |
@@ -258,8 +258,8 @@ because tenure is fixed at t = 1 and no household ever faces both processes.
 | `sell_cost` | 0.025 | Seller transaction cost at bequest, Hambel et al. (2026). Inert while `chi = 0` |
 
 For a renter, `alpha` and `h_mult` enter only as the product `alpha * h_mult`:
-the rent at entry is 24% of gross income, about 42% of net income after tax
-and contributions. That committed outflow, which the household cannot reduce,
+the rent at entry is 22.4% of gross income, about 24% of pay after
+contributions and 39% after the income tax as well. That committed outflow, which the household cannot reduce,
 is what makes early life ill-conditioned at this calibration (README). The
 owner's equivalent is maintenance plus the mortgage payment.
 
@@ -275,8 +275,8 @@ the `N_mort` paying years, or at every age when `maint_on_purchase` is true.
 
 Ladder step 7 keeps the earlier contract, `mortgage = 'proportional'`: the same
 rate applied to the current house value, with no fourth state. That payment
-grows with the house price; at step 7 its present value at `r_m` was 1.71 times
-the loan. Step 7b switches to the annuity and every step built on it inherits
+grows with the house price; at step 7, with a mortgage rate of 1.36%, its
+present value at `r_m` was 1.71 times the loan. Step 7b switches to the annuity and every step built on it inherits
 it. The bequest is not netted for the outstanding balance, which waits for
 `chi > 0` (TODO.md, item 4).
 
@@ -300,7 +300,7 @@ borrows to the ceiling.
 
 | Parameter | Value | Source |
 |---|---|---|
-| `phi_floor` | 1e-6 | Placeholder for the social minimum |
+| `phi_floor` | 1e-6 | A numerical bound, not a calibration target. 1e-4 is an admissible alternative |
 
 When a household's liquid resources fall short of `phi_floor * Y_t`, the
 shortfall is paid from outside: it consumes the floor and saves nothing. The
@@ -318,8 +318,9 @@ behaved at production housing costs but are a different model, and they bind
 in a few percent of household-years. A floor proportional to gross income
 cannot represent a level social minimum: setting it to the net AOW
 (`1 - tau_inc` = 0.618) guarantees 62% of a rising wage in working life and
-binds in 60% of household-years. The floor is the first calibration decision
-the research points to; see TODO.md.
+binds in 60% of household-years. The floor is not set to the social minimum.
+It stays a numerical device, and the early-life problem is left to the
+housing outflow (TODO.md, item 1).
 
 Until 15 October 2026 the lower bound of the consumption search was
 `c_floor_frac` = 1% of total wealth (house or rent index included), capped at

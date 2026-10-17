@@ -36,6 +36,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 Parameters: mortgage rate 3.48%, rent share 5.6%, the floor is not calibrated (spec: none, asked by Quinn in Claude Code)
+Quinn: taxes off for now; work on the parameters. The mortgage rate is 3.48% in total, not a spread: r (1.15%, NL 3-month interbank, 1982-2024, monthly) plus the mean spread between the MIR home-purchase series and the 3-month interbank rate, 2000-2024. `alpha` is 5.6%, from a government report. `phi_floor` is not a placeholder: it is a numerical bound (1e-4 would also do), not a calibration exercise. All other open inputs are placeholders for now.
+Changed: `+config/params.m`: `r_m` 0.0136 to 0.0348, `alpha` 0.06 to 0.056; the comments mark `chi`, `kappa_base` and `theta` as placeholders and `phi_floor` as a numerical bound. `+ladder/steps.m`: the notes of steps 7 and 7b. CALIBRATION.md: the rows of `alpha`, `r_m`, `theta`, `chi`, `kappa_base` and `phi_floor`; the rent burden at entry; the floor paragraph. TODO.md: item 1 (the burden; the floor settled); section 2, the housing row. CLAUDE.md: the known limits wait on the housing outflow, not on a floor.
+What it does at entry (arithmetic, no solve): the renter's rent falls from 24.0% to 22.4% of gross income. The owner's annuity payment rises from 4.08% to 5.42% of the purchase price a year, so mortgage plus maintenance goes from 22.3% to 27.7% of gross income. Owners now carry the larger committed outflow.
+Stale: every saved result with housing (steps 7 and 7b, and the step-13 grid study) is for the old calibration and has to re-solve. The owner convergence found at 7b (16x16) and 13 (24x24) was measured at 1.36% and is not guaranteed at 3.48%. Steps 1-6 and 9-12 are not affected (the test `nohousing_ignores_housing`: housing parameters leave a solve without housing bit-identical), but `ladder.same_calibration` compares every primitive and calls them stale as well.
+Checks run: `run_tests(solve=false)` 0 of 9 failed; full `run_tests` 0 of 16 failed.
+Commit: this entry with the five files, pushed to main.
+Open, Quinn's call: the reference for `alpha`; `beta` (CALIBRATION.md cites Larsen et al. 2023, TODO.md says it has no source); `b0` and `b_alt` (the divisor is still the BKV wage); whether `same_calibration` skips the housing primitives when `h_mult = 0`, or the saved results without housing get the new values written in.
+
 ### 2026-10-17 The grid work of 16-17 October in one document (spec: none, asked by Quinn in Claude Code)
 Quinn: document what was found these two days, then start a new session.
 Changed: `docs/HANDOFF_2026-10-17.md` (new): where the ladder stands, what was found (the pension steps, housing at 7b and 13, the u3 axis, the grid search, the renter, run times), the decisions open in order, what can be quoted, how to reproduce, where things are. TODO.md: item 1 records what the step-7b and step-13 runs measured; the stale note on `c_floor_frac` (gone since 15 October) is replaced; section 6 adds steps 7b and 13, `grid_pow_u3` and the grid search per step.

@@ -31,7 +31,7 @@ Use the session-start skill at the beginning and the session-end skill at the en
 
 ## Known limits (do not claim past these)
 
-- At the production calibration, ages 25 to 39 are not converged. Behaviour from age 40 is reliable. Report behaviour, not welfare levels, until the consumption floor is set (TODO.md, item 1).
+- At the production calibration, ages 25 to 39 are not converged. Behaviour from age 40 is reliable. Report behaviour, not welfare levels, until the housing outflow is settled (TODO.md, item 1). The floor is a numerical bound, not a calibration target.
 - The REIT parameters are placeholders and the REIT leg is off.
 - Free DC investment choice, glide-path comparisons and the September diagnostics live on the `solver-active-set` branch (tag `research-2026-09`), not here.
 

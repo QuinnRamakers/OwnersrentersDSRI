@@ -30,7 +30,7 @@ p.sex            = 1;         % 'table' income only: 1 men, 2 women, 3 pooled (m
 % Preferences
 p.gamma = 5;                  % relative risk aversion
 p.beta  = 0.96;               % time discount factor
-p.chi   = 0;                  % bequest intensity
+p.chi   = 0;                  % bequest intensity (placeholder)
 
 % Labour income. Owners use income_coef and sigma_l_log; renters the _rent fields.
 p.income_source       = 'dhs';     % 'dhs': DHS cubic in euros; 'poly': CGM cubic, not in euros; 'table': BKV age effects
@@ -53,7 +53,7 @@ p.corr_SH       = 0.24;       % owner: corr(stock return, house-price growth)
 p.corr_SH_rent  = 0.43;       % renter: corr(stock return, rent growth)
 
 % DC pension
-p.kappa_base = 0.186;         % contribution rate on income above the franchise; 0 removes the DC pillar
+p.kappa_base = 0.186;         % contribution rate on income above the franchise (placeholder); 0 removes the DC pillar
 p.franchise  = 18475;         % AOW franchise, euros
 p.glide_cap  = 0.8;           % fund equity share far from retirement
 p.glide_span = 35;            % fund equity share = min(glide_cap, years to retirement / glide_span)
@@ -71,13 +71,13 @@ p.corr_RH          = 0;       % corr(REIT return, H growth)
 % Housing. Renters pay alpha*H on a rent index H; owners pay maintenance and the mortgage.
 p.is_owner      = false;      % tenure; also selects the income fields without housing
 p.h_mult        = 4.0;        % H at entry as a multiple of income (placeholder); 0 removes housing
-p.alpha         = 0.06;       % rent as a share of the rent index
-p.theta         = 0.015;      % owner maintenance, share of H
+p.alpha         = 0.056;      % rent as a share of the rent index
+p.theta         = 0.015;      % owner maintenance, share of H (placeholder)
 p.mu_H_level    = 0.0373;     % real house-price growth
 p.sigma_H_level = 0.0835;     % house-price volatility
 p.mu_R_level    = 0.0099;     % real rent growth (the renter's H)
 p.sigma_R_level = 0.0179;     % rent growth volatility
-p.r_m           = 0.0136;     % real mortgage rate
+p.r_m           = 0.0348;     % real mortgage rate, the total rate (r plus the mortgage spread)
 p.N_mort        = 30;         % mortgage term, years
 p.LTV           = 1.00;       % only 1.00 is implemented
 p.mortgage      = 'annuity';  % 'annuity': fixed real payment on the purchase price; 'proportional': rate times current value (step 7)
@@ -92,7 +92,7 @@ p.cg_loss_offset = false;     % true rebates stock losses at the same rate
 p.tau_wealth     = 0;         % alternative box-3 levy on the liquid balance
 
 % Consumption floor and search guard
-p.phi_floor    = 1e-6;        % resources guaranteed each period, share of current gross income
+p.phi_floor    = 1e-6;        % resources guaranteed each period, share of current gross income; a numerical bound, not calibrated
 
 % Entry state: liquid wealth at 25 in years of income
 p.b0    = 3400 / (33000 * 1.3031);   % median deposits under 25 over the age-25 wage

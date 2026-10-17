@@ -12,8 +12,8 @@ things that are still open. The research evidence referred to is on the
 The decision everything else waits on. The calibration ladder stopped here, at
 step 7 (housing).
 
-At the production calibration a 25-year-old renter pays rent of about 44% of
-net income (owners: maintenance and mortgage of a similar order), cannot reduce
+At the production calibration a 25-year-old renter pays rent of about 39% of
+net income, 24% without the income tax (owners: maintenance and mortgage of a similar order), cannot reduce
 it, and is protected by a floor of 1e-6 times income. With gamma = 5 that
 leaves the early-life value function without a limit: refining the grid, the
 quadrature or the node placement moves consumption and the equity share at
@@ -58,14 +58,10 @@ Decisions open, to be settled before step 7 is rerun:
 3. **Renters.** Cap the rent burden with housing benefit (huurtoeslag), at a
    share of income to be sourced, or let renters downsize as in Yao and Zhang
    (2005).
-4. **The floor.** `phi_floor` is a placeholder; set it to the social minimum
-   (bijstand) as a share of income, with its source in CALIBRATION.md, and
-   decide whether it applies in retirement. A floor proportional to gross
-   income cannot represent a level minimum (`phi_floor = 0.618` guarantees 62%
-   of a rising wage and binds in 60% of household-years). A level floor in
-   euros needs W as a state (about 40x the solve cost). A higher floor weakens
-   precautionary saving; that is an economic effect to report, not a reason to
-   keep 1e-6.
+4. **The floor.** Settled on 17 October 2026: not a calibration target.
+   `phi_floor` stays a numerical bound at 1e-6, with 1e-4 admissible, and is
+   not set to the social minimum (CALIBRATION.md). The early-life problem has
+   to be met through the housing outflow (1, 3 and 6).
 5. **What the house is for.** A bequest (`chi > 0`, see 4) or equity release.
 6. **The outflow from data.** `h_mult` is a placeholder (see 2), and the
    owner's 100% LTV with almost no liquid wealth at entry is the starkest
@@ -86,7 +82,7 @@ setting the floor also sets the search bound.
 |---|---|
 | `h_mult` | Placeholder 4.0. Replace with an income-contingent assignment fitted on LISS, with the Nibud loan-to-income tables as a feasibility ceiling |
 | `kappa_base` | Single OECD figure. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie) |
-| Housing level | `h_mult` 4, `alpha` 6%, `theta` 1.5% and the mortgage (1.36%, 30 years, LTV 100%) are placeholders; the housing dynamics and correlations are calibrated (Tables 1 and 3) |
+| Housing level | `h_mult` 4 and `theta` 1.5% are placeholders. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.48% (CALIBRATION.md). The housing dynamics and correlations are calibrated (Tables 1 and 3) |
 | `b0`, `b_alt` | The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now DHS household-head income (EUR 39,763 owners, 30,098 renters at 25), so the denominator, and possibly a buffer by tenure, should follow |
 | REIT moments and correlations | The leg is off and the code still has placeholders; the calibration tables give 5.43% excess return, 24.48% vol (Table 1) and the correlations in Table 3 |
 | `beta`, `chi` | No sourced value yet |
