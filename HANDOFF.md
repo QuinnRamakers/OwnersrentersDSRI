@@ -36,6 +36,23 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 Steps 15 and 16 (Nibud house): results (spec: none, asked by Quinn in Claude Code)
+Follows the expectations entry below (1a86291).
+Ran: `ladder.run(15)` and `ladder.run(16)` at standard numerics, two MATLAB processes side by side: step 15 52 minutes (renter 575 s, owner 2,518 s), step 16 the same (581 s, 2,536 s). `ladder.compare(16)`. New `diagnostics/nibud/start_vs_grid.m`: h_mult enters the solve only through the grid, so it simulates each saved solution again from both starting houses (same seed and panel; the re-simulation on its own solution and start reproduces the saved panel exactly). Within one solution the gap is the starting house; from one start the gap between solutions is the grid.
+Output (gitignored, `ladder/standard_16x16x10x8_gh5/`): `compare_15_16_owner.png`, `compare_15_16_renter.png`, `owner_renter_16.png`; in `nibud/`: `start_15_*.png`, `start_16_*.png`, `grid_4p00x_*.png`, `grid_4p45x_*.png` (renter `grid_4p16x`).
+`model.checks`: off-grid 0 and c-bound 25-39 0% in all four arms. Floored: renter 1.43% (15) and 1.69% (16); owner 5.60% and 6.65%. Entry value: renter 0.262 and 0.247; owner 0.274 and 0.226. Owner thin-u1 warning at 55% of ages from 40 on, both steps.
+Results, mean consumption, step 16 against 15 (start effect = same solution, the two starts; it agrees between the two solutions within about 1 point):
+- Renter: start effect -3.0% at 30, -2.1% at 40, -1.5% from 50 on; grid effect under 1% at every age. Liquid saving +2-5%. Equity share unchanged (0.02 lower at 30).
+- Owner: start effect -9% at 30, -6% at 40, -4 to -5% from 50 on (-15% at 25); equity share 0.10 lower at 30, within 0.03 from 40. Liquid saving +6% at 25-30, -5% at 55, about 0 after.
+- Owner grid effect, same households and start: consumption -3 to -11% at 30-70 and +22% at 75; liquid saving +20% young, up to +90% at 75; equity share +0.24 to +0.29 at 55-56 and +0.18 at 60-66. The step-to-step owner dashboard is mostly this. The ladder's uniform 16x16 grid is not converged for the owner at this step (as at the DC steps and step 13, docs/HANDOFF_2026-10-17.md).
+Against the expectations:
+- Right: lower consumption for both, renters about a third of owners; owners' equity share within 0.05 from 40 as a start effect; higher owner net worth; slightly lower retirement consumption (-4 to -5%); lower entry value in every comparison.
+- Wrong: liquid saving rises, not falls, while young (both tenures): a larger committed outflow brings more precautionary saving. The owner's consumption fall at 25-30 (9-15%) is larger than the 5-6% written down.
+- Not foreseen: the grid effect on the owner is as large as the start effect before 55 and much larger after.
+Checks run: `run_tests(solve=false)` 0 of 10 failed. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
+Commit: this entry with `diagnostics/nibud/start_vs_grid.m`, pushed to main.
+Open: an owner comparison that can be read past 55 needs the bunched grid (grid_pow 3, grid_pow_u2 3, pi_nothing_saved 'limit', grid_pow_u3 2; step 13 converged at 24x24, about 2.5 hours per owner solve), which waits on open decision 2 (the ladder's grid).
+
 ### 2026-10-17 Steps 15 and 16 (Nibud house): expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: a dashboard of old against new results with the starting house. Neither step has been solved. Plan: `ladder.run(15)` and `ladder.run(16)` at standard numerics, two MATLAB processes side by side, then `ladder.compare(16)` (step 16 against 15, per tenure). About 1.5 hours.
 What differs (arithmetic): owners' house at entry 4.446 times income against 4.0, so mortgage plus maintenance 30.8% of gross income against 27.7% (55% of net against 50%); renters' rent index 4.155 against 4.0, rent 23.3% of gross against 22.4%. h_mult enters the solve only through the grid (the top of u1 falls from 0.600 to 0.551 owners, 0.582 renters, and the entry nodes move); the Bellman problem on the cube is otherwise the same, so the difference is mostly where households start.
