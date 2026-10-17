@@ -88,10 +88,11 @@ each checked on the baseline without the other:
 | 13 | `pension` | 8 | housing with the AOW and the DC pension (glide) |
 | 14 | `inctax` | 13 | EET income tax at 38.2% |
 | 15 | `box3` | 14 | box-3 tax at 36% on the liquid account, no loss offset |
+| 16 | `nibud` | 15 | the house at entry is the Nibud 2026 maximum mortgage at the tenure's income at 25 (4.45x owners, 4.16x renters) |
 
-Step 15 is `config.params()` exactly; `run_tests` checks this. To change the
-calibration, edit a value in a step or append a step after `box3` (a floor
-level, a housing multiple from data, the REIT leg). A step inserted between
+Step 16 is `config.params()` exactly; `run_tests` checks this. To change the
+calibration, edit a value in a step or append a step after `nibud` (a floor
+level, a housing multiple from LISS, the REIT leg). A step inserted between
 two others takes a letter (7b), so the steps after it keep their numbers.
 `ladder.params(8)`, `ladder.params('7b')` or `ladder.params('annuity')`
 returns the calibration at that step, and an override that names a field that

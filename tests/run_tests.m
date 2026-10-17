@@ -13,7 +13,8 @@ arguments
 end
 
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
-          @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live};
+          @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
+          @nibud_rule};
 if opts.solve
     checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
@@ -43,7 +44,7 @@ function params_derive()
 p = config.params();
 assert(isequaln(config.derive(p), p), 'derive changed an already-derived p');
 q = config.params(false);
-q.r = 0.02; q.retirement_age = 65; q.kappa_base = 0.1; q.h_mult = 9;
+q.r = 0.02; q.retirement_age = 65; q.kappa_base = 0.1; q.h_mult = 9; q.h_rule = 'fixed';
 q = config.derive(q);
 assert(abs(q.Rf - 1.02) < 1e-15, 'Rf not rebuilt');
 assert(q.t_ret == 41 && numel(q.tau_S) == q.T - 1 && q.tau_S(41) == 0, 'glide not rebuilt');
@@ -87,7 +88,7 @@ assert(ladder.parent('housing') == ladder.index('corr_SL'), 'housing parent');
 assert(ladder.parent('annuity') == ladder.index('housing'), 'annuity parent');
 assert(ladder.parent('housing_corr') == ladder.index('annuity'), 'housing_corr parent');
 assert(ladder.index('7b') == ladder.index('annuity') && ladder.index(8) == ladder.index('housing_corr') ...
-    && ladder.index(15) == numel(S), 'step numbers');
+    && ladder.index(16) == numel(S), 'step numbers');
 assert(strcmp(ladder.params('housing').mortgage, 'proportional') && ...
     strcmp(ladder.params('annuity').mortgage, 'annuity') && ...
     strcmp(ladder.params('housing_corr').mortgage, 'annuity'), 'mortgage contract along the ladder');
@@ -198,6 +199,43 @@ end
 p = ladder.params('annuity'); p.is_owner = true; p.maint_on_purchase = true; p = config.derive(p);
 assert(all(p.q_live) && any(p.q_grid == 1) && p.N_q == p.grid_dims(4) + 1, ...
     'maintenance on the purchase price: q live at every age, with q = 1 spliced in');
+end
+
+function nibud_rule()
+% The lookup reproduces cells of the workbook's maximum-mortgage table (box 1,
+% below AOW age, rates at the bracket midpoints); the EUR 17,000 increase
+% applies only above the first income row. Under the rule each tenure's house
+% at entry is the lookup at its own income at 25 and r_m. Steps 7-15 keep 4.
+cells = [30000 0.0325 110866.9563963191; 39000 0.0425 155913.3572837433; ...
+         74000 0.0325 332983.8293146786; 125000 0.0675 517140.9975474549];
+for k = 1:size(cells, 1)
+    M = config.nibud_lti(cells(k, 1), cells(k, 2), false) * cells(k, 1);
+    assert(abs(M / cells(k, 3) - 1) < 1e-12, 'workbook cell %d: %.2f against %.2f', k, M, cells(k, 3));
+end
+assert(config.nibud_lti(30000, 0.0348, true) == config.nibud_lti(30000, 0.0348, false), ...
+    'the increase applied at the first income row');
+assert(abs((config.nibud_lti(39763, 0.0348, true) - config.nibud_lti(39763, 0.0348, false)) * 39763 - 17000) < 1e-8, ...
+    'the increase is not EUR 17,000');
+expect = struct('owner', 4.446, 'renter', 4.155);
+for owner = [true false]
+    p = config.params(false); p.is_owner = owner; p = config.derive(p);
+    Y0 = exp(config.income_profile(p)); Y0 = Y0(1);
+    assert(p.h_mult == config.nibud_lti(Y0, p.r_m, p.nibud_extra), 'owner %d: h_mult is not the lookup', owner);
+    if owner, e = expect.owner; else, e = expect.renter; end
+    assert(abs(p.h_mult - e) < 5e-4, 'owner %d: h_mult %.4f against %.3f', owner, p.h_mult, e);
+    for name = {'housing', 'box3'}
+        q = ladder.params(name{1}); q.is_owner = owner; q = config.derive(q);
+        assert(q.h_mult == 4, '%s, owner %d: house not at 4 times income', name{1}, owner);
+    end
+end
+q = ladder.params('cgm'); q.h_mult = 4; q.h_rule = 'nibud';
+threw = false;
+try
+    config.derive(q);
+catch err
+    threw = strcmp(err.identifier, 'derive:poly_nibud');
+end
+assert(threw, 'the Nibud rule accepted income not in euros');
 end
 
 function collapsed_axes_exact()

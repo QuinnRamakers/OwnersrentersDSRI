@@ -12,8 +12,8 @@ things that are still open. The research evidence referred to is on the
 The decision everything else waits on. The calibration ladder stopped here, at
 step 7 (housing).
 
-At the production calibration a 25-year-old renter pays rent of about 39% of
-net income, 24% without the income tax (owners: maintenance and mortgage of a similar order), cannot reduce
+At the production calibration a 25-year-old renter pays rent of about 41% of
+net income, 25% without the income tax (owners: maintenance and mortgage of a similar order), cannot reduce
 it, and is protected by a floor of 1e-6 times income. With gamma = 5 that
 leaves the early-life value function without a limit: refining the grid, the
 quadrature or the node placement moves consumption and the equity share at
@@ -63,9 +63,10 @@ Decisions open, to be settled before step 7 is rerun:
    not set to the social minimum (CALIBRATION.md). The early-life problem has
    to be met through the housing outflow (1, 3 and 6).
 5. **What the house is for.** A bequest (`chi > 0`, see 4) or equity release.
-6. **The outflow from data.** `h_mult` is a placeholder (see 2), and the
-   owner's 100% LTV with almost no liquid wealth at entry is the starkest
-   version of the same problem.
+6. **The outflow from data.** `h_mult` now follows the Nibud maximum mortgage
+   (see 2), a ceiling rather than an estimate, and the owner's 100% LTV with
+   almost no liquid wealth at entry is the starkest version of the same
+   problem.
 
 Then rerun step 7 on the standard and the doubled grid; it passes when they
 agree within the stop rule (2 points in the equity share, 2% in consumption).
@@ -80,9 +81,9 @@ setting the floor also sets the search bound.
 
 | Input | Status |
 |---|---|
-| `h_mult` | Placeholder 4.0. Replace with an income-contingent assignment fitted on LISS, with the Nibud loan-to-income tables as a feasibility ceiling |
+| `h_mult` | Production uses the Nibud 2026 maximum mortgage at entry income (`h_rule = 'nibud'`, ladder step 16): 4.45 owners, 4.16 renters. To decide: the test rate (`r_m` is real, the norm's rate nominal); box 1 or box 3 (the model has no interest deduction); the 2025 tables for the price year; the EUR 17,000 increase; whether renters follow the rule. Still wanted: an income-contingent assignment fitted on LISS, with the Nibud rule as its ceiling |
 | `kappa_base` | Single OECD figure. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie) |
-| Housing level | `h_mult` 4 and `theta` 1.5% are placeholders. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.48% (CALIBRATION.md). The housing dynamics and correlations are calibrated (Tables 1 and 3) |
+| Housing level | `theta` 1.5% is a placeholder; `h_mult`, see above. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.48% (CALIBRATION.md). The housing dynamics and correlations are calibrated (Tables 1 and 3) |
 | `b0`, `b_alt` | Placeholders. The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now DHS household-head income (EUR 39,763 owners, 30,098 renters at 25), so the denominator, and possibly a buffer by tenure, should follow |
 | REIT moments and correlations | The leg is off and the code still has placeholders; the calibration tables give 5.43% excess return, 24.48% vol (Table 1) and the correlations in Table 3 |
 | `beta`, `chi` | Placeholders, no sourced value yet |

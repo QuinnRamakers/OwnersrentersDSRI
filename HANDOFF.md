@@ -36,6 +36,22 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 House at entry from the Nibud 2026 norms (spec: none, asked by Quinn in Claude Code)
+Quinn: add the mortgage loan-to-income assignment from the Nibud workbook (Bijlage financieringslastnormen 2026, version 251110).
+Changed:
+- `+config/nibud_lti.m` (new): the workbook's box-1 table for borrowers below AOW age (shares by income, EUR 30,000-125,000, and rate bracket) and its calculator: the largest mortgage is the loan whose 30-year monthly annuity costs the share of gross income, plus EUR 17,000 for a single earner above the first row.
+- `+config/params.m`: primitives `h_rule` ('nibud') and `nibud_extra` (true). `h_mult` keeps 4.0 for `h_rule = 'fixed'`; 0 still removes housing.
+- `+config/derive.m`: under 'nibud', `h_mult` becomes `config.nibud_lti` at the tenure's income at 25 and `r_m`. Refuses 'poly' income.
+- `+ladder/steps.m`: step 7 sets `h_rule = 'fixed'`, so steps 7-15 keep 4 times income; new last step 16 `nibud`.
+- `tests/run_tests.m`: new check `nibud_rule` (four workbook cells to 1e-12, the increase, each tenure's multiple, steps 7 and 15 at 4, 'poly' refused); `params_derive` sets 'fixed' for its h_mult = 9 case; the step count is 16.
+- CALIBRATION.md (new subsection on the rule and its choices), README.md (ladder table), TODO.md (the h_mult row with the open choices; item 1's burden).
+What it does at entry (arithmetic, no solve): owners 4.446 times income (share 21.6%), renters 4.155 (share 19.3%); without the increase 4.018 and 3.591. Owner mortgage plus maintenance 30.8% of gross income (27.7% at 4 times); renter rent 23.3% of gross (22.4%), 41% of net.
+Verified against the workbook: the formula reproduces 1,151 of the 1,152 cells of its box-1 maximum-mortgage table exactly; the remaining cell (33,000 at up to 1.5%) disagrees with the workbook's own share table, and the code uses the share. Its box-3 table is reproduced exactly as well.
+Checks run: `run_tests(solve=false)` 0 of 10 failed; full `run_tests` 0 of 17 failed, about 7 minutes (`smoke_both_tenures` solves production with the Nibud multiples, both tenures). No ladder step solved.
+Stale: production changed at step 16 only. Saved results with housing were already stale after the parameter change earlier today.
+Commit: this entry with the nine files, pushed to main.
+Open, Quinn's call: where the rule enters the ladder (last step, or step 7 in place of the 4); the test rate (`r_m` is real, the norm's rate nominal); box 1 or box 3 (the model deducts no interest: 3.57 owners, 3.34 renters); the 2025 tables, to match the price year; the EUR 17,000 increase; whether renters follow the rule.
+
 ### 2026-10-17 beta marked as a placeholder (spec: none, asked by Quinn in Claude Code)
 Quinn: mark beta = 0.96 as a placeholder, like the other unsourced inputs.
 Changed: CALIBRATION.md, the `beta` row (Larsen et al. 2023 kept as a candidate source, not checked); `+config/params.m`, the comment; TODO.md, section 2, the `beta`, `chi` row. No value changed. This settles the disagreement between CALIBRATION.md and TODO.md noted in the parameters entry below.

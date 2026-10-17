@@ -249,7 +249,9 @@ because tenure is fixed at t = 1 and no household ever faces both processes.
 |---|---|---|
 | `alpha` | 0.056 | Rent-to-price ratio. Government report (reference to add) |
 | `theta` | 0.015 | Placeholder. Maintenance, Yao & Zhang (2005); Nibud's 1% plus local taxes |
-| `h_mult` | 4.0 | `H_0 = h_mult * Y_0`. Placeholder |
+| `h_mult` | 4.0 | `H_0 = h_mult * Y_0` under `h_rule = 'fixed'` (ladder steps 7–15). Placeholder |
+| `h_rule` | `'nibud'` | `H_0` is the Nibud 2026 maximum mortgage at entry income, see below |
+| `nibud_extra` | true | The Nibud EUR 17,000 increase is included, see below |
 | `r_m` | 0.0348 | The total real mortgage rate, not a spread: `r` plus the mean spread between the MIR home-purchase lending rate and the 3-month interbank rate, 2000–2024 |
 | `N_mort` | 30 | Standard Dutch annuity mortgage term |
 | `LTV` | 1.00 | Asserted — see below |
@@ -258,10 +260,11 @@ because tenure is fixed at t = 1 and no household ever faces both processes.
 | `sell_cost` | 0.025 | Seller transaction cost at bequest, Hambel et al. (2026). Inert while `chi = 0` |
 
 For a renter, `alpha` and `h_mult` enter only as the product `alpha * h_mult`:
-the rent at entry is 22.4% of gross income, about 24% of pay after
-contributions and 39% after the income tax as well. That committed outflow, which the household cannot reduce,
-is what makes early life ill-conditioned at this calibration (README). The
-owner's equivalent is maintenance plus the mortgage payment.
+under the Nibud rule the rent at entry is 23.3% of gross income, about 25% of
+pay after contributions and 41% after the income tax as well. That committed
+outflow, which the household cannot reduce, is what makes early life
+ill-conditioned at this calibration (README). The owner's equivalent is
+maintenance plus the mortgage payment, 30.8% of gross income at entry.
 
 The mortgage is a real annuity on the purchase price: a constant real payment
 of `LTV * H0` times the annuity factor of an `N_mort`-year loan at `r_m`, so its
@@ -290,11 +293,57 @@ the rest of the model: the household is endowed with the house at `t = 1` with
 needs a down-payment endowment the model does not have, so it fails loudly
 rather than half-running.
 
-`h_mult = 4.0` is a placeholder. The intended replacement is an
-income-contingent assignment estimated from LISS (log house value at purchase
-on log income plus age and cohort controls), with the Nibud loan-to-income
-tables as a feasibility ceiling rather than the primary source — not everyone
-borrows to the ceiling.
+### House at entry: the Nibud rule
+
+With `h_rule = 'nibud'` the house at entry is the largest mortgage a lender
+may grant under the Nibud financing-cost norms for 2026 (Nibud,
+*Financieringslastnormen 2026*, bijlage, version 251110; `config.nibud_lti`).
+With `LTV` = 1 the loan is the house, so `config.derive` sets `h_mult` to that
+loan over the tenure's deterministic gross income at 25. `h_mult = 0` still
+removes housing.
+
+The norm caps the monthly payment of a 30-year annuity at a share of gross
+income, the financieringslastpercentage, read from a table by income and test
+rate `i`:
+
+```
+M = flp(Y, i) * Y / 12 / a,   a = (i/12) (1 + i/12)^360 / ((1 + i/12)^360 - 1)
+```
+
+The row is the last income at or below `Y` (EUR 30,000 to 125,000 in steps of
+1,000; lower incomes use the first row) and the column the rate bracket. This
+is the workbook's own calculator, and it reproduces the workbook's
+maximum-mortgage table; one cell of that table disagrees with the workbook's
+share table, and the share is used.
+
+| Choice | Value | Reason |
+|---|---|---|
+| Table | below AOW age, box 1 | The household buys at 25 with an annuity mortgage, whose interest is deductible |
+| Test rate | `r_m`, bracket 3.001–3.5% | The model's own mortgage rate, so the payment at entry is the norm's share of income apart from the increase |
+| Income | gross household-head income at 25, single earner | DHS: EUR 39,763 owners, 30,098 renters |
+| Increase | EUR 17,000 (`nibud_extra`) | The Tijdelijke regeling hypothecair krediet allows it for groups without personal unavoidable expenses; the workbook's calculator adds it by default for a single earner above the first income row |
+| Energy-label amounts | none | The model has no energy label |
+
+At production this gives `h_mult` = 4.446 for owners (share 21.6%) and 4.155
+for renters (share 19.3%); without the increase, 4.018 and 3.591. The renter
+follows the same rule on its own income, so its rent is `alpha` times the house
+it could have bought.
+
+What to keep in mind:
+
+- The renter's entry income sits just above the first row, where the share
+  rises fastest with income and where the increase starts.
+- The table is in 2026 euros and income in 2025 euros. Raising both entry
+  incomes by 3% moves the owner's multiple to 4.434 and the renter's to 4.306.
+  The 2025 tables would match the price year.
+- The box-1 shares assume the interest is deducted, which the model does not
+  do. The box-3 table (no deduction) gives 3.57 for owners and 3.34 for
+  renters.
+- The norm tests the contract's nominal rate; `r_m` is real.
+- The norm is a ceiling, and not everyone borrows to it. The intended
+  assignment is still an income-contingent estimate from LISS (log house value
+  at purchase on log income plus age and cohort controls), with this rule as
+  its upper bound.
 
 ## Consumption floor
 
@@ -380,7 +429,9 @@ housing: 9 `kappa_base` 0.186 with an all-bond fund (`glide_cap` 0), 10 an
 all-stock fund (`glide_cap` 1, `glide_span` 1, `tau_decum` 1), 11 the
 production glide above, 12 `replacement` 0.307. Retirement income stays at
 CGM's 68.2% of final income through step 11. Step 13 puts housing (step 8)
-together with the AOW and the DC pension; 14 and 15 add the taxes.
+together with the AOW and the DC pension; 14 and 15 add the taxes. Steps
+7–15 keep the house at 4 times entry income (`h_rule = 'fixed'`); 16 sets it
+by the Nibud rule.
 
 Around step 12, `ladder.sensitivity` moves `replacement` to 0.20 and 0.40 and
 `kappa_base` to 0.10 and 0.30, one at a time. These are illustrative values for
