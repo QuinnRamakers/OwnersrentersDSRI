@@ -36,6 +36,25 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 Owner, steps 15 and 16 on the bunched grid: results (spec: none, asked by Quinn in Claude Code)
+Follows the expectations entry below (0b445fe).
+Ran: `solve_cases('15:owner:pow3_24x24_lim_u3p2')` and the same for 16, two MATLAB processes side by side (the first launch failed on Windows quoting of the string argument; relaunched with char): 82 and 80 minutes. `start_vs_grid('pow3_24x24_lim_u3p2', {'owner'})`; the script now takes a grid-study case and also draws step 16 on the ladder's grid against the case (`levels_16_owner_<case>.png`).
+Output (gitignored): solves `ladder/standard_16x16x10x8_gh5/pension_grid/15_box3_owner_pow3_24x24_lim_u3p2.mat` and `16_nibud_owner_...`; figures in `nibud/`: `start_15_owner_<case>.png`, `start_16_owner_<case>.png`, `grid_4p00x_owner_<case>.png`, `grid_4p45x_owner_<case>.png`, `levels_16_owner_<case>.png`.
+`model.checks`: off-grid 0, thin u1 0 (55% on the ladder's grid), floored 1.96% (15) and 2.48% (16), against 5.60% and 6.65%; entry value 0.0001 and 0.0000 (0.274 and 0.226 on the ladder's grid). One "matrix close to singular" warning in step 15, as at step 13.
+Results:
+- Grid effect (solution 16 against 15, same start), largest by band: 25-39 consumption 15.6%, equity share 0.76 (outside the stop rule); 40-54 1.3% and 0.001; 55-66 0.3% and 0.004; 67-89 0.2% and 0.005; 90-95 0.5% and 0.015 (within). On the ladder's grid the owner is outside the stop rule in every band: consumption 4.6%, 4.9%, 9.3%, 23.2%, 2.7%; equity share 0.13, 0.11, 0.29, 0.15, 0.018.
+- Starting house 4.45x against 4.00x, mean consumption (the two solutions agree within 0.7 points): -18% at 40, -6.6% at 50, -4.8% at 55, -3.9% at 60, -3.4% from 66 on. In levels, 0.42 to 0.35 times entry income at 40, 1.00 to 0.97 at 66. Liquid saving 9% lower at 30, 3% higher at 50, 7% at 66, 10% at 80 (saving for maintenance on the larger house). Equity share within 0.02 at every age. Floored at 90: 3.7% to 5.0%.
+- Before 40 the percentages are of almost nothing: on this grid owners consume about 0 until 33 (mean 0.000 at 25, 0.003-0.005 at 30, 0.09-0.14 at 35 times entry income) and save the rest, the hoarding corner of the step-7 grid study.
+- Levels, step 16, this grid against the ladder's (multiples of entry income): liquid saving 6.0 against 1.3 at 40, 7.3 against 2.4 at 55, 6.8 against 3.9 at 66; median consumption 0.25 against 0.48 at 40, 0.88 against 0.62 at 66; equity share of liquid saving 0.00-0.01 from 30 to 60 against 0.16-0.46, then 0.54-0.67 in retirement; floored at 90 5% against 21%. The ladder's grid gets the owner's levels wrong at this step at every age, not only the step-to-step comparison.
+Against the expectations:
+- Right: within the stop rule from 40 on, outside before 40; no jump in the equity share at 55; the starting-house effect from 55 on within 1-2 points of the standard grid's.
+- Wrong: at 40-50 the starting-house effect is much larger than on the standard grid (-18% against -6% at 40). Levels against the standard grid go the other way from the DC steps: liquid saving 2-5 times higher, consumption at 66 about 40% higher, not lower.
+- Not foreseen: an equity share of liquid saving of about 0 through working life.
+Limits: the two grids compared differ only in the top of u1 and the entry nodes, so agreement between them is a weak convergence test; step 13 (maintenance on the purchase price) was within the stop rule of 32x32 at 24x24, this calibration has not been run at 32x32. Entry values are not readable (floor 1e-6).
+Checks run: `run_tests(solve=false)` 0 of 10 failed; `start_vs_grid` on the ladder's results reproduces the numbers of the entry "Steps 15 and 16 (Nibud house): results". No code in `+config`, `+ladder`, `+model` or `+solver` changed.
+Commit: this entry with `diagnostics/nibud/start_vs_grid.m`, pushed to main.
+Open: whether the ladder's grid carries the bunched placement (decision 2 in docs/HANDOFF_2026-10-17.md); with it, what the owner does before 40 (TODO item 1).
+
 ### 2026-10-17 Owner, steps 15 and 16 on the bunched grid: expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: do the converged owner comparison of steps 15 and 16 here.
 Plan: `solve_cases(["15:owner:pow3_24x24_lim_u3p2", "16:owner:pow3_24x24_lim_u3p2"])` (diagnostics/pension_grid), two MATLAB processes side by side: grid_pow 3, grid_pow_u2 3, pi_nothing_saved 'limit', grid_pow_u3 2, 24x24 on (u1, u2), u3 10, q 8, gh_n 5. Then the start-against-grid split of `diagnostics/nibud/start_vs_grid.m` on these two solutions. About 1.5 hours per solve: step 13 took 151 minutes at 24x24 with maintenance on the purchase price, where q is a state at every age; here q is a state only to 54, and the standard solves took 60% of step 13's time.

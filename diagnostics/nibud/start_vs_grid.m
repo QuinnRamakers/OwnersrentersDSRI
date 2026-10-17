@@ -1,29 +1,41 @@
-function start_vs_grid()
+function start_vs_grid(case_name, tenures)
 %START_VS_GRID  Step 16 against step 15: the starting house against the grid.
 %
-%   From the repository root, after ladder.run([15 16]) at standard numerics:
-%       addpath diagnostics/nibud; start_vs_grid
+%   From the repository root:
+%       addpath diagnostics/nibud diagnostics/pension_grid
+%       start_vs_grid                                    % ladder.run([15 16]), standard numerics
+%       start_vs_grid('pow3_24x24_lim_u3p2', {'owner'})  % solve_cases on another grid
 %
 %   h_mult enters the solve only through the grid (the top of the u1 axis and
 %   the entry nodes), so steps 15 and 16 solve the same problem on two grids.
 %   Each saved solution is simulated again from both starting houses, with the
-%   seed and panel size of the ladder run. On one solution, the difference
+%   seed and panel size of the original run. On one solution, the difference
 %   between the two starts is the effect of the starting house. From one
 %   start, the difference between the two solutions is the grid's.
 %
-%   Writes, next to the ladder results, in nibud/:
+%   Writes, next to the ladder results, in nibud/ (with _<case_name> appended
+%   for a grid-study case):
 %     start_<step>_<tenure>.png   solution of that step, 4x start against the Nibud start
 %     grid_<start>_<tenure>.png   one start, solution 15 against solution 16
+%     levels_16_<tenure>.png      grid-study case only: step 16 on the ladder's
+%                                 standard grid against this grid
+
+arguments
+    case_name (1,:) char = 'standard'
+    tenures cell = {'owner', 'renter'}
+end
 
 num = ladder.numerics('standard');
 out = fullfile(num.dir, 'nibud');
 if ~isfolder(out), mkdir(out); end
-L15 = ladder.load(15, 'standard');
-L16 = ladder.load(16, 'standard');
+tag = '';
+if ~strcmp(case_name, 'standard'), tag = ['_' case_name]; end
 
-for tenure = {'owner', 'renter'}
+for tenure = tenures
     t = tenure{1};
-    sols = {L15.(t), L16.(t)};
+    sols = {case_load(15, t, case_name), case_load(16, t, case_name)};
+    assert(~isempty(sols{1}) && ~isempty(sols{2}), 'start_vs_grid:missing', ...
+        'steps 15 and 16 (%s, %s) are not both solved.', t, case_name);
     step = {'15', '16'};
     h = [sols{1}.p.h_mult, sols{2}.p.h_mult];
     start = {sprintf('%.2fx', h(1)), sprintf('%.2fx', h(2))};
@@ -44,7 +56,7 @@ for tenure = {'owner', 'renter'}
             {sprintf('start %s', start{1}), sprintf('start %s', start{2})}, ...
             sprintf('%s: starting house %s against %s, both on the solution of step %s', ...
                 t, start{2}, start{1}, step{i}), ...
-            fullfile(out, sprintf('start_%s_%s.png', step{i}, t)), ...
+            fullfile(out, sprintf('start_%s_%s%s.png', step{i}, t, tag)), ...
             changes = {sprintf('Same solution (step %s, its grid); only the starting house differs.', step{i}), ...
                        'The difference is the effect of the starting house.'});
     end
@@ -52,11 +64,22 @@ for tenure = {'owner', 'renter'}
         figures.step_dashboard(R{1, j}, R{2, j}, ...
             {'solution 15', 'solution 16'}, ...
             sprintf('%s: solution of step 16 against step 15, both from a start of %s', t, start{j}), ...
-            fullfile(out, sprintf('grid_%s_%s.png', strrep(start{j}, '.', 'p'), t)), ...
+            fullfile(out, sprintf('grid_%s_%s%s.png', strrep(start{j}, '.', 'p'), t, tag)), ...
             changes = {sprintf('Same starting house (%s); only the grid differs.', start{j}), ...
                        'The difference is numerical, not economic.'});
     end
-    print_gaps(t, R, start);
+    print_gaps(t, R, start, case_name);
+    if ~isempty(tag)
+        % Step 16 on the ladder's grid against this grid: what the ladder's
+        % grid gets wrong in levels
+        ref = case_load(16, t, 'standard');
+        if ~isempty(ref)
+            figures.step_dashboard(ref, sols{2}, {'standard grid', case_name}, ...
+                sprintf('%s, step 16: the ladder''s standard grid against %s', t, case_name), ...
+                fullfile(out, sprintf('levels_16_%s%s.png', t, tag)), ...
+                changes = {'Same calibration and start; only the grid differs.'});
+        end
+    end
 end
 end
 
@@ -72,16 +95,18 @@ r.summary = model.summarize(p, sim);
 r.checks = model.checks(p, r.sol, sim, r.summary, r.profile, shocks);
 end
 
-function print_gaps(t, R, start)
+function print_gaps(t, R, start, case_name)
 % Mean consumption and liquid equity share: the starting-house effect on each
-% solution, and the grid effect from each start, at a few ages.
+% solution, and the grid effect from each start, at a few ages; then the
+% largest grid effect by age band against the stop rule (2% in consumption,
+% 0.02 in the equity share).
 ages = [30 40 50 55 56 60 66 70 75 80 85];
 a = R{1, 1}.summary.ages;
 pick = @(v) v(ismember(a, ages));
 C  = @(r) pick(r.summary.C.mean);
 PI = @(r) pick(r.summary.pi);
 pct = @(x, y) 100 * (y ./ x - 1);
-fprintf('\n%s: %% change in mean consumption, and change in the liquid equity share\n', t);
+fprintf('\n%s, %s: %% change in mean consumption, and change in the liquid equity share\n', t, case_name);
 fprintf('%-34s', 'age'); fprintf('%7d', ages); fprintf('\n');
 row = @(name, v, f) fprintf(['%-34s' repmat(f, 1, numel(v)) '\n'], name, v);
 row(sprintf('start %s vs %s, solution 15', start{2}, start{1}), pct(C(R{1,1}), C(R{1,2})), '%7.1f');
@@ -97,5 +122,17 @@ for i = 1:2
         fprintf('  solution %d, start %s: entry value %.3f, floored %.2f%%\n', 14 + i, start{j}, ...
             R{i, j}.checks.ce_entry, 100 * R{i, j}.checks.floored_share);
     end
+end
+bands = {[25 39], [40 54], [55 66], [67 89], [90 95]};
+fprintf('  largest grid effect by age band (stop rule: 2%% in consumption, 0.02 in the equity share)\n');
+for b = 1:numel(bands)
+    in = a >= bands{b}(1) & a <= bands{b}(2);
+    dc = 0; dp = 0;
+    for j = 1:2
+        dc = max(dc, max(abs(pct(R{1, j}.summary.C.mean(in), R{2, j}.summary.C.mean(in)))));
+        dp = max(dp, max(abs(R{2, j}.summary.pi(in) - R{1, j}.summary.pi(in))));
+    end
+    ok = 'within'; if dc > 2 || dp > 0.02, ok = 'OUTSIDE'; end
+    fprintf('    %d-%d: consumption %5.1f%%, equity share %.3f  %s\n', bands{b}, dc, dp, ok);
 end
 end
