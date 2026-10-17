@@ -17,10 +17,11 @@ function housing_pdf(cover_lines, step, out)
 %     4    owner: where households are against the grid points at 16 points per
 %          axis, evenly spaced, bunched and log-wealth; where the pension
 %          against the house (u3) is a live axis, also u3 at its base and
-%          doubled points
-%     then the checks on a fixed grid, per household and grid: u3 doubled
-%          (_u3x2) and without the grid search before fmincon (_nosweep),
-%          against the same grid as solved
+%          doubled points, and bunched toward 0 (power 2) where solved
+%     then the checks on a fixed grid, per household and grid, against the
+%          same grid as solved: one page for the u3 axis, doubled (_u3x2) and
+%          bunched toward 0 with power 2 (_u3p2), and one without the grid
+%          search before fmincon (_nosweep)
 %   Writes housing_<n>.png and grid_study_housing_<step>.pdf into
 %   <standard numerics dir>/pension_grid/housing_<step>/ unless out is given.
 
@@ -182,7 +183,10 @@ if any(cellfun(@(c) ~isempty(case_load(sid, 'owner', c)), {'logw_16x16_lim_mop',
 end
 dc = P{1}.kappa_base > 0;
 live_u3 = P{1}.N_u3 > 2;
+U3 = {'pow3_16x16_lim_mop', 'pow3_16x16_lim_mop_u3x2'};
+if ~isempty(case_load(sid, 'owner', 'pow3_16x16_lim_mop_u3p2')), U3{end+1} = 'pow3_16x16_lim_mop_u3p2'; end
 ng = numel(P); nr = 2 + live_u3;
+nc = max(ng, live_u3 * numel(U3));
 if dc
     liq_what = 'liquid / (liquid + house + pension pot) (1 - u2)';
     note = 'liquid savings against liquid savings plus the house and the pension pot';
@@ -190,24 +194,27 @@ else
     liq_what = 'liquid / (liquid + house) (1 - u2)';
     note = 'liquid savings against liquid savings plus the house';
 end
-fig = figure('Visible', 'off', 'Position', [30 30 800 * ng 650 * nr], 'Color', 'w');
-tl = tiledlayout(fig, nr, ng, 'Padding', 'compact', 'TileSpacing', 'compact');
+fig = figure('Visible', 'off', 'Position', [30 30 800 * nc 650 * nr], 'Color', 'w');
+tl = tiledlayout(fig, nr, nc, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {sprintf('Step %s, owner: where households are, against the grid points (16 per axis on every grid)', sid), ...
     'Blue: the households at each age (line: median; dark band: middle half; light band: middle 90%), from the finest grid.', ...
     ['Black lines: grid points. With housing, total resources include the house, and the second axis is ' note]}, ...
     'FontSize', 13, 'FontWeight', 'bold', 'Interpreter', 'none');
 c = st.series(1, :);
 for row = 1:nr
-    for g = 1:ng
+    for g = 1:nc
         ax = nexttile(tl);
         if row == 3
-            % u3 is placed the same way under every rule: base points, then doubled
-            if g > 2, axis(ax, 'off'); continue; end
-            p3 = P{2}; if g == 2, p3 = case_params(sname, 'owner', 'pow3_16x16_lim_mop_u3x2'); end
+            % u3 is placed the same way under every rule: base points, doubled,
+            % and bunched toward 0 where that was solved
+            if g > numel(U3), axis(ax, 'off'); continue; end
+            p3 = case_params(sname, 'owner', U3{g});
             Y = sim.sA ./ max(sim.sA + sim.sH, 1e-12); pts = p3.u3_grid; yl = [0 1]; yt = 0:0.2:1; logy = false;
             what = 'pension pot / (pot + house) (u3)';
-            tag = {'base', 'doubled'};
+            tag = {'base', 'doubled', 'power 2'};
             gtitle = sprintf('u3 at %d points (%s)', p3.N_u3, tag{g});
+        elseif g > ng
+            axis(ax, 'off'); continue;
         elseif row == 1
             Y = wy; pts = 1 ./ P{g}.u1_grid; yl = [1 6000]; yt = [1 2 5 10 20 50 100 200 500 1000 5000]; logy = true;
             what = 'total resources over income (1/u1)'; gtitle = gname{g};
@@ -231,7 +238,7 @@ for row = 1:nr
         inband = arrayfun(@(t) sum(pts >= q(1, t) & pts <= q(5, t)), 1:numel(ages));
         w = ages >= 30 & ages <= 85;
         title(ax, sprintf('(%s)  %s: %d to %d points where the middle 90%% are (30-85)', ...
-            char('a' + ng * (row - 1) + g - 1), gtitle, min(inband(w)), max(inband(w))), 'FontSize', 11, 'Interpreter', 'none');
+            char('a' + nc * (row - 1) + g - 1), gtitle, min(inband(w)), max(inband(w))), 'FontSize', 11, 'Interpreter', 'none');
     end
 end
 exportgraphics(fig, file, 'Resolution', 110);
@@ -240,28 +247,39 @@ end
 
 % ------------------------------------------------------------------------
 function pages = check_pages(sid, what, out, pages)
-% u3 doubled and no grid search, each against the same grid as solved.
+% Against the same grid as solved: the u3 axis (doubled, and bunched toward 0
+% with power 2) on one page, no grid search on another.
 for arm = {'owner', 'renter'}
     a = arm{1};
     for base = {'pow3_16x16_lim_mop', 'pow3_32x32_lim_mop'}
         b = base{1};
         r0 = case_load(sid, a, b);
         if isempty(r0), continue; end
+        ref_lab = sprintf('%s, limit share, u3 at %d evenly spaced points, with the grid search', lab(b), r0.p.N_u3);
         G = struct('name', {}, 'rs', {}, 'labels', {});
         r = case_load(sid, a, [b '_u3x2']);
         if ~isempty(r)
             G(end+1) = struct('name', 'u3 doubled', 'rs', {{r}}, ...
-                'labels', {{sprintf('u3 (pension against house) at %d points', r.p.N_u3)}}); %#ok<AGROW>
+                'labels', {{sprintf('u3 (pension against house) at %d evenly spaced points', r.p.N_u3)}}); %#ok<AGROW>
+        end
+        r = case_load(sid, a, [b '_u3p2']);
+        if ~isempty(r)
+            G(end+1) = struct('name', 'u3 power 2', 'rs', {{r}}, ...
+                'labels', {{sprintf('u3 at %d points bunched toward 0 (power 2)', r.p.N_u3)}}); %#ok<AGROW>
+        end
+        if ~isempty(G)
+            pages{end+1} = page(out, pages); %#ok<AGROW>
+            figures.robustness(r0, ref_lab, G, sprintf('%s, %s: the u3 axis on %s', what, a, lab(b)), ...
+                pages{end}, 'the same grid as solved');
         end
         r = case_load(sid, a, [b '_nosweep']);
         if ~isempty(r)
-            G(end+1) = struct('name', 'No grid search', 'rs', {{r}}, ...
-                'labels', {{'fmincon from the warm start, without the (c, pi) grid search'}}); %#ok<AGROW>
+            G = struct('name', 'No grid search', 'rs', {{r}}, ...
+                'labels', {{'fmincon from the warm start, without the (c, pi) grid search'}});
+            pages{end+1} = page(out, pages); %#ok<AGROW>
+            figures.robustness(r0, ref_lab, G, sprintf('%s, %s: the grid search on %s', what, a, lab(b)), ...
+                pages{end}, 'the same grid as solved');
         end
-        if isempty(G), continue; end
-        pages{end+1} = page(out, pages); %#ok<AGROW>
-        figures.robustness(r0, sprintf('%s, limit share, u3 at %d points, with the grid search', lab(b), r0.p.N_u3), G, ...
-            sprintf('%s, %s: the checks on %s', what, a, lab(b)), pages{end}, 'the same grid as solved');
     end
 end
 end

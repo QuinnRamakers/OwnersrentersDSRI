@@ -36,6 +36,29 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 u3 bunched toward zero at step 13: results (spec: none, asked by Quinn in Claude Code)
+Follows the entry below (code and expectations, ab720bb).
+Changed: `diagnostics/pension_grid/housing_pdf.m`: the check pages split into one for the u3 axis (rows u3 doubled and u3 power 2, against u3 at 10 evenly spaced points) and one without the grid search; the grid-points page draws the power-2 u3 points beside the base and doubled ones. GRIDS.md: the step-13 paragraph. Output, gitignored: `ladder/standard_16x16x10x8_gh5/pension_grid/housing_13/grid_study_housing_13.pdf` (u3 pages: `housing_5.png` owner, `housing_7.png` renter); solves `pension_grid/13_pension_<arm>_pow3_16x16_lim_mop_u3p2.mat`.
+Checks run:
+- Full `run_tests`: 0 of 16 failed, 7.9 minutes beside the owner solve.
+- Step 13 at 16x16 with u3 at power 2. `model.checks`: owner offgrid [0 0 0 0], floored 0, c_bound_25_39 0, thin_u1_40 0, entry value 0.8132 (0.8145 evenly spaced, 0.8150 doubled), one "matrix close to singular" warning; renter offgrid [0 0 0 0], floored 0.06%, c_bound_25_39 0, entry value 0.5986 (0.6011, 0.5814).
+- Solve times: owner 73 minutes (4,369 s), beside the renter solve and the tests for its first 16 minutes, alone after; renter 8 minutes beside the owner. Evenly spaced 16x16: 70 and 7.4 minutes.
+- Owner, gap to u3 doubled, equity share of liquid saving: power 2 within 0.010 up to 92, then 0.011 at 93, 0.014 at 94, 0.024 at 95. Evenly spaced: 0.019 at 88, 0.081 at 93, 0.138 at 95. Consumption within 0.62% at every age (evenly spaced 0.40%).
+- Owner, liquid savings: power 2 holds 2-5% more than u3 doubled at 40-80 (0.19 years of income at 67), evenly spaced 1-4% (0.10 years). At 88-95 power 2 is within 9%, evenly spaced 16-213% (small levels: under 0.07 years of income either way).
+- Renter, gap to u3 doubled: power 2 like evenly spaced at 26-66 (share 0.064 at 38 against 0.062; consumption 3.1% at 26 with either); closer in retirement (share 0.011 against 0.025 at 95; consumption 0.2% against 0.7%; savings within 2% against up to 11% from 50 on).
+- Against the expectations:
+  - Right: the owner's share at 88-94 is within 0.02 of u3 doubled; at 95 it is 0.024, inside the 0.02-0.04 written down; 26-87 within the stop rule; the same solve time.
+  - Wrong: power 2 is not worse for renters. Their gap to u3 doubled at 38-42 is the number of points between 0.1 and 0.5, which neither 10-point grid changes. Not foreseen: power 2 moves the owners' liquid savings at 40-80 more than even spacing does.
+Reading:
+- Power 2 at 10 points passes the stop rule against u3 doubled at every age but 95, where it misses by 0.004. There u3 doubled is the coarser of the two near zero: 30% of owners at 95 sit below 0.05, where u3 doubled has no point and power 2 has two. The share at 95 rises as the first point above zero falls: 0.77 at 0.111 (evenly spaced), 0.91 at 0.053 (doubled), 0.93 at 0.012 (power 2). The steps shrink from 0.14 to 0.02, so power 2 is probably the closer one.
+- The price is in the middle of the axis, where owners sit from 40 to 80: liquid savings move about twice as much as with even spacing, though consumption and the share stay within the stop rule.
+- Power 2 at 20 points (`_u3x2_u3p2`, owner about 2.5 hours) would show whether that is enough at both ends.
+Commit: this entry, pushed to main.
+Open, Quinn's call:
+- Whether to use `grid_pow_u3` = 2 at step 13 and after (the default stays 1).
+- Whether to run power 2 at 20 points as the reference.
+- Saved results carry no `grid_pow_u3`, so `ladder.same_calibration` now calls every saved result a different calibration: steps 6 and 9-12 at standard numerics, current before this change, now draw the `ladder:stale` warning, and `ladder.run` would re-solve them (7 and 7b were already stale, without `pi_nothing_saved`). Adding `grid_pow_u3 = 1` to the `p` of those saved files would be exact, since 1 gives the old grid bit for bit and u3 collapses without housing. Not done.
+
 ### 2026-10-17 u3 bunched toward zero at step 13: code, and expectations written before the runs (spec: none, asked by Quinn in Claude Code)
 Follows the step-13 results below: u3 at 10 evenly spaced points misses the equity share of the oldest owners, whose pot falls below the first point above zero (0.11).
 Changed:

@@ -186,6 +186,15 @@ a live axis. Its 10 evenly spaced points are enough except for the equity share
 of owners past about 88, whose pot has fallen below the first point above zero
 (0.11). Doubling u3 doubles the solve time.
 
+`grid_pow_u3 = 2` bunches the same 10 points toward zero (0, 0.012, 0.049,
+0.111, ...) at the same solve time. The share of the oldest owners is then
+within 0.02 of 20 evenly spaced points up to 94, and 0.024 at 95, where the 20
+points are the coarser grid near zero. The price is fewer points in the middle,
+where owners sit from 40 to 80: their liquid savings move about twice as much
+as with even spacing, while consumption and the share stay within the stop
+rule. Renters, who sit at 0.2-0.85 from 40 on, do as well as with even spacing
+in mid-life and better in retirement. Tested 17 October 2026 (HANDOFF.md).
+
 ## What this does not fix
 
 The automatic grid puts nodes where the population is. It does not remove the
