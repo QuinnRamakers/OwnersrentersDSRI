@@ -36,6 +36,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 beta marked as a placeholder (spec: none, asked by Quinn in Claude Code)
+Quinn: mark beta = 0.96 as a placeholder, like the other unsourced inputs.
+Changed: CALIBRATION.md, the `beta` row (Larsen et al. 2023 kept as a candidate source, not checked); `+config/params.m`, the comment; TODO.md, section 2, the `beta`, `chi` row. No value changed. This settles the disagreement between CALIBRATION.md and TODO.md noted in the parameters entry below.
+Checks run: `run_tests(solve=false)` 0 of 9 failed. Full suite not rerun: comments only in `+config`.
+Commit: this entry with the three files, pushed to main.
+Open: the reference for `alpha`.
+
 ### 2026-10-17 b0 and b_alt marked as placeholders (spec: none, asked by Quinn in Claude Code)
 Quinn: keep b0 and b_alt as they are, mark them as placeholders, and note the stale wage divisor.
 Changed: CALIBRATION.md, entry state: both rows marked as placeholders, and a paragraph on the divisor (the BKV men's wage, while income is now DHS household-head income, EUR 39,763 owners and 30,098 renters at 25). `+config/params.m`: the two comments. TODO.md, section 2: the row says placeholders. No value changed.

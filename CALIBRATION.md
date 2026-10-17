@@ -31,7 +31,7 @@ only come from a part-year CPI average that CBS will revise.
 | `p_surv` | age profile | CBS life table 2021–2026, sexes combined (`CBSunisexmortality21-26.csv`, StatLine 37360ned) |
 | `sex` | 1 (men) | Selects the BKV income table (`'table'`) only; unused by the DHS profile. The life table is unisex |
 | `gamma` | 5 | Production choice. CGM (2005) use 10; the ladder starts there |
-| `beta` | 0.96 | Larsen et al. (2023) |
+| `beta` | 0.96 | Placeholder. Larsen et al. (2023) is a candidate source, not checked |
 | `chi` | 0 | Placeholder. Bequest motive off in the baseline |
 
 ## Labour income
