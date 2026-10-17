@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-17 Steps 15 and 16 (Nibud house): expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: a dashboard of old against new results with the starting house. Neither step has been solved. Plan: `ladder.run(15)` and `ladder.run(16)` at standard numerics, two MATLAB processes side by side, then `ladder.compare(16)` (step 16 against 15, per tenure). About 1.5 hours.
+What differs (arithmetic): owners' house at entry 4.446 times income against 4.0, so mortgage plus maintenance 30.8% of gross income against 27.7% (55% of net against 50%); renters' rent index 4.155 against 4.0, rent 23.3% of gross against 22.4%. h_mult enters the solve only through the grid (the top of u1 falls from 0.600 to 0.551 owners, 0.582 renters, and the entry nodes move); the Bellman problem on the cube is otherwise the same, so the difference is mostly where households start.
+Expectations:
+1. Owners: lower consumption and liquid saving at 25-55, by roughly the extra outflow (3% of gross income, about 5-6% of consumption), and more households near the floor before 40. Higher net worth from the larger house throughout, most visibly after the mortgage ends at 55. Slightly lower consumption in retirement (maintenance on a larger house) offset by more housing wealth; equity share of liquid saving within 0.05 from 40 on.
+2. Renters: the same in the same direction but about a third as large (1% of gross income); within the noise before 40, where the renter does not converge at this grid.
+3. Both: a lower value at entry. Differences before 40 are not reliable at this calibration (TODO item 1); read 40+.
+
 ### 2026-10-17 Nibud rule: tested against the workbook, and h_mult made a derived field (spec: none, asked by Quinn in Claude Code)
 Quinn asked whether the Nibud rule (88b2e28) had been tested properly. It had not been tested enough, and testing found a bug.
 Bug: in 88b2e28 `config.derive` overwrote the primitive `h_mult` with the Nibud multiple. `ladder.load` and `ladder.report` switch tenure without deriving again before `ladder.same_calibration`, so a saved step-16 owner result would have been reported as stale (the renter's 4.155 against the owner's 4.446). Switching `h_rule` to 'fixed' on a derived p kept the Nibud multiple instead of 4.
