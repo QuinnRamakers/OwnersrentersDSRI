@@ -58,7 +58,7 @@ Against the expectations:
 - Not foreseen: the solver's 'nearest' extrapolation snaps every coordinate to the nearest node. bellman_step_lna's comments say flat extrapolation, but past the top of u1 or q the value is nearest-node in u2 and u3 as well. Inserting u3 points changed the step's values at nodes near the u1 top by up to a factor of 2,600.
 Limits: five ages. The regions are cell centres inside the 5th-95th percentile band, not the households' own states. Off the nodes, the Bellman value comes from the solver's own search; a search that missed the best choice would also show up as a positive gap. On the nodes the same search reproduces the saved values. The 20-point grid's middle errors are not traced further.
 Checks run: `run_tests(solve=false)` 0 of 10 failed. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
-Commit: see the next log line in git (this entry with `ruin_interp.m`), pushed to main.
+Commit: 0e451c6 (this entry with `ruin_interp.m`), pushed to main.
 Open: (1) TODO item 1 first. (2) The 'nearest' extrapolation: how often the solver's quadrature leaves the grid, and whether extrapolation flat along each axis changes the answer. That is a `+solver` change and Quinn's call. (3) If the floor stays at 1e-6: an interpolation that handles the trough (for example one that locates the floor's edge), tested with this script.
 
 ### 2026-10-18 Step 16: does the interpolation misprice the ruin corner? Expectations before the runs (spec: none, asked by Quinn in Claude Code)
