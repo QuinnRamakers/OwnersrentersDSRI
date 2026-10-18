@@ -23,7 +23,8 @@ function grid_lifecycles(step, arm, rows, file, ttl, X0)
 %   liquid saving (all households' stocks over their liquid saving, case_load's
 %   piw), and the share of households at the floor. Every line is over the
 %   same simulated households. Within a row coarse grids are light and fine
-%   ones dark, in one hue; the second row takes a second hue. Dotted vertical
+%   ones dark, in one hue; the second row takes a second hue. The rows of a
+%   column share one vertical scale. Dotted vertical
 %   lines: the end of the mortgage (owners) and retirement.
 
 if nargin < 6, X0 = []; end
@@ -45,6 +46,7 @@ title(tl, {ttl, [start 'Each line is the same 10,000 simulated households on a d
     'Levels in multiples of mean income at 25. Dotted: end of the mortgage (owners) and retirement']}, ...
     'FontSize', 13, 'FontWeight', 'bold', 'Interpreter', 'none');
 
+AX = gobjects(nr, nc);
 for i = 1:nr
     R = rows(i);
     n = numel(R.cases);
@@ -70,6 +72,7 @@ for i = 1:nr
     Y0 = lines{end}.Y0;
     for j = 1:nc
         ax = nexttile(tl, (i - 1) * nc + j); hold(ax, 'on'); box(ax, 'on'); grid(ax, 'on');
+        AX(i, j) = ax;
         set(ax, 'FontSize', 9, 'GridColor', gridc, 'GridAlpha', 1, 'XColor', ink2, 'YColor', ink2);
         h = gobjects(1, numel(lines));
         for k = 1:numel(lines)
@@ -95,6 +98,12 @@ for i = 1:nr
                 'TextColor', hex('#0b0b0b'));
         end
     end
+end
+for j = 1:nc        % one scale per column, so the rows can be compared
+    a = AX(isgraphics(AX(:, j)), j);
+    if numel(a) < 2, continue; end
+    lim = vertcat(a.YLim);
+    set(a, 'YLim', [min(lim(:, 1)), max(lim(:, 2))]);
 end
 exportgraphics(fig, file, 'Resolution', 110);
 close(fig);
