@@ -36,6 +36,26 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-18 Step 16: grid points where households sit: expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Follows "is the bunching in the right place?" below. Question: does putting the points where step-16 households sit (u3 evenly spaced, a lower top on u1, q on [0, 1.3]) change or steady the answer?
+Changed (diagnostics only): `case_params.m` takes `_u3even` (grid_pow_u3 = 1, the default, written into the name), `_lhi<n>` (lambda_hi = n/100) and `_qhi<n>` (q_hi = n/10). No new primitives.
+Bound on u1, checked on the saved panels before choosing: at lambda_hi 0.2 (W/Y 5, just under the entry anchors at 5.5-5.7) 5-6% of owners at 26-28 and 24-28% of renters at 26-33 sit above the top (income grows faster than the house or rent index); at 0.3 no owner does and 0.01% of renter household-years. So the trimmed cases use 0.3, and one owner case at 0.2 is a probe (Quinn's choice). q above 1.3 holds about 1% of owners at 30-40 (price falls, highest 1.9). Above the top of an axis the solver and the panel use the flat value at the top node. With grid_pow 3 the lower top moves every u1 point, not only the top ones: 24x24 at 0.3 has 6 points between W/Y 6 and 20 and 5 between 50 and 300, against 5 and 4 now.
+Plan, two MATLAB processes:
+1. A: owner `pow3_24x24_lim_qn4_u3even_lhi30_qhi13`, then `pow3_24x24_lim_qn4_u3even`, then the probe `pow3_24x24_lim_qn4_u3even_lhi20_qhi13` (about 40 minutes each), then renter `pow3_16x16_lim_u3even_lhi30`, `_u3n20_u3even_lhi30`, `_u3even`, `_u3n20_u3even` (7, 14, 7, 14).
+2. B: owner `pow3_24x24_lim_qn4_u3n20_u3even_lhi30_qhi13`, then `pow3_24x24_lim_qn4_u3n20_u3even` (about 80 each).
+3. `size_table` and `policy_gaps` against owner `pow3_24x24_lim_u3p2_qn4` and `_qn4_u3n20`, and renter `pow3_16x16_lim_u3p2`, `_u3n20`, `_u3n40`; `axis_occupancy` and `grid_lifecycles` for the new cases.
+Two readings, which the runs can tell apart:
+- Occupancy: what matters is points where households sit. Then u3 even at 10 is closer to u3 at 20 than power 2 at 10 is, and the bounds change little from 55 on.
+- Ruin pricing (Quinn's note): what matters is how well the interpolation prices the states a bad shock can reach, near u3 = 0 (median floored owner at 0.02) and past the trimmed tops, even where nobody sits. Then u3 even at 10, with 2 points below 0.12 instead of 4, floors more people and moves away from u3 at 20; and the flat value past a trimmed top hides the ruin, so young owners save less.
+Expectations:
+1. Renter, u3 at 10: even spacing is closer to u3 at 40 than power 2 from 55 on (power 2 at 4.0/0.027 at 55-66 and 67-89, power 3 worse at 4.6/0.035, so the trend runs toward even). It still fails the 2% rule at 55-66. The floored share falls a little (1.21% at power 2, 1.35% at power 3). This is the occupancy reading, and the renter result so far supports it.
+2. Owner, u3 at 10 even: moves toward u3 at 20 (more saving from 45 to 66, a lower floored share than 2.48%), but not far: u3 at 20 has 7 points in 0.3-0.8, even at 10 has 5, power 2 at 10 has 4. If it instead floors more and moves away from u3 at 20, that is the ruin-pricing reading.
+3. Owner, u3 at 20, even against power 2: close, within a few % from 55, because both have enough points in the middle. A large gap would mean placement still matters at 20 points, so u3 is not converged at 20.
+4. lambda_hi 0.3 with q_hi 1.3, against the same case without: within 1% and 0.01 from 55 on (q is not a state there and nobody is near the u1 top). Before 55 a few % at most. offgrid: u1 0, q above 0 (the 1% of owners at 30-40).
+5. Probe at lambda_hi 0.2: offgrid on u1 in the thousands, at 26-35. Young owners (25-35) move by more than at 0.3. My guess is that they save less, because the flat value above W/Y 5 hides the cost of falling there. From 45 on it is close to the 0.3 case.
+6. Renter, lambda_hi 0.3 against none: under 1% from 40 on.
+Not tested: the bounds on u2 (the floor corner at u2 near 1, where Quinn's reading would put the cliff). The q and u1 trims run together, so their separate effects are not split.
+
 ### 2026-10-18 Step 16: is the bunching in the right place? (spec: none, asked by Quinn in Claude Code)
 Quinn: is the bunching happening in the correct place here?
 Changed (diagnostics only): new `diagnostics/pension_grid/axis_occupancy.m`: per axis (W/Y = 1/u1, 1 - u2, u3, q), the simulated households by age against each grid's points, and the points inside the middle-90% band by age. Output, gitignored: `pension_grid/occupancy_16_owner.png` (panel of owner 32x32), `occupancy_16_renter.png` (renter 48x48). No new solves.

@@ -31,13 +31,22 @@ function p = case_params(step, arm, name)
 %     _u3x2     u3 (pension against house) at twice its base points
 %     _u3n<n>   u3 at n base points instead of 10
 %     _u3p<n>   u3 bunched toward 0 with grid_pow_u3 = n
+%     _u3even   u3 evenly spaced (grid_pow_u3 = 1). This is the default, so
+%               it only writes the placement into the case name
 %     _qn<n>    q (purchase price over house) at n base points instead of 8;
 %               q = 1 is spliced in on top
+%     _lhi<n>   top of the u1 axis lambda_hi = n/100 (_lhi30 is 0.30), in
+%               place of min(0.9, 3/(1+h_mult)); W/Y = 1/u1 then starts at
+%               100/n. Households above it are off the grid (model.checks
+%               offgrid) and get the flat value at the top node
+%     _qhi<n>   top of the q axis q_hi = n/10 (_qhi13 is 1.3), in place of 2.5;
+%               at least 1. Owners whose house price fell further are off
+%               the grid
 %     _nosweep  the global (c, pi) grid search before fmincon switched off
 %               (use_refine = false)
 %   Apart from _mop nothing here changes the model: only grid_dims, grid_pow,
-%   grid_pow_u2, grid_pow_u3, grid_nodes, gh_n, interp_method, use_refine and
-%   pi_nothing_saved are set.
+%   grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
+%   interp_method, use_refine and pi_nothing_saved are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
 assert(~isempty(tok), 'case_params:name', 'case name %s is not <rule>_<N1>x<N2>[_gh<n>][_makima]', name);
@@ -86,6 +95,11 @@ g = regexp(extra, '_qn(\d+)', 'tokens', 'once');
 if ~isempty(g), p.grid_dims(4) = str2double(g{1}); end                     % q base points
 g = regexp(extra, '_u3p(\d+)', 'tokens', 'once');
 if ~isempty(g), p.grid_pow_u3 = str2double(g{1}); end                      % u3 bunched toward 0
+if contains(extra, '_u3even'), p.grid_pow_u3 = 1; end                      % u3 evenly spaced
+g = regexp(extra, '_lhi(\d+)', 'tokens', 'once');
+if ~isempty(g), p.lambda_hi = str2double(g{1}) / 100; end                  % top of u1
+g = regexp(extra, '_qhi(\d+)', 'tokens', 'once');
+if ~isempty(g), p.q_hi = str2double(g{1}) / 10; end                        % top of q
 if contains(extra, '_nosweep'), p.use_refine = false; end                  % fmincon from the warm start, no grid search
 p = config.derive(p);
 end
