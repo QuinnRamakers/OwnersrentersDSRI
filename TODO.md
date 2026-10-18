@@ -127,6 +127,11 @@ differences rather than levels.
 
 ## 6. Numerics
 
+Parked (Quinn, 18 October 2026): all grid and interpolation work waits on
+item 1. At step 16 no owner grid converges at any age, since refining u3 makes
+owners hoard into retirement, and the error near the floor sits in the
+interpolation or the model rather than the grid (HANDOFF.md, 18 October).
+
 - `docs/SOLVER_BOUNDS.md` lists every limit in the solver and the simulation
   that is not part of the economics. Open there: the sweep's consumption
   step; the policy stored at grid points below the floor; a counter for

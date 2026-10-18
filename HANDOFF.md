@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-18 Grid and interpolation work parked (spec: none, asked by Quinn in Claude Code)
+Quinn: leave the grid question until TODO item 1 is settled; stop the solver-extrapolation session and park all grid and interpolation work. Declined for now: a test of whether maintenance on the purchase price makes the step-16 owner converge.
+Done: the session "Solver extrapolation snaps all coordinates: measure it" stopped after about 90 seconds, with nothing committed and no solves left running. TODO.md, section 6: the parking note.
+Not done: CLAUDE.md's known limit ("behaviour from age 40 is reliable") no longer holds for owners at step 16, nor for renters before about 50 (entry "Smallest accurate grid at step 16", 18 October); left for Quinn.
+Checks run: none (documents only).
+Commit: this entry with TODO.md, pushed to main.
+Open: TODO item 1.
+
 ### 2026-10-18 Step 16: does the interpolation misprice the ruin corner? Results (spec: none, asked by Quinn in Claude Code)
 Follows the expectations entry below (e84e344).
 Ran: two smoke runs at age 60, then `ruin_interp(16, 'owner', {'pow3_24x24_lim_u3p2_qn4', 'pow3_24x24_lim_qn4_u3even'}, figure = false)` and `ruin_interp(16, 'owner', {'pow3_24x24_lim_u3p2_qn4_u3n20'}, figure = false)` side by side (19 and 21 minutes). Then `ruin_interp` on all three with `band = 'union'` (the default) and `band = 'own'`, which reuses the saved results and prints the tables and figures.
