@@ -60,7 +60,7 @@ Against the expectations:
 What it means: the occupancy reading fails for owners. The points that steer the owner's answer are the ones near u3 = 0, where only floored and very old households sit, not the ones where households live. That fits Quinn's note: the grid problem is how the interpolation prices the ruin corner (pot gone, carrying costs on the house), not where households sit. Placing points by occupancy is the wrong rule for owners at step 16. For renters it helps a little in working life and costs a little at the end. Nothing here settles the owner. Every added point makes owners save more, and the answer has not stopped moving.
 Limits: one seed, 10,000 households. The u1 and q trims ran together. The references are not converged themselves. "Points near 0" and "total count" are read off four cases, not varied one at a time.
 Checks run: `run_tests(solve=false)` 0 of 10 failed. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
-Commit: this entry with `step16_placement.m` and `grid_lifecycles.m`, pushed to main.
+Commit: 1808b68 (this entry with `step16_placement.m` and `grid_lifecycles.m`), pushed to main.
 Open: a direct test of how the interpolation prices the ruin corner (the continuation value near u3 = 0 and u2 near 1, interpolated against evaluated at the same states) instead of more occupancy-based placement. TODO item 1 (the floor and the housing outflow) still comes first for the owner.
 
 ### 2026-10-18 Step 16: grid points where households sit: expectations before the runs (spec: none, asked by Quinn in Claude Code)
