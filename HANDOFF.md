@@ -36,6 +36,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-18 CLAUDE.md known limit corrected (spec: none, asked by Quinn in Claude Code)
+Quinn: update CLAUDE.md's known limit to say owners at step 16 are not converged at any age and renters only from about 50, citing the 18 October grid study.
+Changed: CLAUDE.md, the first known limit. "Behaviour from age 40 is reliable" is replaced by: owners at step 16 not converged at any age on any grid tried (refining u3 makes them hoard into retirement); renters converged only from about 50, on the bunched grid with 20 u3 points. Source: the entry "Smallest accurate grid at step 16" below.
+Checks run: none (documents only).
+Commit: this entry with CLAUDE.md, pushed to main.
+Open: TODO item 1.
+
 ### 2026-10-18 Grid and interpolation work parked (spec: none, asked by Quinn in Claude Code)
 Quinn: leave the grid question until TODO item 1 is settled; stop the solver-extrapolation session and park all grid and interpolation work. Declined for now: a test of whether maintenance on the purchase price makes the step-16 owner converge.
 Done: the session "Solver extrapolation snaps all coordinates: measure it" stopped after about 90 seconds, with nothing committed and no solves left running. TODO.md, section 6: the parking note.

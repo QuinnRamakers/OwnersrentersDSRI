@@ -31,7 +31,7 @@ Use the session-start skill at the beginning and the session-end skill at the en
 
 ## Known limits (do not claim past these)
 
-- At the production calibration, ages 25 to 39 are not converged. Behaviour from age 40 is reliable. Report behaviour, not welfare levels, until the housing outflow is settled (TODO.md, item 1). The floor is a numerical bound, not a calibration target.
+- At the production calibration (ladder step 16), owners are not converged at any age on any grid tried: refining the u3 axis makes them hoard into retirement. Renters are converged only from about 50, on the bunched grid with 20 u3 points; the ladder's evenly spaced grid does not get there. Source: HANDOFF.md, 18 October 2026, "Smallest accurate grid at step 16". Report behaviour, not welfare levels, until the housing outflow is settled (TODO.md, item 1). The floor is a numerical bound, not a calibration target.
 - The REIT parameters are placeholders and the REIT leg is off.
 - Free DC investment choice, glide-path comparisons and the September diagnostics live on the `solver-active-set` branch (tag `research-2026-09`), not here.
 
