@@ -1,4 +1,4 @@
-function grid_lifecycles(step, arm, rows, file, ttl)
+function grid_lifecycles(step, arm, rows, file, ttl, X0)
 %GRID_LIFECYCLES  Simulated life cycles of one step as the grid is refined.
 %
 %   From the repository root:
@@ -7,6 +7,12 @@ function grid_lifecycles(step, arm, rows, file, ttl)
 %           'pow3_24x24_lim_u3p2'}}, 'labels', {{'20x20', '24x24'}}, ...
 %           'extra', {'standard'}, 'extra_label', {'ladder grid'});
 %       grid_lifecycles(16, 'owner', rows, 'lifecycles_16_owner.png', 'Owner, step 16')
+%       grid_lifecycles(..., 1)     % households enter with 1 year of income
+%
+%   X0, liquid wealth at entry in years of income, re-simulates every solution
+%   from that start with the run's own seed and panel size; the solutions are
+%   unchanged. Empty (the default) uses each run's saved panel, which starts
+%   at p.b0.
 %
 %   rows is a struct array, one row of panels per refinement sequence, with
 %   fields name, cases (case_load names, coarse to fine) and labels, and
@@ -20,6 +26,7 @@ function grid_lifecycles(step, arm, rows, file, ttl)
 %   ones dark, in one hue; the second row takes a second hue. Dotted vertical
 %   lines: the end of the mortgage (owners) and retirement.
 
+if nargin < 6, X0 = []; end
 hex = @(h) sscanf(h(2:end), '%2x%2x%2x', [1 3]) / 255;
 ramps = {{'#86b6ef', '#3987e5', '#256abf', '#184f95', '#0d366b'}, ...    % blue, ordinal
          {'#f2a27a', '#eb6834', '#c9521f', '#a04118', '#763010'}};       % orange, ordinal
@@ -30,7 +37,11 @@ nc = numel(cols); nr = numel(rows);
 
 fig = figure('Visible', 'off', 'Position', [20 20 420 * nc, 380 * nr + 90], 'Color', 'w');
 tl = tiledlayout(fig, nr, nc, 'Padding', 'compact', 'TileSpacing', 'compact');
-title(tl, {ttl, ['Each line is the same 10,000 simulated households on a different grid; light = coarse, dark = fine. ' ...
+start = 'Households enter with the ladder''s liquid wealth, b0 = 0.08 years of income. ';
+if ~isempty(X0)
+    start = sprintf('Households enter with %.2f years of income in liquid wealth (the ladder''s b0 is 0.08); same solutions. ', X0);
+end
+title(tl, {ttl, [start 'Each line is the same 10,000 simulated households on a different grid; light = coarse, dark = fine. ' ...
     'Levels in multiples of mean income at 25. Dotted: end of the mortgage (owners) and retirement']}, ...
     'FontSize', 13, 'FontWeight', 'bold', 'Interpreter', 'none');
 
@@ -42,11 +53,12 @@ for i = 1:nr
     if n == 1, pick = numel(ramp); end
     lines = cell(1, n); names = R.labels;
     for k = 1:n
-        lines{k} = series(step, arm, R.cases{k});
+        lines{k} = series(step, arm, R.cases{k}, X0);
+        if isempty(lines{k}), continue; end
         lines{k}.color = hex(ramp{pick(k)}); lines{k}.style = '-';
     end
     if isfield(R, 'extra') && ~isempty(R.extra)
-        e = series(step, arm, R.extra);
+        e = series(step, arm, R.extra, X0);
         if ~isempty(e)
             e.color = grey; e.style = '--';
             lines = [{e}, lines]; names = [{R.extra_label}, names];
@@ -89,17 +101,28 @@ close(fig);
 fprintf('wrote %s\n', file);
 end
 
-function L = series(step, arm, name)
-% The age profiles of one saved solve; [] when it is not there.
+function L = series(step, arm, name, X0)
+% The age profiles of one saved solve, from its saved panel or simulated
+% again from X0 years of income at entry; [] when it is not there.
 r = case_load(step, arm, name);
 if isempty(r), L = []; return; end
-s = figures.panel_data(r).sim;
+if isempty(X0)
+    s = figures.panel_data(r).sim;
+else
+    w = warning('off', 'all');
+    s = simulate.forward(r.p, r.profile, r.sol, r.ann_price, r.timing.N_sim, r.timing.seed, X0);
+    warning(w);
+end
 L.ages = s.ages(:).';
 L.C    = mean(s.C, 1);
 L.Cmed = median(s.C, 1);
 L.X    = mean(s.X, 1);
 L.pi   = mean(s.pi, 1);
-L.piw  = r.piw;
+% Equity share of liquid saving, as case_load's piw: stocks over liquid
+% saving across households, left out where saving is under 1% of income
+sav    = max(s.LW - s.C, 0);
+L.piw  = sum(s.pi .* sav, 1) ./ max(sum(sav, 1), realmin);
+L.piw(sum(sav, 1) < 0.01 * sum(s.Y, 1)) = NaN;
 L.fl   = mean(s.floored, 1);
 L.Y0   = mean(s.Y(:, 1));
 L.marks = r.p.retirement_age;

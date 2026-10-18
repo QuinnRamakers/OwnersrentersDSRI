@@ -36,6 +36,16 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-18 Step 16: the grid life cycles from a higher starting wealth (spec: none, asked by Quinn in Claude Code)
+Quinn: the same graphs with a higher starting wealth.
+Changed (diagnostics only): `grid_lifecycles.m` takes X0, liquid wealth at entry in years of income, and simulates every saved solution again from it (same seed and panel; the solutions are unchanged); it now computes the equity share of liquid saving from the panel it draws. `step16_lifecycles(X0)` passes it on and appends `_b<X0>` to the file names. Ran `step16_lifecycles(1)` and `step16_lifecycles` (the default figures again, same content, new title line). Output, gitignored: `pension_grid/lifecycles_16_owner_b1p00.png`, `lifecycles_16_renter_b1p00.png`.
+Results, 1 year of income at entry against b0 = 0.08 (mean consumption, times mean income at 25):
+- Owner: still about 0 until 33 on every grid. 24x24 0.003 against 0.004 at 30, 0.345 against 0.370 at 40, 0.969 against 0.986 at 66; 32x32 0.218 against 0.239 at 40; u3 at 20 0.004 against 0.006 at 40. Liquid saving at 40 rises by 0.9-1.0 years of income (24x24 6.04 to 6.93, 32x32 6.66 to 7.64): the extra year is saved almost whole. Floored share 2.48% to 2.30% (24x24). The grid sequences look as from b0: the young-age hoarding is the policy at these states, not a starting-wealth corner.
+- Renter: consumption at 25 0.045 to 0.133 (24x24) and 0.000 to 0.002 (48x48); at 30 0.277 to 0.315 and 0.168 to 0.232; within 2-4% from 40. The grid lines still spread before 45.
+Checks run: `run_tests(solve=false)` 0 of 10 failed.
+Commit: this entry with the two scripts, pushed to main.
+Open: as in the grid-size results entry below.
+
 ### 2026-10-18 Step 16: life cycles as the grid is refined (spec: none, asked by Quinn in Claude Code)
 Quinn: show the simulated life cycles for the development of the grids.
 Changed (diagnostics only): new `diagnostics/pension_grid/grid_lifecycles.m` (one row of panels per refinement sequence: mean and median consumption, mean liquid saving, mean liquid equity share, equity share of liquid saving, share at the floor; coarse grids light, fine dark) and `step16_lifecycles.m` (the cases of the grid-size study below, one figure per tenure). Output, gitignored: `ladder/standard_16x16x10x8_gh5/pension_grid/lifecycles_16_owner.png` and `lifecycles_16_renter.png`. No new solves.
