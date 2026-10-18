@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-18 Step 16: life cycles as the grid is refined (spec: none, asked by Quinn in Claude Code)
+Quinn: show the simulated life cycles for the development of the grids.
+Changed (diagnostics only): new `diagnostics/pension_grid/grid_lifecycles.m` (one row of panels per refinement sequence: mean and median consumption, mean liquid saving, mean liquid equity share, equity share of liquid saving, share at the floor; coarse grids light, fine dark) and `step16_lifecycles.m` (the cases of the grid-size study below, one figure per tenure). Output, gitignored: `ladder/standard_16x16x10x8_gh5/pension_grid/lifecycles_16_owner.png` and `lifecycles_16_renter.png`. No new solves.
+What the figures show (numbers in the entry below): the owner's consumption start moves later with every refinement of u1 x u2, and with u3 at 20 points the whole life cycle changes (hoarding to about 60, saving 24 years of entry income at 70, consumption 1.7 times entry income at 85, almost no floor). The renter's sequence moves the same way but converges: from about 50 the u1 x u2 lines lie on top of each other, and u3 moves consumption by a few percent and the old-age equity share and floor more.
+Checks run: `run_tests(solve=false)` 0 of 10 failed.
+Commit: this entry with the two scripts, pushed to main.
+Open: as in the entry below.
+
 ### 2026-10-18 Smallest accurate grid at step 16, per axis: results (spec: none; open decision 2 of docs/HANDOFF_2026-10-17.md, asked by Quinn in Claude Code)
 Follows the expectations entry below (dc478a5).
 Ran: `solve_cases` on 20 new step-16 cases, two MATLAB processes side by side. Owner: pow3 32x32, 32x16, 20x20, 24x16, 16x24 (all `_lim_u3p2`); 24x24 with `_u3n6`, `_qn4`, `_qn4_u3n8`, `_qn4_u3n20`. Renter: pow3 48x48, 48x24, 32x32, 24x24, 20x20, 16x16; 16x16 with `_u3n6`, `_u3n20`, `_u3n40`, and `pow3_16x16_lim_u3p3`. The owner u3 cases at 8 and 20 points and the renter cases at 20x20, 16x16 and their u3 variants were added during the session, each after the result before it, with the expectation written down first. Then `size_table` for each comparison.
