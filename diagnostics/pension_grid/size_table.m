@@ -14,7 +14,10 @@ function T = size_table(step, arm, cases, ref)
 %   both gaps are inside the ladder's stop rule (2% and 0.02). The last
 %   column says whether every band from 40 on passes. A second block gives
 %   the equity share of liquid saving (case_load's piw), which gives no weight
-%   to households that save nothing. A third gives each case's roughness,
+%   to households that save nothing. A third reads each case's policies at
+%   the reference's households (policy_gaps), which leaves out the wealth
+%   households bring to an age from earlier, unconverged years. A fourth
+%   gives each case's roughness,
 %   reference included: the largest second difference over age of mean
 %   consumption (% of mean income) and of the mean equity share, inside each
 %   band. Bands end at the mortgage's end (55) and retirement (67), so those
@@ -42,12 +45,16 @@ for c = unique([ref, cases], 'stable')
     G = case_gaps(r, r0, bands);
     ok = G.C <= 0.02 & G.pi <= 0.02;
     [rC, rpi] = roughness(r.summary, bands);
+    P = policy_gaps(r, r0, bands);
+    okP = P.C <= 0.02 & P.pi <= 0.02;
     rows(end + 1, :) = {char(c), sprintf('%dx%dx%dx%d', p.N_u1, p.N_u2, p.N_u3, p.N_q), ...
         n3 * p.N_q, n3, r.timing.solve_sec / 60, r.checks.ce_entry, r.checks.floored_share, ...
-        100 * G.C, G.pi, G.piw, all(ok(2:end)), 100 * rC, rpi}; %#ok<AGROW>
+        100 * G.C, G.pi, G.piw, all(ok(2:end)), 100 * rC, rpi, ...
+        100 * P.C, P.pi, all(okP(2:end))}; %#ok<AGROW>
 end
 T = cell2table(rows, 'VariableNames', {'case', 'nodes', 'per_age_q', 'per_age', 'minutes', ...
-    'entry', 'floored', 'C_pct', 'pi', 'piw', 'pass_40', 'rough_C_pct', 'rough_pi'});
+    'entry', 'floored', 'C_pct', 'pi', 'piw', 'pass_40', 'rough_C_pct', 'rough_pi', ...
+    'pol_C_pct', 'pol_pi', 'pol_pass_40'});
 
 fprintf('\n%s, step %s, against %s. Largest gap by age band: consumption %% / mean liquid equity share\n', ...
     arm, string(step), ref);
@@ -71,6 +78,19 @@ fprintf('| case |'); fprintf(' %s |', names{:}); fprintf('\n');
 fprintf('|---|'); fprintf('%s', repmat('---|', 1, numel(bands))); fprintf('\n');
 for i = 1:height(T)
     fprintf('| %s |', T.case{i}); fprintf(' %.3f |', T.piw(i, :)); fprintf('\n');
+end
+fprintf('\nPolicies on the reference''s households (policy_gaps): consumption %% / mean liquid equity share\n');
+fprintf('| case |'); fprintf(' %s |', names{:}); fprintf(' from 40 |\n');
+fprintf('|---|'); fprintf('%s', repmat('---|', 1, numel(bands) + 1)); fprintf('\n');
+for i = 1:height(T)
+    fprintf('| %s |', T.case{i});
+    for b = 1:numel(bands)
+        flag = '';
+        if T.pol_C_pct(i, b) > 2 || T.pol_pi(i, b) > 0.02, flag = ' *'; end
+        fprintf(' %.1f / %.3f%s |', T.pol_C_pct(i, b), T.pol_pi(i, b), flag);
+    end
+    yes = 'no'; if T.pol_pass_40(i), yes = 'yes'; end
+    fprintf(' %s |\n', yes);
 end
 fprintf('\nRoughness, largest second difference over age inside each band: consumption (%% of income) / equity share\n');
 fprintf('| case |'); fprintf(' %s |', names{:}); fprintf('\n');

@@ -36,6 +36,63 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-18 Smallest accurate grid at step 16, per axis: results (spec: none; open decision 2 of docs/HANDOFF_2026-10-17.md, asked by Quinn in Claude Code)
+Follows the expectations entry below (dc478a5).
+Ran: `solve_cases` on 20 new step-16 cases, two MATLAB processes side by side. Owner: pow3 32x32, 32x16, 20x20, 24x16, 16x24 (all `_lim_u3p2`); 24x24 with `_u3n6`, `_qn4`, `_qn4_u3n8`, `_qn4_u3n20`. Renter: pow3 48x48, 48x24, 32x32, 24x24, 20x20, 16x16; 16x16 with `_u3n6`, `_u3n20`, `_u3n40`, and `pow3_16x16_lim_u3p3`. The owner u3 cases at 8 and 20 points and the renter cases at 20x20, 16x16 and their u3 variants were added during the session, each after the result before it, with the expectation written down first. Then `size_table` for each comparison.
+Changed (diagnostics only): new `diagnostics/pension_grid/policy_gaps.m`, which reads one solve's policies at the reference's simulated households, age by age. It leaves out the wealth households bring to an age from earlier, unconverged years. `size_table.m` prints it as a block, measures consumption roughness against income instead of consumption, and skips a case equal to the reference.
+Output (gitignored): the solves in `ladder/standard_16x16x10x8_gh5/pension_grid/16_nibud_<arm>_<case>.mat`; the full tables in the shared notes folder of these sessions (`step16_grid_tables.md`), reproduced by `size_table` with the cases below.
+`model.checks`: off-grid [0 0 0 0] and thin u1 0 in every case. Floored, owner: 2.27% at 32x32, 2.48% at 24x24 (q at 8 or 4), 2.68-2.98% at the smaller shapes; 4.54%, 3.61% and 0.44% with u3 at 6, 8 and 20. Renter: 0.79% at 48x48 up to 1.21% at 16x16; at 16x16 1.58%, 1.21%, 0.64% and 0.23% with u3 at 6, 10, 20 and 40, 1.35% with u3 at power 3. Entry value: renter 0.0001 at 48x48, 0.0013 at 32x32 and 48x24, 0.056, 0.152 and 0.204 at 24, 20 and 16; owner 0.000-0.012 everywhere. "Matrix close to singular" warnings in the owner 32x32, 24x16, 16x24 and u3-at-8 solves.
+Gaps below are consumption % / mean liquid equity share, stop rule 2% and 0.02. "Panel" is the simulated means, as `case_gaps`; "policies" is `policy_gaps`, each case's policies on the reference's households.
+Results, owner:
+1. No owner grid passes from 40 on. Against 32x32 the panel is outside at every band for every grid (24x24: 58.0/0.033 at 40-54, then 4.2/0.046, 4.2/0.046, 4.5/0.045). Before about 52 the owner does not converge: each finer grid makes young owners consume less and save more. Mean consumption at 40, times entry income, 0.403, 0.345 and 0.218 at 20x20, 24x24 and 32x32; liquid saving at 50 6.8, 7.7 and 9.0. The panel carries that wealth to 95. On policies, 24x24 against 32x32 is 69% off at 40, 17% at 45, 4% at 50, 0.9% at 54.
+2. On policies from 55 on, among the u1 x u2 shapes only 24x24 passes (0.6/0.010, 0.7/0.006, 0.6/0.011). The others miss on the share: 32x16 0.023 at 67-89, 20x20 0.022 at 55-66, 16x24 0.023, 24x16 2.2% and 0.021. u1-heavy shapes do not save points for owners.
+3. q at 4 base points (0, 0.28, 1, 1.11, 2.5) equals 8 from 40 on: on 24x24 the policies are within 0.5% at 40-54 and identical after 54, where q is not a state; panel 0.3/0.001. The solve halves, 80 to 41 minutes. Before 40, 10-13% on consumption near zero.
+4. u3 at 10 points is not converged, and refining it changes the owner's solution. With u3 at 20 (24x24, q at 4), median consumption is 0.009 times entry income at 55 and 0.05 at 60 (0.78 and 0.85 with 10 points), mean liquid saving 24 years of entry income at 66 (6.8), mean consumption 1.57 at 80 (0.89), floored at 95 1.9% (12.3%). On policies u3 at 10 is 497%/0.087 off at 55-66 and 110%/0.053 at 67-89. Fewer points go the other way: 6 and 8 points are 11.8/0.048 and 6.8/0.020 off 32x32 at 55-66, with more floored households (14.3% and 8.6% at 90, against 5.0%).
+5. So no owner grid at step 16 is converged at any age. 24x24 looked converged from 55 on only because the 32x32 reference has the same 10 u3 points.
+Results, renter:
+6. No renter grid passes from 40 on in the panel either (48x24 against 48x48: 2.8/0.002 at 40-54, 2.7/0.022, 1.6/0.035, 1.4/0.018). Before 45 the renter does not converge: consumption at 30 0.277, 0.238 and 0.168 at 24x24, 32x32 and 48x48; on policies every bunched grid is within 1% by 50.
+7. On policies from 55 on, against 48x48 at u3 10, every bunched shape passes down to 16x16 (1.1/0.012, 1.0/0.016, 0.2/0.011). The ladder's evenly spaced 16x16, the same number of points, does not (2.2/0.024, 1.9/0.051, 1.7/0.017). 48x24 is no closer than 32x32.
+8. u3, against 40 points on 16x16: 20 points pass from 55 on, just (1.9/0.003, 1.3/0.003, 0.7/0.007); 10 do not (4.0/0.007, 3.2/0.027, 1.7/0.024); 10 at power 3 are worse than at power 2 (4.6/0.006, 3.7/0.035, 1.7/0.033); 6 worse still. Retirees sit in the middle of the axis (median u3 0.6-0.7 at 55-67 and 0.33 at 90; owners 0.5 and 0.11), where the power-2 points are widest apart. The floored share halves with each doubling of u3 and has not settled.
+9. Smallest renter grid that passes from 55 on: bunched 16x16 with u3 at 20 (18x18x20, 6,480 nodes per age, 14 minutes side by side). The u1 x u2 part was judged at u3 10 and the u3 part on 16x16; the two were not crossed.
+Roughness (Quinn's check, the largest second difference over age inside a band): it flags some bad grids and misses others. It catches the ladder's evenly spaced grid at 67-89 (26.4% of income against 0.69% at 32x32), the owner's u3 at 6 at 90-95 (1.17 against 0.34), and the owner's u3 at 20 is the roughest bunched case at 67-89 (2.27). It misses that the ladder's grid is 139% off at 40-54 while smoother there than 32x32 (0.19 against 0.30), and it does not separate the bunched u1 x u2 shapes.
+Table, owner (nodes realised on u1 x u2 x u3 x q; nodes per age while q is a state / after; minutes side by side; largest gap on policies by band from 55 on, against 32x32):
+    case               nodes        per age          min   55-66       67-89       90-95       from 55
+    32x32              34x34x10x9   104,040/11,560   116   reference
+    24x24              26x26x10x9    60,840/6,760     80   0.6/0.010   0.7/0.006   0.6/0.011   yes
+    24x24, q 4         26x26x10x5    33,800/6,760     41   0.6/0.010   0.7/0.006   0.6/0.011   yes
+    32x16              34x18x10x9    55,080/6,120     60   1.6/0.012   1.9/0.023   1.4/0.020   no
+    20x20              22x22x10x9    43,560/4,840     48   1.1/0.022   1.6/0.010   1.2/0.013   no
+    24x16              26x18x10x9    42,120/4,680     46   1.7/0.018   2.2/0.020   1.5/0.021   no
+    16x24              18x26x10x9    42,120/4,680     47   0.9/0.023   1.2/0.010   1.1/0.013   no
+    24x24, u3 6        26x26x6x9     36,504/4,056     40   11.8/0.048  10.9/0.058  1.6/0.058   no
+    24x24, q 4, u3 8   26x26x8x5     27,040/5,408     33   6.8/0.020   5.5/0.035   3.2/0.025   no
+    24x24, q 4, u3 20  26x26x20x5    67,600/13,520    80   89.4/0.317  61.3/0.091  12.2/0.029  no
+    ladder 16x16       18x18x10x9    29,160/3,240     42   13.9/0.183  40.4/0.292  40.6/0.144  no
+  Before 55 every owner case is outside (bunched cases' policies 69-137% off at 40-54).
+Table, renter (q is not a state; against 48x48, the u3 rows against 16x16 with u3 at 40):
+    case               nodes        per age   min   55-66       67-89       90-95       from 55
+    48x48              50x50x10     25,000     55   reference
+    48x24              50x26x10     13,000     28   0.3/0.013   0.3/0.008   0.1/0.011   yes
+    32x32              34x34x10     11,560     27   0.2/0.009   0.2/0.007   0.1/0.005   yes
+    24x24              26x26x10      6,760     16   0.4/0.011   0.4/0.009   0.1/0.015   yes
+    20x20              22x22x10      4,840     11   0.7/0.010   0.6/0.019   0.2/0.018   yes
+    16x16              18x18x10      3,240      7   1.1/0.012   1.0/0.016   0.2/0.011   yes
+    ladder 16x16       18x18x10      3,240     10   2.2/0.024   1.9/0.051   1.7/0.017   no
+    16x16, u3 40       18x18x40     12,960     28   reference for the u3 rows
+    16x16, u3 20       18x18x20      6,480     14   1.9/0.003   1.3/0.003   0.7/0.007   yes
+    16x16, u3 10       18x18x10      3,240      7   4.0/0.007   3.2/0.027   1.7/0.024   no
+    16x16, u3 10 p3    18x18x10      3,240      7   4.6/0.006   3.7/0.035   1.7/0.033   no
+    16x16, u3 6        18x18x6       1,944      5   5.8/0.010   4.8/0.052   2.8/0.054   no
+Against the expectations:
+- Right: q at 4 points is enough. 32x16 is closer than 24x16. The renter does not converge before 40 and 24x24 is outside in the panel. Roughness is no pass rule.
+- Wrong: 24x24 is not within the rule of 32x32 from 40 on (expected, as at step 13); the owner's non-convergence reaches about 52. 32x16 does not pass: u1 does not dominate for owners. u3 at 6 fails from 55, not only past 90. Renters need far fewer u1 x u2 points than expected, and u3 at 10 is not enough for either tenure.
+- Not foreseen: refining u3 changes the owner qualitatively (hoarding to about 60); the renter's floored share halves with each doubling of u3.
+Limits: "passes from 55" is judged on policies at the reference's households, not on the panel the plan named; on the panel every case fails from 40 on, through wealth carried in from younger ages. The u1 x u2 references use u3 at 10. Solve times are side by side. One seed, 10,000 households.
+What it means for decision 2: for the owner no grid settles step 16. The answer moves with u1, u2 and u3 in the same direction: finer grids make the owner hoard more, and in the u3 case far into retirement. That is consistent with the old-age floor (maintenance on the current house value, floor 1e-6 times income, gamma 5) acting as a ruin cliff that each finer grid resolves more sharply; step 13, with maintenance on the purchase price, converged at 24x24. Not tested here. A grid chosen now would be chosen again once TODO item 1 is settled. For the renter, from 55 on: bunched 16x16 with u3 at 20 (power 2). For both, q at 4 base points.
+Checks run: `run_tests(solve=false)` 0 of 10 failed. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
+Commit: this entry with `diagnostics/pension_grid/policy_gaps.m` and `size_table.m`, pushed to main.
+Open: TODO item 1 first, then this study again on the owner, with u3 among the axes refined. CLAUDE.md's known limit ("behaviour from age 40 is reliable") does not hold for owners at step 16, and for renters only from about 50; not edited here (this session was limited to diagnostics/ and HANDOFF.md).
+
 ### 2026-10-18 Smallest accurate grid at step 16, per axis: expectations before the runs (spec: none; open decision 2 of docs/HANDOFF_2026-10-17.md, asked by Quinn in Claude Code)
 Quinn wants the cheapest grid that is still accurate at production (step 16), per axis and per tenure, to set the ladder's numerics. With housing only square u1 x u2 sizes were tested, and u3 and q only by doubling, so the minimum per axis is unknown.
 Changed (diagnostics only): `diagnostics/pension_grid/case_params.m` takes `_u3n<n>` and `_qn<n>` (base points on u3 and q). `case_gaps.m` takes the age bands as an optional third argument. New `size_table.m`: per case the realised nodes, the nodes per age while q is a state and after, solve time, entry value, floored share; the largest gap to a reference in mean consumption and the mean liquid equity share in the bands 25-39, 40-54, 55-66, 67-89 and 90-95 (stop rule 2% and 0.02); the same for the equity share of liquid saving; and the roughness, the largest second difference over age inside each band of mean consumption (% of income) and of the equity share (Quinn: a bad grid also shows as a non-smooth profile).
