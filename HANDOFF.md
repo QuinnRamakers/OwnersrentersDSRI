@@ -36,6 +36,19 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-20 Step 16 renter: the summary grid against larger grids (spec: none, asked by Quinn in Claude Code)
+Quinn: a renter dashboard as well. The renter dashboard of the summary is `summary_step16/16_renter.png` (entry "Step 16 dashboards" below); added the renter's grid check, as for the owner.
+No new solve: the 18 October study's renter solves. New `diagnostics/nibud/renter_grid_compare.m`: the summary grid (bunched 16x16, u3 at 20) against 48x48 and 32x32 (u3 at 10) and 16x16 with u3 at 10 and 40, all with the sweep.
+Output (gitignored), `summary_step16/`: `16_renter_grid_vs_48x48.png`, `16_renter_grid_ladder.png`.
+Results. Policies, consumption % / liquid equity share, bands 40-54, 55-66, 67-89, 90-95:
+- Against 48x48 (finer u1 and u2, u3 at 10): summary grid 6.2/0.003, 2.7/0.012, 0.9/0.030, 0.4/0.028; 16x16 u3 10 11.0/0.007, 1.1/0.012, 1.0/0.016, 0.2/0.011; 32x32 5.3/0.004, 0.2/0.009, 0.2/0.007, 0.1/0.005.
+- Against 16x16 with u3 at 40 (finer u3): summary grid 5.3/0.002, 1.9/0.003, 1.3/0.003, 0.7/0.007; u3 10 10.6/0.009, 4.0/0.007, 3.2/0.027, 1.7/0.024. These rows and 32x32's equal the 18 October table.
+- The summary grid's gaps to 48x48 after 67 are mostly 48x48's own u3 at 10. Before 40 no renter grid agrees (consumption at 30: 0.28 times entry income on the summary grid, 0.14 on 48x48).
+- Levels, summary grid against 48x48: median consumption 0.47 against 0.49 at 40, 0.73 against 0.76 at 66, 0.44 against 0.44 at 95; liquid saving 4.6 against 5.4 at 55; floored 0.64% against 0.79%.
+Checks run: `run_tests(solve=false)` 0 of 10 failed. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
+Commit: this entry with `diagnostics/nibud/renter_grid_compare.m`, pushed to main.
+Open: TODO item 1.
+
 ### 2026-10-20 Step 16 owner, maintenance on the current value: the summary grid against larger grids (spec: none, asked by Quinn in Claude Code)
 Quinn: the grid of the summary dashboards (entry below) against a larger grid, maintenance on the current value only.
 No new solve: the larger grids are the 18 October study's. A 20x20 run with maintenance on the purchase price was started and stopped after about a minute when Quinn said it was not needed; nothing was saved.
