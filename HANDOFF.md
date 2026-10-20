@@ -36,6 +36,21 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-20 Step 16 dashboards: maintenance on the current value and on the purchase price (spec: none, asked by Quinn in Claude Code)
+Quinn: to summarise the past weeks, the dashboards of the new calibration with the Nibud mortgage, with and without maintenance on the purchase price (constant house value). Use new runs only where needed, at most 30 minutes per run.
+Step 16 with maintenance on the purchase price had never been solved. It changes the owner only (renters pay rent, no maintenance), so the owner was solved twice on one grid that fits the budget, and the renter is an existing solve.
+Ran: `solve_cases('16:owner:pow3_16x16_lim_u3p2_qn4_nosweep')` and the same with `_mop`, two processes side by side: 649 s and 1,206 s. Then the new `diagnostics/nibud/maint_dashboards.m`. Renter: `16_nibud_renter_pow3_16x16_lim_u3p2_u3n20` (18 October, the grid on which the renter passes from 55).
+Output (gitignored), `ladder/standard_16x16x10x8_gh5/summary_step16/`: `16_owner_maint_current.png`, `16_owner_maint_purchase.png`, `16_renter.png`, `16_owner_current_vs_purchase.png`, `16_renter_vs_owner_current.png`, `16_renter_vs_owner_purchase.png`; copies of the ladder's uniform-grid step-16 figures as `ladder_uniform_*.png`. Solves in `pension_grid/`.
+`model.checks`: off-grid 0 and c-bound 25-39 0% in all three. Floored: owner current value 3.10%, purchase price 0.02%, renter 0.64%. Entry value 0.022, 0.277, 0.174. One "matrix close to singular" warning in the purchase-price run, as at steps 13 and 15.
+Results (multiples of entry income; consumption median, saving mean):
+- Owner, current value: consumption 0.03 at 25, 0.25 at 35, 0.82 at 66, 0.48 at 95; liquid saving 5.1-5.2 at 55-66; equity share of liquid saving 0.00-0.02 from 35 to 55; floored 15.8% of owners at 95. The hoarding corner of the 18 October study.
+- Owner, purchase price: consumption 0.25 at 25, 0.45 at 35, 0.98 at 66, 0.95 from 85; liquid saving about 1 at 45-66 and 0 from 85; equity share 0.28-0.40 at 35-55, about 1 from 75; no one floored after 75. Housing cost after the mortgage is a flat 0.07 instead of rising to 1.0 times entry income at 100.
+- Renter: consumption 0.17 at 25, 0.73 at 66, 0.44 at 95; liquid saving 4.6 at 55; floored 3.2% at 95.
+Limits: the owner on this grid is not converged at step 16 with maintenance on the current value (18 October). Without the sweep, step 13 moved consumption within 0.2% and the share of liquid saving by 0.03 at 26-39. q at 4 points was checked at step 16 only with maintenance on the current value, where q is a state to 54, not at every age. Bunched 16x16 missed 24x24 by 2.3% in consumption at 66 at step 13. Read behaviour, not welfare.
+Checks run: `run_tests(solve=false)` 0 of 10 failed. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
+Commit: this entry with `diagnostics/nibud/maint_dashboards.m`, pushed to main.
+Open: TODO item 1.
+
 ### 2026-10-18 CLAUDE.md known limit corrected (spec: none, asked by Quinn in Claude Code)
 Quinn: update CLAUDE.md's known limit to say owners at step 16 are not converged at any age and renters only from about 50, citing the 18 October grid study.
 Changed: CLAUDE.md, the first known limit. "Behaviour from age 40 is reliable" is replaced by: owners at step 16 not converged at any age on any grid tried (refining u3 makes them hoard into retirement); renters converged only from about 50, on the bunched grid with 20 u3 points. Source: the entry "Smallest accurate grid at step 16" below.
