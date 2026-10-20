@@ -36,6 +36,21 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-20 Step 16 owner, maintenance on the current value: the summary grid against larger grids (spec: none, asked by Quinn in Claude Code)
+Quinn: the grid of the summary dashboards (entry below) against a larger grid, maintenance on the current value only.
+No new solve: the larger grids are the 18 October study's. A 20x20 run with maintenance on the purchase price was started and stopped after about a minute when Quinn said it was not needed; nothing was saved.
+Ran: new `diagnostics/nibud/maint_grid_compare.m`: the summary grid (bunched 16x16, q at 4, no sweep) against 20x20, 24x24 (q at 4), 32x32 and 24x24 with u3 at 20 points, all with the sweep.
+Output (gitignored), `summary_step16/`: `16_owner_grid_vs_32x32.png` (the two with their bands), `16_owner_grid_ladder.png` (all five, 32x32 the reference).
+Results. Policies at 32x32's households, consumption % / liquid equity share, bands 40-54, 55-66, 67-89, 90-95:
+- 16x16: 144.6/0.035, 1.8/0.033, 2.5/0.018, 1.7/0.024. 20x20: 106.5/0.036, 1.1/0.022, 1.6/0.010, 1.2/0.013. 24x24: 70.1/0.034, 0.6/0.010, 0.7/0.006, 0.6/0.011. The last two rows equal the 18 October table.
+- Before 40, 32x32 owners consume about 0 (median 0.00 times entry income at 30, 0.07 at 40), so percentages there are of nothing.
+- Levels, 16x16 against 32x32: median consumption 0.39 against 0.07 at 40, 0.82 against 0.90 at 66, 0.48 against 0.56 at 95; liquid saving 5.1 against 8.5 at 55; retirement equity share 0.62 against 0.49 at 66; floored at 95 15.8% against 10.8%. Each finer grid moves the same way: less consumption young, more saving, lower retirement share, fewer floored.
+- u3 at 20 points (24x24) against 32x32 at u3 10: 89.4/0.317 at 55-66, 61.3/0.091 at 67-89; median consumption 0.01 at 55, liquid saving 24 times entry income at 66. Against it the summary grid is 506%/0.094 off at 55-66.
+So the summary grid is near 32x32 from 55 on in consumption (within 2.5%) but outside the 0.02 share rule at 55-66 and 90-95, and far off before 55; and 32x32 is itself not converged in u3.
+Checks run: `run_tests(solve=false)` 0 of 10 failed. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
+Commit: this entry with `diagnostics/nibud/maint_grid_compare.m`, pushed to main.
+Open: TODO item 1.
+
 ### 2026-10-20 Step 16 dashboards: maintenance on the current value and on the purchase price (spec: none, asked by Quinn in Claude Code)
 Quinn: to summarise the past weeks, the dashboards of the new calibration with the Nibud mortgage, with and without maintenance on the purchase price (constant house value). Use new runs only where needed, at most 30 minutes per run.
 Step 16 with maintenance on the purchase price had never been solved. It changes the owner only (renters pay rent, no maintenance), so the owner was solved twice on one grid that fits the budget, and the renter is an existing solve.
