@@ -36,6 +36,18 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-20 Step 16: share at the consumption floor by age, for the summary plots (spec: none, asked by Quinn in Claude Code)
+Quinn: the bankruptcy rates for the summary plots. The model's bankruptcy event is a floored household-year (liquid resources below phi_floor times income; consumption set to the floor, the shortfall forgiven). The dashboards print only the total.
+No new solve. New `diagnostics/nibud/floored_by_age.m`: the floored share by age for every solve behind `summary_step16/`. Output (gitignored): `summary_step16/16_floored_by_age.png`. Also drawn without a script: `summary_step16/income_profile_owner_renter.png`, the owner and renter income cubics of `config.params`.
+Results, % of households at the floor, all years / 67-79 / 80-89 / 90-100:
+- Summary grids: owner, maintenance on current value 3.10 / 0.38 / 2.69 / 18.46 (36% at 100); on purchase price 0.02 / 0 / 0 / 0 (above 0.05% only at 46-54, the last mortgage years, peak 0.32% at 54); renter 0.64 / 0.10 / 0.71 / 3.67.
+- Owner, current value, by grid: 2.68% of years at 20x20, 2.48% at 24x24, 2.27% at 32x32, 0.44% with u3 at 20 (2.16% at 90-100). Renter: 1.21% with u3 at 10, 0.92% at 32x32, 0.79% at 48x48, 0.23% with u3 at 40. The rate falls with every refinement and has not settled, most along u3.
+- Ladder's uniform 16x16 (the earlier dashboards): owner 6.65% (30.0% at 90-100), renter 1.69%.
+The panel keeps all households alive to 100 (survival enters through the annuity), so a rate at an age is among those who reach it, and the all-years total weights old ages more than a survival-weighted population would.
+Checks run: `run_tests(solve=false)` 0 of 10 failed. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
+Commit: this entry with `diagnostics/nibud/floored_by_age.m`, pushed to main.
+Open: TODO item 1.
+
 ### 2026-10-20 Step 16 renter: the summary grid against larger grids (spec: none, asked by Quinn in Claude Code)
 Quinn: a renter dashboard as well. The renter dashboard of the summary is `summary_step16/16_renter.png` (entry "Step 16 dashboards" below); added the renter's grid check, as for the owner.
 No new solve: the 18 October study's renter solves. New `diagnostics/nibud/renter_grid_compare.m`: the summary grid (bunched 16x16, u3 at 20) against 48x48 and 32x32 (u3 at 10) and 16x16 with u3 at 10 and 40, all with the sweep.
