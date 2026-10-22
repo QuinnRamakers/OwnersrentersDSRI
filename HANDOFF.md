@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-22 The absorbing floor: the homothety condition and the continuation at a node (spec: none, asked by Quinn in Claude Code)
+Quinn: the floor after bankruptcy is constant, and lifetime utility from then on is the discounted sum of u at that level; it has to fit the model's homothety.
+Changed: `docs/prompts/absorbing_floor.md`, two paragraphs under "The model, formally". (1) The condition: V^B_t = Cbar^(1-gamma)/(1-gamma) D_t is homothetic exactly when Cbar is proportional to the household's state at entry, Cbar = W g(u, q, t); constant afterwards needs no state. A euro amount common to all needs c_min/Y as a state. (2) The continuation at a quadrature node in `bellman_rhs` units: bankrupt where LW_n < phi_{t+1} Y_next_W, with CE_n = phi_{t+1} Y_next_W D_{t+1}^(1/(1-gamma)).
+Also drawn, not committed (Python, from the DHS cubics; scratchpad of this session): gross income by age, median, mean and 10th-90th percentile, owners and renters, with the 2025 bijstand norms. Median at 25 / peak / 66 / first pillar: owners EUR 39.8k / 74.7k at 50 / 66.0k / 20.3k; renters 30.1k / 52.0k at 49 / 49.5k / 15.2k.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: as in the entries below.
+
 ### 2026-10-22 The absorbing floor in euros: options (spec: none, asked by Quinn in Claude Code)
 Quinn: the floor should be a minimum subsistence level, a constant euro amount, which is hard in a homothetic model; asked for suggestions.
 Changed: `docs/prompts/absorbing_floor.md`, new section "The floor in euros". An exact euro floor costs one state, the scale homothety removes. Options: (1) phi_t = c_min / Ybar_t along the deterministic profile, no new state, exact for a household on the profile; (2) a state f = c_min / Y_t, exogenous like q, exact; renters can use the fourth axis, owners need a fifth while the mortgage runs; the same state allows a flat AOW; (3) retirement is already a constant euro amount per household. Recommended: (1) with the absorbing state for both tenures, then (2) for renters only to measure (1)'s error, owners on a fifth axis only if that error is outside the stop rule. Decision 4 points to the section.

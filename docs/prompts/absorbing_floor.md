@@ -66,6 +66,31 @@ gross income (the AOW in retirement). B_t = 1 marks a bankrupt household.
 8. phi_abs = 0 switches the absorbing state off and gives today's model
    exactly: top-up at phi_floor = 1e-6, every year.
 
+Homothety: the condition. Scaling X, A, H and Y by lambda must scale V by
+lambda^(1-gamma). After bankruptcy V^B_t = Cbar^(1-gamma) / (1-gamma) * D_t,
+which scales by lambda^(1-gamma) exactly when Cbar scales by lambda. So Cbar
+may be any amount proportional to the household's own state at entry,
+Cbar = W g(u, q, t), and it stays constant afterwards: once bankrupt there are
+no choices, so the future needs no state. Constant over the remaining life is
+not the difficulty. The level at entry is. A euro amount common to all
+households does not scale with lambda, so it needs c_min / Y_t as a state
+(option 2 below). Proportional to income at entry, Cbar = phi_t Y_{t*}, is
+the natural homothetic choice (phi_t constant, or c_min / Ybar_t, option 1).
+
+The continuation at a quadrature node, in the solver's units (per W_t, as in
+`bellman_rhs`). With phi_{t+1} the floor share next year:
+1. Next year's liquid resources:
+   LW_n = X_next_W + y_{t+1} Y_next_W + a_{t+1} A_next_W - h_{t+1}(q_n) H_next_W,
+   with y the take-home share of gross income next year
+   ((1 - kappa_{t+1})(1 - tau_inc) working, 1 - tau_inc retired), a the net
+   annuity rate ((1 - tau_inc) / ann_price(t+1) if retired at t+1, else 0),
+   and h the housing cost rate at q_n.
+2. If LW_n < phi_{t+1} Y_next_W, the node is bankrupt and its certainty
+   equivalent is CE_n = phi_{t+1} Y_next_W D_{t+1}^(1/(1-gamma)), replacing
+   W_growth * z_n. Otherwise the interpolated z as now.
+3. LW_n depends on the choice (c, pi) through X_next_W, so the test runs inside
+   `bellman_rhs`, for each candidate. It is a few vector operations.
+
 What changes against today: today a household below the floor consumes
 phi_floor * Y for that year only, saves nothing, keeps A, H and Y, and is back
 in the ordinary problem next year. Under the new rule the first time is the
