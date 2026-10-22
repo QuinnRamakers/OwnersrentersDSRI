@@ -232,6 +232,47 @@ A floor tied to H raises the bar for households whose housing cost is high
 relative to their income, which is what a euro floor does too: the trigger is
 X + y Y < (housing cost rate + floor rate) H.
 
+Dutch policy basis (searched 22 Oct; secondary sources, the statute texts not
+read line by line):
+1. The level. The bijstand norm (Participatiewet art. 21) is 70% of the net
+   minimum wage for a single adult and 100% for a couple. The minimum wage and
+   the benefits tied to it move twice a year with average contract wages (the
+   koppeling). So the Dutch floor is a common euro amount tied to economy-wide
+   wages, not to the household's own income. The model has no aggregate wage
+   growth, so the matching choice is c_min constant in real 2025 euros. The
+   norm pays for housing, with huurtoeslag and zorgtoeslag on top, so the
+   after-housing minimum is roughly the same whatever the rent. The
+   rent-index floor (option 2) is a numerical stand-in for that fixed amount,
+   not a policy feature.
+2. Debtors. The beslagvrije voet (Wet vereenvoudiging beslagvrije voet, 2021;
+   art. 475da ff. Rv) protects 95% of net income for incomes at or below the
+   bijstand norm, rises with income for middle incomes (components that replace
+   allowances a debtor no longer gets), and is capped (single without
+   children EUR 2,208.48 a month from 1 July 2026). At the bottom it is a
+   share of the debtor's own income, so it supports the income floor
+   (option 1) for low-income households.
+3. Bankruptcy. The Wsnp lasts 18 months as standard since 1 July 2023 (was 3
+   years; extendable, at most 3.5 years at admission). The debtor lives on the
+   protected amount, assets are sold, usually including the house, and the
+   remaining debt is then discharged (schone lei). It is not absorbing.
+   Occupational pension rights cannot be surrendered or pledged (Pensioenwet),
+   so creditors do not get the DC pot; to be checked for the Wsnp. A closer
+   version for renters without a new state: k years at the floor (k = 2 for
+   18 months), then back in the ordinary problem with X = 0 and A, H and Y as
+   they evolved. Its value is a no-choice backward recursion on the existing
+   grid, k extra arrays per age, provided the floor each year is proportional
+   to that year's state (rent index or income). Owners would leave the house,
+   and the model has no move from owner to renter, so owners stay absorbing.
+4. Owners on bijstand. Where home equity exceeds the exemption, bijstand is
+   paid as a loan secured on the house (Participatiewet art. 50; the
+   exemption is in art. 34 and municipal rules). Owners keep the house and
+   draw on its equity. That is equity release, TODO.md item 1.1, not
+   bankruptcy.
+5. Retirees. The AOW is the minimum for those over 67, tied to the net minimum
+   wage, with the AIO topping up an incomplete AOW. The model's first pillar
+   is 0.307 Y_66 rather than flat, so a retirement floor at the household's
+   own AOW is homothetic but inherits its spread across households.
+
 Recommended without a new state: renters option 2; owners option 3 with 3a
 if a quick-grid timing shows the run time acceptable, otherwise 3b.
 

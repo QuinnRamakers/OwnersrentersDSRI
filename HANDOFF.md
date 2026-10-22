@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-22 The absorbing floor: a basis in Dutch policy (spec: none, asked by Quinn in Claude Code)
+Quinn: is there anything in Dutch policy design to base the floor on?
+Changed: `docs/prompts/absorbing_floor.md`, "Dutch policy basis" under "The floor in euros": the bijstand norm (70% / 100% of the net minimum wage, indexed with contract wages: a common euro amount, so c_min constant in real euros); the beslagvrije voet (95% of own net income at the bottom, a cap above); the Wsnp (18 months since 1 July 2023, then a clean slate, so not absorbing; pension rights not available to creditors, to be checked); bijstand to owners as a loan on the house (equity release, TODO 1.1); the AOW as the retirees' minimum. Added a temporary-bankruptcy variant for renters (k years at the floor, then back with X = 0), computable on the existing grid without a new state.
+Sources: web search, secondary sources (municipal tables, ESB, rendement.nl, bureauwsnp.nl); statute texts not read line by line.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: Quinn's choices: absorbing or temporary for renters; owners after 54; the source for c_min, single or couple.
+
 ### 2026-10-22 The absorbing floor without a new state (spec: none, asked by Quinn in Claude Code)
 Quinn: no new state variable; what are the options?
 Changed: `docs/prompts/absorbing_floor.md`, "Without a new state" under "The floor in euros". The floor must be proportional to something in the state. Every household of a tenure enters with the same Y0 and H0, so H0 is a common euro amount. Options: (1) income, phi_t = c_min/Ybar_t; (2) renters, the rent index, phi^R_t = c_min/Hbar_t; (3) owners, the purchase price q H = H0, exact while q is live (25-54), then (a) keep q live to 100, (b) switch to income, or (c) house value. Recommended: renters 2, owners 3a if the run time is acceptable, else 3b. The H-based floors need a fallback on the grid edges where H = 0.
