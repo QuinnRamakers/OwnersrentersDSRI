@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-22 The absorbing floor without a new state (spec: none, asked by Quinn in Claude Code)
+Quinn: no new state variable; what are the options?
+Changed: `docs/prompts/absorbing_floor.md`, "Without a new state" under "The floor in euros". The floor must be proportional to something in the state. Every household of a tenure enters with the same Y0 and H0, so H0 is a common euro amount. Options: (1) income, phi_t = c_min/Ybar_t; (2) renters, the rent index, phi^R_t = c_min/Hbar_t; (3) owners, the purchase price q H = H0, exact while q is live (25-54), then (a) keep q live to 100, (b) switch to income, or (c) house value. Recommended: renters 2, owners 3a if the run time is acceptable, else 3b. The H-based floors need a fallback on the grid edges where H = 0.
+Numbers, by hand (Python, from config.params): 10th-90th percentile over the median path at 40 / 66 / 100: income 0.66-1.52 / 0.50-2.00 / 0.50-2.00; rent index 0.92-1.09 / 0.86-1.16 / 0.82-1.22; house value 0.67-1.49 / 0.52-1.93 / 0.41-2.44. H0 at step 16: owners EUR 176,945, renters EUR 125,208. Owner run time with q to 100 roughly twice (estimate from step 7b: 366 s and 83 s); not measured.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: Quinn's choice; the source for c_min; decisions 1-3 and 5 of the prompt.
+
 ### 2026-10-22 The absorbing floor: the homothety condition and the continuation at a node (spec: none, asked by Quinn in Claude Code)
 Quinn: the floor after bankruptcy is constant, and lifetime utility from then on is the discounted sum of u at that level; it has to fit the model's homothety.
 Changed: `docs/prompts/absorbing_floor.md`, two paragraphs under "The model, formally". (1) The condition: V^B_t = Cbar^(1-gamma)/(1-gamma) D_t is homothetic exactly when Cbar is proportional to the household's state at entry, Cbar = W g(u, q, t); constant afterwards needs no state. A euro amount common to all needs c_min/Y as a state. (2) The continuation at a quadrature node in `bellman_rhs` units: bankrupt where LW_n < phi_{t+1} Y_next_W, with CE_n = phi_{t+1} Y_next_W D_{t+1}^(1/(1-gamma)).

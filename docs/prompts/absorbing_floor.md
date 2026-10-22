@@ -188,7 +188,54 @@ Options:
    through Y_66, by the factors above. Option 1 uses this; option 2 with a
    flat AOW makes it exact.
 
-Recommended order:
+Without a new state (Quinn, 22 Oct: no new state variable). Cbar must be
+proportional to something already in the state: Y, H, A, X, or q H = H0 for
+owners while q is live. Every household of a tenure enters with the same Y0,
+so the same H0 = h_mult Y0, and H0 is a common euro amount. The question is
+which of these stays closest to a fixed euro amount over life. 10th-90th
+percentile of the variable over its median path (Python, from config.params):
+
+| age | income Y | rent index (renters) | house value (owners) | q H = H0 (owners) |
+|---|---|---|---|---|
+| 40 | 0.66-1.52 | 0.92-1.09 | 0.67-1.49 | 1 |
+| 66 | 0.50-2.00 | 0.86-1.16 | 0.52-1.93 | 1 |
+| 100 | 0.50-2.00 | 0.82-1.22 | 0.41-2.44 | 1 |
+
+(log sd: income 0.082-0.084 a year to 66; rent index 0.0177; house 0.0804.)
+
+1. Income, Cbar = phi_t Y with phi_t = c_min / Ybar_t (option 1 above).
+   Both tenures, all ages. V~^B = (phi_t u1)^(1-gamma)/(1-gamma) D_t.
+2. Renters: the rent index, Cbar = phi^R_t H with phi^R_t = c_min / Hbar_t,
+   Hbar_t = H0 exp(mu_R (t-1)), H0 = 4.16 x EUR 30,098 = EUR 125,208 at step
+   16. V~^B = (phi^R_t s_H)^(1-gamma)/(1-gamma) D_t, s_H = u2 (1-u1)(1-u3).
+   Rents have a small shock, so the floor stays within 0.82-1.22 of c_min to
+   100, and it hardly depends on income luck (corr_HL_rent 0.06).
+3. Owners: the purchase price, Cbar = (c_min / H0) q H, exactly c_min for
+   every owner (H0 = 4.45 x EUR 39,763 = EUR 176,945 at step 16).
+   V~^B = ((c_min/H0) q s_H)^(1-gamma)/(1-gamma) D_t. At a quadrature node
+   q_n H_next_W = q s_H, so the floor in units of W_t is the same at every
+   node, as a euro amount should be. q is a state only while the mortgage
+   runs (25-54). After that, either:
+   a. keep q live to 100. No new variable, the q axis is already there, but
+      every owner period is solved on it: roughly twice the owner's run time
+      (estimate from step 7b: 366 s with q for 30 years, 83 s without), or
+   b. switch to option 1 from 55 (spread 0.55-1.81 at 55), or
+   c. the house value, not recommended (wider than income in old age).
+4. Any mix a_t Y + b_t H + c_t q H is also homothetic. The single best
+   variable per tenure is simpler and already close.
+
+The H-based floors are zero on the grid's edges where H = 0 (u2 = 0 or
+u3 = 1). No household with housing reaches them, but their value would be
+-inf. Those nodes need a fallback, for example the income-based floor.
+
+A floor tied to H raises the bar for households whose housing cost is high
+relative to their income, which is what a euro floor does too: the trigger is
+X + y Y < (housing cost rate + floor rate) H.
+
+Recommended without a new state: renters option 2; owners option 3 with 3a
+if a quick-grid timing shows the run time acceptable, otherwise 3b.
+
+Recommended order (with a state allowed):
 1. Option 1 with the absorbing state, for both tenures. Code cost: the scalar
    floor becomes a path `p.phi_path(t)` in the solver and the simulation.
 2. Option 2 for renters only, on the fourth axis, to measure option 1's error
