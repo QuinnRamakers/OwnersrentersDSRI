@@ -36,6 +36,16 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-22 Paper version 15 mapped against the code (spec: none, asked by Quinn in Claude Code, cloud session)
+Quinn: an extensive review of the draft (`Owners_vs_renters_15.pdf`, 22 October 2026, uploaded to the session, not in the repo) against the current code and production, section by section, as input for a new draft.
+Changed:
+- `docs/PAPER_REVIEW_2026-10-22.md` (new): summary (paper against production, what can be claimed, what blocks results); each paper section against the code with file:line references and the coauthor comments the code now answers; paper Table 2 against production; equations to correct (eq 7/27 sign, 13 off by one, 17, 46, 47, kappa_t); what the ladder found, by step, with the HANDOFF dates; what the code does that the paper omits (the floor first); repo inconsistencies; a structure for the new draft.
+- CALIBRATION.md (Pension) and TODO.md (item 7): the annuity recursion says that E[R^A] is the fund's return before the survival credit, as in `pension.annuity_price`. With the paper's R^A, which includes the credit, the line counted p_t twice. TODO.md item 7 points to the review.
+Found, not changed (review section 7): README "From age 40 on, behaviour is reliable" and CALIBRATION.md's last numerics line contradict CLAUDE.md's known limits; README's and TODO item 1's rent and mortgage burdens predate 17 October (now 41% of net income for renters, 55% for owners); TODO item 1 still says the ladder stopped at step 7; the research branch's last PCHIP knot is 99, the paper's 100; steps 8 and 14 have never been run.
+Checks run: none. MATLAB is not installed in this container, and only documents changed; no code in `+config`, `+ladder`, `+model` or `+solver`. Every value in the review's parameter table was compared by hand with `+config/params.m` and CALIBRATION.md: they agree.
+Commit: this entry with the four files, pushed to claude/lucid-goldberg-l2wcjs, not yet on main.
+Open: merge to main so chat can read it; the README and TODO staleness above, Quinn's call; TODO item 1 before the draft can report production results.
+
 ### 2026-10-20 Step 16: share at the consumption floor by age, for the summary plots (spec: none, asked by Quinn in Claude Code)
 Quinn: the bankruptcy rates for the summary plots. The model's bankruptcy event is a floored household-year (liquid resources below phi_floor times income; consumption set to the floor, the shortfall forgiven). The dashboards print only the total.
 No new solve. New `diagnostics/nibud/floored_by_age.m`: the floored share by age for every solve behind `summary_step16/`. Output (gitignored): `summary_step16/16_floored_by_age.png`. Also drawn without a script: `summary_step16/income_profile_owner_renter.png`, the owner and renter income cubics of `config.params`.

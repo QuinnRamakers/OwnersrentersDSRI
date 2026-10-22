@@ -168,6 +168,10 @@ interpolation or the model rather than the grid (HANDOFF.md, 18 October).
 
 ## 7. Paper write-up
 
+Version 15 of the draft (22 October 2026) is mapped against the code, section
+by section, in `docs/PAPER_REVIEW_2026-10-22.md`. The items below are the
+short list.
+
 - **Taxes.** The DC advantage is EET plus the box-3 shelter; state the
   mechanics, including the missing loss offset on the liquid account.
 - **Franchise.** Never stated, although `kappa_t` depends on it: EUR 18,475
@@ -180,8 +184,9 @@ interpolation or the model rather than the grid (HANDOFF.md, 18 October).
 - **Equation (27).** The mean of `eps` is written `+0.5 sigma^2`; the code uses
   `-0.5 sigma^2`.
 - **Annuity formula.** Use the recursion the code uses,
-  `a_t = 1 + p_t a_{t+1} / E[R^A]`, framed as a variable annuity with assumed
-  interest rate `E[R^A]`.
+  `a_t = 1 + p_t a_{t+1} / E[R^A]` with `R^A` the fund's return before the
+  survival credit, framed as a variable annuity with assumed interest rate
+  `E[R^A]`.
 - **Coordinates.** State the cube the model is solved on, and never call `W`
   wealth for renters, whose `W` includes the rent index.
 - **Behaviour to state.** The DC return carries a survival credit from 25; the

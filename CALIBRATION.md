@@ -116,8 +116,10 @@ exactly this object.
 
 The DC pot earns the survival credit 1/p_t from age 25, not only in
 retirement, and is converted at 67 into a variable annuity whose price `a_t`
-keeps expected payouts level: `a_t = 1 + p_t a_{t+1} / E[R^A]`. Whatever
-equity share the fund holds in retirement is priced in.
+keeps expected payouts level: `a_t = 1 + p_t a_{t+1} / E[R^A]`, with `R^A`
+the fund's return before the survival credit, `(1 - tau) R_f + tau R^S`
+(`pension.annuity_price`). Whatever equity share the fund holds in retirement
+is priced in.
 
 Open: `kappa_base` should be an aggregate participant-weighted rate across
 Dutch funds (DNB or Pensioenfederatie), not a single OECD figure.
