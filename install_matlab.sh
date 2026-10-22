@@ -32,7 +32,7 @@ set -euo pipefail
 
 : "${CGM_OUTPUT_DIR:?CGM_OUTPUT_DIR must be set to the mounted PVC path}"
 
-MATLAB_RELEASE="R2024b"   # <-- EDIT to match your license/entitlement
+MATLAB_RELEASE="R2025a"   # <-- EDIT to match your license/entitlement
 MATLAB_DEST="${CGM_OUTPUT_DIR}/matlab"
 PRODUCTS=(MATLAB Optimization_Toolbox Parallel_Computing_Toolbox)
 
