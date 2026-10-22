@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-22 The absorbing floor linked to labour income (spec: none, asked by Quinn in Claude Code)
+Quinn: the rent-index and purchase-price floors are not defensible in a paper; link the floor to labour income. No new state variable.
+Changed: `docs/prompts/absorbing_floor.md`: the decision recorded; options 2 and 3 without a state dropped. New "The labour-income floor": F_t = phi_t Y^L_t, with Y^L_t labour income in working life and final labour income (Y_t / 0.307) in retirement; after bankruptcy Cbar = F_{t*} for life, V~^B_t = (phi_t u1 / r_t)^(1-gamma)/(1-gamma) D_t. Two ways to set phi_t: (a) one share for all ages; (b) phi_t = c_min / Ybar^L_t, equal to c_min for the median household at every age. Recommended: (b), same c_min for both tenures.
+Numbers, by hand (Python, DHS cubics): (a) the median's floor at 40 / 55 / 66 is 1.74 / 1.84 / 1.66 times its entry value (owners), 1.63 / 1.71 / 1.64 (renters). (b) phi_t over phi_25: 0.58 / 0.54 / 0.60 (owners), 0.61 / 0.58 / 0.61 (renters). Spread across households 0.50-2.00 of the median's floor from 66 in both.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: Quinn: (a) or (b); same c_min or same phi for both tenures; the source and value of c_min; decisions 2 and 3 of the prompt (the lower bound of consumption, an involuntary trigger).
+
 ### 2026-10-22 The absorbing floor: a basis in Dutch policy (spec: none, asked by Quinn in Claude Code)
 Quinn: is there anything in Dutch policy design to base the floor on?
 Changed: `docs/prompts/absorbing_floor.md`, "Dutch policy basis" under "The floor in euros": the bijstand norm (70% / 100% of the net minimum wage, indexed with contract wages: a common euro amount, so c_min constant in real euros); the beslagvrije voet (95% of own net income at the bottom, a cap above); the Wsnp (18 months since 1 July 2023, then a clean slate, so not absorbing; pension rights not available to creditors, to be checked); bijstand to owners as a loan on the house (equity release, TODO 1.1); the AOW as the retirees' minimum. Added a temporary-bankruptcy variant for renters (k years at the floor, then back with X = 0), computable on the existing grid without a new state.

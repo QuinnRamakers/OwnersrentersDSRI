@@ -273,16 +273,45 @@ read line by line):
    is 0.307 Y_66 rather than flat, so a retirement floor at the household's
    own AOW is homothetic but inherits its spread across households.
 
-Recommended without a new state: renters option 2; owners option 3 with 3a
-if a quick-grid timing shows the run time acceptable, otherwise 3b.
+Decision (Quinn, 22 Oct): the floor is linked to labour income. The
+rent-index and purchase-price floors (options 2 and 3 without a new state) are
+dropped: not defensible in a paper. No new state variable.
 
-Recommended order (with a state allowed):
-1. Option 1 with the absorbing state, for both tenures. Code cost: the scalar
-   floor becomes a path `p.phi_path(t)` in the solver and the simulation.
-2. Option 2 for renters only, on the fourth axis, to measure option 1's error
-   against the exact floor (consumption, the equity share, the bankrupt share
-   by age, and the stop rule).
-3. Owners on a fifth axis only if step 2 shows option 1 outside the stop rule.
+The labour-income floor. Income is a pure random walk with no transitory
+shock, so current labour income is permanent labour income. Y^L_t is labour
+income in working life and final labour income Y_66 in retirement. The
+model's Y in retirement is the first pillar, 0.307 Y_66, so Y^L_t = Y_t / 0.307
+from 67 on, and the floor stays a function of the state.
+1. Floor: F_t = phi_t Y^L_t. Trigger: LW_t < F_t.
+2. After bankruptcy at t*: Cbar = F_{t*} for life,
+   V~^B_t = (phi_t u1 / r_t)^(1-gamma) / (1-gamma) * D_t, with r_t = 1 in
+   working life and 0.307 in retirement.
+3. Two ways to set phi_t:
+   a. One share, phi_t = phi for all t. One primitive, the simplest to state:
+      "the floor is phi times permanent labour income". For the median
+      household the floor in euros moves with the profile: 1.74, 1.84 and
+      1.66 times its entry value at 40, 55 and 66 for owners (renters 1.63,
+      1.71, 1.64), and stays at the 66 value in retirement.
+   b. A share by age, phi_t = c_min / Ybar^L_t, with c_min a primitive in
+      2025 euros and Ybar^L_t the median labour income path of the tenure
+      (frozen at 66 in retirement). The floor equals c_min for the median
+      household at every age: "the floor is a share of permanent labour
+      income, set by age so that it equals the social minimum at median
+      income". phi_t relative to phi_25: 0.58, 0.54, 0.60 at 40, 55, 66 for
+      owners (renters 0.61, 0.58, 0.61), and the 66 value in retirement.
+4. In both, a household with income luck x = Y_t / Ybar_t gets x times the
+   median's floor: 0.50-2.00 between the 10th and 90th percentiles from 66
+   (the income figure of 22 Oct). That is the price of homothety. Defence: the
+   standard treatment in models normalised by permanent income, and the
+   beslagvrije voet, which protects 95% of the debtor's own net income at low
+   incomes (Dutch policy basis, item 2).
+5. Y > 0 everywhere on the grid (the u1 axis starts above 0), so no node has a
+   floor of zero; the edge problem of the H-based floors does not arise.
+6. Same c_min for both tenures (one policy); phi_t then differs by tenure
+   only because the income profiles do. Alternative: the same phi.
+
+Recommended: 3b with the same c_min for both tenures. It is still one primitive
+(c_min) and it matches the euro minimum where most households are.
 
 The euro amount. The floor in the model is consumption after housing costs.
 The social minimum pays for housing too. The bijstand norm (Participatiewet,
