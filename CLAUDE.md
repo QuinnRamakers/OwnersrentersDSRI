@@ -42,6 +42,24 @@ Use the session-start skill at the beginning and the session-end skill at the en
 - Stage files by name. Never run `git add .`. The folders `demo - Copy/` and `demo - Copy.zip` are leftovers and must not be committed.
 - For a quick look at a solve, shrink the grid with `setenv('CGM_STATE_GRID','8 6 6 4'); setenv('CGM_GH_N','3')` and clear both afterwards.
 
+## Running on the DSRI
+
+The how-to is `docs/DSRI_HOWTO.md`.
+
+- Only from Claude Code on Quinn's PC, with the UM VPN on. Cloud sessions and chat cannot reach the DSRI.
+- Before any DSRI work, run `oc whoami`. If it fails, stop and ask Quinn to log in again and to check the VPN. Do not retry.
+- Pod: `oc get pods -l app=cgm-matlab -o name`. Never hard-code the pod name; it changes on every restart.
+- Remote folder: `/Solutionstorage/OwnersrentersDSRI`, the only persistent place. Run there with `CGM_OUTPUT_DIR` set to it, so results land under `ladder/` as on the PC.
+- `MSYS_NO_PATHCONV=1` must be set, or Git Bash rewrites the `/Solutionstorage` paths: in the `env` of `.claude/settings.json`, or with `export MSYS_NO_PATHCONV=1;` at the start of each command (shell state does not carry over between commands).
+- Sync only a committed and pushed tree (`git status -sb --untracked-files=no` shows no changes and nothing ahead), with `oc rsync ./ <pod>:/Solutionstorage/OwnersrentersDSRI/ --exclude=.git --exclude=.claude --exclude=ladder --exclude='*.mat' --exclude='*.png' --exclude='*.pdf' --exclude='*.txt' --exclude='demo - Copy' --exclude='demo - Copy.zip'`. Never `--delete`: the results live in the same folder.
+- Long runs: inside `oc exec <pod> -- bash -c "..."`, write `commit <hash>, started <date>` as the first line of `runs/<name>.txt`, then `CGM_OUTPUT_DIR=<folder> nohup matlab -sd <folder> -batch '<statement>' >> runs/<name>.txt 2>&1 &`. MATLAB strings in the statement take escaped double quotes.
+- Two runs at once: give each `CGM_N_WORKERS` equal to its share of the pod's cores.
+- Progress: `tail` on the log. Running jobs: `ps -eo pid,etime,args | grep [-]batch`.
+- When a run ends: read `model.checks` in the log (`c_bound_25_39`, `ce_entry`, `offgrid`), pull `runs/` and the results folder with `oc rsync`, and log the run in HANDOFF.md: that it ran on the DSRI, the commit, the pod's cores, the wall time and the checks.
+- `Undefined function 'fmincon'` or "No parallel pool" means the pod restarted: reinstall the toolboxes (`docs/DSRI_HOWTO.md`, section 2.4) and start the run again. `ladder.run` skips steps already saved.
+- A licence error: stop and tell Quinn.
+- Never run `oc delete`, and never delete anything under `/Solutionstorage`, without asking first.
+
 ## Writing
 
 Plain, direct English in short sentences. Use numbered lists for plans. When handing work over, give an ordered list of exactly the files to run, then a short plain summary of what changed and what it means. In paper text, no bold headings and no editorial framing.

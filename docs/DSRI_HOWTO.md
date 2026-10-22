@@ -150,7 +150,7 @@ POD=$(oc get pods -l app=cgm-matlab -o name | head -1 | cut -d/ -f2)
 REPO=/Solutionstorage/OwnersrentersDSRI
 
 # 0. the run starts from a pushed commit
-git status -sb                     # clean, and not ahead of origin
+git status -sb --untracked-files=no   # no changes, nothing ahead
 COMMIT=$(git rev-parse --short HEAD)
 
 # 1. push the code; never --delete, because the results live in the same folder
@@ -192,10 +192,12 @@ Notes on these commands:
 
 ### 5.1 Add instructions to CLAUDE.md
 
-Put the following section in CLAUDE.md. After that, a short instruction such as "run ladder step 16 on the DSRI" is enough.
+CLAUDE.md has the following section. With it, a short instruction such as "run ladder step 16 on the DSRI" is enough.
 
 ```markdown
 ## Running on the DSRI
+
+The how-to is `docs/DSRI_HOWTO.md`.
 
 - Only from Claude Code on Quinn's PC, with the UM VPN on. Cloud sessions and chat
   cannot reach the DSRI.
@@ -206,8 +208,11 @@ Put the following section in CLAUDE.md. After that, a short instruction such as 
 - Remote folder: `/Solutionstorage/OwnersrentersDSRI`, the only persistent place.
   Run there with `CGM_OUTPUT_DIR` set to it, so results land under `ladder/` as on
   the PC.
-- `MSYS_NO_PATHCONV=1` must be set, or Git Bash rewrites the `/Solutionstorage` paths.
-- Sync only a committed and pushed tree (`git status -sb` clean, not ahead), with
+- `MSYS_NO_PATHCONV=1` must be set, or Git Bash rewrites the `/Solutionstorage`
+  paths: in the `env` of `.claude/settings.json`, or with `export MSYS_NO_PATHCONV=1;`
+  at the start of each command (shell state does not carry over between commands).
+- Sync only a committed and pushed tree (`git status -sb --untracked-files=no` shows
+  no changes and nothing ahead), with
   `oc rsync ./ <pod>:/Solutionstorage/OwnersrentersDSRI/ --exclude=.git
   --exclude=.claude --exclude=ladder --exclude='*.mat' --exclude='*.png'
   --exclude='*.pdf' --exclude='*.txt' --exclude='demo - Copy'

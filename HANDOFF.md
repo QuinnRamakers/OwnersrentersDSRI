@@ -36,6 +36,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-22 CLAUDE.md: running on the DSRI (spec: none, asked by Quinn in Claude Code)
+Quinn: the how-to works up to its section 3 (oc login, pod running); add the rules to CLAUDE.md and test.
+CLAUDE.md has a new section "Running on the DSRI", the rules of `docs/DSRI_HOWTO.md` section 5.1. Two changes against the guide's first version, made in both files: the sync rule checks `git status -sb --untracked-files=no`, since `demo - Copy/` and `demo - Copy.zip` are always untracked on the PC; and `MSYS_NO_PATHCONV=1` may come from `.claude/settings.json` or an `export` in each command.
+Not done: the `.claude/settings.json` change of the guide's section 5.2 (env line, oc permissions). This cloud session was not allowed to edit Claude Code's own settings; Quinn makes it on the PC.
+Not tested: the first test run (guide, section 5.3) needs Claude Code on the PC; this session has no VPN, `oc` or MATLAB.
+Checks run: none in MATLAB (not installed in this session). No `.m` file changed.
+Commit: this entry with `CLAUDE.md` and `docs/DSRI_HOWTO.md`, pushed to `claude/compassionate-mayer-dsb8m1`.
+Open: the first test run from the PC.
+
 ### 2026-10-22 DSRI how-to for this repository (spec: none, asked by Quinn in Claude Code)
 Quinn: adapt the general how-to "Running Code on the DSRI with Claude Code" (a PDF for Python on a JupyterLab pod) to this project.
 New `docs/DSRI_HOWTO.md`, same eight sections as the original, rewritten for MATLAB on the DSRI Matlab template with the volume at `/Solutionstorage` (as in `bootstrap_pod.m`), Claude Code on Quinn's Windows PC in Git Bash, and this repo's rules: runs start from a pushed commit, the commit is the first line of each run log, `CGM_OUTPUT_DIR` is the repo folder on the pod so results land under `ladder/` as on the PC, `model.checks` read and the run logged here. Also: `MSYS_NO_PATHCONV=1` against Git Bash path rewriting, `nohup matlab -sd <repo> -batch`, `CGM_N_WORKERS` for two runs at once, the toolbox reinstall after a restart, the batch-mode licence. It holds a CLAUDE.md section and a `.claude/settings.json` (oc permissions, the env line) to copy in; neither is applied yet.
