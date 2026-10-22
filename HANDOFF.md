@@ -36,6 +36,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-22 Prompt for the consumption floor as an absorbing state, saved, not started (spec: none, asked by Quinn in Claude Code)
+Quinn: start work on an absorbing state. The idea is a higher consumption floor that a household, once below it, consumes for the rest of its life. Asked what has to change in the code and for a formal statement of the request.
+Changed: `docs/prompts/absorbing_floor.md` (new): the model stated formally (trigger LW_t < phi_abs Y_t; bankrupt from then on at Cbar = phi_abs Y at entry; value u(Cbar) D_t with D_t = 1 + beta p_t D_{t+1}, D_T = 1, so no new state and homothety holds; phi_abs = 0 is today's model). Five open decisions with a recommendation each. The code changes file by file, the new tests, and the runs with expectations. No code changed.
+Numbers, by hand (Python, from config.params and the CBS table): D = 22.3 at 25, 16.8 at 55, 12.9 at 67, 4.1 at 90. Liquid resources at entry, step 16: 0.327 Y owners (take-home 0.556, housing 0.308), 0.420 Y renters (0.574, 0.233), with b0 = 0.079. This caps phi_abs at about 0.2.
+Conflict: the request reopens TODO.md item 1.4 and CALIBRATION.md ("Consumption floor", 17 Oct), which settle the floor as a numerical bound at 1e-6. Both need changing if this is adopted.
+Checks run: none. MATLAB is not installed in this session's container. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg (not main: this session may push only to that branch).
+Open: Quinn's decisions 1-5 in the prompt; then the implementation.
+
 ### 2026-10-20 Step 16: share at the consumption floor by age, for the summary plots (spec: none, asked by Quinn in Claude Code)
 Quinn: the bankruptcy rates for the summary plots. The model's bankruptcy event is a floored household-year (liquid resources below phi_floor times income; consumption set to the floor, the shortfall forgiven). The dashboards print only the total.
 No new solve. New `diagnostics/nibud/floored_by_age.m`: the floored share by age for every solve behind `summary_step16/`. Output (gitignored): `summary_step16/16_floored_by_age.png`. Also drawn without a script: `summary_step16/income_profile_owner_renter.png`, the owner and renter income cubics of `config.params`.
