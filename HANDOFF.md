@@ -36,6 +36,24 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-22 DSRI pipeline test after the pod was redeployed (spec: none, asked by Quinn in Claude Code)
+Quinn: test the DSRI connection. Sync the repo to /Solutionstorage/OwnersrentersDSRI, run the fast tests and a quick-grid solve there in the background, pull runs/ back. Only whether the pipeline works, not the results.
+Found: the `matlab` deployment was recreated on 22 October at about 15:00 UTC, image `mathworks/matlab:r2025a`. The PVC `matlab` (25 Gi) is now mounted at /home/matlab/persistent, and /Solutionstorage did not exist. The volume holds an old copy of the repo in `main/` (15 August) and the init container's empty `source/`, `results/`, `scripts/`. The image has no git and no rsync.
+Ran:
+1. `oc whoami`: P70093213, project sbe-guest-ovsr. `oc get pods -l app=matlab`: matlab-74dccbd887-zrfg5, Running, node c-0107, limits 32 CPU and 200 Gi.
+2. In the pod, a symlink /Solutionstorage -> /home/matlab/persistent (container filesystem, gone on restart). `git archive origin/main` (7b5143d) unpacked to /Solutionstorage/OwnersrentersDSRI, 159 files, no .git.
+3. `runs/dsri_test.sh`, detached, log `runs/dsri_test.txt`: `matlab -sd /Solutionstorage/OwnersrentersDSRI -batch 'disp(version); disp(utility.cpu_quota); assert(exist("fmincon") > 0); addpath tests; run_tests(solve=false)'`, then `run_model(config.params(), tag="dsri_test")` with CGM_STATE_GRID='8 6 6 4', CGM_GH_N=3, CGM_OUTPUT_DIR=/Solutionstorage/OwnersrentersDSRI/runs/dsri_test.
+4. Extra, log `runs/dsri_test_noassert.txt`: `license('test', ...)` for both toolboxes, then `run_tests(solve=false)` without the fmincon assert.
+Results:
+- `version`: 25.1.0.2973910 (R2025a) Update 1. `utility.cpu_quota`: 32.
+- `assert(exist("fmincon") > 0)` failed, so `run_tests` did not run in that command.
+- The solve stopped after 2 s: "gcp requires Parallel Computing Toolbox" (`model.run`, line 34). Nothing was saved and runs/dsri_test/ was not created.
+- Extra: `license('test')` is 1 for Optimization_Toolbox and for Distrib_Computing_Toolbox. `run_tests(solve=false)`: 0 of 10 failed.
+What it means: the connection, the sync, MATLAB, the license server and `cpu_quota` work. The new image has no Optimization Toolbox or Parallel Computing Toolbox files (no toolbox/optim or toolbox/parallel under /opt/matlab/R2025a), so no solve can run on DSRI until they are installed.
+Checks run: `run_tests(solve=false)` 0 of 10 failed on the pod, without the fmincon assert. No code changed.
+Commit: this entry only, on branch dsri-test-log from 7b5143d. The logs are in runs/ of the local checkout, not committed.
+Open: install the two toolboxes (`install_matlab.sh` with the release set to R2025a, onto the PVC, or an image that has them), then rerun `sh runs/dsri_test.sh` in the pod.
+
 ### 2026-10-20 Step 16: share at the consumption floor by age, for the summary plots (spec: none, asked by Quinn in Claude Code)
 Quinn: the bankruptcy rates for the summary plots. The model's bankruptcy event is a floored household-year (liquid resources below phi_floor times income; consumption set to the floor, the shortfall forgiven). The dashboards print only the total.
 No new solve. New `diagnostics/nibud/floored_by_age.m`: the floored share by age for every solve behind `summary_step16/`. Output (gitignored): `summary_step16/16_floored_by_age.png`. Also drawn without a script: `summary_step16/income_profile_owner_renter.png`, the owner and renter income cubics of `config.params`.
