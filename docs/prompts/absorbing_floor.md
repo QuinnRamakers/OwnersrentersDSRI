@@ -99,10 +99,95 @@ last.
    owners with no savings go bankrupt after one or two bad income shocks.
    Candidates 0.10, 0.15, 0.20. CALIBRATION.md already notes that floors of
    0.10-0.20 make early life well behaved under the top-up rule.
+   Quinn (22 Oct): the floor should be a subsistence level, a constant euro
+   amount. See "The floor in euros" below.
 5. This reopens a settled decision. TODO.md item 1.4 and CALIBRATION.md
    ("Consumption floor") say the floor is a numerical bound at 1e-6 and not a
    calibration target (17 Oct). phi_abs is a model primitive, not a numerical
    bound. Both documents must say so once this is adopted.
+
+## The floor in euros
+
+Quinn (22 Oct): the floor should be a minimum subsistence level, which is a
+constant euro amount. The model is homothetic: V(W, u) = W^(1-gamma) V~(u).
+That removes one dimension, the scale. A euro amount brings the scale back, so
+an exact euro floor always costs one state. The options trade that state
+against accuracy.
+
+Numbers by hand (Python, from the DHS cubics in config.params):
+- Deterministic income Ybar, owners: EUR 39,763 at 25, 1.74 times that at 40,
+  1.84 at 55, 1.66 at 66; first pillar 0.307 Ybar_66 = EUR 20,256. Renters:
+  EUR 30,098, 1.63, 1.71, 1.64; first pillar EUR 15,182.
+- Income is a random walk, so log(Y_t / Ybar_t) has sd sigma sqrt(t - 1):
+  0.32 at 40, 0.45 at 55, 0.52 at 66 (owners; renters 0.33, 0.46, 0.54).
+  The 10th and 90th percentiles of Y_t / Ybar_t are 0.67 and 1.50 at 40, and
+  0.51 and 1.95 at 66 and through retirement.
+
+Options:
+
+1. A floor along the deterministic income profile (no new state). A new
+   primitive `c_min` in 2025 euros. `config.derive` makes the path
+   phi_t = c_min / Ybar_t for each tenure, with Ybar in retirement equal to
+   replacement * Ybar_66. phi_t is deterministic, so homothety holds. The
+   floor is c_min exactly for a household on the profile, and c_min * Y_t /
+   Ybar_t for the others: 0.51 to 1.95 times c_min between the 10th and 90th
+   percentiles from 66 on. It is too low for the households with bad income
+   shocks, who are the ones nearest it. With the absorbing state (decision 1a)
+   a household bankrupt at t* consumes c_min * Y_{t*} / Ybar_{t*} for life.
+   That is c_min before and after 67 alike, which removes the problem in
+   decision 1 of a wage-level floor locked in before 67. It also meets the
+   objection in CALIBRATION.md that a proportional floor "guarantees 62% of a
+   rising wage": phi_t falls as the profile rises.
+   Variant: take Ybar_t from households below the median (for example the
+   median income of households near the floor in a simulated panel). The floor
+   is then closer to c_min where it binds and too high for everyone else. The
+   path would depend on a solution, so it must be stored as a primitive
+   vector with its source, not derived.
+2. An exact floor, with one more state, f = c_min / Y_t. It moves as
+   f' = f / G' in working life, f' = f / replacement at 67, and is constant
+   after. Like q it does not depend on choices, so next year's f at each
+   quadrature node is known; only the interpolation along f is approximate.
+   V(W, u, q, f) = W^(1-gamma) V~(u, q, f); the absorbing value is
+   (f u1)^(1-gamma) / (1-gamma) * D_t. Grid in log f, about 5-7 nodes, with
+   the entry value c_min / Y_25 as an exact node. Run time times N_f.
+   - Renters have one q node, so f can take the fourth axis. That generalises
+     the q code; it adds no dimension.
+   - Owners need a fifth axis while the mortgage runs (25-54). Every array and
+     interpolant goes from 4D to 5D.
+   - The same state allows a flat AOW in euros (TODO.md, item 7, "the first
+     pillar is replacement * Y_66, not a flat AOW"). With a flat AOW, f is the
+     same for every retiree, so it collapses to one node from 67, as q does
+     after the mortgage.
+3. Retirement is already close. Y is constant after 67, so phi * Y is a
+   constant euro amount for each retiree. It differs across retirees only
+   through Y_66, by the factors above. Option 1 uses this; option 2 with a
+   flat AOW makes it exact.
+
+Recommended order:
+1. Option 1 with the absorbing state, for both tenures. Code cost: the scalar
+   floor becomes a path `p.phi_path(t)` in the solver and the simulation.
+2. Option 2 for renters only, on the fourth axis, to measure option 1's error
+   against the exact floor (consumption, the equity share, the bankrupt share
+   by age, and the stop rule).
+3. Owners on a fifth axis only if step 2 shows option 1 outside the stop rule.
+
+The euro amount. The floor in the model is consumption after housing costs.
+The social minimum pays for housing too. The bijstand norm (Participatiewet,
+21 to AOW age) on 1 January 2025 was EUR 1,345.45 a month for a single adult
+and EUR 1,922.07 for a couple, including holiday allowance (the Rijk's
+Normenbrief 2025, as reproduced by municipalities, for example Leeuwarden's
+Geldgids). That is EUR 16,145 and EUR 23,065 a year, with huurtoeslag and
+zorgtoeslag on top. Whether the model's household is a single or a couple is
+open (TODO.md, item 2, `sex = 3` pooling). So c_min is what is left at
+the social minimum after rent net of huurtoeslag and other fixed costs. Nibud's
+minimum example budgets give this split; a source still has to be chosen.
+Nibud's mortgage norm, which sets h_mult at step 16, is built from Nibud's own
+spending budgets, so taking c_min from Nibud would keep the two consistent
+(to be checked). Scale: the single bijstand norm is 0.41 of an owner's gross
+income at 25 and 0.54 of a renter's (couple: 0.58 and 0.77). The model's cash after housing at entry
+is 0.33 Y and 0.42 Y. Whatever c_min turns out to be, young households start
+close to it. The model's first pillar for the median renter, EUR 15,182 gross,
+is below the net single bijstand norm.
 
 ## Code changes, file by file
 

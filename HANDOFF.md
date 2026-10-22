@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-22 The absorbing floor in euros: options (spec: none, asked by Quinn in Claude Code)
+Quinn: the floor should be a minimum subsistence level, a constant euro amount, which is hard in a homothetic model; asked for suggestions.
+Changed: `docs/prompts/absorbing_floor.md`, new section "The floor in euros". An exact euro floor costs one state, the scale homothety removes. Options: (1) phi_t = c_min / Ybar_t along the deterministic profile, no new state, exact for a household on the profile; (2) a state f = c_min / Y_t, exogenous like q, exact; renters can use the fourth axis, owners need a fifth while the mortgage runs; the same state allows a flat AOW; (3) retirement is already a constant euro amount per household. Recommended: (1) with the absorbing state for both tenures, then (2) for renters only to measure (1)'s error, owners on a fifth axis only if that error is outside the stop rule. Decision 4 points to the section.
+Numbers, by hand (Python, from the DHS cubics): Ybar_t / Ybar_25 1.74, 1.84, 1.66 at 40, 55, 66 (owners); 1.63, 1.71, 1.64 (renters). 10th-90th percentile of Y_t / Ybar_t: 0.67-1.50 at 40, 0.51-1.95 from 66. Bijstand norm 1 Jan 2025, incl. holiday allowance: EUR 1,345.45 a month single, EUR 1,922.07 couple (Normenbrief 2025 via municipal tables), 0.41 and 0.58 of an owner's gross income at 25, 0.54 and 0.77 of a renter's. The norm pays for housing; c_min must be the minimum net of housing, source to choose (Nibud minimum budgets).
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: Quinn's choice among the options and of the source for c_min; decisions 1-3 and 5 of the prompt.
+
 ### 2026-10-22 Prompt for the consumption floor as an absorbing state, saved, not started (spec: none, asked by Quinn in Claude Code)
 Quinn: start work on an absorbing state. The idea is a higher consumption floor that a household, once below it, consumes for the rest of its life. Asked what has to change in the code and for a formal statement of the request.
 Changed: `docs/prompts/absorbing_floor.md` (new): the model stated formally (trigger LW_t < phi_abs Y_t; bankrupt from then on at Cbar = phi_abs Y at entry; value u(Cbar) D_t with D_t = 1 + beta p_t D_{t+1}, D_T = 1, so no new state and homothety holds; phi_abs = 0 is today's model). Five open decisions with a recommendation each. The code changes file by file, the new tests, and the runs with expectations. No code changed.
