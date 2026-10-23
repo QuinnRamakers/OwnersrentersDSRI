@@ -62,6 +62,12 @@ Decisions open, to be settled before step 7 is rerun:
    `phi_floor` stays a numerical bound at 1e-6, with 1e-4 admissible, and is
    not set to the social minimum (CALIBRATION.md). The early-life problem has
    to be met through the housing outflow (1, 3 and 6).
+   Since 23 October an absorbing floor is implemented and off by default
+   (`c_min`, CALIBRATION.md, "The absorbing floor"; results in HANDOFF.md,
+   23 October). Open before it is adopted: the value and source of `c_min`
+   (Nibud minimum example budgets, single or couple), and a bequest rule for
+   bankrupt households before `chi` is switched on. If adopted, the floor
+   becomes a model primitive and this item is rewritten.
 5. **What the house is for.** A bequest (`chi > 0`, see 4) or equity release.
 6. **The outflow from data.** `h_mult` now follows the Nibud maximum mortgage
    (see 2), a ceiling rather than an estimate, and the owner's 100% LTV with

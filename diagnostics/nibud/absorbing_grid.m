@@ -126,6 +126,19 @@ for k = 1:2
         fprintf('%-44s%s\n', [nm ', top-up'], gap_row(X.G_off{i}));
         fprintf('%-44s%s\n', [nm ', absorbing'], gap_row(X.G_abs{i}));
     end
+    % The share weighted by liquid saving (case_load's piw), each grid's own
+    % panel: households with almost nothing saved carry no weight
+    fprintf('\n%s: largest gap in the equity share weighted by liquid saving, each grid''s own panel\n', X.title);
+    for i = 1:size(X.pairs, 1)
+        nm = sprintf('%s vs %s', X.labels{X.pairs(i, 1)}, X.labels{X.pairs(i, 2)});
+        for f = 1:2
+            if f == 1, Q = X.off; tag = 'top-up'; else, Q = X.abs; tag = 'absorbing'; end
+            a = Q{X.pairs(i, 2)}.summary.ages;
+            d = abs(Q{X.pairs(i, 1)}.piw - Q{X.pairs(i, 2)}.piw);
+            v = cellfun(@(b) max([d(a >= b(1) & a <= b(2)), NaN], [], 'omitnan'), bands);
+            fprintf('%-44s%s\n', [nm ', ' tag], sprintf('  %11.3f', v));
+        end
+    end
     fprintf('\n%-36s %5s %8s %8s %6s %8s\n', '', 'age', 'C/Y0', 'X/Y0', 'pi', 'fl/bkr');
     for i = 1:numel(X.cases)
         for f = 1:2
