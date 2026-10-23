@@ -36,12 +36,70 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-23 Prompt for the absorbing floor linked to labour income, saved as a handover, not started (spec: none, asked by Quinn in Claude Code)
+Quinn: a prompt for this as a handover.
+Changed: `docs/prompts/absorbing_floor.md` rewritten as one clean prompt; the exploration of 22 Oct is in git (39c869c to 031e081) and the entries below. Contents: start instructions; the decisions taken (absorbing for life, level fixed at bankruptcy, no new state, linked to labour income); six open decisions with defaults ((b) phi_t = c_min / Ybar_t, the same c_min for both tenures, c_min from Nibud, the floor as the search bound, involuntary trigger, the bequest rule for later); the model with V~^B_t = (phi_t u1)^(1-gamma)/(1-gamma) D_t; the code changes file by file (primitives `c_min` and `phi_abs`, derived `phi_path` and `D_abs`); six new tests, including bit-identical to 7b5143d with the floor off; five runs with expectations on the 20 Oct summary grids; the exact node test for later; the Dutch policy background with sources.
+Numbers, by hand (Python, from config.params): cash after housing at entry EUR 13,003 owners, 12,641 renters; phi_25 at c_min 6,000 / 8,000 / 10,000: 0.151 / 0.201 / 0.251 owners, 0.199 / 0.266 / 0.332 renters; the median renter's rent at 67 about EUR 10,500 against a net first pillar of EUR 9,382.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg (not main: this session may push only to that branch).
+Open: bring the prompt onto main; Quinn's open decisions 1-5; then the implementation.
+
+### 2026-10-22 The absorbing floor linked to labour income (spec: none, asked by Quinn in Claude Code)
+Quinn: the rent-index and purchase-price floors are not defensible in a paper; link the floor to labour income. No new state variable.
+Changed: `docs/prompts/absorbing_floor.md`: the decision recorded; options 2 and 3 without a state dropped. New "The labour-income floor": F_t = phi_t Y^L_t, with Y^L_t labour income in working life and final labour income (Y_t / 0.307) in retirement; after bankruptcy Cbar = F_{t*} for life, V~^B_t = (phi_t u1 / r_t)^(1-gamma)/(1-gamma) D_t. Two ways to set phi_t: (a) one share for all ages; (b) phi_t = c_min / Ybar^L_t, equal to c_min for the median household at every age. Recommended: (b), same c_min for both tenures.
+Numbers, by hand (Python, DHS cubics): (a) the median's floor at 40 / 55 / 66 is 1.74 / 1.84 / 1.66 times its entry value (owners), 1.63 / 1.71 / 1.64 (renters). (b) phi_t over phi_25: 0.58 / 0.54 / 0.60 (owners), 0.61 / 0.58 / 0.61 (renters). Spread across households 0.50-2.00 of the median's floor from 66 in both.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: Quinn: (a) or (b); same c_min or same phi for both tenures; the source and value of c_min; decisions 2 and 3 of the prompt (the lower bound of consumption, an involuntary trigger).
+
+### 2026-10-22 The absorbing floor: a basis in Dutch policy (spec: none, asked by Quinn in Claude Code)
+Quinn: is there anything in Dutch policy design to base the floor on?
+Changed: `docs/prompts/absorbing_floor.md`, "Dutch policy basis" under "The floor in euros": the bijstand norm (70% / 100% of the net minimum wage, indexed with contract wages: a common euro amount, so c_min constant in real euros); the beslagvrije voet (95% of own net income at the bottom, a cap above); the Wsnp (18 months since 1 July 2023, then a clean slate, so not absorbing; pension rights not available to creditors, to be checked); bijstand to owners as a loan on the house (equity release, TODO 1.1); the AOW as the retirees' minimum. Added a temporary-bankruptcy variant for renters (k years at the floor, then back with X = 0), computable on the existing grid without a new state.
+Sources: web search, secondary sources (municipal tables, ESB, rendement.nl, bureauwsnp.nl); statute texts not read line by line.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: Quinn's choices: absorbing or temporary for renters; owners after 54; the source for c_min, single or couple.
+
+### 2026-10-22 The absorbing floor without a new state (spec: none, asked by Quinn in Claude Code)
+Quinn: no new state variable; what are the options?
+Changed: `docs/prompts/absorbing_floor.md`, "Without a new state" under "The floor in euros". The floor must be proportional to something in the state. Every household of a tenure enters with the same Y0 and H0, so H0 is a common euro amount. Options: (1) income, phi_t = c_min/Ybar_t; (2) renters, the rent index, phi^R_t = c_min/Hbar_t; (3) owners, the purchase price q H = H0, exact while q is live (25-54), then (a) keep q live to 100, (b) switch to income, or (c) house value. Recommended: renters 2, owners 3a if the run time is acceptable, else 3b. The H-based floors need a fallback on the grid edges where H = 0.
+Numbers, by hand (Python, from config.params): 10th-90th percentile over the median path at 40 / 66 / 100: income 0.66-1.52 / 0.50-2.00 / 0.50-2.00; rent index 0.92-1.09 / 0.86-1.16 / 0.82-1.22; house value 0.67-1.49 / 0.52-1.93 / 0.41-2.44. H0 at step 16: owners EUR 176,945, renters EUR 125,208. Owner run time with q to 100 roughly twice (estimate from step 7b: 366 s and 83 s); not measured.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: Quinn's choice; the source for c_min; decisions 1-3 and 5 of the prompt.
+
+### 2026-10-22 The absorbing floor: the homothety condition and the continuation at a node (spec: none, asked by Quinn in Claude Code)
+Quinn: the floor after bankruptcy is constant, and lifetime utility from then on is the discounted sum of u at that level; it has to fit the model's homothety.
+Changed: `docs/prompts/absorbing_floor.md`, two paragraphs under "The model, formally". (1) The condition: V^B_t = Cbar^(1-gamma)/(1-gamma) D_t is homothetic exactly when Cbar is proportional to the household's state at entry, Cbar = W g(u, q, t); constant afterwards needs no state. A euro amount common to all needs c_min/Y as a state. (2) The continuation at a quadrature node in `bellman_rhs` units: bankrupt where LW_n < phi_{t+1} Y_next_W, with CE_n = phi_{t+1} Y_next_W D_{t+1}^(1/(1-gamma)).
+Also drawn, not committed (Python, from the DHS cubics; scratchpad of this session): gross income by age, median, mean and 10th-90th percentile, owners and renters, with the 2025 bijstand norms. Median at 25 / peak / 66 / first pillar: owners EUR 39.8k / 74.7k at 50 / 66.0k / 20.3k; renters 30.1k / 52.0k at 49 / 49.5k / 15.2k.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: as in the entries below.
+
+### 2026-10-22 The absorbing floor in euros: options (spec: none, asked by Quinn in Claude Code)
+Quinn: the floor should be a minimum subsistence level, a constant euro amount, which is hard in a homothetic model; asked for suggestions.
+Changed: `docs/prompts/absorbing_floor.md`, new section "The floor in euros". An exact euro floor costs one state, the scale homothety removes. Options: (1) phi_t = c_min / Ybar_t along the deterministic profile, no new state, exact for a household on the profile; (2) a state f = c_min / Y_t, exogenous like q, exact; renters can use the fourth axis, owners need a fifth while the mortgage runs; the same state allows a flat AOW; (3) retirement is already a constant euro amount per household. Recommended: (1) with the absorbing state for both tenures, then (2) for renters only to measure (1)'s error, owners on a fifth axis only if that error is outside the stop rule. Decision 4 points to the section.
+Numbers, by hand (Python, from the DHS cubics): Ybar_t / Ybar_25 1.74, 1.84, 1.66 at 40, 55, 66 (owners); 1.63, 1.71, 1.64 (renters). 10th-90th percentile of Y_t / Ybar_t: 0.67-1.50 at 40, 0.51-1.95 from 66. Bijstand norm 1 Jan 2025, incl. holiday allowance: EUR 1,345.45 a month single, EUR 1,922.07 couple (Normenbrief 2025 via municipal tables), 0.41 and 0.58 of an owner's gross income at 25, 0.54 and 0.77 of a renter's. The norm pays for housing; c_min must be the minimum net of housing, source to choose (Nibud minimum budgets).
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg.
+Open: Quinn's choice among the options and of the source for c_min; decisions 1-3 and 5 of the prompt.
+
+### 2026-10-22 Prompt for the consumption floor as an absorbing state, saved, not started (spec: none, asked by Quinn in Claude Code)
+Quinn: start work on an absorbing state. The idea is a higher consumption floor that a household, once below it, consumes for the rest of its life. Asked what has to change in the code and for a formal statement of the request.
+Changed: `docs/prompts/absorbing_floor.md` (new): the model stated formally (trigger LW_t < phi_abs Y_t; bankrupt from then on at Cbar = phi_abs Y at entry; value u(Cbar) D_t with D_t = 1 + beta p_t D_{t+1}, D_T = 1, so no new state and homothety holds; phi_abs = 0 is today's model). Five open decisions with a recommendation each. The code changes file by file, the new tests, and the runs with expectations. No code changed.
+Numbers, by hand (Python, from config.params and the CBS table): D = 22.3 at 25, 16.8 at 55, 12.9 at 67, 4.1 at 90. Liquid resources at entry, step 16: 0.327 Y owners (take-home 0.556, housing 0.308), 0.420 Y renters (0.574, 0.233), with b0 = 0.079. This caps phi_abs at about 0.2.
+Conflict: the request reopens TODO.md item 1.4 and CALIBRATION.md ("Consumption floor", 17 Oct), which settle the floor as a numerical bound at 1e-6. Both need changing if this is adopted.
+Checks run: none. MATLAB is not installed in this session's container. No code in `+config`, `+ladder`, `+model` or `+solver` changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg (not main: this session may push only to that branch).
+Open: Quinn's decisions 1-5 in the prompt; then the implementation.
+
 ### 2026-10-23 Same income polynomial for owners and renters, recorded as planned (spec: none, asked by Quinn in Claude Code)
 Quinn: document that in the future owners and renters will use the same polynomial.
 Changed: CALIBRATION.md, Labour income, a paragraph saying the separate cubics stay until the change is implemented. TODO.md, section 2, a row with the open details (which polynomial, whether the shock std is shared) and what follows from it (`h_mult`, `kappa`, the entry incomes behind `b0` and `tau_inc` stop differing by tenure). No code or parameter changed.
 Checks run: none, documentation only.
 Commit: this entry with CALIBRATION.md and TODO.md, pushed to main.
-Open: which polynomial and whether `sigma_l_log` is shared; then the code change in `config.params` and `+ladder/steps.m` (step 4 on).
+Open: whether `sigma_l_log` is shared; then the code change in `config.params` and `+ladder/steps.m` (step 4 on).
+Update, same day: Quinn chose a DHS cubic estimated on owners and renters pooled, and will send the coefficients. CALIBRATION.md and TODO.md say so.
 
 ### 2026-10-20 Step 16: share at the consumption floor by age, for the summary plots (spec: none, asked by Quinn in Claude Code)
 Quinn: the bankruptcy rates for the summary plots. The model's bankruptcy event is a floored household-year (liquid resources below phi_floor times income; consumption set to the floor, the shortfall forgiven). The dashboards print only the total.

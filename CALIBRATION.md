@@ -75,9 +75,10 @@ level does not matter before the DC pillar enters; until then the tenures
 differ through the shape of the profile and the shock std.
 
 Planned (Quinn, 23 October 2026): owners and renters will use the same income
-polynomial. The separate cubics above are what the code uses until that is
-implemented. Which polynomial, and whether the shock std is shared too, is
-open (TODO.md, section 2).
+polynomial, a DHS cubic estimated on owners and renters pooled. The separate
+cubics above are what the code uses until Quinn sends the pooled coefficients
+and the change is implemented. Whether the shock std is shared too is open
+(TODO.md, section 2).
 
 The first pillar is `replacement` times final working income rather than a
 flat AOW amount, which keeps the model homothetic. It removes the floor that a
