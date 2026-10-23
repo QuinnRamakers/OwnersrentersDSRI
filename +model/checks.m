@@ -6,10 +6,15 @@ function c = checks(p, sol, sim, s, profile, shocks)
 %   offgrid          policy lookups past the end of an axis (u1, u2, u3, q);
 %                    those households were given another state's policy
 %   floored_share    household-years whose resources were topped up to the floor;
+%                    with the absorbing floor, household-years bankrupt
 %   floored_by_phase   ... at ages 25-39, 40 to retirement, and in retirement
+%   abs_share        with the absorbing floor, the share bankrupt at abs_ages
+%                    (40, 67 and 100); NaN without it
+%   abs_hazard_5y    the yearly rate of going bankrupt among those not yet
+%                    bankrupt, by five-year band starting at abs_bands
 %   c_bound_25_39    share of households aged 25-39 consuming at the lower
 %                    bound of the consumption search, the consumption floor
-%                    phi_floor * Y, without being short of resources
+%                    phi_t * Y, without being short of resources
 %   ce_entry         the constant consumption, in multiples of entry income,
 %                    worth as much as the value at entry. A small number means
 %                    the value function is dominated by the floor states
@@ -40,14 +45,30 @@ old   = ages >= p.retirement_age;
 c.floored_by_phase = [mean(s.floored(young)), mean(s.floored(mid)), mean(s.floored(old))];
 c.c_bound_25_39 = mean(s.at_c_bound(young));
 
+% Bankruptcy under the absorbing floor: the share bankrupt at three ages and
+% the entry rate by five-year band.
+absorbing = model.floor_kind(p);
+c.abs_ages  = [40, p.retirement_age, ages(end)];
+c.abs_bands = ages(1) : 5 : ages(end);
+c.abs_share = nan(1, 3);
+c.abs_hazard_5y = nan(1, numel(c.abs_bands));
+if absorbing
+    ab = sim.absorbed;
+    c.abs_share = mean(ab(:, ismember(ages, c.abs_ages)), 1);
+    before = [false(size(ab, 1), 1), ab(:, 1:end-1)];
+    for b = 1:numel(c.abs_bands)
+        m = ages >= c.abs_bands(b) & ages < c.abs_bands(b) + 5;
+        c.abs_hazard_5y(b) = sum(ab(:, m) & ~before(:, m), 'all') / max(sum(~before(:, m), 'all'), 1);
+    end
+end
+
 % Value at entry and its constant-consumption equivalent. V = W^(1-g) V_tilde
 % and a constant stream c_bar is worth u(c_bar) * D, with D the discounted
 % survival-weighted horizon, so c_bar = W0 * z * D^(1/(g-1)).
 g  = p.gamma;
 Vt = utility.welfare_anchor(p, sol.V(:,:,:,:,1), p.b0);
 z  = ((1 - g) * Vt)^(1 / (1 - g));
-S  = cumprod([1; profile.p_surv(1:end-1)]);
-D  = sum(p.beta .^ (0:p.T-1).' .* S);
+D  = p.D_abs(1);
 c.V_entry  = Vt;
 c.ce_entry = z * (1 + p.h_mult + p.b0) * D^(1 / (g - 1));
 
@@ -83,9 +104,13 @@ if any(c.offgrid > 0)
 end
 if c.c_bound_25_39 > 0.05
     c.notes{end+1} = sprintf(['%.0f%% of households aged 25-39 choose to consume only the floor ' ...
-        '(phi_floor x income) although they could afford more.'], 100 * c.c_bound_25_39);
+        '(phi_t x income) although they could afford more.'], 100 * c.c_bound_25_39);
 end
-if c.floored_share > 0.01
+if absorbing && c.floored_share > 0.01
+    c.notes{end+1} = sprintf(['Households are bankrupt in %.1f%% of household-years: %.1f%% at %d, ' ...
+        '%.1f%% at %d and %.1f%% at %d.'], 100 * c.floored_share, ...
+        reshape([100 * c.abs_share; c.abs_ages], 1, []));
+elseif c.floored_share > 0.01
     c.notes{end+1} = sprintf('The consumption floor binds in %.1f%% of household-years.', ...
         100 * c.floored_share);
 end

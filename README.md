@@ -165,6 +165,14 @@ after each solve and shown on the dashboard).
   the value is dominated by floor states.
 - **Welfare levels at a floor of 1e-6 are not converged**, so report
   behaviour rather than welfare until the floor is set.
+- **With the absorbing floor** (`c_min` or `phi_abs`), `floored` in the
+  summaries and checks is the share bankrupt, true in every year from entry
+  on; `r.summary.abs_hazard` is the entry rate among households not yet
+  bankrupt, and `r.checks.abs_share` the share bankrupt at 40, 67 and 100.
+  Wealth, housing, the equity shares and `c_frac` are over solvent households;
+  consumption and income over all. In the panel (`sim`), `absorbed` marks the
+  bankrupt years and `abs_age` the age at entry; `c_frac` and `pi` are NaN in
+  those years.
 - **The REIT parameters are placeholders**, with the same risk-return ratio
   as equity, so the REIT leg (off by default) cannot yet answer anything.
 
@@ -189,8 +197,15 @@ alpha*H, or maintenance plus mortgage theta H + m_t H0) is paid out of liquid
 resources. Ladder step 7 charges the mortgage on the current value instead,
 m_t H, with no fourth state. Retired: AOW and the annuity A/a_t are taxed as
 income. If
-resources fall below phi_floor * Y the household consumes that floor and saves
-nothing. The liquid account earns the risk-free rate and equity, after box-3
+resources fall below the floor the household goes bankrupt. With the
+absorbing floor on (`c_min` or `phi_abs` positive) the floor is
+F_t = phi_t Y_t, and a bankrupt household consumes F_t every year until it
+dies, with no further choices; its wealth, pot, house and later income are
+gone, and its value is u(F_t) D_t with D_t the discounted survival-weighted
+horizon (`p.D_abs`). With it off the floor is phi_floor * Y, and the household
+consumes it for that year only, saves nothing, and is back in the ordinary
+problem the next year. Either way the floor is also the lowest consumption a
+solvent household can choose. The liquid account earns the risk-free rate and equity, after box-3
 tax; the DC fund holds the glide path's equity share pre-tax and earns the
 survival credit 1/p_t. The annuity price a_t is set so that expected payouts
 are level.

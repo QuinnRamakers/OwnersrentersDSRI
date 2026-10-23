@@ -13,6 +13,13 @@ the current grid as run (16x16) and the reference, log-wealth 128x96
 
 ## 1. The lower bound of the consumption search
 
+**Changed on 23 October 2026.** With the absorbing floor on (`c_min` or
+`phi_abs` positive) the bound is that floor, C >= phi_t Y with
+phi_t = `p.phi_path(t)`, so the trigger of bankruptcy, the lowest consumption
+of a solvent household and the bankrupt household's consumption are one
+number. With it off, `phi_path` is `phi_floor` at every age and the bound is
+as below.
+
 **Changed on 15 October 2026.** The lower bound is now the consumption floor,
 C >= phi_floor * Y, so c >= phi_floor * Y / LW; `c_floor_frac` is gone. Below
 is the bound as it was, and what it did. On the step-7 owner, log-wealth
@@ -225,3 +232,5 @@ None of these binds in a way that matters.
 3. The consumption floor phi_floor times gross income, paid from outside when
    resources fall short, with the shortfall not carried as debt
    (`bellman_step_lna.m`, lines 224-244). Its level is `TODO.md`, item 1.
+   With the absorbing floor on, falling below the floor ends the household's
+   choices for life instead (CALIBRATION.md, "Consumption floor").

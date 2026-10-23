@@ -8,6 +8,8 @@ function T = report(numerics)
 %   NW66 is mean net worth at 66; pi and equity are means of the liquid equity
 %   share and of the equity share of financial wealth. ce_entry is the constant
 %   consumption, in multiples of Y0, worth the value at entry (model.checks).
+%   floored_pct is the share of household-years at the floor; where the
+%   absorbing floor is on (absorbing true) it is the share bankrupt.
 
 if nargin < 1 || isempty(numerics), numerics = 'standard'; end
 S   = ladder.steps();
@@ -26,12 +28,12 @@ for k = 1:numel(S)
             at(s.net_worth.mean, 66) / s.Y0, at(s.pi, 30), at(s.pi, 45), at(s.pi, 80), ...
             at(s.equity_share, 45), 100 * c.floored_share, 100 * c.c_bound_25_39, ...
             c.ce_entry, 100 * c.burden_25, sum(c.offgrid), 100 * c.thin_u1_40, ...
-            r.timing.solve_sec, ~ladder.same_calibration(r.p, q)}; %#ok<AGROW>
+            r.timing.solve_sec, ~ladder.same_calibration(r.p, q), model.floor_kind(r.p)}; %#ok<AGROW>
     end
 end
 names = {'step', 'name', 'tenure', 'C25', 'C45', 'C75', 'NW66', 'pi30', 'pi45', 'pi80', ...
          'equity45', 'floored_pct', 'cbound_pct', 'ce_entry', 'burden25_pct', 'offgrid', ...
-         'thin_u1_pct', 'solve_sec', 'stale'};
+         'thin_u1_pct', 'solve_sec', 'stale', 'absorbing'};
 if isempty(rows)
     fprintf('No ladder results in %s.\n', num.dir);
     T = cell2table(cell(0, numel(names)), 'VariableNames', names);

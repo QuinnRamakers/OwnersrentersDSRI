@@ -254,8 +254,18 @@ L{end+1} = sprintf('Grid %d\\times%d\\times%d, %d nodes per shock, fmincon %s, s
     p.N_u1, p.N_u2, p.N_u3, p.gh_n, algo, sweep, d.sim.N);
 L{end+1} = '';
 L{end+1} = '\bfChecks\rm';
-L{end+1} = sprintf('At the search bound, ages 25-39: %.1f%%   |   floored: %.2f%% of years', ...
-    100 * c.c_bound_25_39, 100 * c.floored_share);
+[absorbing, fl] = model.floor_kind(p);
+L{end+1} = sprintf('At the search bound, ages 25-39: %.1f%%   |   %s: %.2f%% of years', ...
+    100 * c.c_bound_25_39, fl, 100 * c.floored_share);
+if absorbing
+    if p.c_min > 0
+        how = sprintf('c\\_min = EUR %.0f at median income', p.c_min);
+    else
+        how = sprintf('\\phi = %.3g of permanent labour income', p.phi_abs);
+    end
+    L{end+1} = sprintf('Absorbing floor, %s: bankrupt %.1f%% at %d, %.1f%% at %d, %.1f%% at %d', ...
+        how, reshape([100 * c.abs_share; c.abs_ages], 1, []));
+end
 L{end+1} = sprintf('Entry value = constant %.3g \\times entry income   |   off-grid lookups %d', ...
     c.ce_entry, sum(c.offgrid));
 if isfield(c, 'corr_SL_nodes')

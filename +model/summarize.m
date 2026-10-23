@@ -19,12 +19,21 @@ function s = summarize(p, sim)
 %     equity_share   stocks in the liquid account and the fund over their sum,
 %                    aggregated across households
 %     burden         median housing cost over net income
-%     floored        share of households whose resources were topped up to the floor
+%     floored        share of households whose resources were topped up to the
+%                    floor; with the absorbing floor, the share bankrupt
+%     abs_hazard     share going bankrupt among those not yet bankrupt (0
+%                    without the absorbing floor)
 %     at_c_bound     share consuming at the lower bound of the consumption search
+%
+%   With the absorbing floor, consumption and income are over all households;
+%   everything else (wealth, housing, net income, the equity shares, c_frac,
+%   burden) over the households not bankrupt at that age.
 
 N = sim.N; T = p.T;
 ages = sim.ages(:).';
 Y0 = sim.Y(1, 1);
+out = [];                                            % households left out of the solvent statistics
+if model.floor_kind(p), out = sim.absorbed; end
 
 hc  = sim.h_cost;
 heq = zeros(N, T);
@@ -58,6 +67,9 @@ A_pre(:, ret) = sim.A(:, ret) - sim.ann_pay(:, ret);
 tau_full = [sim.tau_A, zeros(N, 1)];
 stock = sim.pi .* X_sav + tau_full .* A_pre;
 fin   = X_sav + A_pre;
+if ~isempty(out)
+    stock(out) = 0; fin(out) = 0;
+end
 
 s = struct();
 s.ages   = ages;
@@ -69,28 +81,43 @@ s.N      = N;
 
 s.C            = stats(sim.C);
 s.Y            = stats(sim.Y);
-s.net_income   = stats(net_income);
-s.housing_cost = stats(hc);
-s.X            = stats(sim.X);
-s.A            = stats(sim.A);
-s.H            = stats(sim.H);
-s.home_equity  = stats(heq);
-s.net_worth    = stats(sim.X + sim.A + heq);
-s.ann_pay      = stats(sim.ann_pay);
+s.net_income   = stats(net_income, out);
+s.housing_cost = stats(hc, out);
+s.X            = stats(sim.X, out);
+s.A            = stats(sim.A, out);
+s.H            = stats(sim.H, out);
+s.home_equity  = stats(heq, out);
+s.net_worth    = stats(sim.X + sim.A + heq, out);
+s.ann_pay      = stats(sim.ann_pay, out);
 
-q = prctile(sim.pi, [10 50 90], 1);
-s.pi      = mean(sim.pi, 1);
-s.pi_p10  = q(1, :); s.pi_p50 = q(2, :); s.pi_p90 = q(3, :);
-s.c_frac  = mean(sim.c_frac, 1);
+pis = stats(sim.pi, out);
+s.pi      = pis.mean;
+s.pi_p10  = pis.p10; s.pi_p50 = pis.p50; s.pi_p90 = pis.p90;
+cfs = stats(sim.c_frac, out);
+s.c_frac  = cfs.mean;
 s.dc_share = [config.tau_effective(p).', 0];
 s.equity_share = sum(stock, 1) ./ max(sum(fin, 1), realmin);
-s.burden  = median(hc ./ max(net_income, realmin), 1);
+burden = hc ./ max(net_income, realmin);
+if ~isempty(out), burden(out) = NaN; end
+s.burden  = median(burden, 1, 'omitnan');
 s.floored = mean(sim.floored, 1);
+s.abs_hazard = zeros(1, T);
+if ~isempty(out)
+    before = [false(N, 1), out(:, 1:end-1)];
+    s.abs_hazard = sum(out & ~before, 1) ./ max(sum(~before, 1), 1);
+end
 s.at_c_bound = mean(~sim.floored & sim.c_frac <= 1.02 * sim.c_bound, 1);
 s.bequest = struct('mean', mean(sim.bequest), 'p50', median(sim.bequest));
 end
 
-function st = stats(M)
+function st = stats(M, out)
+% Mean and percentiles by age, leaving out the households marked in out.
+if nargin > 1 && ~isempty(out)
+    M(out) = NaN;
+    mu = mean(M, 1, 'omitnan');
+else
+    mu = mean(M, 1);
+end
 q  = prctile(M, [10 50 90], 1);
-st = struct('mean', mean(M, 1), 'p10', q(1, :), 'p50', q(2, :), 'p90', q(3, :));
+st = struct('mean', mu, 'p10', q(1, :), 'p50', q(2, :), 'p90', q(3, :));
 end

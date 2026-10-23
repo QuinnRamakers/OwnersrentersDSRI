@@ -5,7 +5,8 @@ function p = derive(p)
 %
 %   Rebuilds, from the primitives alone: the log-return moments of the three
 %   lognormal processes, the retirement period, the DC glide path, the
-%   contribution-rate profile, the house at entry (h_mult, from h_rule), the
+%   contribution-rate profile, the consumption floor by age and the horizon
+%   that values bankruptcy, the house at entry (h_mult, from h_rule), the
 %   mortgage schedule, the periods in which the
 %   purchase-price ratio q is a state, and the state grid with the entry-state
 %   anchors. Nothing is carried over from an earlier call, so
@@ -56,6 +57,38 @@ Y_det    = exp(logY_det);
 p.kappa  = zeros(p.T, 1);
 work_t   = 1 : (p.t_ret - 1);
 p.kappa(work_t) = p.kappa_base .* max(Y_det(work_t) - p.franchise, 0) ./ Y_det(work_t);
+
+% The consumption floor as a share of current gross income, phi_path. With
+% c_min or phi_abs positive it is absorbing: a household whose liquid
+% resources fall below phi_path(t) * Y goes bankrupt and consumes that amount
+% for the rest of its life. c_min: the floor is c_min euros on the
+% deterministic profile, the tenure's, so it is tied to final labour income in
+% retirement. phi_abs: phi_abs times permanent labour income, which is Y to 66
+% and Y / replacement after. Off: phi_floor, a yearly top-up. D_abs(t) is
+% the discounted, survival-weighted horizon from t, the lifetime weight of a
+% constant flow of utility.
+assert(p.c_min >= 0 && p.phi_abs >= 0, 'derive:floor_negative', ...
+    'c_min and phi_abs must be non-negative (got %g and %g).', p.c_min, p.phi_abs);
+assert(~(p.c_min > 0 && p.phi_abs > 0), 'derive:floor_both', ...
+    'Set the absorbing floor by c_min or by phi_abs, not both.');
+assert(~(p.c_min > 0 && strcmp(p.income_source, 'poly')), 'derive:poly_cmin', ...
+    'c_min is in euros and needs income in euros: use income_source = ''dhs'' or ''table''.');
+p.floor_absorbing = p.c_min > 0 || p.phi_abs > 0;
+if p.c_min > 0
+    p.phi_path = p.c_min ./ Y_det;
+elseif p.phi_abs > 0
+    p.phi_path = p.phi_abs * ones(p.T, 1);
+    p.phi_path(p.t_ret : end) = p.phi_abs / p.replacement;
+else
+    p.phi_path = p.phi_floor * ones(p.T, 1);
+end
+assert(~p.floor_absorbing || all(p.phi_path > p.phi_floor), 'derive:floor_low', ...
+    'The absorbing floor must lie above phi_floor at every age (lowest share %.3g).', min(p.phi_path));
+p_surv  = config.survival(p);
+p.D_abs = ones(p.T, 1);
+for t = p.T - 1 : -1 : 1
+    p.D_abs(t) = 1 + p.beta * p_surv(t) * p.D_abs(t + 1);
+end
 
 % House (owner) or rent index (renter) at entry as a multiple of income, h_mult.
 % 'none': no housing, h_mult = 0. 'fixed': h_fixed. 'nibud': the largest

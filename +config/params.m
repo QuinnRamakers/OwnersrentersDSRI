@@ -96,6 +96,8 @@ p.tau_wealth     = 0;         % alternative box-3 levy on the liquid balance
 
 % Consumption floor and search guard
 p.phi_floor    = 1e-6;        % resources guaranteed each period, share of current gross income; a numerical bound, not calibrated
+p.c_min        = 0;           % absorbing floor, euros a year at median labour income; 0 = off
+p.phi_abs      = 0;           % absorbing floor as one share of permanent labour income; 0 = off
 
 % Entry state: liquid wealth at 25 in years of income
 p.b0    = 3400 / (33000 * 1.3031);   % median deposits under 25 over the BKV age-25 wage (placeholder)

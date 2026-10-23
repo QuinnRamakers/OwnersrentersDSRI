@@ -44,8 +44,10 @@ function p = case_params(step, arm, name)
 %               the grid
 %     _nosweep  the global (c, pi) grid search before fmincon switched off
 %               (use_refine = false)
-%   Apart from _mop nothing here changes the model: only grid_dims, grid_pow,
-%   grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
+%     _cmin<n>  the absorbing consumption floor at c_min = n euros a year
+%               (_cmin8000); it changes the model
+%   Apart from _mop and _cmin nothing here changes the model: only grid_dims,
+%   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   interp_method, use_refine and pi_nothing_saved are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
@@ -101,5 +103,7 @@ if ~isempty(g), p.lambda_hi = str2double(g{1}) / 100; end                  % top
 g = regexp(extra, '_qhi(\d+)', 'tokens', 'once');
 if ~isempty(g), p.q_hi = str2double(g{1}) / 10; end                        % top of q
 if contains(extra, '_nosweep'), p.use_refine = false; end                  % fmincon from the warm start, no grid search
+g = regexp(extra, '_cmin(\d+)', 'tokens', 'once');
+if ~isempty(g), p.c_min = str2double(g{1}); end                            % absorbing floor, euros
 p = config.derive(p);
 end

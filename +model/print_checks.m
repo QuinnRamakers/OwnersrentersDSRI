@@ -2,13 +2,18 @@ function print_checks(r)
 %PRINT_CHECKS  One-screen report of a model.run result.
 s = r.summary; c = r.checks; a = s.ages;
 at = @(v, age) v(a == age);
+[absorbing, label] = model.floor_kind(r.p);
 fprintf('\n  %s, %s\n', r.tenure, s.units);
-fprintf('  %-6s %10s %10s %10s %8s %8s %8s\n', 'age', 'C med', 'net worth', 'DC pot', 'pi', 'equity', 'floored');
+fprintf('  %-6s %10s %10s %10s %8s %8s %8s\n', 'age', 'C med', 'net worth', 'DC pot', 'pi', 'equity', label);
 for age = [25 30 40 50 60 66 70 80 90]
     if ~any(a == age), continue; end
     fprintf('  %-6d %10.0f %10.0f %10.0f %8.2f %8.2f %7.1f%%\n', age, ...
         at(s.C.p50, age), at(s.net_worth.mean, age), at(s.A.mean, age), ...
         at(s.pi, age), at(s.equity_share, age), 100 * at(s.floored, age));
+end
+if absorbing
+    fprintf('  bankrupt at %d / %d / %d: %.1f%% / %.1f%% / %.1f%%;  yearly entry rate by band from %d:%s\n', ...
+        c.abs_ages, 100 * c.abs_share, c.abs_bands(1), sprintf(' %.2f%%', 100 * c.abs_hazard_5y));
 end
 fprintf('  housing cost / net income at 25: %.0f%%   after-tax premium %.2f%%, liquid Merton share %.2f\n', ...
     100 * c.burden_25, 100 * c.premium_after_tax, c.merton_liquid);

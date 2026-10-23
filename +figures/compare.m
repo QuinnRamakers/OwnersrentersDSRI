@@ -232,8 +232,9 @@ for i = 1:numel(rs)
     L{end+1} = labels{i}; %#ok<AGROW>
     L{end+1} = sprintf('  grid %dx%dx%d, gh %d, fmincon %s, sweep %d, %s, %.0f s', ...
         p.N_u1, p.N_u2, p.N_u3, p.gh_n, algo, p.use_refine, pool, rs{i}.timing.solve_sec); %#ok<AGROW>
-    L{end+1} = sprintf('  bound 25-39 %.1f%%  floored %.2f%%  off-grid %d  entry value %.3g', ...
-        100 * c.c_bound_25_39, 100 * c.floored_share, sum(c.offgrid), c.ce_entry); %#ok<AGROW>
+    [~, fl] = model.floor_kind(p);
+    L{end+1} = sprintf('  bound 25-39 %.1f%%  %s %.2f%%  off-grid %d  entry value %.3g', ...
+        100 * c.c_bound_25_39, fl, 100 * c.floored_share, sum(c.offgrid), c.ce_entry); %#ok<AGROW>
     if i > 1
         w = 1:numel(s.pi) - 1;
         wx = ref.X.mean >= 0.01 * max(ref.X.mean);      % leave out near-zero savings

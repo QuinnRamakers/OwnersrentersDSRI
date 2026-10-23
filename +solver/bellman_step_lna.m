@@ -36,10 +36,15 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   retirement, and a local solve from the warm start alone settles on the
 %   wrong one there. The sweep is what finds the right basin.
 %
-%   Where liquid resources fall short of the floor phi_floor * Y, the
-%   household consumes the floor and saves nothing. Wherever nothing is saved
-%   (c = 1), the equity share is stored as 1, or with p.pi_nothing_saved =
-%   'limit' as the share of a vanishing saving (limit_share).
+%   The floor is F = p.phi_path(t) * Y, and it is also the lower bound of the
+%   consumption search. Where liquid resources fall short of it, the household
+%   with the absorbing floor (p.floor_absorbing) is bankrupt: it consumes F
+%   for the rest of its life, with no choices and no bequest, worth
+%   F^(1-gamma)/(1-gamma) * p.D_abs(t). Without it the household consumes the
+%   floor for this year only, saves nothing, and keeps its pot, house and
+%   income. Wherever nothing is saved (c = 1), the equity share is stored as
+%   1, or with p.pi_nothing_saved = 'limit' as the share of a vanishing saving
+%   (limit_share).
 
 [g1, g2] = utility.grid_at(p, t);              % this period's points (they can follow age)
 N1 = numel(g1); N2 = numel(g2); N3 = numel(p.u3_grid);
@@ -92,7 +97,9 @@ end
 
 kappa_t   = p.kappa(min(t, numel(p.kappa)));
 h_beq_fac = is_owner * (p.h_mult > 0) * (1 - p.sell_cost);   % renters bequeath no housing
-phi_floor = p.phi_floor;
+phi_t     = p.phi_path(t);                    % the floor, share of gross income
+absorbing = p.floor_absorbing;
+D_t       = p.D_abs(t);
 FLOOR_EPS = 1e-12;
 
 % Take-home income per unit of gross income. Contributions are deducted
@@ -119,7 +126,13 @@ if t == p.T
             else
                 LW_W = sX + contrib_factor * lam - h_cost_rate * sH;
             end
-            LW_W  = max(LW_W, max(phi_floor * lam, FLOOR_EPS));
+            F_W = max(phi_t * lam, FLOOR_EPS);
+            if absorbing && LW_W <= F_W
+                % Bankrupt: the floor, no bequest
+                V_s(k) = F_W ^ one_m_g / one_m_g * D_t; c_s(k) = 1; pi_s(k) = 0;
+                continue
+            end
+            LW_W  = max(LW_W, F_W);
             beq_H = h_beq_fac * sH;
             if chi_T <= 0
                 c_star = 1;
@@ -295,8 +308,13 @@ for iq = slices
         H_next_W = sH * R_H;
         Y_next_W = G_next * lam;
         A_next_W = R_A * A_next_pre_return;
-        F_W      = max(phi_floor * lam, FLOOR_EPS);
+        F_W      = max(phi_t * lam, FLOOR_EPS);
 
+        if LW_W <= F_W && absorbing
+            % Bankrupt: the floor for the rest of life, no choices, no bequest.
+            V_sub(j) = F_W ^ one_m_g / one_m_g * D_t; c_sub(j) = 1; pi_sub(j) = 1;
+            continue
+        end
         if LW_W <= F_W
             % Resources below the floor: consume the floor, save nothing.
             u_f    = F_W ^ one_m_g / one_m_g;
@@ -318,7 +336,7 @@ for iq = slices
         end
 
         % Lower bound of the consumption search: the consumption floor,
-        % C >= phi_floor * Y, i.e. c >= F_W / LW_W. Here LW_W > F_W, so c_floor < 1.
+        % C >= phi_t * Y, i.e. c >= F_W / LW_W. Here LW_W > F_W, so c_floor < 1.
         c_floor = F_W / LW_W;
         c_grid  = linspace(c_floor, 1, NC).';
         dc0     = c_grid(2) - c_grid(1);

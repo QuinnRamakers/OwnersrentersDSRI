@@ -70,7 +70,10 @@ if ischar(v) || isstring(v), s = char(v); else, s = mat2str(v, 6); end
 end
 
 function print_table(rs, labels)
-fprintf('\n%-28s %6s %9s %9s %9s %7s %7s %8s\n', '', 'age', 'C/Y0', 'NW/Y0', 'DC/Y0', 'pi', 'equity', 'floored');
+kinds = cellfun(@(r) model.floor_kind(r.p), rs);
+fl = 'floored';
+if all(kinds), fl = 'bankrupt'; elseif any(kinds), fl = 'flr/bkr'; end
+fprintf('\n%-28s %6s %9s %9s %9s %7s %7s %8s\n', '', 'age', 'C/Y0', 'NW/Y0', 'DC/Y0', 'pi', 'equity', fl);
 for i = 1:numel(rs)
     s = rs{i}.summary; a = s.ages;
     for age = [25 35 45 55 66 75 85]

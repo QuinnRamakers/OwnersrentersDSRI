@@ -361,6 +361,36 @@ What to keep in mind:
 | Parameter | Value | Source |
 |---|---|---|
 | `phi_floor` | 1e-6 | A numerical bound, not a calibration target. 1e-4 is an admissible alternative |
+| `c_min` | 0 (off) | The absorbing floor, euros a year (2025) at median labour income. Source open (Nibud minimum example budgets, spending after housing at the bijstand level); trial values 6,000, 8,000 and 10,000 |
+| `phi_abs` | 0 (off) | The absorbing floor as one share of permanent labour income, the alternative to `c_min` |
+
+### The absorbing floor (`c_min`, `phi_abs`)
+
+Added on 23 October 2026 (`docs/prompts/absorbing_floor.md`); off until the
+level is chosen. With `c_min > 0` or `phi_abs > 0` the floor is an absorbing
+state. A household whose liquid resources fall below F_t = phi_t Y_t goes
+bankrupt: it consumes F_{t*} every year until it dies and makes no further
+choices, and its liquid wealth, DC pot, house and later income are gone. Its
+value is u(F_{t*}) D_t, with D_t = 1 + beta p_t D_{t+1} and D_T = 1
+(`p.D_abs`). F_t is also the lowest consumption a solvent household can
+choose. No state is added: the floor is proportional to income, so the value
+stays homothetic.
+
+`config.derive` builds `p.phi_path`:
+
+- `c_min`: phi_t = c_min / Ybar_t, with Ybar_t the tenure's deterministic
+  income profile (in retirement 0.307 Ybar_66, so the floor is tied to final
+  labour income). The floor is c_min for the median household at every age and
+  c_min Y_t / Ybar_t for the others. Same c_min for both tenures.
+- `phi_abs`: phi_t = phi_abs to 66 and phi_abs / replacement from 67, that is
+  phi_abs times permanent labour income, final labour income in retirement.
+
+At most one of the two is positive, and `c_min` needs income in euros.
+Both 0 gives the yearly top-up at `phi_floor` below. The floor stands for the
+social minimum net of housing costs; the Dutch policy background and the
+sources considered are in the prompt.
+
+### The top-up floor (`phi_floor`, used when the absorbing floor is off)
 
 When a household's liquid resources fall short of `phi_floor * Y_t`, the
 shortfall is paid from outside: it consumes the floor and saves nothing. The

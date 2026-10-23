@@ -7,6 +7,10 @@ function n_fail = run_tests(opts)
 %
 %   From the repository root:  addpath tests; run_tests
 %   Headless:                  matlab -batch "addpath tests; run_tests"
+%
+%   floor_off_identical compares against a solve saved before the absorbing
+%   floor was added; it runs only when CGM_FLOOR_BASELINE names that file, and
+%   is reported as SKIP otherwise.
 
 arguments
     opts.solve (1,1) logical = true
@@ -14,13 +18,13 @@ end
 
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
-          @nibud_rule};
+          @nibud_rule, @floor_derive};
 if opts.solve
     checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
-                       @figures_render}];
+                       @figures_render, @floor_off_identical, @floor_absorbing}];
 end
-n_fail = 0;
+n_fail = 0; n_skip = 0;
 for i = 1:numel(checks)
     name = func2str(checks{i});
     t0 = tic;
@@ -28,11 +32,16 @@ for i = 1:numel(checks)
         checks{i}();
         fprintf('PASS  %-28s %6.1f s\n', name, toc(t0));
     catch err
+        if strcmp(err.identifier, 'run_tests:skip')
+            n_skip = n_skip + 1;
+            fprintf('SKIP  %-28s %6.1f s  %s\n', name, toc(t0), err.message);
+            continue
+        end
         n_fail = n_fail + 1;
         fprintf('FAIL  %-28s %6.1f s  %s\n', name, toc(t0), err.message);
     end
 end
-fprintf('%d of %d checks failed.\n', n_fail, numel(checks));
+fprintf('%d of %d checks failed, %d skipped.\n', n_fail, numel(checks), n_skip);
 if nargout == 0 && n_fail > 0
     error('run_tests:failed', '%d checks failed.', n_fail);
 end
@@ -256,6 +265,44 @@ q = config.params(false); q.h_rule = 'nibud2025';
 assert(threw_id(@() config.derive(q), 'derive:h_rule'), 'unknown h_rule accepted');
 end
 
+function floor_derive()
+% The absorbing floor's derived paths. D_abs is the explicit discounted
+% survival sum. With c_min the floor at the deterministic profile is c_min at
+% every age, both tenures; with phi_abs the share is phi_abs to 66 and
+% phi_abs / replacement after; off, it is phi_floor. derive refuses both
+% positive, c_min with income not in euros, negative values and a floor not
+% above phi_floor.
+p = config.params();
+assert(~p.floor_absorbing && all(p.phi_path == p.phi_floor) && numel(p.phi_path) == p.T, ...
+    'production: the absorbing floor is not off');
+S = cumprod([1; config.survival(p)]);
+for t = 1:p.T
+    k = (t:p.T).';
+    D = sum(p.beta .^ (k - t) .* S(k) / S(t));
+    assert(abs(p.D_abs(t) / D - 1) < 1e-12, 'D_abs(%d) = %.15g against %.15g', t, p.D_abs(t), D);
+end
+for owner = [true false]
+    q = config.params(false); q.is_owner = owner; q.c_min = 8000; q = config.derive(q);
+    Ybar = exp(config.income_profile(q));
+    dev = max(abs(q.phi_path .* Ybar / 8000 - 1));
+    assert(q.floor_absorbing && dev < 1e-12, 'owner %d: the floor at the profile is not c_min (%.2g)', owner, dev);
+end
+q = config.params(false); q.phi_abs = 0.2; q = config.derive(q);
+work = 1 : q.t_ret - 1; ret = q.t_ret : q.T;
+assert(q.floor_absorbing && all(q.phi_path(work) == 0.2) && ...
+    max(abs(q.phi_path(ret) * q.replacement / 0.2 - 1)) < 1e-12, 'phi_abs path');
+q = config.params(false); q.c_min = 8000; q.phi_abs = 0.2;
+assert(threw_id(@() config.derive(q), 'derive:floor_both'), 'c_min and phi_abs both accepted');
+q = ladder.params('cgm'); q.c_min = 8000;
+assert(threw_id(@() config.derive(q), 'derive:poly_cmin'), 'c_min accepted with income not in euros');
+q = config.params(false); q.c_min = -1;
+assert(threw_id(@() config.derive(q), 'derive:floor_negative'), 'negative c_min accepted');
+q = config.params(false); q.phi_abs = -0.1;
+assert(threw_id(@() config.derive(q), 'derive:floor_negative'), 'negative phi_abs accepted');
+q = config.params(false); q.c_min = 1e-3;
+assert(threw_id(@() config.derive(q), 'derive:floor_low'), 'a floor below phi_floor accepted');
+end
+
 function tf = threw_id(f, id)
 tf = false;
 try
@@ -415,4 +462,98 @@ figures.robustness(r{2}, 'reference', G, 'test', fullfile(d, 'f.png'));
 figures.mortgage(r{2}, fullfile(d, 'g.png'));
 assert(all(isfile(fullfile(d, {'a.png', 'b.png', 'c.png', 'd.png', 'e.png', 'f.png', 'g.png'}))), ...
     'a figure was not written');
+end
+
+function floor_off_identical()
+% With the absorbing floor off, step 16 on the small grid, both tenures: the
+% value, the policies and every panel field that existed before the change
+% are bit-identical to the solve saved at 7b5143d (CGM_FLOOR_BASELINE).
+file = getenv('CGM_FLOOR_BASELINE');
+if isempty(file) || ~isfile(file)
+    error('run_tests:skip', 'CGM_FLOOR_BASELINE does not name the solve saved at 7b5143d');
+end
+B = load(file);
+for owner = [false true]
+    p = ladder.params(16); p.is_owner = owner;
+    p.grid_dims = [8 6 6 4]; p.gh_n = 3; p = config.derive(p);
+    r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
+    b = B.(model.tenure(p));
+    assert(isequaln(r.sol.V, b.V) && isequaln(r.sol.c_pol, b.c_pol) && isequaln(r.sol.pi_pol, b.pi_pol), ...
+        '%s: the solution differs from the baseline', model.tenure(p));
+    f = fieldnames(b.sim);
+    for i = 1:numel(f)
+        assert(isequaln(r.sim.(f{i}), b.sim.(f{i})), '%s: panel field %s differs', model.tenure(p), f{i});
+    end
+end
+end
+
+function floor_absorbing()
+% Step 16, renter, small grid, c_min = 10,000. (1) At every node whose liquid
+% resources fall short of the floor, the solved value is the closed form
+% (phi_t u1)^(1-gamma)/(1-gamma) D_t to 1e-12 relative, with D_t summed here
+% from the survival table: at a working age, a retired age and the last.
+% (2) In the panel a bankrupt household stays bankrupt, entered with resources
+% below the floor, consumes phi_t Y at entry and the same every year after,
+% holds no wealth after entry and leaves no bequest; only solvent households
+% are counted off the grid. (3) The dashboard draws.
+p = ladder.params(16); p.is_owner = false; p.c_min = 10000;
+p.grid_dims = [8 6 6 4]; p.gh_n = 3; p = config.derive(p);
+r = model.run(p, N_sim = 2000, keep_sim = true, verbose = false);
+S = cumprod([1; config.survival(p)]);
+net = 1 - p.tau_inc;
+for t = [10, p.t_ret + 5, p.T]
+    [g1, g2] = utility.grid_at(p, t);
+    [U1, U2, U3] = ndgrid(g1, g2, p.u3_grid);
+    sA = U2 .* (1 - U1) .* U3; sH = U2 .* (1 - U1) .* (1 - U3); sX = (1 - U1) .* (1 - U2);
+    if t >= p.t_ret
+        LW = sX + net * U1 + net * sA / r.ann_price(t) - p.alpha * sH;
+    else
+        LW = sX + (1 - p.kappa(t)) * net * U1 - p.alpha * sH;
+    end
+    F = p.phi_path(t) * U1;
+    k = (t:p.T).';
+    D = sum(p.beta .^ (k - t) .* S(k) / S(t));
+    m = LW < F * (1 - 1e-9);
+    assert(any(m(:)), 'no node below the floor at t = %d', t);
+    V  = r.sol.V(:, :, :, 1, t);
+    Vb = F .^ (1 - p.gamma) / (1 - p.gamma) * D;
+    err = max(abs(V(m) ./ Vb(m) - 1));
+    assert(err < 1e-12, 't = %d: value at the bankrupt nodes off the closed form by %.2g', t, err);
+end
+
+s = r.sim; ab = s.absorbed;
+assert(any(ab(:)), 'no household went bankrupt');
+assert(all(diff(ab, 1, 2) >= 0, 'all'), 'a bankrupt household became solvent');
+assert(all(isnan(s.abs_age(~any(ab, 2)))), 'abs_age set for a household never bankrupt');
+for i = find(any(ab, 2)).'
+    t0 = find(ab(i, :), 1);
+    F0 = p.phi_path(t0) * s.Y(i, t0);
+    assert(s.abs_age(i) == p.age0 + t0 - 1, 'household %d: abs_age', i);
+    assert(s.LW(i, t0) < F0, 'household %d entered with resources above the floor', i);
+    assert(abs(s.C(i, t0) / F0 - 1) < 1e-12 && all(s.C(i, t0:end) == s.C(i, t0)), ...
+        'household %d: consumption is not the floor at entry, constant after', i);
+    assert(all(s.X(i, t0+1:end) == 0 & s.A(i, t0+1:end) == 0 & s.H(i, t0+1:end) == 0), ...
+        'household %d holds wealth after entry', i);
+    assert(s.bequest(i) == 0, 'household %d left a bequest', i);
+end
+assert(isequal(r.summary.floored, mean(ab, 1)), 'floored is not the bankrupt share');
+n = zeros(1, 3);
+for t = 1:p.T
+    [g1, g2] = utility.grid_at(p, t);
+    ok  = ~ab(:, t);
+    sAH = s.sA(ok, t) + s.sH(ok, t);
+    u1  = s.lambda(ok, t);
+    u2  = sAH ./ max(1 - u1, 1e-12);
+    u3  = min(max(s.sA(ok, t) ./ max(sAH, 1e-12), 0), 1);
+    n = n + [sum(u1 < g1(1) - 1e-12 | u1 > g1(end) + 1e-12), sum(u2 < g2(1) - 1e-12 | u2 > g2(end) + 1e-12), ...
+             sum(u3 < p.u3_grid(1) - 1e-12 | u3 > p.u3_grid(end) + 1e-12)];
+end
+d = s.diagnostics;
+assert(isequal(n, [d.n_offgrid_u1, d.n_offgrid_u2, d.n_offgrid_u3]), ...
+    'off-grid counts %s, solvent households only %s', mat2str([d.n_offgrid_u1, d.n_offgrid_u2, d.n_offgrid_u3]), mat2str(n));
+h = r.summary.abs_hazard;
+assert(numel(h) == p.T && all(h >= 0 & h <= 1) && any(h > 0), 'abs_hazard');
+dd = tempname; mkdir(dd); cleanup = onCleanup(@() rmdir(dd, 's'));
+figures.dashboard(r, fullfile(dd, 'a.png'));
+assert(isfile(fullfile(dd, 'a.png')), 'the dashboard was not written');
 end

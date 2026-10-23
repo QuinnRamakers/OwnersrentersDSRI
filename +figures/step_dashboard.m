@@ -122,8 +122,9 @@ for i = 1:2
     L{end+1} = labels{i}; %#ok<AGROW>
     L{end+1} = sprintf('  %s, %s; grid %dx%dx%d, gh %d, %s, sweep %d, %.0f s', R{i}.tenure, D{i}.unit, ...
         p.N_u1, p.N_u2, p.N_u3, p.gh_n, p.fmincon_algorithm, p.use_refine, R{i}.timing.solve_sec); %#ok<AGROW>
-    L{end+1} = sprintf('  bound 25-39 %.1f%%  floored %.2f%%  off-grid %d  entry value %.3g  Merton %.3f', ...
-        100 * c.c_bound_25_39, 100 * c.floored_share, sum(c.offgrid), c.ce_entry, c.merton_liquid); %#ok<AGROW>
+    [~, fl] = model.floor_kind(p);
+    L{end+1} = sprintf('  bound 25-39 %.1f%%  %s %.2f%%  off-grid %d  entry value %.3g  Merton %.3f', ...
+        100 * c.c_bound_25_39, fl, 100 * c.floored_share, sum(c.offgrid), c.ce_entry, c.merton_liquid); %#ok<AGROW>
     if isfield(c, 'corr_SL_nodes')
         L{end+1} = sprintf('  corr(income, stock) %.2f: nodes %.3f, panel %.3f', p.corr_SL, c.corr_SL_nodes, c.corr_SL_sim); %#ok<AGROW>
     end

@@ -19,9 +19,19 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %   cost: rent, or maintenance plus the mortgage payment), m_pay (mortgage
 %   payment), ann_pay (gross annuity payout), c_bound (the lower bound of the
 %   consumption search at the household's state), floored (resources topped up
-%   to the floor); tau_A and reit_A (N x T-1, the DC fund's stock and REIT
-%   shares); R_S (N x T-1, the gross stock return from t to t+1); bequest
-%   (N x 1); diagnostics, including policy lookups that fell outside the grid.
+%   to the floor; with the absorbing floor, bankrupt), absorbed (bankrupt, from
+%   the year of entry on; all false without the absorbing floor); tau_A and
+%   reit_A (N x T-1, the DC fund's stock and REIT shares); R_S (N x T-1, the
+%   gross stock return from t to t+1); bequest and abs_age (N x 1, the age at
+%   bankruptcy, NaN if never); diagnostics, including policy lookups that fell
+%   outside the grid.
+%
+%   With the absorbing floor (p.floor_absorbing) a household whose resources
+%   fall below phi_path(t) * Y goes bankrupt: it consumes that amount every
+%   year after, its c_frac and pi are NaN, its X, A and H are 0 from the next
+%   year, its LW and disp_inc are 0 after the year of entry, it leaves no
+%   bequest, and it is not counted in the off-grid lookups. A solvent
+%   household consumes at least the floor. Y follows its process throughout.
 
 if nargin < 5 || isempty(N), N = 5000; end
 if nargin < 6 || isempty(seed), seed = 20260511; end
@@ -62,6 +72,16 @@ R_S_path    = zeros(N, T-1);
 
 n_clamp_c = 0; n_clamp_pi = 0; n_negLW = 0; n_floored = 0;
 n_off = zeros(1, 4);
+
+% The absorbing floor: bankrupt from the year of entry on, the age at entry,
+% and the consumption fixed at entry. A result saved before the absorbing
+% floor existed has no phi_path; its floor is phi_floor.
+absorbing = isfield(p, 'floor_absorbing') && p.floor_absorbing;
+phi_path  = p.phi_floor * ones(T, 1);
+if isfield(p, 'phi_path'), phi_path = p.phi_path; end
+ab_path   = false(N, T);
+abs_age   = nan(N, 1);
+C_bar     = zeros(N, 1);
 
 % Policies on the 4D grid where they depend on q (it enters this year or a
 % later one), and on the q = 1 slice elsewhere, where every slice is the same.
@@ -161,11 +181,28 @@ for t = 1:T
         LW = X_path(:,t) + contrib_factor .* Y_path(:,t) ...
              - h_cost_rate .* H_path(:,t);
     end
+    disp_t = contrib_factor .* Y_path(:,t) + ann_pay_net - h_cost_rate .* H_path(:,t);
+
+    % The absorbing floor. A household bankrupt in an earlier year has no
+    % resources of its own; one whose resources fall below the floor this
+    % year goes bankrupt now. Neither looks up a policy.
+    F_t = phi_path(t) * Y_path(:,t);
+    if absorbing
+        gone = ab_path(:,t);
+        LW(gone) = 0; disp_t(gone) = 0;
+        enter = ~gone & LW < F_t;
+        ab_path(enter, t:T) = true;
+        abs_age(enter) = p.age0 + t - 1;
+        C_bar(enter)   = F_t(enter);
+        look = ~ab_path(:,t);
+    else
+        look = true(N, 1);
+    end
     LW_path(:,t) = LW;
     m_path(:,t)  = m_q .* H_path(:,t);
     hc_path(:,t) = h_cost_rate .* H_path(:,t);
     ann_pay_path(:,t) = ann_pay;
-    disp_inc(:,t) = contrib_factor .* Y_path(:,t) + ann_pay_net - h_cost_rate .* H_path(:,t);
+    disp_inc(:,t) = disp_t;
 
     % Cube coordinates. Off-grid lookups are counted on the raw coordinates:
     % past the last node the policy is extrapolated flat, so such a household
@@ -175,9 +212,9 @@ for t = 1:T
     u2_raw = sAH ./ max(1 - lam_path(:,t), 1e-12);
     u3_raw = min(max(sA_path(:,t) ./ max(sAH, 1e-12), 0), 1);
     [g1, g2] = utility.grid_at(p, t);
-    n_off(1) = n_off(1) + sum(u1_raw < g1(1) - 1e-12 | u1_raw > g1(end) + 1e-12);
-    n_off(2) = n_off(2) + sum(u2_raw < g2(1) - 1e-12 | u2_raw > g2(end) + 1e-12);
-    n_off(3) = n_off(3) + sum(u3_raw < p.u3_grid(1) - 1e-12 | u3_raw > p.u3_grid(end) + 1e-12);
+    n_off(1) = n_off(1) + sum(look & (u1_raw < g1(1) - 1e-12 | u1_raw > g1(end) + 1e-12));
+    n_off(2) = n_off(2) + sum(look & (u2_raw < g2(1) - 1e-12 | u2_raw > g2(end) + 1e-12));
+    n_off(3) = n_off(3) + sum(look & (u3_raw < p.u3_grid(1) - 1e-12 | u3_raw > p.u3_grid(end) + 1e-12));
 
     u1q = min(max(u1_raw, g1(1)), g1(end));
     u2q = min(max(u2_raw, g2(1)), g2(end));
@@ -185,7 +222,7 @@ for t = 1:T
 
     if q_dep(t)
         q_raw = q_path(:,t);
-        n_off(4) = n_off(4) + sum(q_raw < q_grid(1) - 1e-12 | q_raw > q_grid(end) + 1e-12);
+        n_off(4) = n_off(4) + sum(look & (q_raw < q_grid(1) - 1e-12 | q_raw > q_grid(end) + 1e-12));
         qq = min(max(q_raw, q_grid(1)), q_grid(end));
         cf_raw = pp_c{t}(u1q, u2q, u3q, qq);
         pi_raw = pp_pi{t}(u1q, u2q, u3q, qq);
@@ -195,22 +232,32 @@ for t = 1:T
     end
     cf  = max(min(cf_raw, 1), 0);
     pi_ = max(min(pi_raw, 1), 0);
-    n_clamp_c  = n_clamp_c  + sum(abs(cf  - cf_raw)  > 1e-10);
-    n_clamp_pi = n_clamp_pi + sum(abs(pi_ - pi_raw) > 1e-10);
+    n_clamp_c  = n_clamp_c  + sum(look & abs(cf  - cf_raw)  > 1e-10);
+    n_clamp_pi = n_clamp_pi + sum(look & abs(pi_ - pi_raw) > 1e-10);
     c_path(:,t)  = cf;
     pi_path(:,t) = pi_;
-    F_t          = p.phi_floor * Y_path(:,t);
     C_path(:,t)  = cf .* max(LW, 0);
     short        = LW < F_t;
     C_path(short, t) = F_t(short);
     fl_path(:,t) = short;
     n_floored    = n_floored + sum(short);
     cb_path(:,t) = min(F_t ./ max(LW, realmin), 1);   % the floor as a share of resources
+    if absorbing
+        % A solvent household consumes at least the floor; a bankrupt one the
+        % floor of its year of entry, and it chooses nothing. Here short is
+        % the bankrupt households.
+        C_path(look, t) = max(C_path(look, t), F_t(look));
+        C_path(~look, t) = C_bar(~look);
+        c_path(~look, t) = NaN; pi_path(~look, t) = NaN;
+        pi_(~look) = 0;
+    end
 
     if t == T
         % Liquid wealth left after consumption plus the house net of the sale
-        % cost (owners). The DC pot is not bequeathable.
+        % cost (owners). The DC pot is not bequeathable. A bankrupt household
+        % leaves nothing.
         bequest_path = max(LW - C_path(:,t), 0) + h_beq_fac * H_path(:,t);
+        bequest_path(~look) = 0;
         break
     end
 
@@ -245,6 +292,10 @@ for t = 1:T
     A_path(:,t+1) = R_A_with .* A_pre;
     H_path(:,t+1) = R_H_draw .* H_path(:,t);
     q_path(:,t+1) = q_path(:,t) ./ R_H_draw;
+    if absorbing
+        % A bankrupt household's liquid wealth, pot and house are gone.
+        X_path(~look, t+1) = 0; A_path(~look, t+1) = 0; H_path(~look, t+1) = 0;
+    end
 
     if t < p.t_ret - 1
         Y_path(:,t+1) = Y_path(:,t) .* exp(profile.mu_growth(t) + profile.sigma_l_log(t) .* eps_Y(:,t));
@@ -277,6 +328,8 @@ sim.ann_pay = ann_pay_path;
 sim.disp_inc = disp_inc;
 sim.c_bound = cb_path;
 sim.floored = fl_path;
+sim.absorbed = ab_path;
+sim.abs_age  = abs_age;
 sim.bequest = bequest_path;
 sim.tau_A  = tau_A_path;
 sim.reit_A = reit_A_path;
