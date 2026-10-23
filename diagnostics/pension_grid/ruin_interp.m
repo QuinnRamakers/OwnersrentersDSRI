@@ -185,11 +185,16 @@ for a = ages
     F1 = griddedInterpolant({g1, g2, U3, gq}, zfun(V_next_r), 'linear', 'nearest');
     cont_dz = max(abs(F1(Q) ./ F0(Q) - 1));
 
-    % The households at this age
-    lam = s.lambda(:, t);
-    u2h = (s.sA(:, t) + s.sH(:, t)) ./ max(1 - lam, 1e-12);
+    % The households at this age; with the absorbing floor, the solvent ones
+    ok  = ~s.absorbed(:, t);
+    lam = s.lambda(ok, t);
+    u2h = (s.sA(ok, t) + s.sH(ok, t)) ./ max(1 - lam, 1e-12);
     band = struct('u1', prctile(lam, [5 95]), 'u2', prctile(u2h, [5 95]), ...
-                  'q', prctile(s.q(:, t), [5 95]), 'q_live', any(p.q_live(t:end)));
+                  'q', prctile(s.q(ok, t), [5 95]), 'q_live', any(p.q_live(t:end)));
+    % The floor's certainty equivalent per unit of u1: phi_floor with the
+    % top-up; with the absorbing floor the bankrupt value, phi_t D_t^(1/(1-gamma))
+    floor_fac = p.phi_floor;
+    if model.floor_kind(p), floor_fac = p.phi_path(t) * p.D_abs(t) ^ (1 / (1 - p.gamma)); end
 
     % u3 only, and the centres, on the axis with the midpoints inserted
     U = run_set(t, p, r, shocks, ax.U, V_next_r, pol_next, z_saved, grid0, zfun);
@@ -210,7 +215,8 @@ for a = ages
     chk.nodes_dz_band = max(d(M.in1 & reshape(M.inq, 1, 1, 1, []) & true(size(d))));
 
     U = rmfield(U, 'c_bell'); C = rmfield(C, 'c_bell');
-    e = struct('age', a, 't', t, 'chk', chk, 'band', band, 'U', U, 'C', C, 'sec', toc(tic_a));
+    e = struct('age', a, 't', t, 'chk', chk, 'band', band, 'U', U, 'C', C, 'sec', toc(tic_a), ...
+               'floor_fac', floor_fac);
     res.age = [res.age, e];
     fprintf('%s age %d: continuation %.1e, nodes CE %.1e (band %.1e) c %.1e, inserted axis %.1e (band %.1e), %.0f s\n', ...
         name, a, chk.cont_dz, chk.nodes_dz, chk.nodes_dz_band, chk.nodes_dc, chk.axis_dz, chk.axis_dz_band, e.sec);
@@ -327,7 +333,9 @@ for i = 1:numel(res)
             M = region_masks(x.ax.(R{k, 2}), x.u1_grid, x.u2_grid, x.u3_grid, x.q_grid, x.node3, e.band);
             m = M.sel(M.u2.(R{k, 3}), M.u3.(R{k, 4}));
             P = e.(R{k, 2});
-            floor_ce = x.phi_floor * x.ax.(R{k, 2}).t1 .* ones(size(m));   % the floor's z, phi_floor u1
+            fac = x.phi_floor;                                              % results saved before floor_fac
+            if isfield(e, 'floor_fac'), fac = e.floor_fac; end
+            floor_ce = fac * x.ax.(R{k, 2}).t1 .* ones(size(m));           % the floor's z per unit of u1
             g = P.gap(m); w = M.w(m); near = P.z_bell(m) < 10 * floor_ce(m);
             if isempty(g)
                 st = [0 NaN NaN NaN NaN NaN NaN];

@@ -28,11 +28,12 @@ if ~isfile(file), r = []; return; end
 r = load(file);
 r.case_name = name;
 % The equity share of liquid saving, aggregated over households (1 x T):
-% stocks held over liquid saving. Households that save nothing carry no weight.
+% stocks held over liquid saving. Households that save nothing carry no weight;
+% bankrupt households (absorbing floor) save nothing and have no share.
 w = warning('off', 'all');
 s = figures.panel_data(r).sim;
 warning(w);
 sav = max(s.LW - s.C, 0);
-r.piw = sum(s.pi .* sav, 1) ./ max(sum(sav, 1), realmin);
+r.piw = sum(s.pi .* sav, 1, 'omitnan') ./ max(sum(sav, 1), realmin);
 r.piw(sum(sav, 1) < 0.01 * sum(s.Y, 1)) = NaN;           % ages where saving is under 1% of income
 end

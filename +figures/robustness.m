@@ -20,7 +20,7 @@ cols = st.series(1:5, :);
 styles = {'-', '--', '-.', ':', '-'};
 FS = 10; FT = 10.5; LFS = 8.5; LWD = 1.7;
 d0 = figures.panel_data(ref); a = d0.ages; ret = ref.p.retirement_age; sc = d0.scale;
-C0 = mean(d0.C, 1); X0 = mean(d0.X, 1); P0 = mean(d0.pi, 1);
+C0 = mean(d0.C, 1); X0 = mean(d0.X, 1); P0 = mean(d0.pi, 1, 'omitnan');
 small = X0 < 0.01 * max(X0);         % % gaps on near-zero savings say nothing
 w = 1:numel(a) - 1;
 if nargin < 6 || isempty(ref_what), ref_what = 'the step as solved in the ladder'; end
@@ -81,14 +81,14 @@ for g = 1:ng
     ref_band(ax, a(w), d0.pi(:, w));
     plot(ax, a(w), P0(w), 'k-', 'LineWidth', 2.4);
     for i = 1:n
-        plot(ax, a(w), mean(D{i}.pi(:, w), 1), styles{i}, 'Color', cols(i, :), 'LineWidth', LWD);
+        plot(ax, a(w), mean(D{i}.pi(:, w), 1, 'omitnan'), styles{i}, 'Color', cols(i, :), 'LineWidth', LWD);
     end
     ylim(ax, [0 1.02]); ylabel(ax, 'Stock share [0-1]');
     title(ax, sprintf('(%s)  %s: liquid equity share', letter(5), G.name), 'FontSize', FT);
 
     ax = diff_tile(tl, ret, FS);
     for i = 1:n
-        plot(ax, a(w), mean(D{i}.pi(:, w), 1) - P0(w), styles{i}, 'Color', cols(i, :), 'LineWidth', LWD);
+        plot(ax, a(w), mean(D{i}.pi(:, w), 1, 'omitnan') - P0(w), styles{i}, 'Color', cols(i, :), 'LineWidth', LWD);
     end
     ylabel(ax, 'difference from black, share');
     title(ax, sprintf('(%s)  %s: equity share, difference', letter(6), G.name), 'FontSize', FT);
