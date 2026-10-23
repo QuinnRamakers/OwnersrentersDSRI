@@ -43,6 +43,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-23 The absorbing floor: two checks for bugs (spec: none, asked by Quinn in Claude Code)
+Quinn: are there numerical problems or bugs? Two checks without new solves, on the saved c_min 8,000 solves (scripts in the session's scratchpad, not committed).
+1. Owner trigger. At every node of the owner summary grid, both maintenance rules, liquid resources from the owner budget written out independently (q-dependent maintenance and annuity payment, the annuity payout in retirement) against the nodes the solver valued at the closed form: 0 mismatches over 80,006 and 93,556 node-years below the floor (the renter is covered by `run_tests`, `floor_absorbing`).
+2. Policy leakage. The solver stores c = 1 and pi = 1 at bankrupt nodes, and solvent households next to them read interpolated policies. Re-simulated with those nodes' policies replaced by the nearest solvent node (along u2, then u1), same households and seed. Bankruptcy, consumption and saving barely move: owner 16x16 bankrupt at 67 8.7% -> 7.8%, at 85 23.2% -> 21.5%; owner 32x32 6.1% -> 6.0% and 21.7% -> 21.5%; renters unchanged to 0.1 point. The old-age liquid equity share does move: owner 32x32 0.999 -> 0.876 at 95 and 0.893 -> 0.876 at 85; renter 48x48 0.833 -> 0.799 at 85. Those households hold almost no liquid saving (mean 0.006 of entry income at 95), so the effect is on the plotted share, not on wealth, but it is part of the larger equity-share gaps after 67 in the grid test.
+Checks run: none in the repo (no code changed).
+Commit: this entry, pushed to main.
+Open: whether to store a solvent neighbour's policy (or the limit share) at bankrupt nodes; the exact trigger at the quadrature nodes (prompt, "Later, if needed").
+
 ### 2026-10-23 Net income figure: the bottom row redrawn (spec: none, asked by Quinn in Claude Code)
 Quinn: the second row of `16_net_income_distribution.png` needs work. It showed two shares on a fixed 0-100% axis, nearly flat at the bottom and empty for the purchase-price owner.
 Changed: `diagnostics/nibud/absorbing_income.m`. The bottom row now stacks every household's net income after housing over its own floor phi_t Y_t (below zero, 0-1, 1-2, 2-4, over 4 times) by age, with the share bankrupt by that age under the absorbing floor as a line, and one legend below the row. No new solve.
