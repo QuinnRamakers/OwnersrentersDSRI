@@ -36,6 +36,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-23 Prompt for the absorbing floor linked to labour income, saved as a handover, not started (spec: none, asked by Quinn in Claude Code)
+Quinn: a prompt for this as a handover.
+Changed: `docs/prompts/absorbing_floor.md` rewritten as one clean prompt; the exploration of 22 Oct is in git (39c869c to 031e081) and the entries below. Contents: start instructions; the decisions taken (absorbing for life, level fixed at bankruptcy, no new state, linked to labour income); six open decisions with defaults ((b) phi_t = c_min / Ybar_t, the same c_min for both tenures, c_min from Nibud, the floor as the search bound, involuntary trigger, the bequest rule for later); the model with V~^B_t = (phi_t u1)^(1-gamma)/(1-gamma) D_t; the code changes file by file (primitives `c_min` and `phi_abs`, derived `phi_path` and `D_abs`); six new tests, including bit-identical to 7b5143d with the floor off; five runs with expectations on the 20 Oct summary grids; the exact node test for later; the Dutch policy background with sources.
+Numbers, by hand (Python, from config.params): cash after housing at entry EUR 13,003 owners, 12,641 renters; phi_25 at c_min 6,000 / 8,000 / 10,000: 0.151 / 0.201 / 0.251 owners, 0.199 / 0.266 / 0.332 renters; the median renter's rent at 67 about EUR 10,500 against a net first pillar of EUR 9,382.
+Checks run: none. No code changed.
+Commit: this entry with `docs/prompts/absorbing_floor.md`, pushed to claude/dreamy-edison-1814gg (not main: this session may push only to that branch).
+Open: bring the prompt onto main; Quinn's open decisions 1-5; then the implementation.
+
 ### 2026-10-22 The absorbing floor linked to labour income (spec: none, asked by Quinn in Claude Code)
 Quinn: the rent-index and purchase-price floors are not defensible in a paper; link the floor to labour income. No new state variable.
 Changed: `docs/prompts/absorbing_floor.md`: the decision recorded; options 2 and 3 without a state dropped. New "The labour-income floor": F_t = phi_t Y^L_t, with Y^L_t labour income in working life and final labour income (Y_t / 0.307) in retirement; after bankruptcy Cbar = F_{t*} for life, V~^B_t = (phi_t u1 / r_t)^(1-gamma)/(1-gamma) D_t. Two ways to set phi_t: (a) one share for all ages; (b) phi_t = c_min / Ybar^L_t, equal to c_min for the median household at every age. Recommended: (b), same c_min for both tenures.
