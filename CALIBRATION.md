@@ -378,10 +378,13 @@ stays homothetic.
 
 `config.derive` builds `p.phi_path`:
 
-- `c_min`: phi_t = c_min / Ybar_t, with Ybar_t the tenure's deterministic
+- `c_min`: phi_t = c_min / Ybar_t, with Ybar_t the owners' deterministic
   income profile (in retirement 0.307 Ybar_66, so the floor is tied to final
-  labour income). The floor is c_min for the median household at every age and
-  c_min Y_t / Ybar_t for the others. Same c_min for both tenures.
+  labour income), for both tenures. The floor is c_min for the median owner at
+  every age and c_min Y_t / Ybar_t for every other household, renters
+  included: the same share of income for owners and renters. Once both
+  tenures use the pooled income cubic (Labour income, above), the owners'
+  profile is the common one.
 - `phi_abs`: phi_t = phi_abs to 66 and phi_abs / replacement from 67, that is
   phi_abs times permanent labour income, final labour income in retirement.
 
@@ -389,6 +392,13 @@ At most one of the two is positive, and `c_min` needs income in euros.
 Both 0 gives the yearly top-up at `phi_floor` below. The floor stands for the
 social minimum net of housing costs; the Dutch policy background and the
 sources considered are in the prompt.
+
+Decided (Quinn, 23 October 2026): the share by age, phi_t = c_min / Ybar_t;
+the same share for both tenures, set on the owners' profile; the floor is
+also the lowest consumption of a solvent household; bankruptcy is
+involuntary only. Open: the value and source of c_min, and a bequest rule for
+bankrupt households before `chi` is switched on (a household that leaves
+nothing has a bequest utility of minus infinity at gamma > 1).
 
 ### The top-up floor (`phi_floor`, used when the absorbing floor is off)
 

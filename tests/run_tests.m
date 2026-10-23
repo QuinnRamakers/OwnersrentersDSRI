@@ -267,11 +267,11 @@ end
 
 function floor_derive()
 % The absorbing floor's derived paths. D_abs is the explicit discounted
-% survival sum. With c_min the floor at the deterministic profile is c_min at
-% every age, both tenures; with phi_abs the share is phi_abs to 66 and
-% phi_abs / replacement after; off, it is phi_floor. derive refuses both
-% positive, c_min with income not in euros, negative values and a floor not
-% above phi_floor.
+% survival sum. With c_min the share is the same for both tenures and the
+% floor at the owners' deterministic profile is c_min at every age; with
+% phi_abs the share is phi_abs to 66 and phi_abs / replacement after; off, it
+% is phi_floor. derive refuses both positive, c_min with income not in euros,
+% negative values and a floor not above phi_floor.
 p = config.params();
 assert(~p.floor_absorbing && all(p.phi_path == p.phi_floor) && numel(p.phi_path) == p.T, ...
     'production: the absorbing floor is not off');
@@ -281,12 +281,11 @@ for t = 1:p.T
     D = sum(p.beta .^ (k - t) .* S(k) / S(t));
     assert(abs(p.D_abs(t) / D - 1) < 1e-12, 'D_abs(%d) = %.15g against %.15g', t, p.D_abs(t), D);
 end
-for owner = [true false]
-    q = config.params(false); q.is_owner = owner; q.c_min = 8000; q = config.derive(q);
-    Ybar = exp(config.income_profile(q));
-    dev = max(abs(q.phi_path .* Ybar / 8000 - 1));
-    assert(q.floor_absorbing && dev < 1e-12, 'owner %d: the floor at the profile is not c_min (%.2g)', owner, dev);
-end
+o = config.params(false); o.is_owner = true;  o.c_min = 8000; o = config.derive(o);
+r = config.params(false); r.is_owner = false; r.c_min = 8000; r = config.derive(r);
+dev = max(abs(o.phi_path .* exp(config.income_profile(o)) / 8000 - 1));
+assert(o.floor_absorbing && r.floor_absorbing && dev < 1e-12, 'the floor at the owners'' profile is not c_min (%.2g)', dev);
+assert(isequal(o.phi_path, r.phi_path), 'the share differs between the tenures');
 q = config.params(false); q.phi_abs = 0.2; q = config.derive(q);
 work = 1 : q.t_ret - 1; ret = q.t_ret : q.T;
 assert(q.floor_absorbing && all(q.phi_path(work) == 0.2) && ...

@@ -61,11 +61,12 @@ p.kappa(work_t) = p.kappa_base .* max(Y_det(work_t) - p.franchise, 0) ./ Y_det(w
 % The consumption floor as a share of current gross income, phi_path. With
 % c_min or phi_abs positive it is absorbing: a household whose liquid
 % resources fall below phi_path(t) * Y goes bankrupt and consumes that amount
-% for the rest of its life. c_min: the floor is c_min euros on the
-% deterministic profile, the tenure's, so it is tied to final labour income in
-% retirement. phi_abs: phi_abs times permanent labour income, which is Y to 66
-% and Y / replacement after. Off: phi_floor, a yearly top-up. D_abs(t) is
-% the discounted, survival-weighted horizon from t, the lifetime weight of a
+% for the rest of its life. c_min: the floor is c_min euros on the owners'
+% deterministic profile, for both tenures, so the share is the same for
+% owners and renters; it is tied to final labour income in retirement.
+% phi_abs: phi_abs times permanent labour income, which is Y to 66 and
+% Y / replacement after. Off: phi_floor, a yearly top-up. D_abs(t) is the
+% discounted, survival-weighted horizon from t, the lifetime weight of a
 % constant flow of utility.
 assert(p.c_min >= 0 && p.phi_abs >= 0, 'derive:floor_negative', ...
     'c_min and phi_abs must be non-negative (got %g and %g).', p.c_min, p.phi_abs);
@@ -75,7 +76,8 @@ assert(~(p.c_min > 0 && strcmp(p.income_source, 'poly')), 'derive:poly_cmin', ..
     'c_min is in euros and needs income in euros: use income_source = ''dhs'' or ''table''.');
 p.floor_absorbing = p.c_min > 0 || p.phi_abs > 0;
 if p.c_min > 0
-    p.phi_path = p.c_min ./ Y_det;
+    own = p; own.is_owner = true;
+    p.phi_path = p.c_min ./ exp(config.income_profile(own));
 elseif p.phi_abs > 0
     p.phi_path = p.phi_abs * ones(p.T, 1);
     p.phi_path(p.t_ret : end) = p.phi_abs / p.replacement;

@@ -10,7 +10,9 @@ function G = policy_gaps(r, ref, bands)
 %   solutions' policies are read at the same states, those of the reference's
 %   simulated households at each age, so only the first is left. Consumption
 %   is the consumption share times liquid resources, with the floor, as in
-%   simulate.paths_lna. Fields, each 1 x the number of bands (default 26-39,
+%   simulate.paths_lna. With the absorbing floor the reference's bankrupt
+%   households are left out of the equity share and keep their consumption.
+%   Fields, each 1 x the number of bands (default 26-39,
 %   40-66, 67-95):
 %     C    largest |mean consumption / the reference's - 1|
 %     pi   largest |difference| in the mean liquid equity share
@@ -22,6 +24,9 @@ if nargin < 3, bands = {[26 39], [40 66], [67 95]}; end
 s = figures.panel_data(ref).sim;
 p = r.p;
 T = p.T;
+absorbing = model.floor_kind(p);
+assert(absorbing == model.floor_kind(ref.p), 'policy_gaps:floor', ...
+    'one solution has the absorbing floor and the other not.');
 [N, T0] = size(s.Y);
 assert(T0 == T, 'policy_gaps:T', 'the two solutions have different horizons.');
 
@@ -48,16 +53,26 @@ for t = 1:T
         cf = Fc(u1, u2, u3); pf = Fp(u1, u2, u3);
     end
     LW = s.LW(:, t);
-    F  = p.phi_floor * s.Y(:, t);
     c  = max(min(cf, 1), 0) .* max(LW, 0);
-    c(LW < F) = F(LW < F);
+    pf = max(min(pf, 1), 0);
+    if absorbing
+        % Bankruptcy depends on the state alone: the reference's bankrupt
+        % households are bankrupt under either solution and choose nothing.
+        F  = p.phi_path(t) * s.Y(:, t);
+        ab = s.absorbed(:, t);
+        c  = max(c, F);
+        c(ab) = s.C(ab, t); pf(ab) = NaN;
+    else
+        F  = p.phi_floor * s.Y(:, t);
+        c(LW < F) = F(LW < F);
+    end
     C(:, t) = c;
-    P(:, t) = max(min(pf, 1), 0);
+    P(:, t) = pf;
 end
 
 a  = s.ages(:).';
 dC = abs(mean(C, 1) ./ mean(s.C, 1) - 1);
-dP = abs(mean(P, 1) - mean(s.pi, 1));
+dP = abs(mean(P, 1, 'omitnan') - mean(s.pi, 1, 'omitnan'));
 nb = numel(bands);
 G = struct('C', zeros(1, nb), 'pi', zeros(1, nb), 'ages', a, 'C_age', dC, 'pi_age', dP);
 for b = 1:nb
