@@ -43,6 +43,20 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-24 The absorbing floor: results with the exact trigger at the quadrature nodes (spec: 2026-10-23 The consumption floor as an absorbing state, linked to labour income)
+Follows the expectations entry below (a55a951).
+Ran: `solve_cases` on the eight grid cases with `_cmin8000_exact` (two processes side by side, 777-7,442 s), `absorbing_grid(8000, extra = '_exact')`, and `ruin_interp(16, 'owner', {'pow3_24x24_lim_u3p2_qn4', 'pow3_24x24_lim_u3p2_qn4_cmin8000', 'pow3_24x24_lim_u3p2_qn4_cmin8000_exact'})`.
+Output (gitignored), `summary_step16/`: `16_absorbing_grid_gaps_exact.png`, `16_absorbing_<arm>_grid_ladder_exact.png`, `16_absorbing_<arm>_grids_exact.png`, `16_absorbing_ruin_interp_exact.png` (copy of `pension_grid/ruin_interp_16_nibud_owner_union.png`, now the three cases).
+`model.checks`, without -> with the test: off-grid 0 everywhere. Entry value: owner 16x16 0.288 -> 0.285, 24x24 0.274 -> 0.271, 32x32 0.263 -> 0.261, u3 at 20 0.261 -> 0.259; renter 16x16 0.289 -> 0.288, 32x32 0.275 -> 0.275, 48x48 0.266 -> 0.266, u3 at 40 0.281 -> 0.281. Bankrupt household-years: owner 13.8 -> 13.6, 12.9 -> 12.7, 12.4 -> 12.0, 10.8 -> 10.6%; renter 5.10 -> 5.11, 5.64 -> 5.68, 5.53 -> 5.54, 4.32 -> 4.29%.
+Results:
+- The entry value drifts with the grid as much as before (owner -4.8% from 16x16 to 24x24, -3.8% from 24x24 to 32x32), so that drift does not come from the jump at the edge of bankruptcy.
+- Ruin corner, owner 24x24, largest gap at 45 / 60 / 70 / 85 / 90: 7.9 / 0.9 / 0 / 14.0 / 104% without, 7.2 / 0.9 / 0 / 11.7 / 86% with; `corner_u3` at 90 140% -> 102%; medians unchanged, under 1%. The rest of the error is on the solvent side, along u3 for old owners with almost no pot.
+- Grid test, consumption % / mean liquid equity share, bands 26-39, 40-54, 55-66, 67-89, 90-95: consumption gaps move by at most 0.6 points; the equity-share gaps after 67 fall: owner 16x16 against 32x32 0.101 -> 0.042 and 0.138 -> 0.096, 24x24 against 32x32 0.050 -> 0.048 and 0.029 -> 0.031; renter 32x32 against 48x48 0.033 -> 0.013 and 0.054 -> 0.039, summary against 48x48 0.093 -> 0.052 and 0.064 -> 0.042. Renter 32x32 against 48x48 now passes the stop rule from 40 to 89 (0.7/0.004, 0.4/0.012, 0.2/0.013).
+Against the expectations: bankruptcy as expected; the entry value's drift did not shrink; the corner's largest gap fell by a fifth, not to a few percent; the old-age equity-share gaps did shrink.
+Checks run: none new (no code changed since a55a951; `run_tests` 0 of 21 there).
+Commit: this entry, pushed to main.
+Open: whether `abs_node_test` should be on whenever the absorbing floor is; the u3 axis for old owners.
+
 ### 2026-10-23 The absorbing floor: exact trigger at the quadrature nodes; expectations (spec: 2026-10-23 The consumption floor as an absorbing state, linked to labour income)
 Quinn: agreed to fix the jump at the edge of bankruptcy (the prompt's "exact trigger at the quadrature nodes"). On the policy stored at bankrupt nodes, Quinn asked why not plot conditional on not being bankrupt; the plotted shares already are, and the leak is into solvent households next to bankrupt nodes (re-simulated, stored policy against nearest solvent node, owner 32x32 share at 95: 0.999 -> 0.876 over the solvent, 0.976 -> 0.970 over households saving at least 1% of entry income). Quinn does not want the plots weighted by saving; a weighted share was added and taken out again before any commit. The plots and the stored policy stay as they are.
 Changed: new primitive `abs_node_test` (false; with the absorbing floor, true tests every quadrature node against next year's floor and takes the bankrupt value there, in `bellman_rhs` and the sweep, with next year's take-home income, net annuity and housing cost per q node); `absorbing_grid` takes `extra = '_exact'`; `case_params` takes `_exact`; CALIBRATION.md, Numerics. New test `floor_node_test`.
