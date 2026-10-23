@@ -16,7 +16,11 @@ function absorbing_economics(levels, opts)
 %                                       consumption; mean liquid saving, liquid
 %                                       equity share and median housing cost
 %                                       over net income of the solvent; the
-%                                       share bankrupt; the yearly entry rate
+%                                       cumulative share bankrupt (with the
+%                                       top-up, the share ever floored); the
+%                                       one-year rate of going bankrupt
+%   The panel has no mortality, so the shares are of the households alive at
+%   each age.
 %     16_absorbing_<arm>_cmin<n>.png    the dashboard of each arm and level
 %     16_absorbing_<arm>_compare.png    each arm's levels over the top-up
 %   and prints the checks and the main quantities at a few ages.
@@ -42,6 +46,10 @@ for a = 1:numel(arms)
     A = arms(a);
     R{a, 1} = case_load(16, A.arm, [A.base A.mop]);
     assert(~isempty(R{a, 1}), 'absorbing_economics:missing', 'the top-up case of %s is not solved.', A.label);
+    % With the top-up a household can be floored and recover: the share ever
+    % floored by each age is the counterpart of the cumulative bankrupt share.
+    d = figures.panel_data(R{a, 1});
+    R{a, 1}.summary.ever_floored = mean(cummax(d.sim.floored, 2), 1);
     for j = 1:nl
         R{a, j + 1} = case_load(16, A.arm, sprintf('%s_cmin%d%s', A.base, levels(j), A.mop));
         if isempty(R{a, j + 1}), fprintf('not solved yet: %s, c_min %d\n', A.label, levels(j)); end
@@ -56,7 +64,9 @@ fig = figure('Visible', 'off', 'Position', [20 20 2600 1300], 'Color', 'w');
 tl  = tiledlayout(fig, numel(arms), nk, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {'Step 16: the absorbing consumption floor against the yearly top-up (dashed black)', ...
     ['Summary grids of 20 October; levels in multiples of entry income; saving, equity share and housing cost over ' ...
-     'solvent households; c_{min} is the median owner''s floor in euros, the same share of income for renters']}, ...
+     'solvent households; c_{min} is the median owner''s floor in euros, the same share of income for renters'], ...
+    ['Cumulative % bankrupt: of households alive at that age (the panel has no deaths); for the top-up, ' ...
+     'the % ever floored by that age']}, ...
     'FontSize', 13, 'FontWeight', 'bold');
 for a = 1:numel(arms)
     for k = 1:nk
@@ -78,7 +88,9 @@ for a = 1:numel(arms)
                 case 2, y = s.X.mean / s.Y0;
                 case 3, y = s.pi; y(end) = NaN;
                 case 4, y = s.burden;
-                case 5, y = 100 * s.floored;
+                case 5
+                    y = 100 * s.floored;
+                    if j == 1, y = 100 * s.ever_floored; end
                 case 6
                     if j == 1, continue; end
                     y = 100 * s.abs_hazard;
@@ -90,8 +102,16 @@ for a = 1:numel(arms)
             case 2, ylabel(ax, 'times entry income'); t = 'mean liquid saving';
             case 3, ylabel(ax, 'share'); ylim(ax, [0 1]); t = 'liquid equity share';
             case 4, ylabel(ax, 'share'); t = 'housing cost / net income (median)';
-            case 5, ylabel(ax, '% of households'); t = 'bankrupt (top-up: floored that year)';
-            case 6, ylabel(ax, '% a year'); t = 'rate of going bankrupt';
+            case 5, ylabel(ax, '% of households'); t = 'cumulative % bankrupt';
+            case 6
+                ylabel(ax, '% a year'); t = 'one-year rate of going bankrupt';
+                % a spike at entry (a floor near entry resources) would hide the rest
+                Ra = R(a, 2:end); Ra = Ra(~cellfun(@isempty, Ra));
+                hz = cellfun(@(r) max([0, 100 * r.summary.abs_hazard(r.summary.ages >= 30)]), Ra);
+                top = 1.1 * max([hz, 0.1]);
+                if any(arrayfun(@(l) max(l.YData) > top, findobj(ax, 'Type', 'line')))
+                    ylim(ax, [0 top]); t = [t ' (clipped)'];
+                end
         end
         title(ax, sprintf('%s: %s', arms(a).short, t), 'FontSize', 10);
         if a == 1 && k == 1, legend(ax, 'Location', 'northwest', 'FontSize', 8); end
@@ -122,6 +142,17 @@ if opts.dashboards
 end
 
 % Tables
+cum_ages = [30 40 50 55 60 67 75 80 85 90 95 100];
+fprintf('\nCumulative %% bankrupt by age (top-up: %% ever floored), households alive at that age\n');
+fprintf('  %-40s%s\n', '', sprintf('%6d', cum_ages));
+for a = 1:numel(arms)
+    for j = 1:nl + 1
+        r = R{a, j}; if isempty(r), continue; end
+        s = r.summary; v = s.floored; if j == 1, v = s.ever_floored; end
+        fprintf('  %-40s%s\n', sprintf('%s, %s', arms(a).short, strrep(names{j}, 'c_{min} = ', '')), ...
+            sprintf('%6.1f', 100 * v(ismember(s.ages, cum_ages))));
+    end
+end
 for a = 1:numel(arms)
     fprintf('\n%s\n', arms(a).label);
     fprintf('  %-16s %8s %9s %9s %8s %9s %22s %8s %7s\n', '', 'entry', 'bound25', 'fl/bkr', 'offgrid', 'solve s', ...

@@ -42,6 +42,25 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-23 The absorbing floor: runs 1-2, the economics at c_min 4,000-12,000 (spec: 2026-10-23 The consumption floor as an absorbing state, linked to labour income)
+Quinn, during the runs: add maintenance on the purchase price (already planned), a lower and a higher floor (4,000 and 12,000 added), plots of consumption, saving, the equity share, housing cost against income and bankruptcy, and the cumulative bankruptcy rate.
+Ran: `solve_cases` on 15 cases, step 16 summary grids, three or four MATLAB processes side by side (620-2,312 s each): owner `pow3_16x16_lim_u3p2_qn4_nosweep_cmin<n>` and `..._cmin<n>_mop`, renter `pow3_16x16_lim_u3p2_u3n20_cmin<n>`, n = 4,000, 6,000, 8,000, 10,000, 12,000. Then `diagnostics/nibud/absorbing_economics.m`.
+Output (gitignored), `summary_step16/`: `16_absorbing_economics.png` (every arm and level by age: median consumption; mean liquid saving, liquid equity share and median housing cost over net income of the solvent; cumulative % bankrupt; one-year rate), `16_absorbing_<arm>_cmin<n>.png` (15 dashboards), `16_absorbing_<arm>_compare.png` (each arm's floors over the top-up).
+`model.checks`: off-grid 0 in all 15. Entry value (top-up / 4k / 6k / 8k / 10k / 12k): owner, current value 0.022 / 0.246 / 0.267 / 0.288 / 0.306 / 0.314; owner, purchase price 0.277 / 0.318 / 0.325 / 0.337 / 0.343 / 0.328; renter 0.174 / 0.252 / 0.271 / 0.289 / 0.306 / 0.326. c-bound 25-39 0-0.1% up to 8,000, 7-10% for owners at 10,000 and 12,000, 0 for renters.
+Cumulative % bankrupt at 40 / 67 / 100, of households alive at that age (the panel has no deaths; top-up: % ever floored):
+- Owner, current value: top-up 0.0 / 0.2 / 36.8; 4k 0.2 / 3.3 / 47.3; 6k 0.7 / 5.3 / 50.9; 8k 2.2 / 8.7 / 55.1; 10k 6.2 / 14.0 / 60.0; 12k 59.1 / 62.3 / 81.9.
+- Owner, purchase price: top-up 0.0 / 0.4 / 0.4; 4k 0.1 / 0.9 / 0.9; 6k 0.2 / 1.6 / 1.6; 8k 1.3 / 3.0 / 3.0; 10k 4.0 / 6.3 / 6.3; 12k 54.4 / 55.3 / 55.3. No bankruptcy after the mortgage ends at 54.
+- Renter: top-up 0.0 / 0.1 / 7.4; 4k 0.0 / 0.7 / 14.6; 6k 0.0 / 1.5 / 18.9; 8k 0.1 / 2.7 / 24.3; 10k 0.3 / 4.6 / 31.5; 12k 1.6 / 8.4 / 40.7.
+Behaviour, multiples of entry income (median consumption; mean liquid saving of the solvent):
+- Young households consume more and save less: consumption at 25 0.03 -> 0.23-0.30 (owner, current value), 0.25 -> 0.26-0.30 (owner, purchase price), 0.17 -> 0.27-0.38 (renter). Liquid saving at 40: 3.84 -> 1.23-0.57 (owner, current value), 2.91 -> 2.15-1.14 (renter), falling as c_min rises.
+- The liquid equity share of the young rises: owner, current value, 0.01-0.03 at 30-55 under the top-up against 0.1-0.9 with the floor; renter 0.15 at 30 against 0.52-0.98.
+- At 12,000 the floor (0.30 of income at 25) sits just under the owner's cash after housing at entry (0.33): 58% of owners on the current value and 54% on the purchase price are bankrupt by 30, and median consumption is flat at the floor, 0.30, for life.
+Against the expectations: 1 (off-grid 0) and 2 (entry value about 0.2 or above) held. 3 did not: young consumption rose far above the floor instead of sitting on it, c-bound 25-39 stayed at 0-0.1% to 8,000, because a bounded loss at ruin removes the motive to starve now to avoid it. 4 held for owners on the current value (55% at 100 against 15.8% floored at 95 under the top-up) and on the purchase price (3%), not for renters: 24% at 100 at 8,000 against "a few percent". Retired renters run their savings down into the floor; one-year rates 1-1.5% after 85. Run 2: bankruptcy and entry value rise with c_min, liquid saving falls, as expected; the purchase-price owner's entry value falls again at 12,000 (0.328 against 0.343).
+Limits: summary grids, not converged for owners (CLAUDE.md); run 3 tests the grids with the floor.
+Checks run: `run_tests(solve=false)` 0 of 11 failed (after the diagnostics change).
+Commit: this entry with `diagnostics/nibud/absorbing_economics.m`, pushed to main.
+Open: runs 3-4; the value of c_min (decision 3).
+
 ### 2026-10-23 The absorbing floor: Quinn's decisions, and expectations for runs 1-4 (spec: 2026-10-23 The consumption floor as an absorbing state, linked to labour income)
 Quinn's answers to the prompt's open decisions: 1 (b), phi_t = c_min / Ybar_t; 2 the same share for both tenures (not the same c_min), set on the owners' profile until the pooled income cubic is in; 4 the floor is the solvent household's lowest consumption (as coded); 5 involuntary only. 3 (the value of c_min) and 6 (bequest rule) stay open. Quinn asked for all runs in one go, reported at the end, rather than a stop after each.
 Changed: `+config/derive.m`: with `c_min`, phi_path = c_min / Ybar_t on the owners' profile for both tenures. Test `floor_derive` checks the share is equal across tenures. CALIBRATION.md records the decisions.
@@ -56,7 +75,7 @@ Expectations, run 2 (c_min 6,000 and 10,000): bankrupt shares and `ce_entry` ris
 Expectations, run 3 (grid test at 8,000; owner against 24x24 and 32x32 with u3 at 10, and 24x24 with u3 at 20; renter against 32x32 and 48x48 with u3 at 10, and 16x16 with u3 at 40; policies at the reference's households, stop rule 2% in consumption and 0.02 in the equity share): renter within the rule from about 30 (today from 55); owner much closer than today before 55 (today 70-145% off at 40-54), but the u3 problem (hoarding into retirement with 20 u3 points) may survive, since it comes from the housing outflow and not the floor.
 Expectations, run 4 (`ruin_interp`, owner 24x24 q 4 at 8,000 against the same grid without the floor): the corner's gap falls from 1e4-1e6% to tens of percent at most.
 Checks run: `run_tests(solve=false)` 0 of 11 failed after the change; full `run_tests` (with CGM_FLOOR_BASELINE) 0 of 20 failed.
-Commit: below.
+Commit: 7dba69a, pushed to main.
 Open: the runs.
 
 ### 2026-10-23 The absorbing floor: code and tests (spec: 2026-10-23 The consumption floor as an absorbing state, linked to labour income)
