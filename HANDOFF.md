@@ -43,6 +43,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-23 Net income figure: the bottom row redrawn (spec: none, asked by Quinn in Claude Code)
+Quinn: the second row of `16_net_income_distribution.png` needs work. It showed two shares on a fixed 0-100% axis, nearly flat at the bottom and empty for the purchase-price owner.
+Changed: `diagnostics/nibud/absorbing_income.m`. The bottom row now stacks every household's net income after housing over its own floor phi_t Y_t (below zero, 0-1, 1-2, 2-4, over 4 times) by age, with the share bankrupt by that age under the absorbing floor as a line, and one legend below the row. No new solve.
+What it shows (c_min 8,000): at 25 every household is at 1-2 times its floor. Owners on the current value: the share below its floor rises from about 10% at 70 to about half at 100, most of it below zero, and the share bankrupt follows it from 80 on. Owners on the purchase price: no one below the floor after the mortgage ends at 54. Renters: below the floor rises to about a quarter at 100, with the bankrupt share just under it.
+Checks run: `run_tests(solve=false)` 0 of 11 failed.
+Commit: this entry with the script, pushed to main.
+Open: none for the figure.
+
 ### 2026-10-23 The absorbing floor: net income after housing, and the grids (spec: none, asked by Quinn in Claude Code)
 Quinn: plot the distribution of net income after housing costs by age; the net income of households that go bankrupt against the floor; and the grids and what they change.
 No new solve. New `diagnostics/nibud/absorbing_income.m`; `diagnostics/nibud/absorbing_grid.m` draws a page per tenure with the grids. Net income after housing (`sim.disp_inc`) depends on no choice, so it is read from the top-up panel, which draws the same shocks; the script checks that the two panels agree in every solvent year (they do, to 1e-9 relative).

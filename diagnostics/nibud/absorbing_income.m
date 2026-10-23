@@ -19,8 +19,11 @@ function absorbing_income(c_min)
 %     16_net_income_distribution.png   net income by age: mean, median and the
 %                                      5-95, 10-90 and 25-75 percentile bands,
 %                                      with the floor of the arm's median
-%                                      household; the share below its own floor
-%                                      and below zero
+%                                      household; below, the distribution of
+%                                      net income over the household's own
+%                                      floor (below zero, 0-1, 1-2, 2-4, over 4
+%                                      times), with the share bankrupt by that
+%                                      age under the absorbing floor
 %     16_net_income_bankrupt.png       the households that go bankrupt: net
 %                                      income and the floor in the years around
 %                                      bankruptcy, the ratio of the two in the
@@ -39,7 +42,8 @@ if ~isfolder(out), mkdir(out); end
 arms = struct('arm', {'owner', 'owner', 'renter'}, ...
     'base', {'pow3_16x16_lim_u3p2_qn4_nosweep', 'pow3_16x16_lim_u3p2_qn4_nosweep', 'pow3_16x16_lim_u3p2_u3n20'}, ...
     'mop', {'', '_mop', ''}, ...
-    'label', {'Owner, maintenance on the current value', 'Owner, maintenance on the purchase price', 'Renter'});
+    'label', {'Owner, maintenance on the current value', 'Owner, maintenance on the purchase price', 'Renter'}, ...
+    'short', {'Owner, current value', 'Owner, purchase price', 'Renter'});
 na = numel(arms);
 sc = 1e-3;                                       % thousand euros
 D = struct([]);
@@ -61,8 +65,9 @@ for a = 1:na
     F  = p.phi_path(:).' .* s1.Y;                % the floor that applies to a solvent household
     Fb = F; Fb(s1.absorbed) = s1.C(s1.absorbed); % ... and the level a bankrupt household consumes
     Ybar = exp(config.income_profile(p)).';
-    D(a).label = A.label; D(a).ages = ages; D(a).NI = NI; D(a).F = F; D(a).Fb = Fb;
+    D(a).label = A.label; D(a).short = A.short; D(a).ages = ages; D(a).NI = NI; D(a).F = F; D(a).Fb = Fb;
     D(a).X = s1.X; D(a).abs_age = s1.abs_age; D(a).floor_med = p.phi_path(:).' .* Ybar;
+    D(a).bankrupt = mean(s1.absorbed, 1);
 end
 
 % --- Figure 1: the distribution of net income after housing costs by age
@@ -73,6 +78,9 @@ title(tl, {'Step 16: net income after housing costs by age (every household, as 
      'red: the absorbing floor at c_{min} = EUR %s for the arm''s median-income household'], group(c_min))}, ...
     'FontSize', 13, 'FontWeight', 'bold');
 blue = [0.20 0.40 0.75];
+rel_edges = [-Inf 0 1 2 4 Inf];
+rel_names = {'below zero', '0-1 x floor', '1-2 x floor', '2-4 x floor', 'over 4 x floor'};
+rel_cols  = [0.70 0.10 0.10; 0.95 0.55 0.35; 0.99 0.85 0.55; 0.70 0.82 0.92; 0.35 0.55 0.80];
 for a = 1:na
     x = D(a).ages; M = D(a).NI * sc;
     q = prctile(M, [5 10 25 50 75 90 95], 1);
@@ -88,15 +96,28 @@ for a = 1:na
     ylabel(ax, 'thousand EUR (2025)'); title(ax, D(a).label, 'FontSize', 11);
     if a == 1, legend(ax, 'Location', 'northwest', 'FontSize', 9); end
 
-    ax = nexttile(tl, na + a); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = 10; ax.XLim = [25 100];
-    plot(ax, x, 100 * mean(D(a).NI < D(a).F, 1), '-', 'Color', [0.80 0.15 0.15], 'LineWidth', 2, ...
-        'DisplayName', 'below its own floor');
-    plot(ax, x, 100 * mean(D(a).NI < 0, 1), '-', 'Color', [0.2 0.2 0.2], 'LineWidth', 2, ...
-        'DisplayName', 'below zero (housing costs exceed income)');
+    % Net income relative to the household's own floor, phi_t Y_t: the whole
+    % distribution, stacked, with the share already bankrupt on top
+    ax = nexttile(tl, na + a); hold(ax, 'on'); box(ax, 'on'); ax.FontSize = 10; ax.XLim = [25 100];
+    ratio = D(a).NI ./ D(a).F;
+    sh = zeros(numel(rel_edges) - 1, numel(x));
+    for b = 1:numel(rel_edges) - 1
+        sh(b, :) = 100 * mean(ratio >= rel_edges(b) & ratio < rel_edges(b + 1), 1);
+    end
+    h = area(ax, x, sh.', 'EdgeColor', 'none');
+    for b = 1:numel(h)
+        h(b).FaceColor = rel_cols(b, :); h(b).DisplayName = rel_names{b};
+    end
+    plot(ax, x, 100 * D(a).bankrupt, 'k-', 'LineWidth', 2.4, ...
+        'DisplayName', 'bankrupt by this age, absorbing floor (cumulative)');
     xline(ax, 67, 'k:', 'HandleVisibility', 'off');
-    ylabel(ax, '% of households'); xlabel(ax, 'Age'); ylim(ax, [0 100]);
-    title(ax, 'Share whose net income after housing is ...', 'FontSize', 11);
-    if a == 1, legend(ax, 'Location', 'northwest', 'FontSize', 9); end
+    ylim(ax, [0 100]); ax.Layer = 'top'; grid(ax, 'on');
+    ylabel(ax, '% of households'); xlabel(ax, 'Age');
+    title(ax, sprintf('%s: net income after housing over own floor', D(a).short), 'FontSize', 11);
+    if a == 1
+        lg = legend(ax, 'Orientation', 'horizontal', 'FontSize', 10);
+        lg.Layout.Tile = 'south';
+    end
 end
 exportgraphics(fig, fullfile(out, '16_net_income_distribution.png'), 'Resolution', 140);
 close(fig);
