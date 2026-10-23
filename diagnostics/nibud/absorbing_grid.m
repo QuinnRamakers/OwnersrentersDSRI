@@ -18,6 +18,11 @@ function absorbing_grid(c_min)
 %     16_absorbing_grid_gaps.png           gaps by age, top-up dashed, absorbing solid
 %     16_absorbing_owner_grid_ladder.png   the owner's grids overlaid, absorbing floor
 %     16_absorbing_renter_grid_ladder.png  the renter's grids overlaid, absorbing floor
+%     16_absorbing_<arm>_grids.png         the grids themselves (nodes on u1 as
+%                                          W/Y, u2 and u3, against the band of
+%                                          the households at four ages) and what
+%                                          each changes in consumption, saving,
+%                                          the equity share and bankruptcy
 %   and prints the gaps by age band for both floors, and the main quantities.
 
 arguments
@@ -113,6 +118,7 @@ for k = 1:2
     figures.compare(X.abs, X.labels, sprintf('Step 16, %s, absorbing floor at c_min = EUR %d: grids', ...
         lower(X.title), c_min), fullfile(out, sprintf('16_absorbing_%s_grid_ladder.png', X.arm)));
     close all
+    grid_page(X, c_min, fullfile(out, sprintf('16_absorbing_%s_grids.png', X.arm)));
 end
 
 % Tables
@@ -161,6 +167,108 @@ for k = 1:2
         end
     end
 end
+end
+
+function grid_page(X, c_min, file)
+%GRID_PAGE  One tenure's grids and what each changes. Top: the nodes of each
+%   grid on u1 (as total resources over income, W/Y = 1/u1), u2 and u3, and
+%   the 5th-95th percentile of the solvent households at four ages on the
+%   finest u1 x u2 grid with the floor. Bottom: by age, each grid with the
+%   absorbing floor (solid) and the top-up (dashed).
+n = numel(X.cases);
+cols = [0.85 0.45 0.10; 0.20 0.55 0.85; 0.60 0.15 0.55; 0.25 0.65 0.35];
+acol = [0.55 0.55 0.55; 0.35 0.35 0.35; 0.20 0.20 0.20; 0.05 0.05 0.05];
+band_ages = [30 45 65 85];
+iref = 3;                                        % the finest u1 x u2 grid
+s = figures.panel_data(X.abs{iref}).sim;
+t = band_ages - s.ages(1) + 1;
+ok = ~s.absorbed(:, t);
+sAH = s.sA(:, t) + s.sH(:, t);
+coord = {1 ./ s.lambda(:, t), sAH ./ max(1 - s.lambda(:, t), 1e-12), s.sA(:, t) ./ max(sAH, 1e-12)};
+ever = cell(1, n);                               % top-up: share ever floored by each age
+for i = 1:n
+    d = figures.panel_data(X.off{i}).sim;
+    ever{i} = mean(cummax(d.floored, 2), 1);
+end
+
+fig = figure('Visible', 'off', 'Position', [30 30 2300 1250], 'Color', 'w');
+tl  = tiledlayout(fig, 2, 4, 'Padding', 'compact', 'TileSpacing', 'compact');
+title(tl, {sprintf('Step 16, %s: the grids and what they change (absorbing floor at c_{min} = EUR %d solid, yearly top-up dashed)', ...
+    lower(X.title), c_min), ...
+    sprintf(['Top: nodes of each grid; grey bars: 5th-95th percentile of the solvent households at ages %s ' ...
+     '(%s grid, with the floor). Bottom: by age, in multiples of entry income'], ...
+     strjoin(arrayfun(@num2str, band_ages, 'UniformOutput', false), ', '), X.labels{iref})}, ...
+    'FontSize', 13, 'FontWeight', 'bold');
+names = {'u1 as total resources / income, W/Y (log scale)', 'u2 = (pot + housing) / (W - Y)', ...
+         'u3 = pot / (pot + housing)'};
+fld = {'u1_grid', 'u2_grid', 'u3_grid'};
+for j = 1:3
+    ax = nexttile(tl); hold(ax, 'on'); box(ax, 'on'); ax.FontSize = 9;
+    for i = 1:n
+        g = X.abs{i}.p.(fld{j})(:);
+        if j == 1, g = 1 ./ g; end
+        plot(ax, g, i * ones(size(g)), '|', 'Color', cols(i, :), 'MarkerSize', 14, 'LineWidth', 1.5);
+    end
+    for k = 1:numel(band_ages)
+        v = coord{j}(ok(:, k), k);
+        b = prctile(v, [5 95]);
+        y = n + 0.6 + 0.35 * k;
+        plot(ax, b, [y y], '-', 'Color', acol(k, :), 'LineWidth', 5);
+        text(ax, b(2), y, sprintf('  %d', band_ages(k)), 'FontSize', 8, 'VerticalAlignment', 'middle');
+    end
+    set(ax, 'YDir', 'reverse', 'YTick', 1:n, 'YTickLabel', X.labels, 'YLim', [0.4, n + 0.9 + 0.35 * numel(band_ages)]);
+    if j == 1, set(ax, 'XScale', 'log'); xlim(ax, [1 1e4]); else, xlim(ax, [0 1]); end
+    grid(ax, 'on'); xlabel(ax, names{j}); title(ax, sprintf('(%s) %s nodes', char('a' + j - 1), ...
+        extractBefore(names{j}, ' ')), 'FontSize', 10);
+end
+ax = nexttile(tl); axis(ax, 'off');
+L = {'\bfGrid: nodes (u1 x u2 x u3 x q); solve minutes, top-up / floor\rm'};
+for i = 1:n
+    p = X.abs{i}.p;
+    L{end+1} = sprintf('%s: %d x %d x %d x %d; %.0f / %.0f min', strrep(X.labels{i}, '_', '\_'), ...
+        p.N_u1, p.N_u2, p.N_u3, p.N_q, X.off{i}.timing.solve_sec / 60, X.abs{i}.timing.solve_sec / 60); %#ok<AGROW>
+end
+L{end+1} = ''; L{end+1} = '\bfEntry value (x entry income), top-up / floor\rm';
+for i = 1:n
+    L{end+1} = sprintf('%s: %.3f / %.3f', strrep(X.labels{i}, '_', '\_'), X.off{i}.checks.ce_entry, ...
+        X.abs{i}.checks.ce_entry); %#ok<AGROW>
+end
+L{end+1} = ''; L{end+1} = '\bfHousehold-years floored (top-up) / bankrupt (floor)\rm';
+for i = 1:n
+    L{end+1} = sprintf('%s: %.2f%% / %.2f%%', strrep(X.labels{i}, '_', '\_'), 100 * X.off{i}.checks.floored_share, ...
+        100 * X.abs{i}.checks.floored_share); %#ok<AGROW>
+end
+L{end+1} = ''; L{end+1} = 'Off-grid lookups 0 in every solve';
+text(ax, 0, 1, L, 'Units', 'normalized', 'VerticalAlignment', 'top', 'FontSize', 9, 'Interpreter', 'tex');
+title(ax, '(d) Settings and checks', 'FontSize', 10);
+
+ttl = {'(e) median consumption', '(f) mean liquid saving (solvent)', '(g) liquid equity share (solvent)', ...
+       '(h) cumulative % bankrupt (top-up: % ever floored)'};
+for k = 1:4
+    ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = 9; ax.XLim = [25 100];
+    for i = 1:n
+        for f = 1:2
+            if f == 1, r = X.off{i}; ls = '--'; lw = 1.1; hv = 'off'; else, r = X.abs{i}; ls = '-'; lw = 1.9; hv = 'on'; end
+            sm = r.summary; a = sm.ages;
+            switch k
+                case 1, y = sm.C.p50 / sm.Y0;
+                case 2, y = sm.X.mean / sm.Y0;
+                case 3, y = sm.pi; y(end) = NaN;
+                case 4
+                    y = 100 * sm.floored;
+                    if f == 1, y = 100 * ever{i}; end
+            end
+            plot(ax, a, y, ls, 'Color', cols(i, :), 'LineWidth', lw, 'DisplayName', X.labels{i}, 'HandleVisibility', hv);
+        end
+    end
+    xline(ax, 67, 'k:', 'HandleVisibility', 'off');
+    if k == 3, ylim(ax, [0 1]); end
+    if k == 4, ylabel(ax, '% of households'); elseif k < 3, ylabel(ax, 'times entry income'); else, ylabel(ax, 'share'); end
+    xlabel(ax, 'Age'); title(ax, ttl{k}, 'FontSize', 10);
+    if k == 1, legend(ax, 'Location', 'best', 'FontSize', 8); end
+end
+exportgraphics(fig, file, 'Resolution', 140);
+close(fig);
 end
 
 function s = gap_row(G)
