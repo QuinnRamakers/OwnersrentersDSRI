@@ -42,7 +42,10 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   for the rest of its life, with no choices and no bequest, worth
 %   F^(1-gamma)/(1-gamma) * p.D_abs(t). Without it the household consumes the
 %   floor for this year only, saves nothing, and keeps its pot, house and
-%   income. Wherever nothing is saved (c = 1), the equity share is stored as
+%   income. The value jumps at the edge of bankruptcy; with p.abs_node_test
+%   the continuation tests each quadrature node against next year's floor
+%   and takes the bankrupt value there exactly, so only the solvent side is
+%   interpolated. Wherever nothing is saved (c = 1), the equity share is stored as
 %   1, or with p.pi_nothing_saved = 'limit' as the share of a vanishing saving
 %   (limit_share).
 
@@ -232,6 +235,26 @@ opts_opt = optimoptions('fmincon', ...
     'MaxFunctionEvaluations', 500, ...
     'FiniteDifferenceType', 'central');
 
+% With p.abs_node_test (absorbing floor only), next year's liquid resources
+% are formed at every quadrature node; where they fall below next year's
+% floor the node takes the bankrupt value exactly, instead of a value
+% interpolated across the jump at the edge of bankruptcy. nx holds next
+% year's take-home share of income, net annuity rate, floor share and the
+% bankrupt value's factor D^(1/(1-gamma)); the housing cost rate is set per
+% q slice below.
+nx = struct('on', false);
+if absorbing && p.abs_node_test
+    t1 = t + 1;
+    if t1 >= p.t_ret
+        y1 = net_inc; a1 = net_inc / ann_price(t1);
+    else
+        y1 = (1 - p.kappa(min(t1, numel(p.kappa)))) * net_inc; a1 = 0;
+    end
+    if t1 <= numel(p.m_rate_path), m1 = p.m_rate_path(t1); else, m1 = 0; end
+    nx = struct('on', true, 'y1', y1, 'a1', a1, 'm1', m1, 'h1', 0, ...
+                'phi1', p.phi_path(t1), 'Dfac', p.D_abs(t1) ^ inv_omg);
+end
+
 n_states = numel(Lam_all);
 lam_pts = Lam_all(:);
 sA_pts  = SA_all(:);
@@ -279,6 +302,7 @@ for iq = slices
     h_cost_rate = h_cost_q(iq);
     % Next year's q at each shock node, where the continuation depends on it.
     if q_cont, q_n = q_grid(iq) ./ R_H; else, q_n = []; end
+    if nx.on, nx.h1 = next_h_cost(p, nx.m1, q_n); end
     if have_warm
         cw_pts = reshape(pol_next.c(:, :, :, iq), [], 1);
         pw_pts = reshape(pol_next.pi(:, :, :, iq), [], 1);
@@ -351,7 +375,7 @@ for iq = slices
         for s = 1:size(cand, 1)
             v = bellman_rhs(cand(s,1), cand(s,2), LW_W, Rf_at, R_S_at, ...
                     A_next_W, H_next_W, Y_next_W, ...
-                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac);
+                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
             if v > maxval, maxval = v; c_seed = cand(s,1); pi_seed = cand(s,2); end
         end
 
@@ -359,7 +383,7 @@ for iq = slices
         if use_refine
             [c_sw, p_sw, v_sw] = sweep_cpi(c_seed, pi_seed, maxval, LW_W, Rf_at, R_S_at, ...
                 A_next_W, H_next_W, Y_next_W, w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, ...
-                h_beq_fac, c_floor, dc0, dp0);
+                h_beq_fac, c_floor, dc0, dp0, nx);
             if v_sw > maxval
                 maxval = v_sw; c_seed = c_sw; pi_seed = p_sw;
             end
@@ -369,7 +393,7 @@ for iq = slices
         lb2 = [c_floor; 0];
         ub2 = [1; 1];
         rhs_fun = @(x) bellman_rhs(x(1), x(2), LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                                   w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac);
+                                   w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
         if use_ce
             % Certainty-equivalent units relative to the seed: a monotone
             % transform of the objective, equal to -1 at the seed at every node.
@@ -400,7 +424,7 @@ for iq = slices
         if c_sub(j) >= 1
             if pi_limit
                 pi_sub(j) = limit_share(LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac);
+                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
             else
                 pi_sub(j) = 1;
             end
@@ -435,7 +459,7 @@ end
 
 % ------------------------------------------------------------------------
 function p_b = limit_share(LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                           w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac)
+                           w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx)
 %LIMIT_SHARE  The equity share of a vanishing saving: the best share when
 %   1e-6 of liquid resources is saved, from 21 shares and three rounds
 %   shrinking around the best. To first order in the saving the objective is
@@ -443,7 +467,7 @@ function p_b = limit_share(LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ..
 %   marginal-utility-weighted equity premium.
 c = 1 - 1e-6;
 f = @(pi_) bellman_rhs(c, pi_, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                       w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac);
+                       w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
 grid_ = linspace(0, 1, 21);
 v = arrayfun(f, grid_);
 [v_b, i] = max(v); p_b = grid_(i);
@@ -475,11 +499,41 @@ if isempty(q), z = pp_z(u1, u2, u3); else, z = pp_z(u1, u2, u3, q); end
 end
 
 % ------------------------------------------------------------------------
+function h1 = next_h_cost(p, m1, q_n)
+%NEXT_H_COST  Next year's housing cost per unit of next year's H at each
+%   quadrature node, built as this year's h_cost_q: rent alpha; or
+%   maintenance (on the purchase price with maint_on_purchase) plus the
+%   mortgage payment (on the purchase price with the annuity). q_n is empty
+%   where q enters no later budget, and then q plays no part.
+if p.h_mult == 0, h1 = 0; return; end
+if ~p.is_owner, h1 = p.alpha; return; end
+qv = 1;
+if ~isempty(q_n), qv = q_n; end
+th = p.theta;
+if p.maint_on_purchase, th = p.theta * qv; end
+mq = m1;
+if strcmp(p.mortgage, 'annuity'), mq = m1 * qv; end
+h1 = th + mq;
+end
+
+% ------------------------------------------------------------------------
+function CE = bankrupt_nodes(CE, X_next_W, A_next_W, H_next_W, Y_next_W, nx)
+%BANKRUPT_NODES  Where next year's liquid resources fall below next year's
+%   floor, the certainty equivalent of the bankrupt value, phi Y D^(1/(1-gamma)),
+%   per unit of this year's W. Columns of X_next_W are candidate choices.
+LW_n = X_next_W + nx.y1 * Y_next_W + nx.a1 * A_next_W - nx.h1 .* H_next_W;
+F_n  = max(nx.phi1 * Y_next_W, 1e-12) .* ones(1, size(X_next_W, 2));
+bk   = LW_n <= F_n;
+CE(bk) = F_n(bk) * nx.Dfac;
+end
+
+% ------------------------------------------------------------------------
 function rhs_val = bellman_rhs(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                               w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac)
+                               w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx)
 %BELLMAN_RHS  Current utility plus discounted expected continuation, per unit
 %   of W^(1-gamma). Next period's state is formed from the post-shock stocks
-%   and mapped onto the cube; q_n is next period's q at each shock node.
+%   and mapped onto the cube; q_n is next period's q at each shock node. With
+%   nx.on, nodes below next year's floor take the bankrupt value.
 R_X      = (1 - pi_eq) * Rf_at + pi_eq .* R_S_at;
 X_next_W = R_X * (1 - c) * LW_W;
 denAH    = A_next_W + H_next_W;
@@ -489,6 +543,9 @@ u2_next  = max(min(denAH ./ max(X_next_W + denAH, 1e-12), 1), 0);
 u3_next  = max(min(A_next_W ./ max(denAH, 1e-12), 1), 0);
 z_n      = z_at(pp_z, u1_next, u2_next, u3_next, q_n);
 CE_n     = W_growth .* z_n;
+if nx.on
+    CE_n = bankrupt_nodes(CE_n, X_next_W, A_next_W, H_next_W, Y_next_W, nx);
+end
 V_n      = CE_n .^ one_m_g / one_m_g;
 EV       = sum(w .* V_n);
 u_now    = (c * LW_W) ^ one_m_g / one_m_g;
@@ -503,7 +560,7 @@ end
 
 % ------------------------------------------------------------------------
 function [c_b, p_b, v_b] = sweep_cpi(c0, p0, v0, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                                     w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0)
+                                     w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0, nx)
 %SWEEP_CPI  Derivative-free search of the (c, pi) objective.
 %   Round 1 evaluates 21 points of c across [c_floor, 1] against 21 points of
 %   pi across [0, 1], plus the seed; rounds 2-4 search a 9 x 9 window around
@@ -539,7 +596,11 @@ for r = 1:4
         q_rep = repmat(q_n, 1, M);
         z_n = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:), q_rep(:)), n_shock, M);
     end
-    V_n    = (W_g .* z_n) .^ one_m_g / one_m_g;
+    CE_n   = W_g .* z_n;
+    if nx.on
+        CE_n = bankrupt_nodes(CE_n, X_next, A_next_W, H_next_W, Y_next_W, nx);
+    end
+    V_n    = CE_n .^ one_m_g / one_m_g;
     rhs    = (cv.' * LW_W) .^ one_m_g / one_m_g + beta_eff * (w.' * V_n).';
     if beq_eff > 0
         beq_base = X_next + h_beq_fac * H_next_W;

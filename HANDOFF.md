@@ -43,6 +43,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-23 The absorbing floor: exact trigger at the quadrature nodes; expectations (spec: 2026-10-23 The consumption floor as an absorbing state, linked to labour income)
+Quinn: agreed to fix the jump at the edge of bankruptcy (the prompt's "exact trigger at the quadrature nodes"). On the policy stored at bankrupt nodes, Quinn asked why not plot conditional on not being bankrupt; the plotted shares already are, and the leak is into solvent households next to bankrupt nodes (re-simulated, stored policy against nearest solvent node, owner 32x32 share at 95: 0.999 -> 0.876 over the solvent, 0.976 -> 0.970 over households saving at least 1% of entry income). Quinn does not want the plots weighted by saving; a weighted share was added and taken out again before any commit. The plots and the stored policy stay as they are.
+Changed: new primitive `abs_node_test` (false; with the absorbing floor, true tests every quadrature node against next year's floor and takes the bankrupt value there, in `bellman_rhs` and the sweep, with next year's take-home income, net annuity and housing cost per q node); `absorbing_grid` takes `extra = '_exact'`; `case_params` takes `_exact`; CALIBRATION.md, Numerics. New test `floor_node_test`.
+Runs: the grid set of 23 Oct at c_min 8,000 with `_exact`: owner summary 16x16, 24x24 (q 4), 32x32, 24x24 with u3 at 20; renter summary 16x16 (u3 20), 32x32, 48x48, 16x16 with u3 at 40. Then `absorbing_grid(8000, extra = '_exact')` and `ruin_interp` on owner 24x24 with and without.
+Expectations: bankruptcy shares within a point of the runs without the test (the trigger itself was already exact at the grid nodes); the entry value drifts less across grids than 0.288 / 0.274 / 0.263 (owner) and 0.289 / 0.275 / 0.266 (renter); the corner's largest gap at 85-90 (14% and 104-140%) falls to a few percent; consumption gaps between grids shrink further; the equity share is not expected to converge.
+Checks run: `run_tests(solve=false)` 0 of 11 failed; full `run_tests` with CGM_FLOOR_BASELINE 0 of 21 failed, 0 skipped (floor_node_test 199 s).
+Commit: this entry with the code, pushed to main.
+Open: the runs.
+
 ### 2026-10-23 The absorbing floor: two checks for bugs (spec: none, asked by Quinn in Claude Code)
 Quinn: are there numerical problems or bugs? Two checks without new solves, on the saved c_min 8,000 solves (scripts in the session's scratchpad, not committed).
 1. Owner trigger. At every node of the owner summary grid, both maintenance rules, liquid resources from the owner budget written out independently (q-dependent maintenance and annuity payment, the annuity payout in retirement) against the nodes the solver valued at the closed form: 0 mismatches over 80,006 and 93,556 node-years below the floor (the renter is covered by `run_tests`, `floor_absorbing`).

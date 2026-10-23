@@ -1,9 +1,10 @@
-function absorbing_grid(c_min)
+function absorbing_grid(c_min, opts)
 %ABSORBING_GRID  Step 16 grid test with the absorbing floor, against the same test with the top-up.
 %
 %   From the repository root:
 %       addpath diagnostics/nibud diagnostics/pension_grid
 %       absorbing_grid                      % c_min = 8,000
+%       absorbing_grid(8000, extra = '_exact')   % the solves with the exact trigger
 %
 %   The 20 October grid comparisons (maint_grid_compare, renter_grid_compare)
 %   with every case solved again with the absorbing floor (suffix _cmin<n>).
@@ -27,12 +28,13 @@ function absorbing_grid(c_min)
 
 arguments
     c_min (1,1) double = 8000
+    opts.extra (1,:) char = ''
 end
 
 num = ladder.numerics('standard');
 out = fullfile(num.dir, 'summary_step16');
 if ~isfolder(out), mkdir(out); end
-suf = sprintf('_cmin%d', c_min);
+suf = sprintf('_cmin%d%s', c_min, opts.extra);       % opts.extra: more suffixes of the absorbing cases (_exact)
 bands = {[26 39], [40 54], [55 66], [67 89], [90 95]};
 
 % Cases: the grid, its label; then which grid is compared with which reference
@@ -63,7 +65,8 @@ end
 cols = [0.85 0.45 0.10; 0.20 0.55 0.85; 0.60 0.15 0.55; 0.25 0.65 0.35];
 fig = figure('Visible', 'off', 'Position', [30 30 2200 1100], 'Color', 'w');
 tl  = tiledlayout(fig, 2, 3, 'Padding', 'compact', 'TileSpacing', 'compact');
-title(tl, {sprintf('Step 16: grid test with the absorbing floor at c_{min} = EUR %d (solid) and with the yearly top-up (dashed)', c_min), ...
+how = ''; if contains(opts.extra, '_exact'), how = ', exact trigger at the quadrature nodes'; end
+title(tl, {sprintf('Step 16: grid test with the absorbing floor at c_{min} = EUR %d%s (solid) and with the yearly top-up (dashed)', c_min, how), ...
     'Each grid''s policies at the reference''s households; stop rule 2% in consumption and 0.02 in the liquid equity share'}, ...
     'FontSize', 13, 'FontWeight', 'bold');
 for k = 1:2
@@ -110,15 +113,15 @@ for k = 1:2
         if k == 2, xlabel(ax, 'Age'); end
     end
 end
-exportgraphics(fig, fullfile(out, '16_absorbing_grid_gaps.png'), 'Resolution', 150);
+exportgraphics(fig, fullfile(out, ['16_absorbing_grid_gaps' opts.extra '.png']), 'Resolution', 150);
 close(fig);
 
 for k = 1:2
     X = A{k};
     figures.compare(X.abs, X.labels, sprintf('Step 16, %s, absorbing floor at c_min = EUR %d: grids', ...
-        lower(X.title), c_min), fullfile(out, sprintf('16_absorbing_%s_grid_ladder.png', X.arm)));
+        lower(X.title), c_min), fullfile(out, sprintf('16_absorbing_%s_grid_ladder%s.png', X.arm, opts.extra)));
     close all
-    grid_page(X, c_min, fullfile(out, sprintf('16_absorbing_%s_grids.png', X.arm)));
+    grid_page(X, c_min, fullfile(out, sprintf('16_absorbing_%s_grids%s.png', X.arm, opts.extra)));
 end
 
 % Tables

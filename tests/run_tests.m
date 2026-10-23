@@ -22,7 +22,7 @@ checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_br
 if opts.solve
     checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
-                       @figures_render, @floor_off_identical, @floor_absorbing}];
+                       @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test}];
 end
 n_fail = 0; n_skip = 0;
 for i = 1:numel(checks)
@@ -482,6 +482,45 @@ for owner = [false true]
     f = fieldnames(b.sim);
     for i = 1:numel(f)
         assert(isequaln(r.sim.(f{i}), b.sim.(f{i})), '%s: panel field %s differs', model.tenure(p), f{i});
+    end
+end
+end
+
+function floor_node_test()
+% The bankruptcy test at the quadrature nodes (abs_node_test). Without the
+% absorbing floor it changes nothing, bit for bit (renter). With it (step 16,
+% renter and owner, small grid, c_min = 10,000) it changes the solution, the
+% bankrupt nodes and their closed-form values stay as they are, and the
+% solve stays finite, in range and on the grid (owner panel).
+for owner = [false true]
+    p = ladder.params(16); p.is_owner = owner;
+    p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
+    [pf, sk, an] = config.model_inputs(p);
+    if ~owner
+        q = p; q.abs_node_test = true; q = config.derive(q);
+        A = solver.solve(p, pf, sk, an, false);
+        B = solver.solve(q, pf, sk, an, false);
+        assert(isequaln(A.V, B.V) && isequaln(A.c_pol, B.c_pol) && isequaln(A.pi_pol, B.pi_pol), ...
+            'abs_node_test changed a solve without the absorbing floor');
+    end
+    p.c_min = 10000; p = config.derive(p);
+    q = p; q.abs_node_test = true; q = config.derive(q);
+    A = solver.solve(p, pf, sk, an, false);
+    B = solver.solve(q, pf, sk, an, false);
+    assert(~isequaln(A.V, B.V), 'owner %d: abs_node_test changed nothing with the absorbing floor', owner);
+    assert(all(isfinite(B.V(:))) && all(B.c_pol(:) > 0 & B.c_pol(:) <= 1 + 1e-6) && ...
+        all(B.pi_pol(:) >= -1e-6 & B.pi_pol(:) <= 1 + 1e-6), 'owner %d: solve out of range', owner);
+    for t = [10, q.t_ret + 5]
+        g1 = utility.grid_at(q, t);
+        Vb = (q.phi_path(t) * g1(:)) .^ (1 - q.gamma) / (1 - q.gamma) * q.D_abs(t);
+        bA = abs(A.V(:, :, :, :, t) ./ Vb - 1) < 1e-12;
+        bB = abs(B.V(:, :, :, :, t) ./ Vb - 1) < 1e-12;
+        assert(isequal(bA, bB) && any(bB(:)), 'owner %d, t = %d: the bankrupt nodes moved', owner, t);
+    end
+    if owner
+        sim = simulate.forward(q, pf, B, an, 500);
+        assert(sum([sim.diagnostics.n_offgrid_u1, sim.diagnostics.n_offgrid_u2, sim.diagnostics.n_offgrid_u3, ...
+            sim.diagnostics.n_offgrid_q]) == 0 && all(isfinite(sim.C(:))), 'owner panel with abs_node_test');
     end
 end
 end

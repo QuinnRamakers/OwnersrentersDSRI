@@ -46,9 +46,11 @@ function p = case_params(step, arm, name)
 %               (use_refine = false)
 %     _cmin<n>  the absorbing consumption floor at c_min = n euros a year
 %               (_cmin8000); it changes the model
+%     _exact    with the absorbing floor, the bankruptcy test at each
+%               quadrature node (abs_node_test = true)
 %   Apart from _mop and _cmin nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
-%   interp_method, use_refine and pi_nothing_saved are set.
+%   interp_method, use_refine, pi_nothing_saved and abs_node_test are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
 assert(~isempty(tok), 'case_params:name', 'case name %s is not <rule>_<N1>x<N2>[_gh<n>][_makima]', name);
@@ -105,5 +107,6 @@ if ~isempty(g), p.q_hi = str2double(g{1}) / 10; end                        % top
 if contains(extra, '_nosweep'), p.use_refine = false; end                  % fmincon from the warm start, no grid search
 g = regexp(extra, '_cmin(\d+)', 'tokens', 'once');
 if ~isempty(g), p.c_min = str2double(g{1}); end                            % absorbing floor, euros
+if contains(extra, '_exact'), p.abs_node_test = true; end                  % bankruptcy tested at the quadrature nodes
 p = config.derive(p);
 end
