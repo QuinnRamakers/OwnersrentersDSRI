@@ -36,6 +36,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-23 Same income polynomial for owners and renters, recorded as planned (spec: none, asked by Quinn in Claude Code)
+Quinn: document that in the future owners and renters will use the same polynomial.
+Changed: CALIBRATION.md, Labour income, a paragraph saying the separate cubics stay until the change is implemented. TODO.md, section 2, a row with the open details (which polynomial, whether the shock std is shared) and what follows from it (`h_mult`, `kappa`, the entry incomes behind `b0` and `tau_inc` stop differing by tenure). No code or parameter changed.
+Checks run: none, documentation only.
+Commit: this entry with CALIBRATION.md and TODO.md, pushed to main.
+Open: which polynomial and whether `sigma_l_log` is shared; then the code change in `config.params` and `+ladder/steps.m` (step 4 on).
+
 ### 2026-10-20 Step 16: share at the consumption floor by age, for the summary plots (spec: none, asked by Quinn in Claude Code)
 Quinn: the bankruptcy rates for the summary plots. The model's bankruptcy event is a floored household-year (liquid resources below phi_floor times income; consumption set to the floor, the shortfall forgiven). The dashboards print only the total.
 No new solve. New `diagnostics/nibud/floored_by_age.m`: the floored share by age for every solve behind `summary_step16/`. Output (gitignored): `summary_step16/16_floored_by_age.png`. Also drawn without a script: `summary_step16/income_profile_owner_renter.png`, the owner and renter income cubics of `config.params`.
