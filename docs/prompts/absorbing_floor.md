@@ -1,7 +1,13 @@
 # Prompt: the consumption floor as an absorbing state, linked to labour income
 
+Implemented on 23-24 Oct 2026, off by default (`c_min = 0`); what was built,
+found and left open is in `docs/HANDOFF_2026-10-24.md`. Quinn's answers to the
+open decisions below differ from the defaults in one place: the same share for
+both tenures, not the same c_min. The exact trigger of "Later, if needed" is
+in, on by default (`abs_node_test`).
+
 Saved on 23 Oct 2026 against 031e081 (branch claude/dreamy-edison-1814gg; the
-last code commit is 7b5143d, the same as main). Not started. This replaces the
+last code commit is 7b5143d, the same as main). This replaces the
 exploratory version of 22 Oct. That history is in git (39c869c to 031e081) and
 in the HANDOFF.md log entries of 22 Oct.
 

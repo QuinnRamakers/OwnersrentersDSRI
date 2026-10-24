@@ -32,6 +32,7 @@ Use the session-start skill at the beginning and the session-end skill at the en
 ## Known limits (do not claim past these)
 
 - At the production calibration (ladder step 16), owners are not converged at any age on any grid tried: refining the u3 axis makes them hoard into retirement. Renters are converged only from about 50, on the bunched grid with 20 u3 points; the ladder's evenly spaced grid does not get there. Source: HANDOFF.md, 18 October 2026, "Smallest accurate grid at step 16". Report behaviour, not welfare levels, until the housing outflow is settled (TODO.md, item 1). The floor is a numerical bound, not a calibration target.
+- The absorbing floor (`c_min`) is implemented and off; it is not adopted. With it on, consumption is stable across grids from 40 but the equity share is not, welfare levels move 4-5% per grid refinement, and owner bankruptcy is illiquidity (no equity release). Source: `docs/HANDOFF_2026-10-24.md`.
 - The REIT parameters are placeholders and the REIT leg is off.
 - Free DC investment choice, glide-path comparisons and the September diagnostics live on the `solver-active-set` branch (tag `research-2026-09`), not here.
 
@@ -40,7 +41,7 @@ Use the session-start skill at the beginning and the session-end skill at the en
 - Quote MATLAB package folders in the shell, for example `'+config'`, because of the `+`.
 - `*.mat`, `*.png`, `*.csv`, `*.pdf` and `*.txt` are gitignored. Write notes in `.md` files.
 - Stage files by name. Never run `git add .`. The folders `demo - Copy/` and `demo - Copy.zip` are leftovers and must not be committed.
-- For a quick look at a solve, shrink the grid with `setenv('CGM_STATE_GRID','8 6 6 4'); setenv('CGM_GH_N','3')` and clear both afterwards.
+- For a quick look at a solve, set `p.grid_dims = [8 6 6 4]; p.gh_n = 3;` before `config.derive`. The environment variables `CGM_STATE_GRID` and `CGM_GH_N` reach only `ladder.numerics` (so `ladder.run`) and `run_model`, not `ladder.params` or `config.derive`; clear them afterwards if set.
 
 ## Writing
 

@@ -43,6 +43,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-24 The absorbing floor documented (spec: none, asked by Quinn in Claude Code)
+Quinn: document what we did.
+Changed: new `docs/HANDOFF_2026-10-24.md`, in the form of the 17 October one: the figures in the order to read them; what was built and Quinn's decisions; what was found (behaviour, cumulative bankruptcy by floor level, owner bankruptcy as illiquidity, net income after housing, the numerical behaviour, the bugs looked for, run time); decisions open; what can be quoted; how to reproduce, with two traps; where things are, with the commits. `docs/prompts/absorbing_floor.md`: marked implemented, pointing to it. CLAUDE.md: a known limit for the absorbing floor; the note on small grids corrected (`CGM_STATE_GRID` does not reach `ladder.params` or `config.derive`; set `p.grid_dims` and `p.gh_n` instead).
+Checks run: `run_tests(solve=false)` 0 of 11 failed. No code changed.
+Commit: this entry with the three documents, pushed to main.
+Open: as in `docs/HANDOFF_2026-10-24.md`, section 4.
+
 ### 2026-10-24 The exact bankruptcy test on by default (spec: 2026-10-23 The consumption floor as an absorbing state, linked to labour income)
 Quinn: set `abs_node_test = true` by default (it only acts with the absorbing floor); asked what it costs in run time.
 Changed: `+config/params.m`, `abs_node_test` true. CALIBRATION.md, Numerics: the value and why. `tests/run_tests.m`, `floor_node_test` checks the default and compares against the test switched off. `case_params` takes `_interp` for the old setting; the `_cmin` solves of 23 October without `_exact` were made with the test off, and the same names now build it on, so `solve_cases` would re-solve them (reproduce them with `_interp`). With `c_min = 0` in production nothing changes (`floor_off_identical`).
