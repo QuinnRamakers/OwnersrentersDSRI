@@ -43,6 +43,23 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-24 Production at c_min 5,000: which grid and which search routine; expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: run the full code with the consumption floor at 5,000 euros; find the grid size production needs and the optimiser routine.
+Changed: `diagnostics/pension_grid/case_params.m` takes `_as`, `_sqp` (fmincon algorithm), `_util` (objective in utility units) and `_nc<n>` (N_c; `_nc11` starts the sweep's later rounds at the first round's half-step in consumption, docs/SOLVER_BOUNDS.md section 2). New `diagnostics/pension_grid/optimiser_step.m`: one Bellman step solved once per routine from the same next-year value and warm start; each node's value against the best of all routines, in certainty-equivalent units, and each routine's policies at the simulated households. No change to `+solver`, `+config`, `+ladder` or `+model`; production stays at c_min 0.
+Runs, step 16, maintenance on the current value, all `_cmin5000` with the exact test, two processes side by side. One axis at a time:
+1. Owner (q at 4): bunched 16x16, 24x24, 32x32 (u1 x u2); 16x16 with u3 at 20 and 40 (u3); 16x16 with gh_n 7 (quadrature).
+2. Renter: bunched 16x16, 32x32, 48x48; 16x16 with u3 at 20 and 40; 16x16 with gh_n 7.
+3. Both tenures on the production numerics as they are, `uniform_20x20_u3n12` (config.params with c_min 5,000; checked equal by `ladder.same_calibration`).
+4. `optimiser_step` on owner 24x24 and renter 32x32 at ages 30, 40, 50, 60, 66, 70, 80, 90: default (sweep, interior-point, 'ce'), `_as`, `_sqp`, `_util`, `_nosweep`, `_nc11`. Then full solves for the routines that matter.
+Expectations, written before the runs:
+- Bankruptcy between the 4,000 and 6,000 runs: owner about 0.4 / 4 / 49% bankrupt at 40 / 67 / 100, renter about 0 / 1 / 17%.
+- Consumption: closer to ruin than at 8,000, so slightly larger grid gaps than at 8,000, but within 2-3% from 40 for owner 24x24 against 32x32 and renter 32x32 against 48x48. Owner u3 10 against 20 as at 8,000 (5-8%); 20 against 40 about half that.
+- The equity share does not meet 0.02 between grids. In the one-step test, the routines with the sweep reach the same value to 1e-6 at almost every node, yet their equity shares differ by more than 0.05 at some of those nodes: the share is flat there and not pinned down by any search. Without the sweep the value is short by more than 1e-4 at a few per cent of retirement nodes. Active-set faster than interior-point.
+- The production numerics (uniform, pi 1 where nothing is saved) are off by more than the stop rule for owners in working life.
+Checks run: `run_tests(solve=false)` 0 of 11 failed. `case_params` builds the production calibration with c_min 5,000 for both tenures (`ladder.same_calibration` 1, nodes 22x22x12x9 owner, 22x22x12 renter). Smoke test of `optimiser_step` on the saved renter summary solve at 8,000, age 70: the default routine reproduces the solved step bit for bit.
+Commit: this entry with the two scripts, pushed to main.
+Open: the runs.
+
 ### 2026-10-24 The absorbing floor documented (spec: none, asked by Quinn in Claude Code)
 Quinn: document what we did.
 Changed: new `docs/HANDOFF_2026-10-24.md`, in the form of the 17 October one: the figures in the order to read them; what was built and Quinn's decisions; what was found (behaviour, cumulative bankruptcy by floor level, owner bankruptcy as illiquidity, net income after housing, the numerical behaviour, the bugs looked for, run time); decisions open; what can be quoted; how to reproduce, with two traps; where things are, with the commits. `docs/prompts/absorbing_floor.md`: marked implemented, pointing to it. CLAUDE.md: a known limit for the absorbing floor; the note on small grids corrected (`CGM_STATE_GRID` does not reach `ladder.params` or `config.derive`; set `p.grid_dims` and `p.gh_n` instead).

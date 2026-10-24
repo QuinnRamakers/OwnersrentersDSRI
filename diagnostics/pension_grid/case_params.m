@@ -44,6 +44,13 @@ function p = case_params(step, arm, name)
 %               the grid
 %     _nosweep  the global (c, pi) grid search before fmincon switched off
 %               (use_refine = false)
+%     _as, _sqp the local solve with fmincon's active-set or sqp algorithm
+%               instead of interior-point
+%     _util     fmincon on the objective in utility units instead of
+%               certainty-equivalent units (fmincon_objective = 'utility')
+%     _nc<n>    N_c = n: the sweep's later rounds start from a consumption
+%               half-width of (1 - c_floor)/(4(n-1)); _nc11 makes it the
+%               first round's half-step (docs/SOLVER_BOUNDS.md, section 2)
 %     _cmin<n>  the absorbing consumption floor at c_min = n euros a year
 %               (_cmin8000); it changes the model
 %     _exact    with the absorbing floor, the bankruptcy test at each
@@ -53,7 +60,8 @@ function p = case_params(step, arm, name)
 %               _cmin solves of 23 October that carry no _exact
 %   Apart from _mop and _cmin nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
-%   interp_method, use_refine, pi_nothing_saved and abs_node_test are set.
+%   interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
+%   pi_nothing_saved and abs_node_test are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
 assert(~isempty(tok), 'case_params:name', 'case name %s is not <rule>_<N1>x<N2>[_gh<n>][_makima]', name);
@@ -108,6 +116,11 @@ if ~isempty(g), p.lambda_hi = str2double(g{1}) / 100; end                  % top
 g = regexp(extra, '_qhi(\d+)', 'tokens', 'once');
 if ~isempty(g), p.q_hi = str2double(g{1}) / 10; end                        % top of q
 if contains(extra, '_nosweep'), p.use_refine = false; end                  % fmincon from the warm start, no grid search
+if contains(extra, '_as'), p.fmincon_algorithm = 'active-set'; end         % local solve
+if contains(extra, '_sqp'), p.fmincon_algorithm = 'sqp'; end
+if contains(extra, '_util'), p.fmincon_objective = 'utility'; end
+g = regexp(extra, '_nc(\d+)', 'tokens', 'once');
+if ~isempty(g), p.N_c = str2double(g{1}); end                              % sweep's consumption step
 g = regexp(extra, '_cmin(\d+)', 'tokens', 'once');
 if ~isempty(g), p.c_min = str2double(g{1}); end                            % absorbing floor, euros
 if contains(extra, '_exact'), p.abs_node_test = true; end                  % bankruptcy tested at the quadrature nodes
