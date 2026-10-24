@@ -32,6 +32,8 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %   year, its LW and disp_inc are 0 after the year of entry, it leaves no
 %   bequest, and it is not counted in the off-grid lookups. A solvent
 %   household consumes at least the floor. Y follows its process throughout.
+%   With p.abs_fill the policies at bankrupt grid points are filled from the
+%   solvent side before they are interpolated (solver.fill_bankrupt).
 
 if nargin < 5 || isempty(N), N = 5000; end
 if nargin < 6 || isempty(seed), seed = 20260511; end
@@ -85,23 +87,34 @@ C_bar     = zeros(N, 1);
 
 % Policies on the 4D grid where they depend on q (it enters this year or a
 % later one), and on the q = 1 slice elsewhere, where every slice is the same.
+% With p.abs_fill the policies stored at bankrupt grid points (c = 1, pi = 1)
+% are filled from the solvent side first, as the solver fills the
+% continuation, so a solvent household next to them does not take part of
+% them. Who goes bankrupt is still decided by the budget below.
 q_grid  = p.q_grid(:);
 iq1     = find(q_grid == 1);
 q_dep   = numel(q_grid) > 1 & flipud(cummax(flipud(double(p.q_live(:))))) > 0;
 annuity = strcmp(p.mortgage, 'annuity');
+abs_fill = 'none';
+if absorbing && isfield(p, 'abs_fill'), abs_fill = p.abs_fill; end
 pp_c  = cell(T, 1);
 pp_pi = cell(T, 1);
 for t = 1:T
     [g1, g2] = utility.grid_at(p, t);
     if q_dep(t)
-        ax = {g1, g2, p.u3_grid, q_grid};
-        pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,:,t), 'linear', 'nearest');
-        pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,:,t), 'linear', 'nearest');
+        ax = {g1, g2, p.u3_grid, q_grid}; iq = 1:numel(q_grid);
     else
-        ax = {g1, g2, p.u3_grid};
-        pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,iq1,t), 'linear', 'nearest');
-        pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,iq1,t), 'linear', 'nearest');
+        ax = {g1, g2, p.u3_grid};         iq = iq1;
     end
+    c_t  = sol.c_pol(:,:,:,iq,t);
+    pi_t = sol.pi_pol(:,:,:,iq,t);
+    if ~strcmp(abs_fill, 'none')
+        bk   = solver.bankrupt_points(sol.V(:,:,:,iq,t), p, t);
+        c_t  = solver.fill_bankrupt(c_t, bk, abs_fill, ax, 'unit');
+        pi_t = solver.fill_bankrupt(pi_t, bk, abs_fill, ax, 'unit');
+    end
+    pp_c{t}  = griddedInterpolant(ax, c_t, 'linear', 'nearest');
+    pp_pi{t} = griddedInterpolant(ax, pi_t, 'linear', 'nearest');
 end
 
 logY_canon = config.income_profile(p);

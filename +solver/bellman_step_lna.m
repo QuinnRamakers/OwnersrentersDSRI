@@ -44,9 +44,15 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   floor for this year only, saves nothing, and keeps its pot, house and
 %   income. The value jumps at the edge of bankruptcy; with p.abs_node_test
 %   the continuation tests each quadrature node against next year's floor
-%   and takes the bankrupt value there exactly, so only the solvent side is
-%   interpolated. Wherever nothing is saved (c = 1), the equity share is stored as
-%   1, or with p.pi_nothing_saved = 'limit' as the share of a vanishing saving
+%   and takes the bankrupt value there exactly. A node just above the floor
+%   still sits in a grid cell with bankrupt corners; with p.abs_fill
+%   ('nearest' or 'linear', solver.fill_bankrupt) those corners take values
+%   filled from the solvent side in the interpolant, so the bankrupt value
+%   does not leak into solvent states. The stored V keeps the bankrupt value
+%   at bankrupt points.
+%
+%   Wherever nothing is saved (c = 1), the equity share is stored as 1, or
+%   with p.pi_nothing_saved = 'limit' as the share of a vanishing saving
 %   (limit_share).
 
 [g1, g2] = utility.grid_at(p, t);              % this period's points (they can follow age)
@@ -189,14 +195,26 @@ z_min = min(z_finite);
 z_next(isnan(z_next)) = z_min;
 interp_method = validatestring(p.interp_method, {'linear', 'makima', 'spline'}, ...
                                'bellman_step_lna', 'p.interp_method');
+abs_fill = 'none';
+if isfield(p, 'abs_fill')
+    abs_fill = validatestring(p.abs_fill, {'none', 'nearest', 'linear'}, 'bellman_step_lna', 'p.abs_fill');
+end
 [n1, n2] = utility.grid_at(p, t + 1);         % next period's points, where V_next lives
 if q_cont
-    pp_lin = griddedInterpolant({n1, n2, p.u3_grid, q_grid}, ...
-                                z_next, interp_method, 'nearest');
+    ax_next = {n1, n2, p.u3_grid, q_grid}; iq_next = 1:Nq;
 else
-    pp_lin = griddedInterpolant({n1, n2, p.u3_grid}, ...
-                                z_next(:, :, :, iq1), interp_method, 'nearest');
+    ax_next = {n1, n2, p.u3_grid};         iq_next = iq1;
 end
+z_int = z_next(:, :, :, iq_next);
+% With p.abs_fill, next year's bankrupt grid points take values filled from
+% the solvent side before the interpolant is built, so a quadrature node just
+% above the floor is not interpolated toward the bankrupt value. The nodes
+% below the floor still take the bankrupt value from the exact test (nx).
+if absorbing && p.abs_node_test && ~strcmp(abs_fill, 'none')
+    bk_next = solver.bankrupt_points(V_next(:, :, :, iq_next), p, t + 1);
+    z_int   = solver.fill_bankrupt(z_int, bk_next, abs_fill, ax_next, 'value');
+end
+pp_lin = griddedInterpolant(ax_next, z_int, interp_method, 'nearest');
 if strcmp(interp_method, 'linear')
     pp_z = pp_lin;
 else

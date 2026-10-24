@@ -76,6 +76,10 @@ assert(~(p.c_min > 0 && strcmp(p.income_source, 'poly')), 'derive:poly_cmin', ..
     'c_min is in euros and needs income in euros: use income_source = ''dhs'' or ''table''.');
 assert(isscalar(p.abs_node_test) && any(p.abs_node_test == [0 1]), 'derive:abs_node_test', ...
     'abs_node_test must be true or false.');
+assert(any(strcmp(p.abs_fill, {'none', 'nearest', 'linear'})), 'derive:abs_fill', ...
+    'abs_fill must be ''none'', ''nearest'' or ''linear''.');
+assert(strcmp(p.abs_fill, 'none') || p.abs_node_test, 'derive:abs_fill_node_test', ...
+    'abs_fill needs abs_node_test: the filled grid points must not value the quadrature nodes below the floor.');
 p.floor_absorbing = p.c_min > 0 || p.phi_abs > 0;
 if p.c_min > 0
     own = p; own.is_owner = true;

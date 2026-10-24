@@ -60,10 +60,14 @@ function p = case_params(step, arm, name)
 %               24 October 2026; the name marks solves made after that)
 %     _interp   the same with abs_node_test = false, the setting of the
 %               _cmin solves of 23 October that carry no _exact
+%     _fillnear, _filllin  with the absorbing floor, the bankrupt grid points
+%               filled from the solvent side in the interpolants of the
+%               continuation and the policies (abs_fill = 'nearest' or
+%               'linear'); without them 'none'
 %   Apart from _mop and _cmin nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
-%   pi_nothing_saved and abs_node_test are set.
+%   pi_nothing_saved, abs_node_test and abs_fill are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
 assert(~isempty(tok), 'case_params:name', 'case name %s is not <rule>_<N1>x<N2>[_gh<n>][_makima]', name);
@@ -128,5 +132,7 @@ g = regexp(extra, '_cmin(\d+)', 'tokens', 'once');
 if ~isempty(g), p.c_min = str2double(g{1}); end                            % absorbing floor, euros
 if contains(extra, '_exact'), p.abs_node_test = true; end                  % bankruptcy tested at the quadrature nodes
 if contains(extra, '_interp'), p.abs_node_test = false; end                % interpolated across the edge
+if contains(extra, '_fillnear'), p.abs_fill = 'nearest'; end               % bankrupt grid points filled from the solvent side
+if contains(extra, '_filllin'), p.abs_fill = 'linear'; end
 p = config.derive(p);
 end

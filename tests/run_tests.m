@@ -10,7 +10,9 @@ function n_fail = run_tests(opts)
 %
 %   floor_off_identical compares against a solve saved before the absorbing
 %   floor was added; it runs only when CGM_FLOOR_BASELINE names that file, and
-%   is reported as SKIP otherwise.
+%   is reported as SKIP otherwise. fill_none_identical likewise compares
+%   against a solve saved at 448c0a3, before abs_fill, named by
+%   CGM_FILL_BASELINE.
 
 arguments
     opts.solve (1,1) logical = true
@@ -18,11 +20,12 @@ end
 
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
-          @nibud_rule, @floor_derive};
+          @nibud_rule, @floor_derive, @fill_bankrupt_known};
 if opts.solve
     checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
-                       @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test}];
+                       @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test, ...
+                       @fill_none_identical, @floor_fill}];
 end
 n_fail = 0; n_skip = 0;
 for i = 1:numel(checks)
@@ -300,6 +303,47 @@ q = config.params(false); q.phi_abs = -0.1;
 assert(threw_id(@() config.derive(q), 'derive:floor_negative'), 'negative phi_abs accepted');
 q = config.params(false); q.c_min = 1e-3;
 assert(threw_id(@() config.derive(q), 'derive:floor_low'), 'a floor below phi_floor accepted');
+assert(strcmp(p.abs_fill, 'none'), 'production: abs_fill is not none');
+q = config.params(false); q.abs_fill = 'cubic';
+assert(threw_id(@() config.derive(q), 'derive:abs_fill'), 'unknown abs_fill accepted');
+q = config.params(false); q.abs_fill = 'nearest'; q.abs_node_test = false;
+assert(threw_id(@() config.derive(q), 'derive:abs_fill_node_test'), 'abs_fill accepted without abs_node_test');
+old = rmfield(p, 'abs_fill');
+assert(ladder.same_calibration(old, p), 'a result saved before abs_fill does not match abs_fill = none');
+q = p; q.abs_fill = 'linear';
+assert(~ladder.same_calibration(old, q), 'a result saved before abs_fill matches abs_fill = linear');
+end
+
+function fill_bankrupt_known()
+% solver.fill_bankrupt on a known function. A bankrupt corner (low x, high y)
+% of a nonuniform 3D grid, with z linear and falling toward the corner and 0
+% at the bankrupt points: 'linear' reproduces the linear function at every
+% bankrupt point and 'nearest' gives each point next to the solvent region the
+% mean of its solvent neighbours; neither touches a solvent point. The 'value'
+% guard keeps a steep line from falling below the point's own value; the
+% 'unit' guard keeps policies in [0, 1].
+x = [0 0.05 0.15 0.3 0.55 1]; y = [0 0.2 0.5 0.75 0.9 1]; w = [0 0.4 1];
+[X, Y, W] = ndgrid(x, y, w);
+f  = 2 + 1.5 * X - Y + 0.3 * W;
+bk = X <= x(2) & Y >= y(5);
+Z  = f; Z(bk) = 0;
+L = solver.fill_bankrupt(Z, bk, 'linear', {x, y, w}, 'value');
+assert(max(abs(L(bk) - f(bk))) < 1e-12, 'linear: off the linear function by %.2g', max(abs(L(bk) - f(bk))));
+assert(isequal(L(~bk), Z(~bk)), 'linear: a solvent point changed');
+N = solver.fill_bankrupt(Z, bk, 'nearest', {x, y, w}, 'value');
+assert(isequal(N(~bk), Z(~bk)) && all(isfinite(N(:))), 'nearest: a solvent point changed');
+i = find(bk & X == x(2) & Y == y(5));                    % next to solvent along x and y
+[a, b, c] = ind2sub(size(Z), i);
+want = (Z(sub2ind(size(Z), a + 1, b, c)) + Z(sub2ind(size(Z), a, b - 1, c))) / 2;
+assert(max(abs(N(i) - want)) < 1e-15, 'nearest: not the mean of the solvent neighbours');
+s = Z; s(~bk) = 0.01 + 40 * X(~bk) .^ 2;                 % convex: the line falls below 0
+G = solver.fill_bankrupt(s, bk, 'linear', {x, y, w}, 'value');
+assert(all(G(bk) >= 0 & G(bk) <= max(s(~bk))) && any(G(bk) == 0), 'value guard: the line overshot');
+P = min(0.5 + 2 * X - 0.6 * Y, 1); P(bk) = 1;            % policies: c = 1, pi = 1 stored at bankrupt points
+P = solver.fill_bankrupt(P, bk, 'linear', {x, y, w}, 'unit');
+assert(all(P(:) >= 0 & P(:) <= 1) && any(P(bk) == 0), 'unit guard: a policy left [0, 1]');
+assert(isequal(solver.fill_bankrupt(Z, false(size(Z)), 'linear', {x, y, w}, 'value'), Z), ...
+    'no bankrupt points: the array changed');
 end
 
 function tf = threw_id(f, id)
@@ -601,4 +645,77 @@ assert(numel(h) == p.T && all(h >= 0 & h <= 1) && any(h > 0), 'abs_hazard');
 dd = tempname; mkdir(dd); cleanup = onCleanup(@() rmdir(dd, 's'));
 figures.dashboard(r, fullfile(dd, 'a.png'));
 assert(isfile(fullfile(dd, 'a.png')), 'the dashboard was not written');
+end
+
+function fill_none_identical()
+% With the absorbing floor on and abs_fill = 'none' (the default), both
+% tenures of fill_case: the value, the policies and every panel field are
+% bit-identical to the same solve saved at 448c0a3, before abs_fill existed
+% (CGM_FILL_BASELINE; how it was made is in fill_case).
+file = getenv('CGM_FILL_BASELINE');
+if isempty(file) || ~isfile(file)
+    error('run_tests:skip', 'CGM_FILL_BASELINE does not name the solve saved at 448c0a3');
+end
+B = load(file);
+for owner = [false true]
+    p = fill_case(owner);
+    assert(strcmp(p.abs_fill, 'none'), 'abs_fill is not none by default');
+    r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
+    b = B.(model.tenure(p));
+    assert(isequaln(r.sol.V, b.V) && isequaln(r.sol.c_pol, b.c_pol) && isequaln(r.sol.pi_pol, b.pi_pol), ...
+        '%s: the solution differs from the baseline', model.tenure(p));
+    f = fieldnames(b.sim);
+    for i = 1:numel(f)
+        assert(isequaln(r.sim.(f{i}), b.sim.(f{i})), '%s: panel field %s differs', model.tenure(p), f{i});
+    end
+end
+end
+
+function floor_fill()
+% abs_fill with the absorbing floor, on fill_case: 'linear' for the renter,
+% 'nearest' for the owner (whose interpolants are 4D, with q), each against
+% the same solve with 'none'. The fill changes the solution; the bankrupt
+% grid points are the same and keep the closed-form value; the solve stays
+% finite and in range; the panel has no off-grid lookups and finite
+% consumption; and the policy fill alone, on the solve without the fill,
+% changes the panel's equity share.
+methods = {'linear', 'nearest'};
+for owner = [false true]
+    p = fill_case(owner);
+    [pf, sk, an] = config.model_inputs(p);
+    q = p; q.abs_fill = methods{owner + 1}; q = config.derive(q);
+    tag = sprintf('%s, %s', model.tenure(q), q.abs_fill);
+    A = solver.solve(p, pf, sk, an, false);
+    B = solver.solve(q, pf, sk, an, false);
+    assert(~isequaln(A.V, B.V), '%s: the fill changed nothing', tag);
+    assert(all(isfinite(B.V(:))) && all(B.c_pol(:) > 0 & B.c_pol(:) <= 1 + 1e-6) && ...
+        all(B.pi_pol(:) >= -1e-6 & B.pi_pol(:) <= 1 + 1e-6), '%s: solve out of range', tag);
+    for t = [10, q.t_ret + 5, q.T - 1]
+        g1 = utility.grid_at(q, t);
+        Vb = (q.phi_path(t) * g1(:)) .^ (1 - q.gamma) / (1 - q.gamma) * q.D_abs(t);
+        bA = abs(A.V(:, :, :, :, t) ./ Vb - 1) < 1e-12;
+        bB = abs(B.V(:, :, :, :, t) ./ Vb - 1) < 1e-12;
+        assert(isequal(bA, bB) && any(bB(:)), '%s, t = %d: the bankrupt points moved', tag, t);
+        assert(isequal(bB, solver.bankrupt_points(B.V(:, :, :, :, t), q, t)), ...
+            '%s, t = %d: bankrupt_points does not find them', tag, t);
+    end
+    s = simulate.forward(q, pf, B, an, 500);
+    d = s.diagnostics;
+    assert(sum([d.n_offgrid_u1, d.n_offgrid_u2, d.n_offgrid_u3, d.n_offgrid_q]) == 0 && all(isfinite(s.C(:))), ...
+        '%s: panel off the grid or not finite', tag);
+    sA  = simulate.forward(p, pf, A, an, 500);
+    sA2 = simulate.forward(q, pf, A, an, 500);
+    assert(~isequaln(sA.pi, sA2.pi), '%s: the policy fill changed nothing in the panel', tag);
+end
+end
+
+function p = fill_case(owner)
+% Step 16 on a small grid with the absorbing floor at c_min = 10,000. The
+% baseline of fill_none_identical was made at 448c0a3 with, for owner = false
+% and true, r = model.run(fill_case(owner), N_sim = 500, keep_sim = true,
+% verbose = false) stored as S.(r.tenure) = struct('V', r.sol.V, 'c_pol',
+% r.sol.c_pol, 'pi_pol', r.sol.pi_pol, 'sim', r.sim), then save(file,
+% '-struct', 'S').
+p = ladder.params(16); p.is_owner = owner; p.c_min = 10000;
+p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
 end
