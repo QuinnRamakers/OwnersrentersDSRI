@@ -150,7 +150,7 @@ after each solve and shown on the dashboard).
   from the warm start alone, fmincon settles on the wrong local peak at about
   8% of retirement nodes, and the simulated share falls through retirement when
   it should rise. `p.use_refine = true` sweeps (c, pi) before fmincon at every
-  node; it is on by default, followed by fmincon interior-point.
+  node; it is on by default, followed by fmincon active-set.
   `ladder.robustness(k)` shows a step without the sweep and with the other
   fmincon algorithms.
 - **At the production calibration, ages 25-39 are not converged.** Rent of
@@ -213,7 +213,7 @@ are level.
 Solution. Backward induction over 76 periods, Gauss-Hermite quadrature over
 the income, equity and housing shocks, and at each node a search over c and pi:
 a global (c, pi) sweep from the warm start (`p.use_refine`), then fmincon
-(`p.fmincon_algorithm`, interior-point by default). The simulation draws continuous shocks and reads the policies off
+(`p.fmincon_algorithm`, active-set by default; interior-point is the alternative). The simulation draws continuous shocks and reads the policies off
 the cube.
 
 ## Layout

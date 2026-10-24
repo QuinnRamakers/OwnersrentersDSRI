@@ -103,15 +103,19 @@ first evaluates 21 values of c across [c_floor, 1), steps of about 0.05 of
 LW, against 21 equity shares. Each later round searches a 9 x 9 window
 around the best point, of half-width dc for consumption and dp for the
 equity share, and shrinks it by four. For the equity share dp starts at 0.05,
-the full round-1 step. For consumption dc starts at (1 - c_floor)/160, about
-0.006, a quarter of the round-1 half-step.
+the full round-1 step. For consumption dc starts at (1 - c_floor)/(4(N_c - 1)).
+With N_c = 41 (before 24 October 2026) that is about 0.006, a quarter of the
+round-1 half-step, and points between 0.006 and 0.025 away from the best
+round-1 point were never searched.
 
-**What it means.** Between 0.006 and 0.025 away from the best round-1 point
-the sweep never looks. `fmincon` searches from the sweep's best point and
-normally closes the gap, but where it fails, consumption can be off by up to
-about 2.5% of liquid resources. Not measured.
+**What it means.** `fmincon` searches from the sweep's best point and normally
+closes the gap. At step 16 with the absorbing floor at EUR 5,000 (one-step
+test, HANDOFF 24 October), N_c = 11 cut the largest shortfall of a grid point's
+value at some ages (renter at 30: 0.8% to 0.03%) and, with active-set, the
+share of grid points settling for a worse choice.
 
-**Decision needed.** None economic; set dc to the round-1 half-step.
+**Decision.** N_c = 11 (Quinn, 24 October 2026): dc starts at the round-1
+half-step, so the rounds leave no gap.
 
 ## 3. The policy stored at grid points below the floor
 
@@ -193,9 +197,10 @@ matters (`HANDOFF.md`, 12 October). `'ce'` puts every node on the same scale.
 At standard numerics over steps 1-7 and 9-12 the two give the same answers in
 practice (`HANDOFF.md`, 15 October; `diagnostics/objective/compare_objective.m`).
 
-**Decision needed.** Which objective is the default. Whether `'ce'` removes the
-interior-point against active-set gap at the production calibration has not
-been tested.
+**Decision needed.** Which objective is the default. At step 16 with the
+absorbing floor and `'ce'`, interior-point and active-set give the same life
+cycles (consumption within 0.05%, equity share within 0.012 through 95;
+HANDOFF, 24 October); active-set is the default since then.
 
 ## 7. Small technical bounds
 

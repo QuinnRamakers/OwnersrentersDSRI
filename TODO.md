@@ -166,12 +166,10 @@ interpolation or the model rather than the grid (HANDOFF.md, 18 October).
   keeps its accuracy would make the fine grid routine. At step 13 dropping it
   (`use_refine = false`) keeps the answer within the stop rule and halves the
   time; at the DC steps (12 October) it moved the equity share by up to 0.4.
-  To decide: keep it everywhere or drop it per step.
-- With the sweep, interior-point and active-set agree within the solver stop
-  rule at every ladder step run so far (1-7; within 0.001 in the mean equity
-  share at step 7) but differed by up to 0.10 at the production calibration, with neither reaching the higher value at every
-  node. Look again at the tax and pension steps, where `ladder.robustness(k)`
-  shows both.
+  To decide: keep it everywhere or drop it per step. Kept for production
+  (Quinn, 24 October 2026): at step 16 with the absorbing floor, dropping it
+  lands on the wrong choice at 1-10% of grid points and moves the mean
+  equity share by about 0.04 at 66 and 90 (one-step test, HANDOFF 24 October).
 
 ## 7. Paper write-up
 

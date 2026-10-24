@@ -466,7 +466,9 @@ end
 function floor_off_identical()
 % With the absorbing floor off, step 16 on the small grid, both tenures: the
 % value, the policies and every panel field that existed before the change
-% are bit-identical to the solve saved at 7b5143d (CGM_FLOOR_BASELINE).
+% are bit-identical to the solve saved at 7b5143d (CGM_FLOOR_BASELINE), with
+% that solve's search routine (interior-point, N_c 41, the default until 24
+% October 2026).
 file = getenv('CGM_FLOOR_BASELINE');
 if isempty(file) || ~isfile(file)
     error('run_tests:skip', 'CGM_FLOOR_BASELINE does not name the solve saved at 7b5143d');
@@ -474,7 +476,9 @@ end
 B = load(file);
 for owner = [false true]
     p = ladder.params(16); p.is_owner = owner;
-    p.grid_dims = [8 6 6 4]; p.gh_n = 3; p = config.derive(p);
+    p.grid_dims = [8 6 6 4]; p.gh_n = 3;
+    p.fmincon_algorithm = 'interior-point'; p.N_c = 41;
+    p = config.derive(p);
     r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
     b = B.(model.tenure(p));
     assert(isequaln(r.sol.V, b.V) && isequaln(r.sol.c_pol, b.c_pol) && isequaln(r.sol.pi_pol, b.pi_pol), ...

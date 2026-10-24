@@ -45,7 +45,9 @@ function p = case_params(step, arm, name)
 %     _nosweep  the global (c, pi) grid search before fmincon switched off
 %               (use_refine = false)
 %     _as, _sqp the local solve with fmincon's active-set or sqp algorithm
-%               instead of interior-point
+%     _ip       the local solve with interior-point, the default before 24
+%               October 2026 (evening); with _nc41 it reproduces the solves
+%               saved before then without a routine suffix
 %     _util     fmincon on the objective in utility units instead of
 %               certainty-equivalent units (fmincon_objective = 'utility')
 %     _nc<n>    N_c = n: the sweep's later rounds start from a consumption
@@ -118,6 +120,7 @@ if ~isempty(g), p.q_hi = str2double(g{1}) / 10; end                        % top
 if contains(extra, '_nosweep'), p.use_refine = false; end                  % fmincon from the warm start, no grid search
 if contains(extra, '_as'), p.fmincon_algorithm = 'active-set'; end         % local solve
 if contains(extra, '_sqp'), p.fmincon_algorithm = 'sqp'; end
+if contains(extra, '_ip'), p.fmincon_algorithm = 'interior-point'; end
 if contains(extra, '_util'), p.fmincon_objective = 'utility'; end
 g = regexp(extra, '_nc(\d+)', 'tokens', 'once');
 if ~isempty(g), p.N_c = str2double(g{1}); end                              % sweep's consumption step
