@@ -487,7 +487,8 @@ end
 end
 
 function floor_node_test()
-% The bankruptcy test at the quadrature nodes (abs_node_test). Without the
+% The bankruptcy test at the quadrature nodes (abs_node_test, on by default),
+% against the same solve with it off. Without the
 % absorbing floor it changes nothing, bit for bit (renter). With it (step 16,
 % renter and owner, small grid, c_min = 10,000) it changes the solution, the
 % bankrupt nodes and their closed-form values stay as they are, and the
@@ -496,6 +497,8 @@ for owner = [false true]
     p = ladder.params(16); p.is_owner = owner;
     p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
     [pf, sk, an] = config.model_inputs(p);
+    assert(p.abs_node_test, 'abs_node_test is not on by default');
+    p.abs_node_test = false; p = config.derive(p);
     if ~owner
         q = p; q.abs_node_test = true; q = config.derive(q);
         A = solver.solve(p, pf, sk, an, false);

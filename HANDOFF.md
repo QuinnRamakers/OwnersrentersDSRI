@@ -43,6 +43,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-24 The exact bankruptcy test on by default (spec: 2026-10-23 The consumption floor as an absorbing state, linked to labour income)
+Quinn: set `abs_node_test = true` by default (it only acts with the absorbing floor); asked what it costs in run time.
+Changed: `+config/params.m`, `abs_node_test` true. CALIBRATION.md, Numerics: the value and why. `tests/run_tests.m`, `floor_node_test` checks the default and compares against the test switched off. `case_params` takes `_interp` for the old setting; the `_cmin` solves of 23 October without `_exact` were made with the test off, and the same names now build it on, so `solve_cases` would re-solve them (reproduce them with `_interp`). With `c_min = 0` in production nothing changes (`floor_off_identical`).
+Run time, measured in one MATLAB process on an idle machine, step 16, c_min 8,000, gh_n 5, the same solve off then on: renter 14x14x8 213.6 s -> 227.8 s (+6.6%); owner 12x12x6x5 (on first) 338.9 s -> 351.2 s (+3.6%). The solve times in the grid-set entries are not comparable, since those runs shared the machine.
+Checks run: `run_tests(solve=false)` 0 of 11 failed; full `run_tests` with CGM_FLOOR_BASELINE 0 of 21 failed, 0 skipped (floor_off_identical 157 s, floor_node_test 200 s).
+Commit: this entry with the code, pushed to main.
+Open: none for this change.
+
 ### 2026-10-24 The absorbing floor: results with the exact trigger at the quadrature nodes (spec: 2026-10-23 The consumption floor as an absorbing state, linked to labour income)
 Follows the expectations entry below (a55a951).
 Ran: `solve_cases` on the eight grid cases with `_cmin8000_exact` (two processes side by side, 777-7,442 s), `absorbing_grid(8000, extra = '_exact')`, and `ruin_interp(16, 'owner', {'pow3_24x24_lim_u3p2_qn4', 'pow3_24x24_lim_u3p2_qn4_cmin8000', 'pow3_24x24_lim_u3p2_qn4_cmin8000_exact'})`.

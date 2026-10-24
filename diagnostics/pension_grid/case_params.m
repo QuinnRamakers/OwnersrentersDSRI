@@ -47,7 +47,10 @@ function p = case_params(step, arm, name)
 %     _cmin<n>  the absorbing consumption floor at c_min = n euros a year
 %               (_cmin8000); it changes the model
 %     _exact    with the absorbing floor, the bankruptcy test at each
-%               quadrature node (abs_node_test = true)
+%               quadrature node (abs_node_test = true, the default since
+%               24 October 2026; the name marks solves made after that)
+%     _interp   the same with abs_node_test = false, the setting of the
+%               _cmin solves of 23 October that carry no _exact
 %   Apart from _mop and _cmin nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   interp_method, use_refine, pi_nothing_saved and abs_node_test are set.
@@ -108,5 +111,6 @@ if contains(extra, '_nosweep'), p.use_refine = false; end                  % fmi
 g = regexp(extra, '_cmin(\d+)', 'tokens', 'once');
 if ~isempty(g), p.c_min = str2double(g{1}); end                            % absorbing floor, euros
 if contains(extra, '_exact'), p.abs_node_test = true; end                  % bankruptcy tested at the quadrature nodes
+if contains(extra, '_interp'), p.abs_node_test = false; end                % interpolated across the edge
 p = config.derive(p);
 end
