@@ -23,7 +23,9 @@ function T = edge_fix_lifecycles(fills, opts)
 %   yet are left out. Returns the runtime table (also printed): run, grid
 %   points, solve minutes, search routine and how many solves ran at once,
 %   counted from the start and end times of the solves saved in pension_grid/
-%   and in the folder opts.also (another checkout's pension_grid/).
+%   and in the folder opts.also (another checkout's pension_grid/). MATLAB
+%   processes that saved nothing there (tests, other diagnostics) are not
+%   counted, so it is a lower bound.
 
 arguments
     fills (1,:) string = "_fillnear"
@@ -48,7 +50,8 @@ end
 assert(any(~cellfun(@isempty, R(:))), 'edge_fix_lifecycles:none', 'none of the runs is solved.');
 
 out = fullfile(num.dir, 'summary_step16');
-tag = sprintf('16_cmin%d_renter_edge', opts.c_min);
+if ~isfolder(out), mkdir(out); end
+tag =sprintf('16_cmin%d_renter_edge', opts.c_min);
 sub = sprintf(['Step 16, renter, absorbing floor at EUR %s; sweep then active-set, N_c 11. Means over solvent ' ...
     'households, medians for consumption; multiples of entry income; solve minutes in the legends'], group(opts.c_min));
 
@@ -155,11 +158,10 @@ iv = zeros(0, 2);
 for d = dirs(strlength(dirs) > 0)
     f = dir(fullfile(d, '*.mat'));
     for i = 1:numel(f)
-        try
-            s = load(fullfile(f(i).folder, f(i).name), 'timing');
-            iv(end+1, :) = interval(s.timing); %#ok<AGROW>
-        catch
-        end
+        file = fullfile(f(i).folder, f(i).name);
+        if ~ismember('timing', who('-file', file)), continue; end
+        s = load(file, 'timing');
+        iv(end+1, :) = interval(s.timing); %#ok<AGROW>
     end
 end
 iv = unique(iv, 'rows');
