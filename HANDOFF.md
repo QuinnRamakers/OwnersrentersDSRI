@@ -43,6 +43,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-25 Owner grid with maintenance on the purchase price; expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn chose the production grid u1 32, u2 16, u3 40, q 4 (placement of u3 still to decide; bunched used here), asked whether the owner runs used maintenance on the current or the initial house value (all 19 owner solves at c_min 5,000 used the current value, read from the saved files), and asked to rerun the owner results with maintenance on the purchase price.
+Runs (step 16 owner, c_min 5,000, active-set, `_mop`), two at a time: base `pow3_16x16_lim_u3p2_qn4_cmin5000_as_nc11_mop`; u1 32 (`pow3_32x16_...`); u3 40 (`..._qn4_u3n40_...`); q 8 (`..._qn8_...`); the chosen grid `pow3_32x16_lim_u3p2_qn4_u3n40_cmin5000_as_nc11_mop`. Compared with the same runs on the current value. No code change.
+Expectations: old-age bankruptcy almost disappears (at 8,000 on 23 October owners on the purchase price went bankrupt only while the mortgage ran, 3% by 67), so u3 matters much less than on the current value; u1 still moves young consumption; q matters more than on the current value, since it sets the maintenance bill for life, but 8 points stay close to 4; the chosen grid lies close to the u3 40 and u1 32 runs.
+Checks run: none (no code changed).
+Commit: this entry, pushed to main.
+Open: the runs.
+
 ### 2026-10-25 Confirming grid per tenure: results (spec: none, asked by Quinn in Claude Code)
 Follows the expectations entry below (e5e8343). Ran the two solves side by side, then the new `diagnostics/nibud/confirm_grid_page.m`. Output (gitignored): `summary_step16/16_cmin5000_confirm_grids.png`.
 Peak mean liquid saving / bankrupt by 85 / median consumption at 30 / at 70 (times entry income), solve minutes:
