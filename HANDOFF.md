@@ -43,6 +43,20 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-25 Owner grid with maintenance on the purchase price: results (spec: none, asked by Quinn in Claude Code)
+Follows the expectations entry below (e4d1b85). Ran the five `_mop` solves, two at a time, then the new `diagnostics/nibud/maintenance_rule_page.m`. Output (gitignored): `summary_step16/16_cmin5000_owner_maintenance_rules.png`.
+Peak mean liquid saving / bankrupt by 85 / median consumption at 30 / at 70 (times entry income), solve minutes, purchase price (current value in brackets):
+- Base (16x16, u3 10, q 4): 1.12 / 1.1% / 0.384 / 1.020, 30 min (2.72 / 14.3% / 0.332 / 0.770, 13 min).
+- u1 32: 0.97 / 1.0% / 0.379 / 1.008, 55 min (2.81 / 13.6% / 0.305 / 0.774, 25 min).
+- u3 40: 1.07 / 1.1% / 0.386 / 1.016, 168 min (4.35 / 8.0% / 0.309 / 0.705, 100 min).
+- q 8: 1.09 / 0.9% / 0.380 / 1.018, 60 min (2.67 / 14.1% / 0.332 / 0.768, 23 min).
+- Chosen grid (u1 32, u2 16, u3 40, q 4): 0.97 / 1.0% / 0.378 / 1.005, 246 min (4.79 / 6.7% / 0.274 / 0.726, 100 min).
+Results: on the purchase price the grid matters little. Consumption agrees across all five grids within about 2% at every age; owners save about a fifth as much as on the current value; all bankruptcy (about 1%) happens while the mortgage runs, none after 54; the retirement equity share is about 1. u3 makes no visible difference (it mattered through old-age bankruptcy, which this rule removes). u1 at 32 lowers liquid saving around 60 (second peak 1.1 to 0.9). q at 8 changes bankruptcy by 0.2 points and the young equity share. Solves take about 2-2.5 times as long, since q enters the budget in every year. The chosen grid is safe under both rules; on the purchase price its u3 points cost time without changing the answer.
+Against the expectations: as expected (bankruptcy, u3, u1); q mattered a little more than on the current value, as expected, and 8 points stay close to 4.
+Checks run: none (no code in `+solver`, `+config`, `+ladder` or `+model` changed).
+Commit: this entry with `maintenance_rule_page.m`, pushed to main.
+Open: the maintenance rule for production (Quinn); then the u3 spacing and putting the grid into `config.params`; c_min.
+
 ### 2026-10-25 Owner grid with maintenance on the purchase price; expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn chose the production grid u1 32, u2 16, u3 40, q 4 (placement of u3 still to decide; bunched used here), asked whether the owner runs used maintenance on the current or the initial house value (all 19 owner solves at c_min 5,000 used the current value, read from the saved files), and asked to rerun the owner results with maintenance on the purchase price.
 Runs (step 16 owner, c_min 5,000, active-set, `_mop`), two at a time: base `pow3_16x16_lim_u3p2_qn4_cmin5000_as_nc11_mop`; u1 32 (`pow3_32x16_...`); u3 40 (`..._qn4_u3n40_...`); q 8 (`..._qn8_...`); the chosen grid `pow3_32x16_lim_u3p2_qn4_u3n40_cmin5000_as_nc11_mop`. Compared with the same runs on the current value. No code change.
