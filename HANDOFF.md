@@ -43,6 +43,20 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-25 Renter grid, one axis at a time; expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: u1 and u2 were always refined together (square grids) while u3 was refined alone and q hardly at all, so it is not known which axis matters most. Run each axis doubled on its own from one base, plus all doubled at once; renters first, owners after Quinn has seen the renter results.
+Base: step 16 renter, c_min 5,000, bunched u1 and u2 at 16 points, 10 evenly spaced u3 points, gh_n 5, sweep then active-set with N_c 11 (`pow3_16x16_lim_u3even_u3n10_cmin5000_as_nc11`, solved on branch edge-fix with the fill off, which is bit-identical to main; file copied into the main checkout). Runs with `solve_cases`, two processes at a time: u1 at 32 and 64 (`pow3_32x16_...`, `pow3_64x16_...`), u2 at 32 and 64 (`pow3_16x32_...`, `pow3_16x64_...`), u3 at 80 evenly spaced (u3 at 20 and 40 evenly spaced exist from 24 October), and all doubled (`pow3_32x32_lim_u3even_u3n20_cmin5000_as_nc11`). No code change.
+Expectations: doubling u1 moves the life cycle more than doubling u2 (at the pension steps on 16 October, 64x32 matched 48x48); each u3 doubling keeps raising saving and lowering bankruptcy, by less each time; all doubled moves the life cycle by more than the single-axis moves added up (the candidate grid on 24 October did).
+Checks run: none (no code changed).
+Commit: this entry, pushed to main.
+Open: the runs.
+
+### 2026-10-25 The edge fix tested on branch edge-fix and rejected (spec: none, asked by Quinn in Claude Code)
+A separate session built `abs_fill` (grid points below the floor filled from the solvent side, for the continuation and the stored policies) on branch edge-fix (e0e3d36 code, 6fbe6c3 results, af6b0fe rejection; pushed, not merged). With 'nearest', the renter 16x16 grids at u3 10, 20 and 40 moved away from 32x32 with u3 at 40 instead of toward it (bankrupt by 85: 11.9, 8.8, 9.8% with the fill against 6.4, 4.0, 2.7% without and 1.8% on 32x32); on 32x32 it changed consumption by about 1%. Quinn rejected the fill (25 October): it does not improve the results. The cause of the slow convergence at c_min 5,000 is open. Main is unchanged; the record is the branch's HANDOFF and CALIBRATION.
+Checks run: on the branch, full `run_tests` 0 of 24 failed (with the fill off it is bit-identical to 448c0a3).
+Commit: this entry, pushed to main.
+Open: none for the fill.
+
 ### 2026-10-24 Production at c_min 5,000: results so far, and the search routine decided (spec: none, asked by Quinn in Claude Code)
 Follows the expectations entry below (5b4b5f0). All runs: step 16, owners with maintenance on the current value (checked in every saved owner file, Quinn asked), absorbing floor at EUR 5,000, exact bankruptcy test on.
 Quinn's decision: production uses the sweep followed by active-set, with the sweep's second round widened (N_c 11). Interior-point stays an option and the robustness check (`ladder.robustness` already swaps to it when active-set is the default).
