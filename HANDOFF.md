@@ -43,6 +43,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-25 The edge fix rejected (spec: none, decided by Quinn in Claude Code)
+Quinn: reject the fill; it does not improve the results (the two pages of the entry below).
+Changed: CALIBRATION.md, the `abs_fill` row marked rejected. The code stays on branch `edge-fix` as the record of the test and is not to be merged into main; main has no `abs_fill` and is unchanged.
+Checks run: none (no code changed).
+Commit: this entry, pushed to branch `edge-fix`.
+Open: none for the fill. Why the grids converge slowly at c_min 5,000 is still open: removing the bankrupt value from solvent cells with 'nearest' did not help.
+
 ### 2026-10-25 The edge fix: results at step 16, renter, c_min 5,000 (spec: none, asked by Quinn through the main Claude Code session; branch `edge-fix`, not merged)
 Follows the expectations entry below (e0e3d36). Quinn agreed to each run.
 Ran: `solve_cases` on `pow3_16x16_lim_u3even_u3n10_cmin5000_as_nc11` (the missing reference without the fill) and on the four `_fillnear` cases (16x16 with u3 at 10, 20, 40 and 32x32 with u3 at 40, all `_cmin5000_as_nc11_fillnear`); then `edge_fix_lifecycles("_fillnear")`. The references without the fill at u3 20 and 40 and on 32x32 are the main session's solves of 24 October, copied in.
