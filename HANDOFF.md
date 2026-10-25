@@ -43,6 +43,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-25 Confirming grid per tenure; expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: solve one confirming grid per tenure, with the points where the one-axis studies found they matter, and show it against the finest single-axis runs. Renter: u1 64, u2 16, u3 40 evenly spaced (`pow3_64x16_lim_u3even_u3n40_cmin5000_as_nc11`, 66x18x40). Owner: u1 32, u2 16, u3 40 bunched toward 0, q 4 (`pow3_32x16_lim_u3p2_qn4_u3n40_cmin5000_as_nc11`, 34x18x40x5). Step 16, c_min 5,000, active-set; the two side by side. No code change.
+Expectations: each confirming grid lies close to the finest u3 run in retirement (saving, old-age consumption, bankruptcy) and close to the finest u1 run when young, and moves past each of them a little where the axes add up. Renter: peak liquid saving above 4.2 (u3 80) and about 4.5-4.7 times entry income; bankrupt by 85 under 2.5%. Owner: peak saving above 4.35 (u3 40) and about 4.5-4.8; bankrupt by 85 about 7-7.5%. Rough solve times: renter about 70 minutes, owner about 130.
+Checks run: none (no code changed).
+Commit: this entry, pushed to main.
+Open: the runs.
+
 ### 2026-10-25 Owner grid, one axis at a time: results (spec: none, asked by Quinn in Claude Code)
 Follows the expectations entry below (ab04d48). Ran the eight solves, two at a time (axis_o1: base, all doubled; axis_o2: u1 32, u2 32, q 8, u1 64, u2 64, q 16), then `axis_study_page('owner')` (it now reads the reused interior-point u3 runs). Output (gitignored): `summary_step16/16_cmin5000_owner_axis_study.png`.
 The base with active-set matches the interior-point base of 24 October (bankrupt household-years 9.13% against 9.13%, entry value 0.2542 against 0.2542).
