@@ -43,6 +43,21 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-25 Owner grid, one axis at a time: results (spec: none, asked by Quinn in Claude Code)
+Follows the expectations entry below (ab04d48). Ran the eight solves, two at a time (axis_o1: base, all doubled; axis_o2: u1 32, u2 32, q 8, u1 64, u2 64, q 16), then `axis_study_page('owner')` (it now reads the reused interior-point u3 runs). Output (gitignored): `summary_step16/16_cmin5000_owner_axis_study.png`.
+The base with active-set matches the interior-point base of 24 October (bankrupt household-years 9.13% against 9.13%, entry value 0.2542 against 0.2542).
+Against the base (bunched 16x16, u3 at 10 bunched, q at 4; 13 min): peak mean liquid saving / bankrupt by 85 / median consumption at 30 / at 70, and solve minutes:
+- u1 32: +3.2% / -0.7 points / -8.0% / +0.5%, 25 min. u1 64: +4.6% / -1.1 / -11.0% / +0.6%, 60 min.
+- u2 32: +0.7% / -0.3 / +0.4% / -0.5%, 25 min. u2 64: +0.6% / -0.4 / +0.4% / -0.6%, 58 min.
+- u3 20: +33.1% / -5.0 / -4.4% / -5.6%, 43 min. u3 40: +59.7% / -6.3 / -6.8% / -8.4%, 100 min (both interior-point, 24 October). u3 80: +68.8% / -6.5 / -7.5% / -8.9%, 151 min.
+- q 8: -1.8% / -0.2 / +0.1% / -0.2%, 23 min. q 16: -2.5% / -0.2 / +0.5% / -0.3%, 46 min.
+- All doubled (u1 32, u2 32, u3 20, q 8): +43.0% / -6.6 / -14.8% / -4.2%, 150 min; the single doublings add up to +35.2% / -6.2 / -11.9% / -5.8%.
+Results: as for renters, u2 changes nothing; q changes nothing either (4 points are enough with the floor). u3 dominates: saving in retirement, old-age consumption and bankruptcy, and the retirement equity share (0.85 at 10 points, 0.6-0.75 at 40-80); it settles between 40 and 80 points (40 to 80: saving +6%, bankrupt by 85 -0.2 points, consumption at 70 -0.5%). u1 moves young consumption and is still moving at 64 (-3% at 30 from 32 to 64). All doubled moves saving and young consumption somewhat more than the sum of the single doublings.
+Against the expectations: u3 most, u1 young, q enough at 4: as expected; u2 does nothing for owners too (expected a little more than for renters).
+Checks run: none (no code in `+solver`, `+config`, `+ladder` or `+model` changed).
+Commit: this entry with `axis_study_page.m`, pushed to main.
+Open: the production grid per tenure (u2 at 16, q at 4; u1 32-64; u3 40-80), one solve on it per tenure to confirm, then `config.params` (one grid for both tenures today).
+
 ### 2026-10-25 Owner grid, one axis at a time; expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: run the owner one-axis study (u1, u2, u3, q each doubled alone, plus all doubled), two at a time, reusing the interior-point u3 runs.
 Base: step 16 owner, maintenance on the current value, c_min 5,000, bunched u1 and u2 at 16, u3 at 10 bunched toward 0 (power 2), q at 4, gh_n 5, active-set with N_c 11 (`pow3_16x16_lim_u3p2_qn4_cmin5000_as_nc11`). New solves with `solve_cases`, all with `_as_nc11`: the base; u1 at 32 and 64 (`pow3_32x16_...`, `pow3_64x16_...`); u2 at 32 and 64; q at 8 and 16 (`_qn8`, `_qn16`); all doubled (`pow3_32x32_lim_u3p2_qn8_u3n20_cmin5000_as_nc11`). Reused: u3 at 20 and 40 (interior-point, 24 October) and u3 at 80 (active-set). No code change.

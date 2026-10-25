@@ -39,10 +39,10 @@ else
     rows = {
       'u1 (income over total resources)', {'pow3_32x16_lim_u3p2_qn4', 'u1 32'; 'pow3_64x16_lim_u3p2_qn4', 'u1 64'}
       'u2 (pension and house over non-income wealth)', {'pow3_16x32_lim_u3p2_qn4', 'u2 32'; 'pow3_16x64_lim_u3p2_qn4', 'u2 64'}
-      'u3 (pension against house), bunched toward 0', {'pow3_16x16_lim_u3p2_qn4_u3n20', 'u3 20'; 'pow3_16x16_lim_u3p2_qn4_u3n40', 'u3 40'; 'pow3_16x16_lim_u3p2_qn4_u3n80', 'u3 80'}
+      'u3 (pension against house), bunched toward 0', {'pow3_16x16_lim_u3p2_qn4_u3n20%s', 'u3 20, interior-point'; 'pow3_16x16_lim_u3p2_qn4_u3n40%s', 'u3 40, interior-point'; 'pow3_16x16_lim_u3p2_qn4_u3n80', 'u3 80'}
       'q (purchase price over house value)', {'pow3_16x16_lim_u3p2_qn8', 'q 8'; 'pow3_16x16_lim_u3p2_qn16', 'q 16'}
       'Every axis doubled at once, next to each single doubling', {'pow3_32x16_lim_u3p2_qn4', 'u1 32'; 'pow3_16x32_lim_u3p2_qn4', 'u2 32'; ...
-                                                                   'pow3_16x16_lim_u3p2_qn4_u3n20', 'u3 20'; 'pow3_16x16_lim_u3p2_qn8', 'q 8'; ...
+                                                                   'pow3_16x16_lim_u3p2_qn4_u3n20%s', 'u3 20, interior-point'; 'pow3_16x16_lim_u3p2_qn8', 'q 8'; ...
                                                                    'pow3_32x32_lim_u3p2_qn8_u3n20', 'all doubled'}};
     base_label = 'base: 16x16, u3 10, q 4';
 end
@@ -63,7 +63,7 @@ T = table();
 T = [T; row_of(R0, base_label, R0)];
 for i = 1:nr
     runs = rows{i, 2};
-    rs = cellfun(@(c) case_load(16, arm, [c suf]), runs(:, 1), 'UniformOutput', false);
+    rs = cellfun(@(c) case_load(16, arm, full_name(c, suf, c_min)), runs(:, 1), 'UniformOutput', false);
     for n = 1:numel(rs)
         if ~isempty(rs{n}) && ~any(strcmp(seen, runs{n, 1}))
             T = [T; row_of(rs{n}, runs{n, 2}, R0)]; %#ok<AGROW>
@@ -102,6 +102,17 @@ end
 end
 
 % ------------------------------------------------------------------------
+function name = full_name(c, suf, c_min)
+%FULL_NAME  A run's case name. Names with %s mark where the floor's suffix
+%   goes and carry no routine suffix (runs solved with interior-point before
+%   active-set became the default); the others get _cmin<n>_as_nc11.
+if contains(c, '%s')
+    name = sprintf(c, sprintf('_cmin%d', c_min));
+else
+    name = [c suf];
+end
+end
+
 function r = row_of(R, label, R0)
 s = R.summary; s0 = R0.summary; p = R.p;
 a = s.ages;
