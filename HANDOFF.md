@@ -43,6 +43,17 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-25 Confirming grid per tenure: results (spec: none, asked by Quinn in Claude Code)
+Follows the expectations entry below (e5e8343). Ran the two solves side by side, then the new `diagnostics/nibud/confirm_grid_page.m`. Output (gitignored): `summary_step16/16_cmin5000_confirm_grids.png`.
+Peak mean liquid saving / bankrupt by 85 / median consumption at 30 / at 70 (times entry income), solve minutes:
+- Renter confirming grid (u1 64, u2 16, u3 40 even; 66x18x40): 4.65 / 1.7% / 0.272 / 0.720, 68 min. The 24 October candidate (32x32, u3 40 even; 34x34x40): 4.58 / 1.8% / 0.283 / 0.715, 85 min (shared with two other solves). Finest single-axis runs: u3 80 even 4.23 / 2.5% / 0.327 / 0.708; u1 64 3.86 / 5.3% / 0.316 / 0.700.
+- Owner confirming grid (u1 32, u2 16, u3 40 bunched, q 4; 34x18x40x5): 4.79 / 6.7% / 0.274 / 0.726, 100 min. Finest single-axis runs: u3 80 4.60 / 7.8% / 0.307 / 0.701; u1 64 2.85 / 13.2% / 0.295 / 0.774; all doubled (32x32, u3 20, q 8) 3.90 / 7.6% / 0.283 / 0.737, 150 min.
+Results: renter, the confirming grid and the candidate are two different grids of about the same size, one spending its points on u1 and one on u2, and their life cycles lie on top of each other from about 40 on; they differ only in young consumption and the young equity share (u1 64 against 32: consumption at 30 4% lower). Owner, the confirming grid matches u3 at 80 in retirement (saving, consumption, equity share 0.6-0.7) and adds the u1 effect in working life (saving at 55 3.8 against 3.3); it has the least bankruptcy of all owner runs. The owner was not checked against a grid finer in both u1 and u3 at once.
+Against the expectations: renter as expected (peak 4.65, bankrupt by 85 1.7%); owner as expected (peak 4.79, bankrupt by 85 6.7%, below the 7-7.5% expected).
+Checks run: none (no code in `+solver`, `+config`, `+ladder` or `+model` changed).
+Commit: this entry with `confirm_grid_page.m`, pushed to main.
+Open: adopting the grids. `config.params` holds one `grid_dims` for both tenures; per-tenure grids need new primitives. Optional owner check: u1 64 with u3 40 (66x18x40x5, about 3.5 hours).
+
 ### 2026-10-25 Confirming grid per tenure; expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: solve one confirming grid per tenure, with the points where the one-axis studies found they matter, and show it against the finest single-axis runs. Renter: u1 64, u2 16, u3 40 evenly spaced (`pow3_64x16_lim_u3even_u3n40_cmin5000_as_nc11`, 66x18x40). Owner: u1 32, u2 16, u3 40 bunched toward 0, q 4 (`pow3_32x16_lim_u3p2_qn4_u3n40_cmin5000_as_nc11`, 34x18x40x5). Step 16, c_min 5,000, active-set; the two side by side. No code change.
 Expectations: each confirming grid lies close to the finest u3 run in retirement (saving, old-age consumption, bankruptcy) and close to the finest u1 run when young, and moves past each of them a little where the axes add up. Renter: peak liquid saving above 4.2 (u3 80) and about 4.5-4.7 times entry income; bankrupt by 85 under 2.5%. Owner: peak saving above 4.35 (u3 40) and about 4.5-4.8; bankrupt by 85 about 7-7.5%. Rough solve times: renter about 70 minutes, owner about 130.
