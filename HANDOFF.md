@@ -43,6 +43,19 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-25 Renter grid, one axis at a time: results (spec: none, asked by Quinn in Claude Code)
+Follows the expectations entry below (ad3cfcb). Ran the six solves, two at a time (axis_r1: u1 32, u2 32, u3 80; axis_r2: u1 64, u2 64, all doubled), then the new `diagnostics/nibud/axis_study_page.m` ('renter'). Output (gitignored): `summary_step16/16_cmin5000_renter_axis_study.png`. Also new and committed: `diagnostics/nibud/production_tenure_page.m` (every grid of a tenure as life cycles, 24 October).
+Against the base (bunched 16x16, u3 at 10 evenly spaced; 5 min): peak mean liquid saving / bankrupt by 85 / median consumption at 30 / at 70, and solve minutes:
+- u1 32: +6.9% / -0.8 points / -8.8% / +1.0%, 9 min. u1 64: +9.3% / -1.1 / -11.8% / +1.3%, 17 min.
+- u2 32: +0.4% / -0.1 / -0.4% / -0.3%, 9 min. u2 64: +0.3% / -0.1 / -0.4% / -0.5%, 17 min.
+- u3 20: +10.0% / -2.4 / -4.8% / +1.0%, 16 min. u3 40: +16.7% / -3.7 / -7.5% / +1.9%, 32 min. u3 80: +19.6% / -3.9 / -8.5% / +2.4%, 38 min. (u3 20 and 40 were solved on 24 October three at a time.)
+- All doubled (u1 32, u2 32, u3 20): +20.1% / -3.5 / -17.0% / +2.1%, 32 min; the single doublings add up to +17.3% / -3.3 / -14.0% / +1.7%.
+Results: u2 changes nothing (16 points are enough for renters). u3 moves saving and old-age bankruptcy most, and settles between 40 and 80 points. u1 moves young consumption and the young equity share and is still moving at 64 (-3% in consumption at 30 from 32 to 64). The axes add up roughly, a little more than additively for young consumption. So the 24 October candidate (32x32, u3 40) spent half its points on u2.
+Against the expectations: u1 against u2 as expected, more starkly (u2 does nothing); u3 as expected; all doubled moved a little more than the sum, not much more.
+Checks run: none (no code in `+solver`, `+config`, `+ladder` or `+model` changed).
+Commit: this entry with the two scripts, pushed to main.
+Open: the owner one-axis study (u1, u2, u3, q) waits for Quinn; the renter production grid.
+
 ### 2026-10-25 Renter grid, one axis at a time; expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: u1 and u2 were always refined together (square grids) while u3 was refined alone and q hardly at all, so it is not known which axis matters most. Run each axis doubled on its own from one base, plus all doubled at once; renters first, owners after Quinn has seen the renter results.
 Base: step 16 renter, c_min 5,000, bunched u1 and u2 at 16 points, 10 evenly spaced u3 points, gh_n 5, sweep then active-set with N_c 11 (`pow3_16x16_lim_u3even_u3n10_cmin5000_as_nc11`, solved on branch edge-fix with the fill off, which is bit-identical to main; file copied into the main checkout). Runs with `solve_cases`, two processes at a time: u1 at 32 and 64 (`pow3_32x16_...`, `pow3_64x16_...`), u2 at 32 and 64 (`pow3_16x32_...`, `pow3_16x64_...`), u3 at 80 evenly spaced (u3 at 20 and 40 evenly spaced exist from 24 October), and all doubled (`pow3_32x32_lim_u3even_u3n20_cmin5000_as_nc11`). No code change.
