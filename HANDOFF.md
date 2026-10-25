@@ -43,6 +43,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-25 Owner grid, one axis at a time; expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: run the owner one-axis study (u1, u2, u3, q each doubled alone, plus all doubled), two at a time, reusing the interior-point u3 runs.
+Base: step 16 owner, maintenance on the current value, c_min 5,000, bunched u1 and u2 at 16, u3 at 10 bunched toward 0 (power 2), q at 4, gh_n 5, active-set with N_c 11 (`pow3_16x16_lim_u3p2_qn4_cmin5000_as_nc11`). New solves with `solve_cases`, all with `_as_nc11`: the base; u1 at 32 and 64 (`pow3_32x16_...`, `pow3_64x16_...`); u2 at 32 and 64; q at 8 and 16 (`_qn8`, `_qn16`); all doubled (`pow3_32x32_lim_u3p2_qn8_u3n20_cmin5000_as_nc11`). Reused: u3 at 20 and 40 (interior-point, 24 October) and u3 at 80 (active-set). No code change.
+Expectations: u3 moves the owner life cycle most (24 October: peak saving 2.7, 3.6, 4.3 times entry income and bankrupt by 100 49, 45, 37% at 10, 20, 40 points; 80 close to 40); u1 moves young consumption, as for renters; u2 moves little, though more than for renters because owners hold the house in u2; q at 4 is enough (it matched 8 on 18 October without the floor); all doubled is close to the sum of the single doublings.
+Checks run: none (no code changed).
+Commit: this entry, pushed to main.
+Open: the runs.
+
 ### 2026-10-25 Renter grid, one axis at a time: results (spec: none, asked by Quinn in Claude Code)
 Follows the expectations entry below (ad3cfcb). Ran the six solves, two at a time (axis_r1: u1 32, u2 32, u3 80; axis_r2: u1 64, u2 64, all doubled), then the new `diagnostics/nibud/axis_study_page.m` ('renter'). Output (gitignored): `summary_step16/16_cmin5000_renter_axis_study.png`. Also new and committed: `diagnostics/nibud/production_tenure_page.m` (every grid of a tenure as life cycles, 24 October).
 Against the base (bunched 16x16, u3 at 10 evenly spaced; 5 min): peak mean liquid saving / bankrupt by 85 / median consumption at 30 / at 70, and solve minutes:
