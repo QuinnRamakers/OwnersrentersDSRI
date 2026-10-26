@@ -43,6 +43,16 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Bequest motive, housing rung (steps 7b, 8); expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Decided (Quinn, 26 October): the owner's bequest stays gross, B = X + (1 - sell_cost) H, as the paper's equation reads (no mortgage netting; full netting would make an underwater owner's bequest minus infinity under the paper's form, about 0.75 years of income one year after purchase at the worst house-price node; netting floored at zero was the alternative). A household at the yearly floor leaves what it holds, as now: a renter there leaves nothing, which the form values at minus infinity (clamped at a bequest of 1e-12 of wealth). Owner steps 7b and 8 only (the annuity mortgage); renters at 7b (the same as 7 for them) and 8.
+Runs, on the DSRI pod, one at a time: `bequest_runs(s, arm, [0 1 2.5 5])` for 7b renter, 7b owner, 8 renter, 8 owner: `pow3_32x16_lim_u3n40_qn4_as_nc11`, gh 5, 10,000 households, 16 solves, a page per step and tenure. Rough time 1 hour.
+Expected:
+1. Renters bequeath liquid wealth only, so they behave as at step 6: the young keep some saving for the bequest (at 30 roughly 0.3, 0.7 and 1.3 years of consumption at b 1, 2.5, 5), retirement wealth runs down more slowly, and the old-age equity share falls toward 0.2-0.3. Rent is paid for life, so at b 0 renters already hold more in retirement than at step 6.
+2. Owners: the house, 4 times entry income at purchase and rising 3.73% a year in real terms, is in the bequest from the start at 97.5% of its value. That exceeds the bequest the motive asks for at any age and b up to 5, so owners' saving, consumption and equity share hardly move with b; in the last year many owners consume all their liquid wealth. Their bequest at death is mostly the house and rises little with b.
+3. So the motive widens the renters' retirement wealth and narrows the owner-renter gap in liquid wealth; the gap in bequests stays large.
+4. Renters at the yearly floor face the bequest penalty, so with b > 0 the share ever at the floor should not rise.
+5. Step 8 (housing correlations) changes little against 7b.
+
 ### 2026-10-26 Bequest motive, DC rung (steps 6, 9-12): results (spec: none, asked by Quinn in Claude Code)
 Ran `bequest_runs(s, "owner", [0 1 2.5 5])` for s = 6, 9, 10, 11, 12 at 32f0f5d (code as e9ae85e) on the DSRI pod, 32 threads, one solve at a time: 20 solves in 9.5 minutes. Grid points 34x2x2x1 at step 6, 34x16x2x1 at 9-12; gh 5, active-set, 10,000 households. Solve seconds (b 0, 1, 2.5, 5): step 6 14, 7, 6, 6; step 9 21, 22, 21, 21; step 10 15, 20, 21, 21; step 11 14, 20, 21, 20; step 12 14, 20, 21, 20. Pages in `/Solutionstorage/results/bequest` and `runs/bequest_dc/` on Quinn's PC: `<step>_owner_bequest.png` and a dashboard per run.
 `model.checks`: c_bound_25_39 0.00% and at the floor 0.00% in all 20; offgrid 0 except step 10 (u1: 31, 34, 48, 71 of 760,000 lookups); thin_u1 0.00.
