@@ -43,6 +43,18 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Bequest motive, DC rung (steps 6, 9-12); expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Decided (Quinn, 26 October): the DC pot is not bequeathed, as now (its return carries the survival credit before 67, the annuity stops at death), so only liquid saving is left to heirs; owner income only (no housing at these steps, so the arms differ only in income). gamma is 5, so chi = b^5: b 1, 2.5, 5 is chi 1, 97.7, 3,125.
+Runs, on the DSRI pod, one at a time, `bequest_runs(s, "owner", [0 1 2.5 5])` for s = 6 (reference, no DC), 9 (all-bond fund), 10 (all-stock fund), 11 (glide path), 12 (AOW at 30.7%): `pow3_32x16_lim_u3n40_qn4_as_nc11`, gh 5, 10,000 households, 20 solves, a bequest page per step.
+Expected:
+1. Step 6 at gamma 5: the death probability enters to the power 1/5, so the first-order bound is weaker for the young than at gamma 10: at least about 0.2, 0.5 and 1.0 years of consumption kept for the bequest at 30, and 0.5, 1.3 and 2.6 at 80, for b 1, 2.5, 5. As at step 1, it binds only where precautionary saving is lower than that; the main effect is in retirement.
+2. In the last year the bequest is about b (beta M)^(1/5), M = E[R^(1-gamma)], times consumption: about 1.0, 2.4 and 4.9.
+3. The liquid equity share in old age falls toward the step's Merton share, 0.0456/(5 x 0.2161^2) = 0.20.
+4. Steps 9-12: the annuity pays for retirement and dies with the household, so at b 0 retirees hold less liquid wealth than at step 6 and the accidental bequest is smaller. With b > 0 the bequest at 100 is still about b times consumption, so the gap from b 0 in retirement liquid wealth is larger relative to b 0's level than at step 6.
+5. Steps 9-11 differ only in the fund's stock share: the bequest effect on saving and the bequest should be close across them; the liquid equity share is lower where the fund holds more stock.
+6. Step 12: less first-pillar income, so more retirement saving already at b 0 and a larger accidental bequest; the bequest motive adds less relative to it.
+7. No bankruptcy (yearly top-up).
+
 ### 2026-10-26 Bequest motive, CGM rung (step 1): results (spec: none, asked by Quinn in Claude Code)
 Ran `bequest_runs(1, "renter", [0 1 2.5 5])` at e9ae85e on the DSRI pod (R2025a, 32 threads, one solve at a time): step 1 on `pow3_32x16_lim_u3n40_qn4_as_nc11`, 34x2x2x1 grid points, gh 5, active-set, 10,000 households. Solve 19, 7, 6 and 6 s. Pages in `/Solutionstorage/results/bequest` (copied to `runs/bequest_cgm/` on Quinn's PC): `01_cgm_renter_bequest.png` and a dashboard per run.
 `model.checks`, b = 0, 1, 2.5, 5: c_bound_25_39 0.00% for all; offgrid 0 for all; thin_u1 0.00; at the floor 0.00%; ce_entry 0.657, 0.655, 0.617, 0.421 (includes the bequest's utility, not a welfare comparison).
