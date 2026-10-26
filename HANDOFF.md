@@ -43,6 +43,23 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Bequest motive, housing rung (steps 7b, 8): results (spec: none, asked by Quinn in Claude Code)
+Ran `bequest_runs` for 7b renter, 7b owner, 8 renter, 8 owner at b = 0, 1, 2.5, 5, at 26455f4 (code as e9ae85e) on the DSRI pod, 32 threads, one solve at a time: 16 solves in 13.6 minutes. Renters 34x18x2x1 grid points, 15-30 s a solve; owners 34x18x2x5, 48-62 s. Pages in `/Solutionstorage/results/bequest` and `runs/bequest_housing/` on Quinn's PC.
+`model.checks`: c_bound_25_39 0.00% and offgrid 0 in all 16; thin_u1 0.00; at the floor (share of household-years) renters 0.0001 at b 0-2.5 and 0.0000 at b 5 (step 8: 0.0001, then 0.0000 from b 1), owners 0.0010 (7b) and 0.0007 (8) at every b; ce_entry renters 0.533 to 0.509 (7b), owners 0.0024 (7b) and 0.0277 (8) at every b.
+Means by age, EUR 2025 (30 / 66 / 75 / 85 / 95), b 0 / 1 / 2.5 / 5:
+- 7b renter, liquid saving: 55k / 538k / 417k / 227k / 51k; 55k / 550k / 436k / 255k / 86k; 56k / 570k / 468k / 303k / 145k; 59k / 610k / 530k / 392k / 254k. Consumption at 66: 60.2k, 59.6k, 58.3k, 56.3k; at 95: 39.4k, 40.1k, 41.1k, 42.9k. Liquid equity share at 95: 0.71, 0.40, 0.30, 0.25. Bequest at death mean (median): 235k (175k), 261k (199k), 306k (245k), 388k (327k); at 100: 0, 32k, 86k, 189k.
+- 7b owner: consumption, liquid saving and the equity share within 1% of b 0 at every age and b (b 5: consumption 1% lower at 66, 2% higher at 100). Bequest at death mean 2,014k at b 0, 1 and 2.5, 2,022k at b 5; at 100 2,408k at every b.
+- Step 8 is within a few per cent of 7b for both tenures (renter bequest at death 234k, 261k, 306k, 390k; owner 1,989k to 1,994k).
+Against the expectations:
+1. Renters as at step 6: in retirement yes (saving at 95 1.7, 2.9 and 5 times b 0's; equity share down to 0.25). When young no: renters at 7b already hold 55k at 30, about 2.4 years of consumption, so the bequest bound does not bind and saving at 30 moves 0-7%. Consumption is 1-7% lower around 66 and 7-27% higher at 100.
+2. Owners hardly move: yes, within 1% everywhere. The house is 97.5% of the bequest from the start and grows with house prices; owners consume all their liquid wealth in the last year at every b (the bequest at 100 does not change with b).
+3. The owner-renter gap: liquid saving at 95 is 224k (owner) against 51k (renter) at b 0, and 233k against 254k at b 5, so the motive closes the gap in liquid wealth; the bequest at death stays about 5-9 times larger for owners.
+4. Renters at the floor: the share does not rise (0.0001 to 0.0000).
+5. Step 8 against 7b: little change, yes.
+Not part of the bequest test: owners at 7b and 8 consume almost nothing at 25 already at b 0 (consumption 13.7k at 30 at 7b, against 22.9k for renters) and save hard; housing costs reach nearly all income by 100 (maintenance on the current value, steps 7-16), and the entry value is 0.0024 (7b) and 0.028 (8). This is the known effect of maintenance on the current value (`docs/HANDOFF_2026-10-26.md`); it may mute the owners' response to b here.
+Commit: this entry, pushed to main.
+Open: the combined rung (steps 13-18): a tax on the bequest at the tax steps, maintenance on the purchase price (17), and the bankrupt households' bequest at the absorbing floor (18); `floor_node_test`.
+
 ### 2026-10-26 Bequest motive, housing rung (steps 7b, 8); expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Decided (Quinn, 26 October): the owner's bequest stays gross, B = X + (1 - sell_cost) H, as the paper's equation reads (no mortgage netting; full netting would make an underwater owner's bequest minus infinity under the paper's form, about 0.75 years of income one year after purchase at the worst house-price node; netting floored at zero was the alternative). A household at the yearly floor leaves what it holds, as now: a renter there leaves nothing, which the form values at minus infinity (clamped at a bequest of 1e-12 of wealth). Owner steps 7b and 8 only (the annuity mortgage); renters at 7b (the same as 7 for them) and 8.
 Runs, on the DSRI pod, one at a time: `bequest_runs(s, arm, [0 1 2.5 5])` for 7b renter, 7b owner, 8 renter, 8 owner: `pow3_32x16_lim_u3n40_qn4_as_nc11`, gh 5, 10,000 households, 16 solves, a page per step and tenure. Rough time 1 hour.
