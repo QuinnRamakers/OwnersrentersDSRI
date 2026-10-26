@@ -43,6 +43,28 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Bequest motive, DC rung (steps 6, 9-12): results (spec: none, asked by Quinn in Claude Code)
+Ran `bequest_runs(s, "owner", [0 1 2.5 5])` for s = 6, 9, 10, 11, 12 at 32f0f5d (code as e9ae85e) on the DSRI pod, 32 threads, one solve at a time: 20 solves in 9.5 minutes. Grid points 34x2x2x1 at step 6, 34x16x2x1 at 9-12; gh 5, active-set, 10,000 households. Solve seconds (b 0, 1, 2.5, 5): step 6 14, 7, 6, 6; step 9 21, 22, 21, 21; step 10 15, 20, 21, 21; step 11 14, 20, 21, 20; step 12 14, 20, 21, 20. Pages in `/Solutionstorage/results/bequest` and `runs/bequest_dc/` on Quinn's PC: `<step>_owner_bequest.png` and a dashboard per run.
+`model.checks`: c_bound_25_39 0.00% and at the floor 0.00% in all 20; offgrid 0 except step 10 (u1: 31, 34, 48, 71 of 760,000 lookups); thin_u1 0.00.
+Means by age, EUR 2025 (30 / 66 / 75 / 85 / 95), b 0 / 1 / 2.5 / 5:
+- Step 6, liquid saving: 0 / 518k / 383k / 180k / 24k; 17k / 562k / 436k / 244k / 90k; 36k / 635k / 523k / 347k / 198k; 62k / 759k / 673k / 526k / 390k. Consumption at 30: 52.2k, 50.8k, 49.3k, 46.4k; at 95: 60.3k, 63.2k, 66.7k, 71.4k. Liquid equity share at 95: 0.97, 0.44, 0.33, 0.27.
+- Step 9, liquid saving: 0 / 48k / 16k / 3k / 0; 15k / 111k / 113k / 108k / 91k; 32k / 209k / 236k / 245k / 233k; 55k / 344k / 411k / 462k / 478k. Consumption at 85: 84.9k, 90.2k, 92.3k, 93.4k.
+- Step 11, liquid saving: 0 / 23k / 1k / 0 / 0; 15k / 72k / 104k / 118k / 107k; 32k / 152k / 224k / 269k / 273k; 55k / 281k / 408k / 511k / 556k. Consumption at 30: 46.1k, 45.2k, 43.8k, 41.2k; at 85: 100.3k, 105.7k, 106.8k, 107.1k. Liquid equity share at 95: 1.00, 0.40, 0.31, 0.27.
+- Step 12, liquid saving: 0 / 112k / 63k / 17k / 1k; 15k / 159k / 139k / 108k / 80k; 32k / 241k / 242k / 225k / 202k; 55k / 366k / 400k / 418k / 416k.
+- Step 10, liquid saving: 0 / 18k / 275k / 325k / 115k; 14k / 58k / 345k / 425k / 273k; 32k / 131k / 470k / 615k / 557k; 55k / 253k / 684k / 954k / 1,033k. Mean consumption doubles after 67 (84k at 66, 173k at 75, 217k at 95 at b 0): the all-stock annuity is risky and skewed. Liquid equity share 0.01-0.17 after 67 at every b.
+- Bequest at death, mean (median), b 0 / 1 / 2.5 / 5: step 6 195k (102k) / 255k (162k) / 352k (264k) / 521k (433k); step 9 12k (0) / 105k (84k) / 234k (201k) / 440k (388k); step 10 217k (46k) / 322k (143k) / 515k (292k) / 847k (529k); step 11 6k (0) / 109k (94k) / 249k (220k) / 478k (424k); step 12 31k (0) / 109k (81k) / 220k (187k) / 403k (357k).
+Against the expectations:
+1. Step 6, the young: unlike step 1, the bound binds, since at b 0 households hold no liquid wealth at 30. With b 1, 2.5, 5 they hold 17k, 36k, 62k at 30 (0.3, 0.7, 1.3 years of consumption; the bound said at least 0.2, 0.5, 1.0) and consume 3%, 6%, 11% less. The same at steps 9-12 (15k, 32k, 55k at 30).
+2. The last year's bequest is about b times consumption: yes (step 9 at 100: 85k, 222k, 467k against consumption near 90k).
+3. The old-age equity share falls toward 0.20: yes in direction, 0.40-0.44, 0.31-0.33 and 0.27 at 95 for b 1, 2.5, 5 at steps 6, 9, 11 and 12. At step 10 the liquid share is already near 0 after 67 (the annuity holds the stocks).
+4. With the annuity the accidental bequest is small and the motive's effect large: yes. At b 0 retirees at steps 9 and 11 hold almost nothing after 75; with b > 0 they rebuild liquid wealth after 67, out of the annuity, until about 90-95.
+5. Steps 9 and 11 alike: yes (bequest at death 105k, 234k, 440k against 109k, 249k, 478k). Step 10 differs a lot, which was not foreseen: the risky annuity already brings large precautionary retirement saving at b 0.
+6. Step 12: yes, a larger accidental bequest (31k against 6k at step 11) and a smaller effect relative to it; in euros the bequest is lower than at step 11 since consumption is lower.
+7. No bankruptcy: yes.
+Not foreseen: consumption late in life is higher with a bequest motive at steps 6, 9, 11 and 12 (5-18% at 85-95), lower at step 10. Without the motive old households hold nothing and consume their income; with it, the wealth held for heirs earns returns that are partly consumed. Consumption at 25-30 is lower, so the motive tilts consumption toward old age.
+Commit: this entry, pushed to main.
+Open: the housing rung (steps 7, 7b, 8, renters and owners apart): mortgage netting at step 7 (proportional contract) and 7b/8 (annuity).
+
 ### 2026-10-26 Bequest motive, DC rung (steps 6, 9-12); expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Decided (Quinn, 26 October): the DC pot is not bequeathed, as now (its return carries the survival credit before 67, the annuity stops at death), so only liquid saving is left to heirs; owner income only (no housing at these steps, so the arms differ only in income). gamma is 5, so chi = b^5: b 1, 2.5, 5 is chi 1, 97.7, 3,125.
 Runs, on the DSRI pod, one at a time, `bequest_runs(s, "owner", [0 1 2.5 5])` for s = 6 (reference, no DC), 9 (all-bond fund), 10 (all-stock fund), 11 (glide path), 12 (AOW at 30.7%): `pow3_32x16_lim_u3n40_qn4_as_nc11`, gh 5, 10,000 households, 20 solves, a bequest page per step.
