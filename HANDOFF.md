@@ -43,6 +43,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 The chosen grid in production (spec: none, asked by Quinn in Claude Code)
+Quinn: put the chosen grid into `config.params`: `grid_dims` [32 16 40 4], `grid_pow` 3, `grid_pow_u2` 3, `pi_nothing_saved` 'limit', u3 evenly spaced, with the ladder and CALIBRATION.md to match.
+Changed: `+config/params.m` (those five; `grid_pow_u3` stays 1). `+ladder/numerics.m`: `fine` is [32 16 40 4], as `config.params`; `quick` and `standard` keep their counts but, like every ladder step, now take the bunched placement and the limit share from `config.params`. `tests/run_tests.m`, `floor_off_identical`: pins its baseline's placement (even u1 and u2, `pi_nothing_saved = 'one'`) as well as its search routine. CALIBRATION.md, Numerics (`grid_dims`, `gh_n`, `pi_nothing_saved`, `grid_pow`/`grid_pow_u2`, `grid_pow_u3`, the paragraph after the table), README.md (run times, the numerics table), GRIDS.md (defaults), CLAUDE.md (known limit), TODO.md (Numerics).
+Production now: renter 34x18x40 grid points, owner 34x18x40x5; at step 16 one owner solve took about 100 minutes with maintenance on the current value and about 4 hours on the purchase price (two solves side by side). Every saved ladder result is a different calibration now and re-solves when next used.
+Checks run: `run_tests(solve=false)` 0 of 11 failed; `config.params` prints grid [32 16 40 4], powers 3/3/1, limit share, maintenance on the purchase price, active-set, N_c 11; `ladder.numerics('fine').dims` [32 16 40 4]. The full `run_tests` was not run.
+Commit: this entry with the code and documents, pushed to main.
+Open: whether the ladder's `standard` numerics take the production counts; adopting c_min.
+
 ### 2026-10-26 Figures: averages over households not bankrupt, consumption over all (spec: none, asked by Quinn in Claude Code)
 Quinn asked whether the graphs are conditional on not going bankrupt. They were not: the comparison page and the dashboards (`figures.panel_data`) averaged over all households, with a bankrupt household's wealth, pension payment, housing costs and disposable income at zero and its wage or state-pension income still counted, while the life-cycle pages built on `model.summarize` averaged wealth and shares over solvent households. Quinn: average income, housing costs, pension, wealth and the equity share over households not bankrupt at that age; keep consumption over all households and say so in the titles.
 Changed: `+figures/panel_data.m` sets every field but C to NaN for a household from the age it is bankrupt (`d.solvent`; `d.sim` unchanged). Every average in `+figures/compare.m`, `dashboard.m`, `step_dashboard.m`, `robustness.m` and `income_decomposition.m` skips NaN; the page subtitles and consumption panels say what each line averages over. `+figures/mortgage.m` (the contract per household) reads the unmasked panel, as before. Without the absorbing floor nothing changes.

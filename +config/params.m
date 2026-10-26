@@ -105,7 +105,7 @@ p.b0    = 3400 / (33000 * 1.3031);   % median deposits under 25 over the BKV age
 p.b_alt = 9800 / (33000 * 1.3031);   % same for ages 25-35 (placeholder)
 
 % Numerics
-p.grid_dims     = [20 20 12 8]; % base nodes on (u1, u2, u3, q); the entry anchors add up to two on u1 and u2, and one on q
+p.grid_dims     = [32 16 40 4]; % base nodes on (u1, u2, u3, q); the entry anchors add up to two on u1 and u2, and one on q
 p.gh_n          = 5;          % Gauss-Hermite nodes per shock
 p.gh_n_reit     = [];         % nodes for the REIT shock; [] uses gh_n
 p.N_c           = 11;         % sets the consumption step of the per-node search; 11 starts the sweep's second round at its first round's half-step
@@ -114,15 +114,15 @@ p.use_refine    = true;       % global (c, pi) sweep before fmincon at every nod
 p.fmincon_algorithm = 'active-set';   % local solve: 'active-set', 'interior-point' or 'sqp'
 p.fmincon_objective = 'ce';   % what fmincon minimises: 'ce' (certainty-equivalent units) or 'utility'
 p.interp_method = 'linear';   % continuation interpolant: 'linear', 'makima' or 'spline'
-p.pi_nothing_saved = 'one';   % equity share stored where nothing is saved: 'one' or 'limit' (the first euro's share)
+p.pi_nothing_saved = 'limit'; % equity share stored where nothing is saved: 'limit' (the first euro's share) or 'one'
 p.lambda_lo     = [];         % bottom of the u1 axis; [] = 0.0008, or 0.0002 with housing
 p.lambda_hi     = [];         % top of the u1 axis; [] = min(0.9, 3/(1+h_mult)), or 1 without housing
-p.grid_pow      = 1;          % > 1 bunches u1 nodes toward the bottom
-p.grid_pow_u2   = 1;          % > 1 bunches u2 nodes toward 1
+p.grid_pow      = 3;          % > 1 bunches u1 nodes toward the bottom
+p.grid_pow_u2   = 3;          % > 1 bunches u2 nodes toward 1
 p.u2_lo         = 0;          % bottom of the u2 axis
 p.u3_lo         = 0;          % bottom of the u3 axis
 p.u3_hi         = 1;          % top of the u3 axis
-p.grid_pow_u3   = 1;          % > 1 bunches u3 nodes toward the bottom
+p.grid_pow_u3   = 1;          % 1: evenly spaced; > 1 bunches u3 nodes toward the bottom
 p.q_hi          = 2.5;        % top of the q axis
 p.grid_pow_q    = 2;          % > 1 bunches q nodes toward 0
 p.grid_nodes    = [];         % explicit axis nodes, overriding the rules above

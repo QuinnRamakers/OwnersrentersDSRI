@@ -34,10 +34,11 @@ ladder.report('quick')
 
 `run_model` writes `results_<tenure>.mat` and a dashboard PNG per tenure to
 the output directory: `CGM_OUTPUT_DIR` if set, otherwise the current folder.
-At the default grid (`p.grid_dims = [20 20 12 8]`, `gh_n = 5`) a renter takes
-about 8 minutes on 16 cores. An owner takes several times longer, because the
-mortgage adds the q axis for 30 years (not yet measured at this grid). For a
-quick look, shrink the grid through the environment and clear it afterwards:
+At the default grid (`p.grid_dims = [32 16 40 4]`, bunched u1 and u2, `gh_n = 5`)
+a renter takes about half an hour on 16 cores (estimated) and an owner about 4 hours, since
+with maintenance on the purchase price the q axis is a state at every age
+(about 100 minutes with maintenance on the current value). For a quick look,
+shrink the grid through the environment and clear it afterwards:
 
 ```matlab
 setenv('CGM_STATE_GRID', '8 6 6 4'); setenv('CGM_GH_N', '3');
@@ -109,7 +110,7 @@ have their own income process, so steps 4–6 have two (`nohousing_renter`,
 |---|---|---|---|---|
 | `quick` | [12 12 8 6] | 3 | 4,000 | under a minute; the whole ladder in 6 minutes |
 | `standard` | [16 16 10 8] | 5 | 10,000 | about 4 minutes |
-| `fine` | [20 20 12 8] | 5 | 10,000 | about 8 minutes |
+| `fine` | [32 16 40 4] (as `config.params`) | 5 | 10,000 | renter about half an hour (estimated); owner 100 minutes with maintenance on the current value, about 4 hours on the purchase price (step 16) |
 
 The times are from before the q axis; an owner from step 7b on takes several
 times longer (step 7b at standard: 366 s, against 83 s at step 7). Steps 1-6

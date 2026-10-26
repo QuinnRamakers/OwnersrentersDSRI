@@ -137,10 +137,10 @@ differences rather than levels.
 With the absorbing floor at EUR 5,000 (24-25 October 2026,
 `docs/HANDOFF_2026-10-26.md`): each grid axis was refined on its own at step
 16. u2 and q change nothing, u3 matters most, u1 moves young households, and
-nothing settles before about 35-40. Chosen: bunched u1 at 32, u2 at 16, u3 at
-40, q at 4. Open: putting it into `config.params` (and how to space u3), and
-why the axes converge slowly (filling the grid points below the floor from the
-solvent side, tested on branch edge-fix, did not help).
+nothing settles before about 35-40. In `config.params` since 26 October 2026:
+bunched u1 at 32, u2 at 16, u3 at 40 evenly spaced, q at 4. Open: why the axes
+converge slowly (filling the grid points below the floor from the solvent side,
+tested on branch edge-fix, did not help).
 
 - `docs/SOLVER_BOUNDS.md` lists every limit in the solver and the simulation
   that is not part of the economics. Open there: the sweep's consumption
@@ -161,10 +161,12 @@ solvent side, tested on branch edge-fix, did not help).
   consumption, 48x48 within the stop rule. The same placement converges the
   owner at housing step 7b (16x16) and at step 13 (24x24); there u3 also
   needs points near zero (`grid_pow_u3 = 2`) for the oldest owners
-  (`docs/HANDOFF_2026-10-17.md`). To decide: the defaults of
-  `pi_nothing_saved` and `grid_pow_u3`; whether `ladder.numerics` carries the
-  placement (every saved ladder result would re-solve); whether points that
-  follow age (`grid_nodes.u1_age`, tried at step 12 only) stay as an option.
+  (`docs/HANDOFF_2026-10-17.md`). Since 26 October 2026 the bunched placement
+  and the limit share are the defaults in `config.params`, so every ladder
+  step uses them at every numerics setting (saved ladder results re-solve).
+  To decide: whether the ladder's `standard` numerics ([16 16 10 8]) should
+  take the production counts too, and whether points that follow age
+  (`grid_nodes.u1_age`, tried at step 12 only) stay as an option.
 - The global (c, pi) sweep is most of the solve time. A cheaper search that
   keeps its accuracy would make the fine grid routine. At step 13 dropping it
   (`use_refine = false`) keeps the answer within the stop rule and halves the

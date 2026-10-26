@@ -8,7 +8,7 @@ function n = numerics(name)
 %
 %     quick      [12 12 8 6], gh_n 3,  4,000 households   for exploring
 %     standard   [16 16 10 8], gh_n 5, 10,000 households  the default
-%     fine       [20 20 12 8], gh_n 5, 10,000 households  as config.params
+%     fine       [32 16 40 4], gh_n 5, 10,000 households  as config.params
 %
 %   dims are base node counts on (u1, u2, u3, q) (the entry anchors add up to
 %   two on u1 and u2, and one on q). Steps without housing or a DC pillar
@@ -21,7 +21,7 @@ function n = numerics(name)
 switch char(name)
     case 'quick',    n = struct('dims', [12 12 8 6],  'gh_n', 3, 'N_sim', 4000);
     case 'standard', n = struct('dims', [16 16 10 8], 'gh_n', 5, 'N_sim', 10000);
-    case 'fine',     n = struct('dims', [20 20 12 8], 'gh_n', 5, 'N_sim', 10000);
+    case 'fine',     n = struct('dims', [32 16 40 4], 'gh_n', 5, 'N_sim', 10000);
     otherwise
         error('ladder:numerics', 'numerics must be quick, standard or fine (got %s).', char(name));
 end

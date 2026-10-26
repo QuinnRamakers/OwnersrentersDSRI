@@ -110,15 +110,16 @@ places such points from a solved panel. It was tried on step 12 only
 
 ## 3. Manual, by rule
 
-Primitives of `config.params`, all at their full-axis, uniform defaults except
-`lambda_lo`:
+Primitives of `config.params`, at full-axis defaults; u1 and u2 bunched since 26
+October 2026 (`grid_pow = 3`, `grid_pow_u2 = 3`, with `pi_nothing_saved = 'limit'` and
+`grid_dims = [32 16 40 4]`; CALIBRATION.md, Numerics):
 
 | field | axis | default | effect |
 |-------|------|---------|--------|
 | `lambda_lo`, `lambda_hi` | `u1` | `[]`, `[]` | ends of the income axis; `lambda_lo = []` is 0.0008, or 0.0002 with housing; `lambda_hi = []` is `min(0.9, 3/(1 + h_mult))`, or 1 without housing |
-| `grid_pow` | `u1` | 1 | `> 1` bunches nodes toward the low end |
+| `grid_pow` | `u1` | 3 | `> 1` bunches nodes toward the low end |
 | `u2_lo` | `u2` | 0 | bottom of the illiquid axis |
-| `grid_pow_u2` | `u2` | 1 | `> 1` bunches nodes toward 1 |
+| `grid_pow_u2` | `u2` | 3 | `> 1` bunches nodes toward 1 |
 | `u3_lo`, `u3_hi` | `u3` | 0, 1 | ends of the pension-share axis |
 | `grid_pow_u3` | `u3` | 1 | `> 1` bunches nodes toward the bottom |
 
