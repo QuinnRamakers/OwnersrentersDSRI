@@ -84,7 +84,7 @@ p.r_m           = 0.0348;     % real mortgage rate, the total rate (r plus the m
 p.N_mort        = 30;         % mortgage term, years
 p.LTV           = 1.00;       % only 1.00 is implemented
 p.mortgage      = 'annuity';  % 'annuity': fixed real payment on the purchase price; 'proportional': rate times current value (step 7)
-p.maint_on_purchase = false;  % true: maintenance theta times the purchase price (test)
+p.maint_on_purchase = true;   % true: maintenance theta times the purchase price; false: times the current value (ladder steps 7-16)
 p.sell_cost     = 0.025;      % sale cost when the house is bequeathed
 
 % Taxes. EET on the DC pillar; box 3 on the liquid account only.

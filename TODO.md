@@ -134,10 +134,13 @@ differences rather than levels.
 
 ## 6. Numerics
 
-Parked (Quinn, 18 October 2026): all grid and interpolation work waits on
-item 1. At step 16 no owner grid converges at any age, since refining u3 makes
-owners hoard into retirement, and the error near the floor sits in the
-interpolation or the model rather than the grid (HANDOFF.md, 18 October).
+With the absorbing floor at EUR 5,000 (24-25 October 2026,
+`docs/HANDOFF_2026-10-26.md`): each grid axis was refined on its own at step
+16. u2 and q change nothing, u3 matters most, u1 moves young households, and
+nothing settles before about 35-40. Chosen: bunched u1 at 32, u2 at 16, u3 at
+40, q at 4. Open: putting it into `config.params` (and how to space u3), and
+why the axes converge slowly (filling the grid points below the floor from the
+solvent side, tested on branch edge-fix, did not help).
 
 - `docs/SOLVER_BOUNDS.md` lists every limit in the solver and the simulation
   that is not part of the economics. Open there: the sweep's consumption

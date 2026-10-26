@@ -43,6 +43,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Maintenance on the purchase price the default, for now; the findings documented (spec: none, asked by Quinn in Claude Code)
+Quinn: document what was found, set maintenance on the purchase price as the default for now (keep the current value as an option), and push everything.
+Changed: `+config/params.m`, `maint_on_purchase = true`. `+ladder/steps.m`: step 1 sets `maint_on_purchase = false`, so steps 1-16 keep their calibration; new last step 17 `maint_purchase` sets it true, so the last step equals `config.params`. `tests/run_tests.m`, `ladder_branches`: step 17 is the last, step 16 on the current value and step 17 on the purchase price. CALIBRATION.md (`maint_on_purchase` row and the paragraph on it), README.md (ladder table, step 17 is `config.params`), CLAUDE.md (the known limit on grids, rewritten from the 24-26 October work), TODO.md (Numerics). New `docs/HANDOFF_2026-10-26.md`: the figures to look at, what was decided (search routine, edge fix rejected, the grid u1 32 / u2 16 / u3 40 / q 4, the maintenance default), what was found, run times, decisions open, how to reproduce, commits.
+Not changed: the grid in `config.params` (still uniform 20x20x12x8; the chosen grid and the u3 spacing are open, docs/HANDOFF_2026-10-26.md section 5); c_min (still 0). The grid-study case names build on `ladder.params(16)`, which keeps the current value; `_mop` gives the purchase price.
+Checks run: `run_tests(solve=false)` 0 of 11 failed. Saved step-16 owner solves (with and without `_mop`) are still the same calibration as `case_params` builds now (`ladder.same_calibration` 1 and 1); `ladder.params(17).maint_on_purchase` and `config.params().maint_on_purchase` both 1. The full `run_tests` was not run.
+Commit: this entry with the code and documents, pushed to main.
+Open: as in docs/HANDOFF_2026-10-26.md, section 5.
+
 ### 2026-10-25 Owner grid with maintenance on the purchase price: results (spec: none, asked by Quinn in Claude Code)
 Follows the expectations entry below (e4d1b85). Ran the five `_mop` solves, two at a time, then the new `diagnostics/nibud/maintenance_rule_page.m`. Output (gitignored): `summary_step16/16_cmin5000_owner_maintenance_rules.png`.
 Peak mean liquid saving / bankrupt by 85 / median consumption at 30 / at 70 (times entry income), solve minutes, purchase price (current value in brackets):

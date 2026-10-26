@@ -266,7 +266,7 @@ tenure; the rest of the model reads it, and `h_mult = 0` means no housing.
 | `N_mort` | 30 | Standard Dutch annuity mortgage term |
 | `LTV` | 1.00 | Asserted — see below |
 | `mortgage` | `'annuity'` | The contract, see below. `'proportional'` at ladder step 7 |
-| `maint_on_purchase` | false | true charges maintenance on the purchase price (a test, step 7b) |
+| `maint_on_purchase` | true | Maintenance on the purchase price (Quinn, 26 October 2026, for now; ladder step 17). false charges it on the current house value, as at ladder steps 7-16 |
 | `sell_cost` | 0.025 | Seller transaction cost at bequest, Hambel et al. (2026). Inert while `chi = 0` |
 
 For a renter, `alpha` and `h_mult` enter only as the product `alpha * h_mult`:
@@ -294,8 +294,15 @@ it. The bequest is not netted for the outstanding balance, which waits for
 `chi > 0` (TODO.md, item 4).
 
 `maint_on_purchase = true` charges maintenance on the purchase price,
-`theta * H0`, instead of the current value. It is a test run as step 7b's
-sensitivity, not the production setting.
+`theta * H0`, instead of the current value. It is the production setting
+since 26 October 2026, for now (Quinn), appended as ladder step 17 so that
+steps 7-16 keep the current value; step 7b still varies it as a sensitivity.
+With the absorbing floor at EUR 5,000 at step 16, owners on the current value
+went bankrupt mostly in old age (7-14% by 85, depending on the grid), as
+maintenance on a house whose real price grows 3.73% a year outruns the first
+pillar; on the purchase price about 1% went bankrupt, all while the mortgage
+ran (`docs/HANDOFF_2026-10-26.md`). With it, `q` is an owner's state at every
+age, and an owner solve takes about 2-2.5 times as long.
 
 `LTV` is asserted equal to 1.00 because that is the only value consistent with
 the rest of the model: the household is endowed with the house at `t = 1` with
