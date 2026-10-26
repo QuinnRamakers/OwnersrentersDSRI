@@ -368,13 +368,14 @@ What to keep in mind:
 | Parameter | Value | Source |
 |---|---|---|
 | `phi_floor` | 1e-6 | A numerical bound, not a calibration target. 1e-4 is an admissible alternative |
-| `c_min` | 0 (off) | The absorbing floor, euros a year (2025) at median labour income. Source open (Nibud minimum example budgets, spending after housing at the bijstand level); trial values 6,000, 8,000 and 10,000 |
+| `c_min` | 5,000 | The absorbing floor, euros a year (2025) at median labour income (Quinn, 26 October 2026; ladder step 18, steps 1-17 have 0, the yearly top-up). The level the grid and search-routine studies of 24-26 October were run at (`docs/HANDOFF_2026-10-26.md`). Source still open (Nibud minimum example budgets, spending after housing at the bijstand level); 12,000 was too high (most owners bankrupt by 30) |
 | `phi_abs` | 0 (off) | The absorbing floor as one share of permanent labour income, the alternative to `c_min` |
 
 ### The absorbing floor (`c_min`, `phi_abs`)
 
-Added on 23 October 2026 (`docs/prompts/absorbing_floor.md`); off until the
-level is chosen. With `c_min > 0` or `phi_abs > 0` the floor is an absorbing
+Added on 23 October 2026 (`docs/prompts/absorbing_floor.md`); in production at
+c_min = EUR 5,000 since 26 October 2026 (ladder step 18). With `c_min > 0` or
+`phi_abs > 0` the floor is an absorbing
 state. A household whose liquid resources fall below F_t = phi_t Y_t goes
 bankrupt: it consumes F_{t*} every year until it dies and makes no further
 choices, and its liquid wealth, DC pot, house and later income are gone. Its
@@ -403,9 +404,13 @@ sources considered are in the prompt.
 Decided (Quinn, 23 October 2026): the share by age, phi_t = c_min / Ybar_t;
 the same share for both tenures, set on the owners' profile; the floor is
 also the lowest consumption of a solvent household; bankruptcy is
-involuntary only. Open: the value and source of c_min, and a bequest rule for
-bankrupt households before `chi` is switched on (a household that leaves
-nothing has a bequest utility of minus infinity at gamma > 1).
+involuntary only. Decided (Quinn, 26 October 2026): adopted in production at
+c_min = 5,000, as ladder step 18. At step 16 with it, about 1% of owners with
+maintenance on the purchase price went bankrupt, all while the mortgage ran,
+and 15-17% of renters by 100 (`docs/HANDOFF_2026-10-26.md`). Open: the source
+of c_min, and a bequest rule for bankrupt households before `chi` is switched
+on (a household that leaves nothing has a bequest utility of minus infinity at
+gamma > 1).
 
 ### The top-up floor (`phi_floor`, used when the absorbing floor is off)
 

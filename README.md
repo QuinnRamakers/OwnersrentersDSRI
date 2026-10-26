@@ -91,8 +91,9 @@ each checked on the baseline without the other:
 | 15 | `box3` | 14 | box-3 tax at 36% on the liquid account, no loss offset |
 | 16 | `nibud` | 15 | the house at entry is the Nibud 2026 maximum mortgage at the tenure's income at 25 (4.45x owners, 4.16x renters) |
 | 17 | `maint_purchase` | 16 | owners' maintenance on the purchase price instead of the current house value (steps 7-16 keep the current value) |
+| 18 | `floor` | 17 | the absorbing consumption floor at c_min = EUR 5,000 (steps 1-17 keep the yearly top-up at 1e-6 of income) |
 
-Step 17 is `config.params()` exactly; `run_tests` checks this. To change the
+Step 18 is `config.params()` exactly; `run_tests` checks this. To change the
 calibration, edit a value in a step or append a step after the last one (a
 floor level, a housing multiple from LISS, the REIT leg). A step inserted between
 two others takes a letter (7b), so the steps after it keep their numbers.

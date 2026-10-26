@@ -43,6 +43,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 The absorbing floor at EUR 5,000 in production (spec: none, asked by Quinn in Claude Code)
+Quinn asked why the absorbing floor was not at 5,000 in production (it had never been adopted; 5,000 was the level of the runs) and then: adopt it at c_min 5,000, as a new last ladder step, with `config.params` and CALIBRATION.md to match.
+Changed: `+config/params.m`, `c_min = 5000`. `+ladder/steps.m`: step 1 also sets `c_min = 0`, so steps 1-17 keep the yearly top-up and their calibration (steps 1-3, with income in CGM units, could not take a floor in euros); new last step 18 `floor` sets `c_min = 5000`. `tests/run_tests.m`: `ladder_branches` (18 steps; the top-up to step 17, the floor at step 18), `floor_derive` (production has the floor at 5,000; step 17 has it off; the `phi_abs` case sets `c_min = 0`). CALIBRATION.md (the `c_min` row and "The absorbing floor"), README.md (ladder table, step 18 is `config.params`), CLAUDE.md (known limit), TODO.md (item 4).
+Production is now: maintenance on the purchase price, the absorbing floor at EUR 5,000, the grid [32 16 40 4] with bunched u1 and u2 and the limit share, active-set with N_c 11. Saved step-16 solves are still the same calibration as before (checked on two). The full test suite's small solves that build on `config.params` (`smoke_both_tenures`, `figures_render`) now run with the floor; they were not run.
+Checks run: `run_tests(solve=false)` 0 of 11 failed; `config.params` c_min 5,000, absorbing, floor 0.126 of owner income at 25; `ladder.params` c_min 0 at steps 1-3, 16 and 17, 5,000 at 18. The full `run_tests` was not run.
+Commit: this entry with the code and documents, pushed to main.
+Open: the source of c_min; a bequest rule for bankrupt households before `chi` is switched on.
+
 ### 2026-10-26 The chosen grid in production (spec: none, asked by Quinn in Claude Code)
 Quinn: put the chosen grid into `config.params`: `grid_dims` [32 16 40 4], `grid_pow` 3, `grid_pow_u2` 3, `pi_nothing_saved` 'limit', u3 evenly spaced, with the ladder and CALIBRATION.md to match.
 Changed: `+config/params.m` (those five; `grid_pow_u3` stays 1). `+ladder/numerics.m`: `fine` is [32 16 40 4], as `config.params`; `quick` and `standard` keep their counts but, like every ladder step, now take the bunched placement and the limit share from `config.params`. `tests/run_tests.m`, `floor_off_identical`: pins its baseline's placement (even u1 and u2, `pi_nothing_saved = 'one'`) as well as its search routine. CALIBRATION.md, Numerics (`grid_dims`, `gh_n`, `pi_nothing_saved`, `grid_pow`/`grid_pow_u2`, `grid_pow_u3`, the paragraph after the table), README.md (run times, the numerics table), GRIDS.md (defaults), CLAUDE.md (known limit), TODO.md (Numerics).

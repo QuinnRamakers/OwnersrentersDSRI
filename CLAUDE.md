@@ -32,7 +32,7 @@ Use the session-start skill at the beginning and the session-end skill at the en
 ## Known limits (do not claim past these)
 
 - Grids at the absorbing floor of EUR 5,000 (`docs/HANDOFF_2026-10-26.md`): u2 and q change nothing; u3 matters most (for owners on the current house value above all) and u1 moves young households. The production grid since 26 October 2026 is bunched u1 at 32, u2 at 16, u3 at 40 evenly spaced and q at 4 (`config.params`). Nothing is settled before about 35-40, and welfare levels move with every refinement. Report behaviour, not welfare levels, until the housing outflow is settled (TODO.md, item 1). Production charges owners' maintenance on the purchase price since 26 October 2026 (ladder step 17); steps 7-16 use the current value.
-- The absorbing floor (`c_min`) is implemented and off; it is not adopted. With it on, consumption is stable across grids from 40 but the equity share is not, welfare levels move 4-5% per grid refinement, and owner bankruptcy is illiquidity (no equity release). Source: `docs/HANDOFF_2026-10-24.md`.
+- The absorbing floor is in production at c_min = EUR 5,000 since 26 October 2026 (ladder step 18; steps 1-17 have the yearly top-up). The source of the level is open, and a bequest rule for bankrupt households is needed before `chi` is switched on. Welfare levels move with every grid refinement. With maintenance on the current value, owner bankruptcy is illiquidity (no equity release). Sources: `docs/HANDOFF_2026-10-24.md`, `docs/HANDOFF_2026-10-26.md`.
 - The REIT parameters are placeholders and the REIT leg is off.
 - Free DC investment choice, glide-path comparisons and the September diagnostics live on the `solver-active-set` branch (tag `research-2026-09`), not here.
 

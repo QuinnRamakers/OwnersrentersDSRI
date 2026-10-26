@@ -99,9 +99,11 @@ assert(ladder.parent('housing') == ladder.index('corr_SL'), 'housing parent');
 assert(ladder.parent('annuity') == ladder.index('housing'), 'annuity parent');
 assert(ladder.parent('housing_corr') == ladder.index('annuity'), 'housing_corr parent');
 assert(ladder.index('7b') == ladder.index('annuity') && ladder.index(8) == ladder.index('housing_corr') ...
-    && ladder.index(17) == numel(S), 'step numbers');
+    && ladder.index(18) == numel(S), 'step numbers');
 assert(~ladder.params('nibud').maint_on_purchase && ladder.params('maint_purchase').maint_on_purchase, ...
     'maintenance on the current value to step 16, on the purchase price at step 17');
+assert(~ladder.params('maint_purchase').floor_absorbing && ladder.params('floor').c_min == 5000, ...
+    'the yearly top-up to step 17, the absorbing floor at step 18');
 assert(strcmp(ladder.params('housing').mortgage, 'proportional') && ...
     strcmp(ladder.params('annuity').mortgage, 'annuity') && ...
     strcmp(ladder.params('housing_corr').mortgage, 'annuity'), 'mortgage contract along the ladder');
@@ -275,8 +277,10 @@ function floor_derive()
 % is phi_floor. derive refuses both positive, c_min with income not in euros,
 % negative values and a floor not above phi_floor.
 p = config.params();
-assert(~p.floor_absorbing && all(p.phi_path == p.phi_floor) && numel(p.phi_path) == p.T, ...
-    'production: the absorbing floor is not off');
+assert(p.floor_absorbing && p.c_min == 5000 && numel(p.phi_path) == p.T, ...
+    'production: the absorbing floor is not at EUR 5,000');
+q = ladder.params('maint_purchase');
+assert(~q.floor_absorbing && all(q.phi_path == q.phi_floor), 'step 17: the absorbing floor is not off');
 S = cumprod([1; config.survival(p)]);
 for t = 1:p.T
     k = (t:p.T).';
@@ -288,7 +292,7 @@ r = config.params(false); r.is_owner = false; r.c_min = 8000; r = config.derive(
 dev = max(abs(o.phi_path .* exp(config.income_profile(o)) / 8000 - 1));
 assert(o.floor_absorbing && r.floor_absorbing && dev < 1e-12, 'the floor at the owners'' profile is not c_min (%.2g)', dev);
 assert(isequal(o.phi_path, r.phi_path), 'the share differs between the tenures');
-q = config.params(false); q.phi_abs = 0.2; q = config.derive(q);
+q = config.params(false); q.c_min = 0; q.phi_abs = 0.2; q = config.derive(q);
 work = 1 : q.t_ret - 1; ret = q.t_ret : q.T;
 assert(q.floor_absorbing && all(q.phi_path(work) == 0.2) && ...
     max(abs(q.phi_path(ret) * q.replacement / 0.2 - 1)) < 1e-12, 'phi_abs path');

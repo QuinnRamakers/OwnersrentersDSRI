@@ -96,7 +96,7 @@ p.tau_wealth     = 0;         % alternative box-3 levy on the liquid balance
 
 % Consumption floor and search guard
 p.phi_floor    = 1e-6;        % resources guaranteed each period, share of current gross income; a numerical bound, not calibrated
-p.c_min        = 0;           % absorbing floor, euros a year at median labour income; 0 = off
+p.c_min        = 5000;        % absorbing floor, euros a year at median labour income; 0 = off (ladder steps 1-17)
 p.phi_abs      = 0;           % absorbing floor as one share of permanent labour income; 0 = off
 p.abs_node_test = true;       % absorbing floor: test bankruptcy at each quadrature node instead of interpolating across it
 
