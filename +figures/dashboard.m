@@ -21,7 +21,8 @@ FS = 10; FT = 11; LFS = 9; LWD = 1.9;
 fig = figure('Visible', 'off', 'Position', [30 30 2750 1240], 'Color', 'w');
 tl  = tiledlayout(fig, 3, 5, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {['Dashboard — ' title_text(r)], ...
-    'Lines show the average across simulated households; shaded bands show the 10th-90th percentile range'}, ...
+    ['Lines show the average across simulated households, shaded bands the 10th-90th percentile range: ' ...
+     'consumption over all households, everything else over households not bankrupt at that age']}, ...
     'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
 
 % (a) Income and housing costs
@@ -42,7 +43,7 @@ legend(ax, 'Location', 'northwest', 'FontSize', LFS);
 % (b) Consumption
 ax = tile(tl, ret, FS);
 band(ax, a, d.C * sc, col, 'Consumption spending', LWD);
-ylabel(ax, d.unit); title(ax, '(b)  Consumption spending over the lifecycle', 'FontSize', FT);
+ylabel(ax, d.unit); title(ax, '(b)  Consumption spending over the lifecycle (all households)', 'FontSize', FT);
 
 % (c) Disposable income: where it comes from, where it goes
 ax = tile(tl, ret, FS);
@@ -51,7 +52,7 @@ title(ax, '(c)  Disposable income', 'FontSize', FT);
 
 % (d) Net worth
 ax = tile(tl, ret, FS);
-ha = area(ax, a, [mean(d.X, 1); mean(d.A, 1); mean(d.H_net, 1)].' * sc);
+ha = area(ax, a, [mean(d.X, 1, 'omitnan'); mean(d.A, 1, 'omitnan'); mean(d.H_net, 1, 'omitnan')].' * sc);
 ha(1).FaceColor = [0.50 0.68 0.84]; ha(2).FaceColor = [0.95 0.75 0.28]; ha(3).FaceColor = [0.42 0.76 0.48];
 set(ha, 'FaceAlpha', 0.85);
 ha(1).DisplayName = 'Liquid savings';
@@ -93,7 +94,7 @@ ylabel(ax, d.unit);
 
 % (g) Total wealth
 ax = tile(tl, ret, FS);
-m = @(M) mean(M, 1) * sc;
+m = @(M) mean(M, 1, 'omitnan') * sc;
 plot(ax, a, m(d.HC), '-', 'Color', [0.55 0.35 0.65], 'LineWidth', LWD, 'DisplayName', 'Value of future income (human capital)');
 plot(ax, a, m(d.X), '-', 'Color', [0.30 0.50 0.75], 'LineWidth', LWD, 'DisplayName', 'Liquid savings');
 if d.has_pension

@@ -66,7 +66,7 @@ k = 0;                                           % panel letter counter
 fig = figure('Visible', 'off', 'Position', [30 30 2750 1720], 'Color', 'w');
 tl  = tiledlayout(fig, 4, 5, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {ttl, ['Black = ' labels{1} ' (the reference, with its 10th-90th percentile band); ' ...
-    'lines are means across simulated households']}, 'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
+    'lines are means across simulated households: consumption over all of them, everything else over those not bankrupt at that age']}, 'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
 
 % Row 1: where income comes from and what housing takes, every result
 owner = cellfun(@(r, d) d.has_housing && r.p.is_owner, rs, D);
@@ -118,7 +118,7 @@ for j = 1:4
     title(ax, sprintf('(%s)  %s', letter(k), series{j, 1}), 'FontSize', FT);
     if j == 1
         hy = income_lines(ax, D{1}, scl(1));
-        title(ax, sprintf('(%s)  Consumption and income (black''s households)', letter(k)), 'FontSize', FT);
+        title(ax, sprintf('(%s)  Consumption (all households) and income (black''s households)', letter(k)), 'FontSize', FT);
         legend(ax, [h(1), hy], [labels(1), {'gross income', 'income after tax, contributions and housing'}], ...
             'Location', 'northwest', 'FontSize', LFS, 'Interpreter', 'none');
     end
@@ -328,7 +328,7 @@ function h = income_lines(ax, d, sc)
 % Mean gross income and income after tax, contributions and housing costs of
 % the reference households, as thin grey lines behind consumption.
 c = [0.45 0.45 0.45];
-h(1) = plot(ax, d.ages, mean(d.Y, 1) * sc, '--', 'Color', c, 'LineWidth', 1.3);
-h(2) = plot(ax, d.ages, mean(d.disp_inc, 1) * sc, ':', 'Color', c, 'LineWidth', 1.6);
+h(1) = plot(ax, d.ages, mean(d.Y, 1, 'omitnan') * sc, '--', 'Color', c, 'LineWidth', 1.3);
+h(2) = plot(ax, d.ages, mean(d.disp_inc, 1, 'omitnan') * sc, ':', 'Color', c, 'LineWidth', 1.6);
 end
 

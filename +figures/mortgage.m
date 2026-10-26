@@ -37,8 +37,8 @@ assert(p.is_owner && p.h_mult > 0, 'figures:mortgage', 'needs an owner result wi
 d  = figures.panel_data(r);
 a  = d.ages; sc = d.scale; T = numel(a);
 n  = p.N_mort; rm = p.r_m; pin = opts.inflation; rn = (1 + rm) * (1 + pin) - 1;
-H0 = d.H(1, 1); L = p.LTV * H0;                 % every household enters with the same house
-assert(all(abs(d.H(:, 1) - H0) < 1e-9 * H0), 'figures:mortgage', 'households enter with different houses');
+H0 = d.sim.H(1, 1); L = p.LTV * H0;                 % every household enters with the same house
+assert(all(abs(d.sim.H(:, 1) - H0) < 1e-9 * H0), 'figures:mortgage', 'households enter with different houses');
 ann  = @(i) i * (1 + i)^n / ((1 + i)^n - 1);
 owed = @(i, e) (e < n) .* ((1 + i)^n - (1 + i).^e) / ((1 + i)^n - 1);   % balance share after e payments
 
@@ -46,15 +46,15 @@ e = 0:T-1;                                      % years since purchase
 on = e < n;                                     % paying years
 annuity = strcmp(p.mortgage, 'annuity');
 % Payments, real euros
-pay_model = d.mortgage;                          % from the simulation
+pay_model = d.sim.m_pay;                          % from the simulation
 pay_real  = (L * ann(rm)) .* on;
 pay_nom   = (L * ann(rn)) .* on ./ (1 + pin).^(e + 1);   % paid at the end of each year
 % Balances at the start of each year, real euros
 bal_real  = L .* owed(rm, e);
 if annuity
-    bal_model = repmat(bal_real, size(d.H, 1), 1);
+    bal_model = repmat(bal_real, size(d.sim.H, 1), 1);
 else
-    bal_model = owed(rm, e) .* d.H * p.LTV;      % a share of the current house
+    bal_model = owed(rm, e) .* d.sim.H * p.LTV;      % a share of the current house
 end
 bal_nom   = L .* owed(rn, e) ./ (1 + pin).^e;
 % Present value at entry of all payments, at r_m, each paid at the end of its year
@@ -100,9 +100,9 @@ else
     title(ax, '(a)  Annual mortgage payment', 'FontSize', FT);
 
     ax = tile(tl, FS);
-    band(ax, a, 100 * pay_model ./ d.Y, cm, LWD);
-    band(ax, a, 100 * pay_real ./ d.Y, cr, LWD);
-    if nom, band(ax, a, 100 * pay_nom ./ d.Y, cn, LWD); end
+    band(ax, a, 100 * pay_model ./ d.sim.Y, cm, LWD);
+    band(ax, a, 100 * pay_real ./ d.sim.Y, cr, LWD);
+    if nom, band(ax, a, 100 * pay_nom ./ d.sim.Y, cn, LWD); end
     xlim(ax, [25 60]); ylabel(ax, '% of gross income');
     title(ax, '(b)  Payment over gross income (each with its 10-90 band)', 'FontSize', FT);
 
@@ -151,12 +151,12 @@ else
             q(at(pay_model, 54), 10) * sc, q(at(pay_model, 54), 90) * sc, pay_real(a == 54) * sc) nv('; nominal %.1f', pay_nom(a == 54) * sc)]
         ''
         'Payment over gross income, mean:'
-        [sprintf('  age 25: model %.1f%%, real %.1f%%', 100 * mean(at(pay_model ./ d.Y, 25)), ...
-            100 * mean(at(pay_real ./ d.Y, 25))) nv(', nominal %.1f%%', 100 * mean(at(pay_nom ./ d.Y, 25)))]
-        [sprintf('  age 45: model %.1f%%, real %.1f%%', 100 * mean(at(pay_model ./ d.Y, 45)), ...
-            100 * mean(at(pay_real ./ d.Y, 45))) nv(', nominal %.1f%%', 100 * mean(at(pay_nom ./ d.Y, 45)))]
-        [sprintf('  age 54: model %.1f%%, real %.1f%%', 100 * mean(at(pay_model ./ d.Y, 54)), ...
-            100 * mean(at(pay_real ./ d.Y, 54))) nv(', nominal %.1f%%', 100 * mean(at(pay_nom ./ d.Y, 54)))]
+        [sprintf('  age 25: model %.1f%%, real %.1f%%', 100 * mean(at(pay_model ./ d.sim.Y, 25)), ...
+            100 * mean(at(pay_real ./ d.sim.Y, 25))) nv(', nominal %.1f%%', 100 * mean(at(pay_nom ./ d.sim.Y, 25)))]
+        [sprintf('  age 45: model %.1f%%, real %.1f%%', 100 * mean(at(pay_model ./ d.sim.Y, 45)), ...
+            100 * mean(at(pay_real ./ d.sim.Y, 45))) nv(', nominal %.1f%%', 100 * mean(at(pay_nom ./ d.sim.Y, 45)))]
+        [sprintf('  age 54: model %.1f%%, real %.1f%%', 100 * mean(at(pay_model ./ d.sim.Y, 54)), ...
+            100 * mean(at(pay_real ./ d.sim.Y, 54))) nv(', nominal %.1f%%', 100 * mean(at(pay_nom ./ d.sim.Y, 54)))]
         ''
         'Total paid over the term, real, undiscounted (multiples of the loan):'
         [sprintf('  model mean %.2f (p10 %.2f, p90 %.2f); real %.2f', mean(sum(pay_model, 2)) / L, ...

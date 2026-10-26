@@ -11,22 +11,22 @@ function income_decomposition(ax, d, p, lfs)
 
 a = d.ages; sc = d.scale;
 hold(ax, 'on');
-ap = area(ax, a, [mean(d.takehome, 1); mean(d.annuity, 1)].' * sc);
+ap = area(ax, a, [mean(d.takehome, 1, 'omitnan'); mean(d.annuity, 1, 'omitnan')].' * sc);
 ap(1).FaceColor = [0.35 0.62 0.42]; ap(2).FaceColor = [0.20 0.55 0.55];
 set(ap, 'FaceAlpha', 0.80, 'EdgeColor', 'none');
 ap(1).DisplayName = 'Income received after tax and contributions (wages, then state pension)';
 ap(2).DisplayName = 'Private pension payment after tax';
 if d.has_housing && p.is_owner
-    an = area(ax, a, -[mean(d.maintenance, 1); mean(d.mortgage, 1)].' * sc);
+    an = area(ax, a, -[mean(d.maintenance, 1, 'omitnan'); mean(d.mortgage, 1, 'omitnan')].' * sc);
     an(1).FaceColor = [0.90 0.55 0.20]; an(2).FaceColor = [0.65 0.15 0.15];
     set(an, 'FaceAlpha', 0.80, 'EdgeColor', 'none');
     an(1).DisplayName = 'Home maintenance cost'; an(2).DisplayName = 'Mortgage payment';
 elseif d.has_housing
-    an = area(ax, a, -mean(d.rent, 1).' * sc);
+    an = area(ax, a, -mean(d.rent, 1, 'omitnan').' * sc);
     set(an, 'FaceColor', [0.80 0.30 0.30], 'FaceAlpha', 0.80, 'EdgeColor', 'none', 'DisplayName', 'Rent payment');
 end
-plot(ax, a, mean(d.disp_inc, 1) * sc, 'k-', 'LineWidth', 2.0, 'DisplayName', 'Net disposable income');
-plot(ax, a, mean(d.Y, 1) * sc, '--', 'Color', [0.45 0.45 0.45], 'LineWidth', 1.2, ...
+plot(ax, a, mean(d.disp_inc, 1, 'omitnan') * sc, 'k-', 'LineWidth', 2.0, 'DisplayName', 'Net disposable income');
+plot(ax, a, mean(d.Y, 1, 'omitnan') * sc, '--', 'Color', [0.45 0.45 0.45], 'LineWidth', 1.2, ...
     'DisplayName', 'Gross income (before deductions, for reference)');
 yline(ax, 0, 'k-', 'HandleVisibility', 'off', 'LineWidth', 0.5);
 ylabel(ax, d.unit);

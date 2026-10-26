@@ -16,6 +16,13 @@ function d = panel_data(r)
 %   value of future income), net_worth = X + A + H_net, eq_liquid and eq_pension
 %   (stock held in the liquid account after consumption and in the DC fund),
 %   fin (liquid saving plus the fund balance those stock holdings sit in).
+%
+%   With the absorbing floor, every field except C is NaN for a household
+%   from the age it is bankrupt (d.solvent is false there), so the figures,
+%   which average with 'omitnan', show income, housing costs, the pension,
+%   wealth and the shares over households not bankrupt at that age, and
+%   consumption over all households (the bankrupt consume the floor). d.sim
+%   is the panel as simulated, unchanged.
 
 p = r.p;
 if isfield(r, 'sim')
@@ -103,4 +110,16 @@ d.eq_liquid  = sim.pi .* X_sav;
 d.eq_pension = tau_full .* A_pre;
 d.fin        = X_sav + A_pre;
 d.tau_path   = mean(tau_full, 1);
+
+% Households not bankrupt at each age; the others leave every average but
+% consumption.
+d.solvent = true(N, T);
+if isfield(sim, 'absorbed'), d.solvent = ~sim.absorbed; end
+gone = ~d.solvent;
+if any(gone(:))
+    f = {'Y', 'X', 'A', 'H', 'c_frac', 'pi', 'disp_inc', 'ann_pay', 'takehome', 'annuity', 'rent', ...
+         'maintenance', 'mortgage', 'housing_cost', 'M_balance', 'H_net', 'net_worth', 'HC', ...
+         'eq_liquid', 'eq_pension', 'fin'};
+    for i = 1:numel(f), d.(f{i})(gone) = NaN; end
+end
 end

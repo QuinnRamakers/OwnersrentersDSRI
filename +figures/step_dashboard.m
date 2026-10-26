@@ -52,12 +52,12 @@ ret = unique([rA.p.retirement_age, rB.p.retirement_age]);
 
 fig = figure('Visible', 'off', 'Position', [30 30 2750 1300], 'Color', 'w');
 tl  = tiledlayout(fig, 3, 5, 'Padding', 'compact', 'TileSpacing', 'compact');
-title(tl, {ttl, [how ' Lines are means across simulated households; bands the 10th-90th percentile range']}, ...
+title(tl, {ttl, [how ' Lines are means across simulated households, bands the 10th-90th percentile range: consumption over all households, everything else over those not bankrupt at that age']}, ...
     'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
 
 panels = {
     '(a)  Gross income',                                 @(d) d.Y,             true
-    '(b)  Consumption',                                  @(d) d.C,             true
+    '(b)  Consumption (all households)',                 @(d) d.C,             true
     '(c)  Disposable income (after tax, contributions and housing)', @(d) d.disp_inc, true
     '(d)  Liquid savings',                               @(d) d.X,             true
     '(e)  Pension account balance',                      @(d) d.A,             true
@@ -105,7 +105,7 @@ ax = tile(tl, ret, FS);
 yline(ax, 0, 'k-', 'LineWidth', 0.8, 'HandleVisibility', 'off');
 a = D{2}.ages; w = 2:numel(a);
 cA = mean(D{1}.C, 1) * scl(1); cB = mean(D{2}.C, 1) * scl(2);
-xA = mean(D{1}.X, 1) * scl(1); xB = mean(D{2}.X, 1) * scl(2);
+xA = mean(D{1}.X, 1, 'omitnan') * scl(1); xB = mean(D{2}.X, 1, 'omitnan') * scl(2);
 dx = 100 * (xB ./ xA - 1); dx(xA < 0.01 * max(xA)) = NaN;      % % gaps on near-zero savings say nothing
 plot(ax, a, 100 * (cB ./ cA - 1), '-', 'Color', col(2, :), 'LineWidth', LWD, 'DisplayName', 'consumption (mean)');
 plot(ax, a(w), dx(w), '-.', 'Color', col(2, :), 'LineWidth', LWD, 'DisplayName', 'liquid savings (mean)');

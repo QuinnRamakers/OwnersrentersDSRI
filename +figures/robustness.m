@@ -22,7 +22,7 @@ cols = st.series(1:5, :);
 styles = {'-', '--', '-.', ':', '-'};
 FS = 10; FT = 10.5; LFS = 8.5; LWD = 1.7;
 d0 = figures.panel_data(ref); a = d0.ages; ret = ref.p.retirement_age; sc = d0.scale;
-C0 = mean(d0.C, 1); X0 = mean(d0.X, 1); P0 = mean(d0.pi, 1, 'omitnan');
+C0 = mean(d0.C, 1); X0 = mean(d0.X, 1, 'omitnan'); P0 = mean(d0.pi, 1, 'omitnan');
 small = X0 < 0.01 * max(X0);         % % gaps on near-zero savings say nothing
 w = 1:numel(a) - 1;
 if nargin < 6 || isempty(ref_what), ref_what = 'the step as solved in the ladder'; end
@@ -33,7 +33,7 @@ fig = figure('Visible', 'off', 'Position', [30 30 3750 480 * ng], 'Color', 'w');
 tl  = tiledlayout(fig, ng, 8, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {ttl, ['Black line = the reference: ' ref_what ', ' ref_label ...
     '. Grey band = its 10th-90th percentile range. Coloured lines = the same step solved another way. ' ...
-    'All lines are means across the same simulated households']}, 'FontSize', 14, 'FontWeight', 'bold', ...
+    'All lines are means across the same simulated households: consumption over all of them, savings and the equity share over those not bankrupt']}, 'FontSize', 14, 'FontWeight', 'bold', ...
     'Interpreter', 'none');
 
 for g = 1:ng
@@ -66,13 +66,13 @@ for g = 1:ng
     ref_band(ax, a, d0.X * sc);
     plot(ax, a, X0 * sc, 'k-', 'LineWidth', 2.4);
     for i = 1:n
-        plot(ax, a, mean(D{i}.X, 1) * sc, styles{i}, 'Color', cols(i, :), 'LineWidth', LWD);
+        plot(ax, a, mean(D{i}.X, 1, 'omitnan') * sc, styles{i}, 'Color', cols(i, :), 'LineWidth', LWD);
     end
     ylabel(ax, d0.unit); title(ax, sprintf('(%s)  %s: liquid savings', letter(3), G.name), 'FontSize', FT);
 
     ax = diff_tile(tl, ret, FS);
     for i = 1:n
-        dx = 100 * (mean(D{i}.X, 1) ./ X0 - 1); dx(small) = NaN;
+        dx = 100 * (mean(D{i}.X, 1, 'omitnan') ./ X0 - 1); dx(small) = NaN;
         plot(ax, a(2:end), dx(2:end), styles{i}, 'Color', cols(i, :), 'LineWidth', LWD);
     end
     ylabel(ax, '% difference from black');
@@ -171,8 +171,8 @@ function h = income_lines(ax, d, sc)
 % Mean gross income and income after tax, contributions and housing costs of
 % the reference households, as thin grey lines behind consumption.
 c = [0.45 0.45 0.45];
-h(1) = plot(ax, d.ages, mean(d.Y, 1) * sc, '--', 'Color', c, 'LineWidth', 1.3);
-h(2) = plot(ax, d.ages, mean(d.disp_inc, 1) * sc, ':', 'Color', c, 'LineWidth', 1.6);
+h(1) = plot(ax, d.ages, mean(d.Y, 1, 'omitnan') * sc, '--', 'Color', c, 'LineWidth', 1.3);
+h(2) = plot(ax, d.ages, mean(d.disp_inc, 1, 'omitnan') * sc, ':', 'Color', c, 'LineWidth', 1.6);
 end
 
 function s = panel_letter(i)
