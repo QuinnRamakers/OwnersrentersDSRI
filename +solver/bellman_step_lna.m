@@ -48,7 +48,14 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   interpolated. Wherever nothing is saved (c = 1), the equity share is stored as
 %   1, or with p.pi_nothing_saved = 'limit' as the share of a vanishing saving
 %   (limit_share).
+%
+%   The household dies at the end of the last period (t = p.T) for certain.
+%   Without a bequest motive it consumes all its liquid resources then. With
+%   one (p.chi > 0) the last period is solved as any other, without a
+%   continuation (p_surv(T) = 0): the household chooses c and pi, and the
+%   bequest earns a year's returns and is discounted by beta, as before.
 
+if nargin < 7, pol_next = []; end              % the last period has no next policy
 [g1, g2] = utility.grid_at(p, t);              % this period's points (they can follow age)
 N1 = numel(g1); N2 = numel(g2); N3 = numel(p.u3_grid);
 q_grid = p.q_grid(:); Nq = numel(q_grid);
@@ -113,10 +120,10 @@ else
     contrib_factor = (1 - kappa_t) * net_inc;
 end
 
-% Terminal period: consume all liquid resources, or split them with the
-% bequest when chi > 0.
-if t == p.T
-    chi_T = p.chi;
+% Last period without a bequest motive: consume all liquid resources. With
+% one, the last period is solved below.
+last = (t == p.T);
+if last && p.chi <= 0
     for iq = slices
         h_cost_rate = h_cost_q(iq);
         V_s = nan(N1, N2, N3); c_s = nan(N1, N2, N3); pi_s = nan(N1, N2, N3);
@@ -135,19 +142,9 @@ if t == p.T
                 V_s(k) = F_W ^ one_m_g / one_m_g * D_t; c_s(k) = 1; pi_s(k) = 0;
                 continue
             end
-            LW_W  = max(LW_W, F_W);
-            beq_H = h_beq_fac * sH;
-            if chi_T <= 0
-                c_star = 1;
-                V_s(k) = (c_star * LW_W)^one_m_g / one_m_g;
-            else
-                c_star = (LW_W + beq_H) / (LW_W * (1 + chi_T^(1/gamma)));
-                c_star = min(max(c_star, 1e-6), 1);
-                beq_part = (1 - c_star) * LW_W + beq_H;
-                V_s(k) = (c_star * LW_W)^one_m_g / one_m_g ...
-                         + chi_T * beq_part^one_m_g / one_m_g;
-            end
-            c_s(k)  = c_star;
+            LW_W    = max(LW_W, F_W);
+            V_s(k)  = LW_W^one_m_g / one_m_g;
+            c_s(k)  = 1;
             pi_s(k) = 0;
         end
         V_t(:, :, :, iq) = V_s; c_pol(:, :, :, iq) = c_s; pi_pol(:, :, :, iq) = pi_s;
@@ -156,11 +153,7 @@ if t == p.T
     return
 end
 
-tau_path  = config.tau_effective(p);
-tau       = tau_path(t);
-reit_path = config.reit_effective(p);
-tau_R     = reit_path(t);
-pt        = profile.p_surv(t);
+pt        = profile.p_surv(t);             % 0 in the last period
 beta_eff  = p.beta * pt;
 beq_eff   = p.beta * (1 - pt) * p.chi;
 
@@ -169,39 +162,51 @@ eps_Y  = shocks.joint.eps_Y_unit(:);
 R_H    = shocks.joint.R_H(:);
 R_REIT = shocks.joint.R_REIT(:);         % unit vector when the REIT is off
 w_join = shocks.joint.w(:);
-G_next = exp(profile.mu_growth(t) + profile.sigma_l_log(t) .* eps_Y);
-
-% DC fund return with the survival credit: bonds, stock and REIT legs.
-R_A = ((1 - tau - tau_R) * p.Rf + R_S * tau + R_REIT * tau_R) / pt;
+if last
+    % No later period: no income, and the last payout has spent the pot.
+    G_next = zeros(size(eps_Y));
+    R_A    = zeros(size(R_S));
+else
+    G_next = exp(profile.mu_growth(t) + profile.sigma_l_log(t) .* eps_Y);
+    % DC fund return with the survival credit: bonds, stock and REIT legs.
+    tau_path  = config.tau_effective(p);
+    tau       = tau_path(t);
+    reit_path = config.reit_effective(p);
+    tau_R     = reit_path(t);
+    R_A = ((1 - tau - tau_R) * p.Rf + R_S * tau + R_REIT * tau_R) / pt;
+end
 
 % After-tax returns on the liquid account
 Rf_at  = (1 + p.r * (1 - tau_b)) * (1 - tau_w);
 R_S_at = config.after_tax_stock(p, R_S);
 
-% Continuation in certainty-equivalent units
-arg = one_m_g * V_next; arg(arg <= 0) = NaN;
-z_next = arg .^ inv_omg;
-z_finite = z_next(isfinite(z_next));
-if isempty(z_finite)
-    error('bellman_step_lna:no_finite_z', 'No finite z values at t=%d', t);
-end
-z_min = min(z_finite);
-z_next(isnan(z_next)) = z_min;
-interp_method = validatestring(p.interp_method, {'linear', 'makima', 'spline'}, ...
-                               'bellman_step_lna', 'p.interp_method');
-[n1, n2] = utility.grid_at(p, t + 1);         % next period's points, where V_next lives
-if q_cont
-    pp_lin = griddedInterpolant({n1, n2, p.u3_grid, q_grid}, ...
-                                z_next, interp_method, 'nearest');
-else
-    pp_lin = griddedInterpolant({n1, n2, p.u3_grid}, ...
-                                z_next(:, :, :, iq1), interp_method, 'nearest');
-end
-if strcmp(interp_method, 'linear')
-    pp_z = pp_lin;
-else
-    % A smooth scheme can undershoot below zero next to the ruin region.
-    pp_z = @(varargin) max(pp_lin(varargin{:}), z_min);
+% Continuation in certainty-equivalent units; none in the last period
+pp_z = [];
+if ~last
+    arg = one_m_g * V_next; arg(arg <= 0) = NaN;
+    z_next = arg .^ inv_omg;
+    z_finite = z_next(isfinite(z_next));
+    if isempty(z_finite)
+        error('bellman_step_lna:no_finite_z', 'No finite z values at t=%d', t);
+    end
+    z_min = min(z_finite);
+    z_next(isnan(z_next)) = z_min;
+    interp_method = validatestring(p.interp_method, {'linear', 'makima', 'spline'}, ...
+                                   'bellman_step_lna', 'p.interp_method');
+    [n1, n2] = utility.grid_at(p, t + 1);     % next period's points, where V_next lives
+    if q_cont
+        pp_lin = griddedInterpolant({n1, n2, p.u3_grid, q_grid}, ...
+                                    z_next, interp_method, 'nearest');
+    else
+        pp_lin = griddedInterpolant({n1, n2, p.u3_grid}, ...
+                                    z_next(:, :, :, iq1), interp_method, 'nearest');
+    end
+    if strcmp(interp_method, 'linear')
+        pp_z = pp_lin;
+    else
+        % A smooth scheme can undershoot below zero next to the ruin region.
+        pp_z = @(varargin) max(pp_lin(varargin{:}), z_min);
+    end
 end
 
 % What fmincon minimises. 'ce': the objective in certainty-equivalent units
@@ -243,7 +248,7 @@ opts_opt = optimoptions('fmincon', ...
 % bankrupt value's factor D^(1/(1-gamma)); the housing cost rate is set per
 % q slice below.
 nx = struct('on', false);
-if absorbing && p.abs_node_test
+if absorbing && p.abs_node_test && ~last
     t1 = t + 1;
     if t1 >= p.t_ret
         y1 = net_inc; a1 = net_inc / ann_price(t1);
@@ -341,14 +346,17 @@ for iq = slices
         end
         if LW_W <= F_W
             % Resources below the floor: consume the floor, save nothing.
-            u_f    = F_W ^ one_m_g / one_m_g;
-            denAH0 = A_next_W + H_next_W;
-            W_g0   = denAH0 + Y_next_W;
-            u1_0   = max(min(Y_next_W ./ W_g0, 1), 0);
-            u2_0   = max(min(denAH0 ./ max(denAH0, 1e-12), 1), 0);
-            u3_0   = max(min(A_next_W ./ max(denAH0, 1e-12), 1), 0);
-            z_0    = z_at(pp_z, u1_0, u2_0, u3_0, q_n);
-            val    = u_f + beta_eff * sum(w_join .* ((W_g0 .* z_0) .^ one_m_g / one_m_g));
+            u_f = F_W ^ one_m_g / one_m_g;
+            val = u_f;
+            if beta_eff > 0
+                denAH0 = A_next_W + H_next_W;
+                W_g0   = denAH0 + Y_next_W;
+                u1_0   = max(min(Y_next_W ./ W_g0, 1), 0);
+                u2_0   = max(min(denAH0 ./ max(denAH0, 1e-12), 1), 0);
+                u3_0   = max(min(A_next_W ./ max(denAH0, 1e-12), 1), 0);
+                z_0    = z_at(pp_z, u1_0, u2_0, u3_0, q_n);
+                val    = val + beta_eff * sum(w_join .* ((W_g0 .* z_0) .^ one_m_g / one_m_g));
+            end
             if beq_eff > 0
                 beq_base = max(h_beq_fac * H_next_W, FLOOR_EPS);
                 val = val + beq_eff * sum(w_join .* (beq_base .^ one_m_g / one_m_g));
@@ -530,26 +538,29 @@ end
 % ------------------------------------------------------------------------
 function rhs_val = bellman_rhs(c, pi_eq, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
                                w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx)
-%BELLMAN_RHS  Current utility plus discounted expected continuation, per unit
-%   of W^(1-gamma). Next period's state is formed from the post-shock stocks
-%   and mapped onto the cube; q_n is next period's q at each shock node. With
-%   nx.on, nodes below next year's floor take the bankrupt value.
+%BELLMAN_RHS  Current utility plus discounted expected continuation (none in
+%   the last period) and bequest, per unit of W^(1-gamma). Next period's state
+%   is formed from the post-shock stocks and mapped onto the cube; q_n is next
+%   period's q at each shock node. With nx.on, nodes below next year's floor
+%   take the bankrupt value.
 R_X      = (1 - pi_eq) * Rf_at + pi_eq .* R_S_at;
 X_next_W = R_X * (1 - c) * LW_W;
-denAH    = A_next_W + H_next_W;
-W_growth = X_next_W + denAH + Y_next_W;
-u1_next  = max(min(Y_next_W ./ W_growth, 1), 0);
-u2_next  = max(min(denAH ./ max(X_next_W + denAH, 1e-12), 1), 0);
-u3_next  = max(min(A_next_W ./ max(denAH, 1e-12), 1), 0);
-z_n      = z_at(pp_z, u1_next, u2_next, u3_next, q_n);
-CE_n     = W_growth .* z_n;
-if nx.on
-    CE_n = bankrupt_nodes(CE_n, X_next_W, A_next_W, H_next_W, Y_next_W, nx);
+rhs_val  = (c * LW_W) ^ one_m_g / one_m_g;
+if beta_eff > 0
+    denAH    = A_next_W + H_next_W;
+    W_growth = X_next_W + denAH + Y_next_W;
+    u1_next  = max(min(Y_next_W ./ W_growth, 1), 0);
+    u2_next  = max(min(denAH ./ max(X_next_W + denAH, 1e-12), 1), 0);
+    u3_next  = max(min(A_next_W ./ max(denAH, 1e-12), 1), 0);
+    z_n      = z_at(pp_z, u1_next, u2_next, u3_next, q_n);
+    CE_n     = W_growth .* z_n;
+    if nx.on
+        CE_n = bankrupt_nodes(CE_n, X_next_W, A_next_W, H_next_W, Y_next_W, nx);
+    end
+    V_n      = CE_n .^ one_m_g / one_m_g;
+    EV       = sum(w .* V_n);
+    rhs_val  = rhs_val + beta_eff * EV;
 end
-V_n      = CE_n .^ one_m_g / one_m_g;
-EV       = sum(w .* V_n);
-u_now    = (c * LW_W) ^ one_m_g / one_m_g;
-rhs_val  = u_now + beta_eff * EV;
 if beq_eff > 0
     beq_base = X_next_W + h_beq_fac * H_next_W;
     beq_n    = beq_base .^ one_m_g / one_m_g;
@@ -586,22 +597,25 @@ for r = 1:4
     cv = Cm(:).'; pv = Pm(:).';                  % 1 x M
     R_X    = (1 - pv) .* Rf_at + pv .* R_S_at;   % n_shock x M
     X_next = R_X .* ((1 - cv) * LW_W);
-    W_g    = X_next + base_W;
-    u1_n   = max(min(Y_next_W ./ W_g, 1), 0);
-    u2_n   = max(min(denAH ./ max(X_next + denAH, 1e-12), 1), 0);
-    u3_n   = repmat(u3_col, 1, M);
-    if isempty(q_n)
-        z_n = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:)), n_shock, M);
-    else
-        q_rep = repmat(q_n, 1, M);
-        z_n = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:), q_rep(:)), n_shock, M);
+    rhs    = (cv.' * LW_W) .^ one_m_g / one_m_g;
+    if beta_eff > 0
+        W_g    = X_next + base_W;
+        u1_n   = max(min(Y_next_W ./ W_g, 1), 0);
+        u2_n   = max(min(denAH ./ max(X_next + denAH, 1e-12), 1), 0);
+        u3_n   = repmat(u3_col, 1, M);
+        if isempty(q_n)
+            z_n = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:)), n_shock, M);
+        else
+            q_rep = repmat(q_n, 1, M);
+            z_n = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:), q_rep(:)), n_shock, M);
+        end
+        CE_n   = W_g .* z_n;
+        if nx.on
+            CE_n = bankrupt_nodes(CE_n, X_next, A_next_W, H_next_W, Y_next_W, nx);
+        end
+        V_n    = CE_n .^ one_m_g / one_m_g;
+        rhs    = rhs + beta_eff * (w.' * V_n).';
     end
-    CE_n   = W_g .* z_n;
-    if nx.on
-        CE_n = bankrupt_nodes(CE_n, X_next, A_next_W, H_next_W, Y_next_W, nx);
-    end
-    V_n    = CE_n .^ one_m_g / one_m_g;
-    rhs    = (cv.' * LW_W) .^ one_m_g / one_m_g + beta_eff * (w.' * V_n).';
     if beq_eff > 0
         beq_base = X_next + h_beq_fac * H_next_W;
         rhs = rhs + beq_eff * (w.' * (beq_base .^ one_m_g / one_m_g)).';

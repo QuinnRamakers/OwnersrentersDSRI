@@ -29,6 +29,14 @@ function fig = compare(rs, labels, ttl, file, opts)
 %   place of the policy at 30 the stock share of financial wealth (stock in
 %   the liquid account and the DC fund over liquid saving plus the fund).
 %
+%   view='bequest' shows in place of net worth the bequest if the household
+%   dies at the end of that age (liquid wealth after the year's returns plus
+%   the house net of the sale cost, as the solver values it), its difference
+%   from black in levels, and in place of the policy at 30 the distribution
+%   of the bequest at death, every age weighted by the chance of dying then.
+%   The settings box adds chi, b = chi^(1/gamma) and the mean and median
+%   bequest at death.
+%
 %   Levels are in thousands of euros (or CGM units) when every result has the
 %   same income units and entry income, and in multiples of entry income
 %   otherwise, so steps with different income units still line up.
@@ -38,7 +46,7 @@ arguments
     labels cell
     ttl = ''
     file = ''
-    opts.view (1,:) char {mustBeMember(opts.view, {'default', 'pension'})} = 'default'
+    opts.view (1,:) char {mustBeMember(opts.view, {'default', 'pension', 'bequest'})} = 'default'
 end
 
 n = numel(rs);
@@ -46,6 +54,7 @@ assert(n >= 2 && n <= 6, 'figures:compare', 'compare takes two to six results.')
 if isempty(ttl), ttl = 'Comparison'; end
 D = cellfun(@figures.panel_data, rs, 'UniformOutput', false);
 pension_view = strcmp(opts.view, 'pension');
+bequest_view = strcmp(opts.view, 'bequest');
 
 same_units = all(cellfun(@(d) strcmp(d.unit, D{1}.unit), D)) && ...
              all(cellfun(@(r) abs(r.summary.Y0 / rs{1}.summary.Y0 - 1) < 1e-9, rs));
@@ -105,6 +114,8 @@ series = {
     'Liquid equity share',  @(d) d.pi,        'Stock share [0-1]', true,  'Liquid equity share' };
 if pension_view
     series(3, :) = {'Pension account (DC)', @(d) d.A, unit, false, 'Pension account'};
+elseif bequest_view
+    series(3, :) = {'Bequest if the household dies at this age', @(d) d.bequest, unit, false, 'Bequest'};
 end
 for j = 1:4
     ax = tile(tl, ret, FS); k = k + 1;
@@ -146,7 +157,7 @@ for j = 1:4
     yline(ax, 0, 'k-', 'LineWidth', 0.8, 'HandleVisibility', 'off');
     a = D{1}.ages; ref = mean(series{j, 2}(D{1}), 1, 'omitnan');
     if series{j, 4}, a = a(1:end-1); ref = ref(1:end-1); end
-    absolute = pension_view && j == 3;      % the reference may have no pension account
+    absolute = (pension_view || bequest_view) && j == 3;   % the reference may have none
     for i = 2:n
         v = mean(series{j, 2}(D{i}), 1, 'omitnan');
         if series{j, 4}
@@ -198,6 +209,21 @@ if pension_view
     ylim(ax, [0 1]); ylabel(ax, 'Stock share [0-1]');
     title(ax, sprintf('(%s)  Stock share of liquid saving plus pension account', letter(k)), 'FontSize', FT);
     ages = ages(2:3);
+elseif bequest_view
+    ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS; k = k + 1;
+    xmax = 0;
+    for i = n:-1:1
+        [x, F, ~, med] = figures.bequest_at_death(D{i}, scl(i));
+        ix = unique(round(linspace(1, numel(x), 2000)));
+        plot(ax, x(ix), 100 * F(ix), styles{i}, 'Color', cols(i, :), 'LineWidth', lw(i));
+        xline(ax, med, ':', 'Color', cols(i, :), 'LineWidth', 1, 'HandleVisibility', 'off');
+        xmax = max(xmax, x(find(F >= 0.99, 1)));
+    end
+    if xmax > 0, xlim(ax, [0 xmax]); end
+    ylim(ax, [0 100]); xlabel(ax, ['Bequest at death, ' unit]); ylabel(ax, '% of deaths leaving less');
+    title(ax, sprintf('(%s)  Bequest at death, all ages weighted by the chance of dying (dotted: medians)', ...
+        letter(k)), 'FontSize', FT);
+    ages = ages(2:3);
 end
 for j = 1:numel(ages)
     ax = nexttile(tl); hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on'); ax.FontSize = FS; k = k + 1;
@@ -207,7 +233,11 @@ end
 
 % Settings and checks
 ax = nexttile(tl, [1 2]); axis(ax, 'off'); k = k + 1;
-text(ax, 0, 1, info_lines(rs, labels), 'Units', 'normalized', 'VerticalAlignment', 'top', ...
+L = info_lines(rs, labels);
+if bequest_view
+    L = [L, {''}, bequest_lines(rs, labels, D, scl, unit)];
+end
+text(ax, 0, 1, L, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
     'FontSize', FS - 1.5, 'Interpreter', 'none', 'FontName', 'Consolas');
 title(ax, sprintf('(%s)  Settings and checks', letter(k)), 'FontSize', FT);
 
@@ -321,6 +351,18 @@ for i = 1:numel(rs)
             max(abs(s.pi(w) - ref.pi(w))), 100 * max(abs(s.C.mean ./ ref.C.mean - 1)), ...
             100 * max(abs(s.X.mean(wx) ./ ref.X.mean(wx) - 1))); %#ok<AGROW>
     end
+end
+end
+
+function L = bequest_lines(rs, labels, D, scl, unit)
+% chi, b = chi^(1/gamma), and the mean and median bequest at death and at 100
+L = {sprintf('Bequest at death (all ages, weighted by the chance of dying), %s:', unit)};
+for i = 1:numel(rs)
+    p = rs{i}.p;
+    [~, ~, mu, med] = figures.bequest_at_death(D{i}, scl(i));
+    b100 = D{i}.bequest(:, end) * scl(i);
+    L{end+1} = sprintf('  %-14s chi %-9.4g b %.2f   mean %.3g  median %.3g   at 100: mean %.3g', ...
+        labels{i}, p.chi, p.chi ^ (1 / p.gamma), mu, med, mean(b100, 'omitnan')); %#ok<AGROW>
 end
 end
 

@@ -60,7 +60,11 @@ function p = case_params(step, arm, name)
 %               24 October 2026; the name marks solves made after that)
 %     _interp   the same with abs_node_test = false, the setting of the
 %               _cmin solves of 23 October that carry no _exact
-%   Apart from _mop and _cmin nothing here changes the model: only grid_dims,
+%     _beqb<n>  the bequest motive at b = n/10 (_beqb25 is 2.5): chi = b^gamma
+%               at the step's gamma, so b = chi^(1/gamma), about the bequest
+%               over the last year's consumption, is the same on every step
+%               (Quinn, 26 October 2026); it changes the model
+%   Apart from _mop, _cmin and _beqb nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
@@ -128,5 +132,7 @@ g = regexp(extra, '_cmin(\d+)', 'tokens', 'once');
 if ~isempty(g), p.c_min = str2double(g{1}); end                            % absorbing floor, euros
 if contains(extra, '_exact'), p.abs_node_test = true; end                  % bankruptcy tested at the quadrature nodes
 if contains(extra, '_interp'), p.abs_node_test = false; end                % interpolated across the edge
+g = regexp(extra, '_beqb(\d+)', 'tokens', 'once');
+if ~isempty(g), p.chi = (str2double(g{1}) / 10) ^ p.gamma; end             % bequest at b = chi^(1/gamma)
 p = config.derive(p);
 end

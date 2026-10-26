@@ -32,7 +32,7 @@ only come from a part-year CPI average that CBS will revise.
 | `sex` | 1 (men) | Selects the BKV income table (`'table'`) only; unused by the DHS profile. The life table is unisex |
 | `gamma` | 5 | Production choice. CGM (2005) use 10; the ladder starts there |
 | `beta` | 0.96 | Placeholder. Larsen et al. (2023) is a candidate source, not checked |
-| `chi` | 0 | Placeholder. Bequest motive off in the baseline |
+| `chi` | 0 | Placeholder. Bequest motive off in the baseline. Form (Quinn, 26 October 2026): chi B^(1-gamma)/(1-gamma), B liquid wealth after the year's returns plus, for owners, the house net of `sell_cost`. In the last period the household dies for certain and chooses c and pi against the bequest alone. Tests across the ladder hold b = chi^(1/gamma), about the bequest over the last year's consumption, fixed: chi = b^gamma at each step's gamma (`case_params` suffix `_beqb`) |
 
 ## Labour income
 

@@ -15,7 +15,9 @@ function d = panel_data(r)
 %   entry, for the wealth panels), HC (human capital: the expected present
 %   value of future income), net_worth = X + A + H_net, eq_liquid and eq_pension
 %   (stock held in the liquid account after consumption and in the DC fund),
-%   fin (liquid saving plus the fund balance those stock holdings sit in).
+%   fin (liquid saving plus the fund balance those stock holdings sit in),
+%   bequest (what the heirs get if the household dies at the end of that age).
+%   1 x T: death_w, the chance of dying at the end of each age.
 %
 %   With the absorbing floor, every field except C is NaN for a household
 %   from the age it is bankrupt (d.solvent is false there), so the figures,
@@ -101,6 +103,15 @@ for t = 1:T
 end
 d.HC = sim.Y .* g;
 
+% The bequest if the household dies at the end of each age, as the solver
+% values it: liquid wealth after the year's returns plus the house after its
+% price change, net of the sale cost (owners); at the last age, before that
+% year's returns (sim.bequest). death_w (1 x T) is the chance of dying at the
+% end of each age, which weights the bequest at death.
+h_beq_fac = (d.has_housing && p.is_owner) * (1 - p.sell_cost);
+d.bequest = [sim.X(:, 2:T) + h_beq_fac * sim.H(:, 2:T), sim.bequest];
+d.death_w = cumprod([1; ps(1:T-1)]).' .* (1 - ps(:).');
+
 % Stock holdings, as in model.summarize
 X_sav = max(sim.LW - sim.C, 0);
 A_pre = sim.A + kap .* sim.Y;
@@ -119,7 +130,7 @@ gone = ~d.solvent;
 if any(gone(:))
     f = {'Y', 'X', 'A', 'H', 'c_frac', 'pi', 'disp_inc', 'ann_pay', 'takehome', 'annuity', 'rent', ...
          'maintenance', 'mortgage', 'housing_cost', 'M_balance', 'H_net', 'net_worth', 'HC', ...
-         'eq_liquid', 'eq_pension', 'fin'};
+         'eq_liquid', 'eq_pension', 'fin', 'bequest'};
     for i = 1:numel(f), d.(f{i})(gone) = NaN; end
 end
 end

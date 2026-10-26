@@ -10,7 +10,9 @@ function n_fail = run_tests(opts)
 %
 %   floor_off_identical compares against a solve saved before the absorbing
 %   floor was added; it runs only when CGM_FLOOR_BASELINE names that file, and
-%   is reported as SKIP otherwise.
+%   is reported as SKIP otherwise. bequest_off_identical does the same with
+%   CGM_BEQUEST_BASELINE, the solve saved before the last period took the
+%   bequest as any other (on the DSRI pod, /Solutionstorage/cgm_baselines).
 
 arguments
     opts.solve (1,1) logical = true
@@ -22,7 +24,12 @@ checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_br
 if opts.solve
     checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
-                       @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test}];
+                       @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test, ...
+                       @bequest_off_identical, @bequest_last_year}];
+    % Some checks call the solver without model.run, so parfor would open
+    % MATLAB's default pool: processes, which run out of memory on the DSRI
+    % pod. Open the thread pool model.run uses instead.
+    if isempty(gcp('nocreate')), utility.start_pool(); end
 end
 n_fail = 0; n_skip = 0;
 for i = 1:numel(checks)
@@ -450,7 +457,7 @@ end
 function figures_render()
 % The dashboard and the overlay draw for a no-housing step and for an owner
 % with housing and DC, and the overlay takes results on different grids and
-% optimisers. The mortgage figure draws for the owner.
+% optimisers, also in its bequest view. The mortgage figure draws for the owner.
 q = ladder.params('cgm'); q.grid_dims = [6 5 4 3]; q.gh_n = 3; q = config.derive(q);
 p = config.params(false); p.is_owner = true; p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
 p2 = p; p2.grid_dims = [7 5 4 3]; p2.fmincon_algorithm = 'sqp'; p2 = config.derive(p2);
@@ -461,11 +468,12 @@ figures.dashboard(r{1}, fullfile(d, 'a.png'));
 figures.dashboard(r{2}, fullfile(d, 'b.png'));
 figures.compare(r(2:3), {'active-set', 'sqp, finer u1'}, 'test', fullfile(d, 'c.png'));
 figures.compare(r([1 2]), {'cgm', 'production'}, 'test', fullfile(d, 'd.png'));
+figures.compare(r([1 2]), {'cgm', 'production'}, 'test', fullfile(d, 'h.png'), view = 'bequest');
 figures.step_dashboard(r{1}, r{2}, {'cgm', 'production'}, 'test', fullfile(d, 'e.png'), changes = {'x: 1 -> 2'});
 G = struct('name', {'A', 'B'}, 'rs', {{r{3}}, {r{3}, r{2}}}, 'labels', {{'sqp'}, {'sqp', 'same'}});
 figures.robustness(r{2}, 'reference', G, 'test', fullfile(d, 'f.png'));
 figures.mortgage(r{2}, fullfile(d, 'g.png'));
-assert(all(isfile(fullfile(d, {'a.png', 'b.png', 'c.png', 'd.png', 'e.png', 'f.png', 'g.png'}))), ...
+assert(all(isfile(fullfile(d, {'a.png', 'b.png', 'c.png', 'd.png', 'e.png', 'f.png', 'g.png', 'h.png'}))), ...
     'a figure was not written');
 end
 
@@ -496,6 +504,73 @@ for owner = [false true]
         assert(isequaln(r.sim.(f{i}), b.sim.(f{i})), '%s: panel field %s differs', model.tenure(p), f{i});
     end
 end
+end
+
+function bequest_off_identical()
+% With chi = 0, production (step 18) for both tenures and the CGM core (step 1)
+% on the small grid: the value, the policies and every panel field are
+% bit-identical to the solve saved at 3433323 (CGM_BEQUEST_BASELINE), before
+% the last period took the bequest as any other period.
+file = getenv('CGM_BEQUEST_BASELINE');
+if isempty(file) || ~isfile(file)
+    error('run_tests:skip', 'CGM_BEQUEST_BASELINE does not name the solve saved at 3433323');
+end
+B = load(file);
+cases = {18, false; 18, true; 1, false};
+for k = 1:size(cases, 1)
+    p = ladder.params(cases{k, 1}); p.is_owner = cases{k, 2};
+    p.grid_dims = [8 6 6 4]; p.gh_n = 3; p = config.derive(p);
+    r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
+    name = matlab.lang.makeValidName(sprintf('s%d_%s', cases{k, 1}, model.tenure(p)));
+    b = B.(name);
+    assert(isequaln(r.sol.V, b.V) && isequaln(r.sol.c_pol, b.c_pol) && isequaln(r.sol.pi_pol, b.pi_pol), ...
+        '%s: the solution differs from the baseline', name);
+    f = fieldnames(b.sim);
+    for i = 1:numel(f)
+        assert(isequaln(r.sim.(f{i}), b.sim.(f{i})), '%s: panel field %s differs', name, f{i});
+    end
+end
+end
+
+function bequest_last_year()
+% The last period with a bequest motive. (1) Step 1 (no housing, DC pillar or
+% taxes) at b = 2.5, chi = b^gamma: death at its end is certain, so the
+% household maximises u(c L) + beta chi E[(R(pi) (1-c) L)^(1-gamma)]/(1-gamma).
+% The equity share minimises M(pi) = E[R(pi)^(1-gamma)] whatever c, and
+% c = 1/(1 + (beta chi M)^(1/gamma)) at every node; the solve matches to 1e-5
+% (c) and 1e-3 (pi), and the value at the solved nodes to 1e-8 relative.
+% (2) Production owner at b = 2.5, a small solve and panel: finite and in
+% range, and solvent households leave a bequest at 100.
+p = ladder.params(1); p.chi = 2.5 ^ p.gamma;
+p.grid_dims = [8 6 6 4]; p.gh_n = 3; p = config.derive(p);
+[profile, shocks, ann_price] = config.model_inputs(p);
+[V, c, pi_] = solver.bellman_step_lna(p.T, [], p, profile, shocks, ann_price);
+w   = shocks.joint.w(:);
+R_S = config.after_tax_stock(p, shocks.joint.R_S(:));
+Rf  = (1 + p.r * (1 - p.tau_cg_bond)) * (1 - p.tau_wealth);
+M   = @(x) sum(w .* ((1 - x) * Rf + x * R_S) .^ (1 - p.gamma));
+pi_star = fminbnd(M, 0, 1, optimset('TolX', 1e-12));
+k = p.beta * p.chi * M(pi_star);
+c_star = 1 / (1 + k ^ (1 / p.gamma));
+assert(max(abs(c(:) - c_star)) < 1e-5, 'c off the closed form %.6f by %.2g', c_star, max(abs(c(:) - c_star)));
+assert(max(abs(pi_(:) - pi_star)) < 1e-3, 'pi off the closed form %.4f by %.2g', pi_star, max(abs(pi_(:) - pi_star)));
+[g1, g2] = utility.grid_at(p, p.T);
+[U1, U2, U3] = ndgrid(g1, g2, p.u3_grid);
+sA = U2 .* (1 - U1) .* U3; sX = (1 - U1) .* (1 - U2);
+L  = sX + (1 - p.tau_inc) * (U1 + sA / ann_price(p.T));
+Vc = L .^ (1 - p.gamma) / (1 - p.gamma) * (c_star ^ (1 - p.gamma) + k * (1 - c_star) ^ (1 - p.gamma));
+m  = U2 == 0 | U3 == 1;                       % solved; the rest are copies (no house)
+err = max(abs(V(m) ./ Vc(m) - 1));
+assert(err < 1e-8, 'the value is off the closed form by %.2g', err);
+
+p = config.params(); p.is_owner = true; p.chi = 2.5 ^ p.gamma;
+p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
+r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
+assert(all(isfinite(r.sol.V(:))), 'non-finite value');
+assert(all(r.sol.c_pol(:) > 0 & r.sol.c_pol(:) <= 1 + 1e-6), 'c out of range');
+assert(all(r.sol.pi_pol(:) >= -1e-6 & r.sol.pi_pol(:) <= 1 + 1e-6), 'pi out of range');
+ok = ~r.sim.absorbed(:, end);
+assert(any(ok) && all(r.sim.bequest(ok) > 0), 'a solvent household left no bequest');
 end
 
 function floor_node_test()
