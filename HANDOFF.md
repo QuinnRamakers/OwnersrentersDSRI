@@ -43,6 +43,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Owner dashboards, both maintenance rules, with and without the absorbing floor; expectations (spec: none, asked by Quinn in Claude Code)
+Quinn: show the full dashboards for the base, with maintenance on the purchase price and on the current value, each with the absorbing floor (c_min 5,000) and without it (the yearly top-up at 1e-6).
+Grid: the axis-study base, bunched 16x16, u3 at 10 bunched, q at 4, active-set. With the floor both are solved (25 October); without it, solving `16:owner:pow3_16x16_lim_u3p2_qn4_as_nc11` and the same with `_mop`, side by side. Then `figures.dashboard` for the four and `figures.compare` of the four.
+Expectations: on the current value without the floor, young owners save almost everything and consume little (as on 18-20 October) and many are floored in old age; with the floor they consume more young and go bankrupt in old age. On the purchase price the floor matters little after the mortgage ends, since few households are near it.
+Checks run: none (no code changed).
+Commit: this entry, pushed to main.
+Open: the runs.
+
 ### 2026-10-26 Maintenance on the purchase price the default, for now; the findings documented (spec: none, asked by Quinn in Claude Code)
 Quinn: document what was found, set maintenance on the purchase price as the default for now (keep the current value as an option), and push everything.
 Changed: `+config/params.m`, `maint_on_purchase = true`. `+ladder/steps.m`: step 1 sets `maint_on_purchase = false`, so steps 1-16 keep their calibration; new last step 17 `maint_purchase` sets it true, so the last step equals `config.params`. `tests/run_tests.m`, `ladder_branches`: step 17 is the last, step 16 on the current value and step 17 on the purchase price. CALIBRATION.md (`maint_on_purchase` row and the paragraph on it), README.md (ladder table, step 17 is `config.params`), CLAUDE.md (the known limit on grids, rewritten from the 24-26 October work), TODO.md (Numerics). New `docs/HANDOFF_2026-10-26.md`: the figures to look at, what was decided (search routine, edge fix rejected, the grid u1 32 / u2 16 / u3 40 / q 4, the maintenance default), what was found, run times, decisions open, how to reproduce, commits.
