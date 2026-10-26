@@ -11,7 +11,9 @@ function fig = step_dashboard(rA, rB, labels, ttl, file, opts)
 %   consumption, disposable income, liquid savings, pension account, housing
 %   cost, net worth, total wealth with human capital, the liquid equity share,
 %   stock exposure relative to total wealth, B's change from A in consumption
-%   and liquid savings, and a box with what changed and the checks of both.
+%   and liquid savings, the cumulative share bankrupt (figures.bankruptcy;
+%   with the yearly top-up, the share ever at the floor), and a box with what
+%   changed and the checks of both.
 %
 %   Levels are in thousands of euros (or CGM units) when both results have the
 %   same income units and entry income, and in multiples of each one's entry
@@ -48,8 +50,8 @@ sty = {'-', '-'};
 FS = 10; FT = 11; LFS = 9; LWD = 1.9;
 ret = unique([rA.p.retirement_age, rB.p.retirement_age]);
 
-fig = figure('Visible', 'off', 'Position', [30 30 2200 1300], 'Color', 'w');
-tl  = tiledlayout(fig, 3, 4, 'Padding', 'compact', 'TileSpacing', 'compact');
+fig = figure('Visible', 'off', 'Position', [30 30 2750 1300], 'Color', 'w');
+tl  = tiledlayout(fig, 3, 5, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {ttl, [how ' Lines are means across simulated households; bands the 10th-90th percentile range']}, ...
     'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
 
@@ -111,8 +113,26 @@ ylabel(ax, '% change (coloured against black)');
 legend(ax, 'Location', 'best', 'FontSize', LFS);
 title(ax, sprintf('(k)  Change from %s', labels{1}), 'FontSize', FT, 'Interpreter', 'none');
 
-% (l) what changed, and the checks
-ax = nexttile(tl); axis(ax, 'off');
+% (l) bankruptcy by age
+ax = tile(tl, ret, FS);
+absorbing = false(1, 2);
+for i = 1:2
+    B = figures.bankruptcy(D{i}, R{i}.p);
+    absorbing(i) = strcmp(B.label, 'bankrupt');
+    plot(ax, D{i}.ages, B.cum, sty{i}, 'Color', col(i, :), 'LineWidth', LWD, 'DisplayName', labels{i});
+end
+ylabel(ax, '% of households');
+legend(ax, 'Location', 'northwest', 'FontSize', LFS, 'Interpreter', 'none');
+if all(absorbing)
+    title(ax, '(l)  Cumulative % bankrupt', 'FontSize', FT);
+elseif ~any(absorbing)
+    title(ax, '(l)  Cumulative % ever at the floor (yearly top-up)', 'FontSize', FT);
+else
+    title(ax, '(l)  Cumulative % bankrupt (top-up: ever at the floor)', 'FontSize', FT);
+end
+
+% (m) what changed, and the checks
+ax = nexttile(tl, [1 3]); axis(ax, 'off');
 L = {};
 if ~isempty(opts.changes)
     L = [{'What changes'}, strcat({'  '}, opts.changes(:).'), {''}];
@@ -138,7 +158,7 @@ L = cellfun(@(s) wrap(s, 70), L, 'UniformOutput', false);
 L = [L{:}];
 text(ax, 0, 1, L, 'Units', 'normalized', 'VerticalAlignment', 'top', 'FontSize', FS - 1.5, ...
     'Interpreter', 'none', 'FontName', 'Consolas');
-title(ax, '(l)  What changes, and checks', 'FontSize', FT);
+title(ax, '(m)  What changes, and checks', 'FontSize', FT);
 
 if ~isempty(file)
     axs = findall(fig, 'Type', 'axes');

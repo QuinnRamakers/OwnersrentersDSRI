@@ -9,11 +9,13 @@ function fig = robustness(ref, ref_label, groups, ttl, file, ref_what)
 %   ref_what names the reference in the title and legend ('the step as
 %   solved in the ladder' by default).
 %   groups is a struct array with fields name (row title), rs (cell of
-%   results) and labels (cell of names). One row per group, seven columns:
+%   results) and labels (cell of names). One row per group, eight columns:
 %   consumption, liquid savings and the liquid equity share, each as a level
-%   and as a difference from the reference, then a box with each run's
-%   settings, checks and largest gaps. Means across simulated households, all
-%   with the reference's households and seed.
+%   and as a difference from the reference, the cumulative share bankrupt
+%   (figures.bankruptcy; with the yearly top-up, the share ever at the
+%   floor), then a box with each run's settings, checks and largest gaps.
+%   Means across simulated households, all with the reference's households
+%   and seed.
 
 st = figures.style();
 cols = st.series(1:5, :);
@@ -27,8 +29,8 @@ if nargin < 6 || isempty(ref_what), ref_what = 'the step as solved in the ladder
 ref_name = sprintf('black: %s (reference)', erase(ref_what, ' in the ladder'));
 
 ng = numel(groups);
-fig = figure('Visible', 'off', 'Position', [30 30 3300 480 * ng], 'Color', 'w');
-tl  = tiledlayout(fig, ng, 7, 'Padding', 'compact', 'TileSpacing', 'compact');
+fig = figure('Visible', 'off', 'Position', [30 30 3750 480 * ng], 'Color', 'w');
+tl  = tiledlayout(fig, ng, 8, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {ttl, ['Black line = the reference: ' ref_what ', ' ref_label ...
     '. Grey band = its 10th-90th percentile range. Coloured lines = the same step solved another way. ' ...
     'All lines are means across the same simulated households']}, 'FontSize', 14, 'FontWeight', 'bold', ...
@@ -37,7 +39,7 @@ title(tl, {ttl, ['Black line = the reference: ' ref_what ', ' ref_label ...
 for g = 1:ng
     G = groups(g); n = numel(G.rs);
     D = cellfun(@figures.panel_data, G.rs, 'UniformOutput', false);
-    letter = @(k) panel_letter(7 * (g - 1) + k);
+    letter = @(k) panel_letter(8 * (g - 1) + k);
 
     % Consumption: level, then % difference
     ax = tile(tl, ret, FS);
@@ -93,6 +95,18 @@ for g = 1:ng
     ylabel(ax, 'difference from black, share');
     title(ax, sprintf('(%s)  %s: equity share, difference', letter(6), G.name), 'FontSize', FT);
 
+    % Bankruptcy by age
+    ax = tile(tl, ret, FS);
+    B0 = figures.bankruptcy(d0, ref.p);
+    plot(ax, a, B0.cum, 'k-', 'LineWidth', 2.4);
+    for i = 1:n
+        B = figures.bankruptcy(D{i}, G.rs{i}.p);
+        plot(ax, D{i}.ages, B.cum, styles{i}, 'Color', cols(i, :), 'LineWidth', LWD);
+    end
+    ylabel(ax, '% of households');
+    if strcmp(B0.label, 'bankrupt'), what = 'cumulative % bankrupt'; else, what = 'cumulative % ever at the floor'; end
+    title(ax, sprintf('(%s)  %s: %s', letter(7), G.name, what), 'FontSize', FT);
+
     % Settings and checks
     ax = nexttile(tl); axis(ax, 'off');
     L = [{sprintf('black (reference): %s', erase(ref_what, ' in the ladder'))}, strcat({'  '}, strsplit(ref_label, ', ')), ...
@@ -112,7 +126,7 @@ for g = 1:ng
     end
     text(ax, 0, 1, L, 'Units', 'normalized', 'VerticalAlignment', 'top', 'FontSize', FS - 1.5, ...
         'Interpreter', 'none', 'FontName', 'Consolas');
-    title(ax, sprintf('(%s)  %s: settings and checks', letter(7), G.name), 'FontSize', FT);
+    title(ax, sprintf('(%s)  %s: settings and checks', letter(8), G.name), 'FontSize', FT);
 end
 
 if nargin > 4 && ~isempty(file)

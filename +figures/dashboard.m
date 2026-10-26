@@ -7,8 +7,10 @@ function fig = dashboard(r, file)
 %   The layout of the earlier make_plots dashboards: income and housing costs,
 %   consumption, disposable income, net worth, the DC account, housing, total
 %   wealth with human capital, the share of resources consumed, the equity
-%   shares, total stock exposure, the stock share of savings and pension, and
-%   the calibration with the checks of model.checks. Lines are means across
+%   shares, total stock exposure, the stock share of savings and pension,
+%   bankruptcy by age (figures.bankruptcy: the cumulative share and the
+%   yearly rate; with the yearly top-up, the share at the floor), and the
+%   calibration with the checks of model.checks. Lines are means across
 %   simulated households; bands the 10th-90th percentiles.
 
 d = figures.panel_data(r);
@@ -16,8 +18,8 @@ p = r.p; c = r.checks; a = d.ages; sc = d.scale; ret = p.retirement_age;
 col = arm_colour(r.tenure);
 FS = 10; FT = 11; LFS = 9; LWD = 1.9;
 
-fig = figure('Visible', 'off', 'Position', [30 30 2200 1240], 'Color', 'w');
-tl  = tiledlayout(fig, 3, 4, 'Padding', 'compact', 'TileSpacing', 'compact');
+fig = figure('Visible', 'off', 'Position', [30 30 2750 1240], 'Color', 'w');
+tl  = tiledlayout(fig, 3, 5, 'Padding', 'compact', 'TileSpacing', 'compact');
 title(tl, {['Dashboard — ' title_text(r)], ...
     'Lines show the average across simulated households; shaded bands show the 10th-90th percentile range'}, ...
     'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
@@ -146,11 +148,28 @@ band(ax, a(w), ef(:, w), [0.55 0.22 0.65], 'Stock share of savings and pension',
 ylim(ax, [0 1]); ylabel(ax, 'Stock share [0-1]');
 title(ax, '(k)  Stock exposure relative to savings and pension only', 'FontSize', FT);
 
-% (l) Calibration and checks
-ax = nexttile(tl); axis(ax, 'off');
+% (l) Bankruptcy: the cumulative share (left axis) and the yearly rate (right)
+ax = tile(tl, ret, FS);
+B = figures.bankruptcy(d, p);
+yyaxis(ax, 'left');
+plot(ax, a, B.cum, '-', 'Color', [0.70 0.15 0.15], 'LineWidth', LWD, 'DisplayName', B.cum_label);
+ylabel(ax, B.cum_label); ylim(ax, [0, max(1, 1.1 * max(B.cum))]);
+yyaxis(ax, 'right');
+plot(ax, a, B.rate, '--', 'Color', [0.35 0.35 0.35], 'LineWidth', 1.4, 'DisplayName', B.rate_label);
+ylabel(ax, B.rate_label); ylim(ax, [0, max(0.1, 1.1 * max(B.rate))]);
+ax.YAxis(1).Color = [0.70 0.15 0.15]; ax.YAxis(2).Color = [0.35 0.35 0.35];
+legend(ax, 'Location', 'northwest', 'FontSize', LFS);
+if strcmp(B.label, 'bankrupt')
+    title(ax, '(l)  Bankruptcy by age', 'FontSize', FT);
+else
+    title(ax, '(l)  At the floor by age (yearly top-up)', 'FontSize', FT);
+end
+
+% (m) Calibration and checks
+ax = nexttile(tl, [1 3]); axis(ax, 'off');
 text(ax, 0.0, 1.0, info_text(r, d), 'Units', 'normalized', 'VerticalAlignment', 'top', ...
     'FontSize', FS - 0.5, 'Interpreter', 'tex');
-title(ax, '(l)  Calibration and checks', 'FontSize', FT);
+title(ax, '(m)  Calibration and checks', 'FontSize', FT);
 
 if d.has_housing && p.is_owner
     if strcmp(p.mortgage, 'annuity')

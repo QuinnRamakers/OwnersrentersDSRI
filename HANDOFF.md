@@ -43,6 +43,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Figures: a bankruptcy panel everywhere, and income and housing costs for every run on the comparison page (spec: none, asked by Quinn in Claude Code)
+Quinn: on the comparison page, panel (a) showed income and housing costs for the reference only; show them for every run, or their distribution. Add a bankruptcy plot, by default, to the other dashboards too.
+Changed: new `+figures/bankruptcy.m` (the share bankrupt by each age and the yearly rate; with the yearly top-up, the share ever at the floor and the share at the floor that year). `+figures/compare.m`, now four rows: (a)-(e) income received after tax and contributions, the private pension payment after tax, maintenance or rent, the mortgage payment, and net disposable income, every run as a line with the reference's 10th-90th percentile band; (f)-(j) consumption, liquid savings, net worth, the equity share and the cumulative share bankrupt; (k)-(o) the differences from the reference and housing costs over income after tax for every run; (p)-(s) the policies and the settings. `+figures/dashboard.m`: 3 x 5, new panel (l) bankruptcy by age (cumulative share, left axis; yearly rate, right axis), the calibration box is (m). `+figures/step_dashboard.m`: 3 x 5, new panel (l) cumulative share bankrupt for both results. `+figures/robustness.m`: a column with the cumulative share bankrupt in every row.
+Checks run: `run_tests(solve=false)` 0 of 11 failed. Rendered from saved solves: `floor_rule_dashboards` (the comparison page and the four owner dashboards), `figures.step_dashboard` and `figures.robustness` on two saved owner solves. The full `run_tests` (it includes `figures_render`) was not run.
+Commit: this entry with the figure code, pushed to main.
+Open: none for the figures.
+
 ### 2026-10-26 Owner dashboards, both maintenance rules, with and without the absorbing floor: results (spec: none, asked by Quinn in Claude Code)
 Follows the expectations entry below (177bcc9). Solved the two runs without the floor side by side (current value 13 min, purchase price 24 min), then the new `diagnostics/nibud/floor_rule_dashboards.m`. Output (gitignored), `summary_step16/`: `16_base_owner_<purchase|current>_<floor|topup>.png` (the four dashboards) and `16_base_owner_floor_rules.png` (the four overlaid, the purchase price with the floor as reference).
 Median consumption at 30 / at 70, peak mean liquid saving (times entry income), bankrupt (floor) or floored (top-up) by 85, entry value:
