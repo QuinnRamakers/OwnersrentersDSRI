@@ -43,6 +43,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Prompt for testing the bequest motive on the cluster, saved, not started (spec: none, asked by Quinn in Claude Code)
+Quinn: a handover prompt to start testing the bequest motive on another device, with the university cluster.
+Changed: new `docs/prompts/bequest_motive.md`: how to start on the DSRI pod (`bootstrap_pod.m` or `setup_cluster.sh`, `CGM_OUTPUT_DIR`, `GITHUB_TOKEN`), where production stands (step 18), what the bequest code does now and its three dormant problems (no mortgage netting, the terminal step inconsistent with the recursion, minus infinity at a zero bequest and no bequest term for the bankrupt), the open decisions with defaults (a De Nardi shifter proportional to permanent income; the bankrupt get the utility of a zero bequest; netting), a plan that stops for Quinn after each step, Quinn's working rules, and cluster notes. Checked that `case_params(18, 'owner', ...)` builds on production (c_min 5,000, maintenance on the purchase price).
+Checks run: none (no code changed).
+Commit: this entry with the prompt, pushed to main.
+Open: the bequest work itself.
+
 ### 2026-10-26 The absorbing floor at EUR 5,000 in production (spec: none, asked by Quinn in Claude Code)
 Quinn asked why the absorbing floor was not at 5,000 in production (it had never been adopted; 5,000 was the level of the runs) and then: adopt it at c_min 5,000, as a new last ladder step, with `config.params` and CALIBRATION.md to match.
 Changed: `+config/params.m`, `c_min = 5000`. `+ladder/steps.m`: step 1 also sets `c_min = 0`, so steps 1-17 keep the yearly top-up and their calibration (steps 1-3, with income in CGM units, could not take a floor in euros); new last step 18 `floor` sets `c_min = 5000`. `tests/run_tests.m`: `ladder_branches` (18 steps; the top-up to step 17, the floor at step 18), `floor_derive` (production has the floor at 5,000; step 17 has it off; the `phi_abs` case sets `c_min = 0`). CALIBRATION.md (the `c_min` row and "The absorbing floor"), README.md (ladder table, step 18 is `config.params`), CLAUDE.md (known limit), TODO.md (item 4).
