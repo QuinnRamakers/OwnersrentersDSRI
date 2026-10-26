@@ -43,6 +43,24 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Bequest motive, CGM rung (step 1): results (spec: none, asked by Quinn in Claude Code)
+Ran `bequest_runs(1, "renter", [0 1 2.5 5])` at e9ae85e on the DSRI pod (R2025a, 32 threads, one solve at a time): step 1 on `pow3_32x16_lim_u3n40_qn4_as_nc11`, 34x2x2x1 grid points, gh 5, active-set, 10,000 households. Solve 19, 7, 6 and 6 s. Pages in `/Solutionstorage/results/bequest` (copied to `runs/bequest_cgm/` on Quinn's PC): `01_cgm_renter_bequest.png` and a dashboard per run.
+`model.checks`, b = 0, 1, 2.5, 5: c_bound_25_39 0.00% for all; offgrid 0 for all; thin_u1 0.00; at the floor 0.00%; ce_entry 0.657, 0.655, 0.617, 0.421 (includes the bequest's utility, not a welfare comparison).
+Means by age, CGM income units (30 / 45 / 60 / 66 / 75 / 85 / 95):
+- Liquid saving: b 0: 48 / 246 / 395 / 408 / 327 / 206 / 67; b 1: 48 / 247 / 400 / 415 / 338 / 224 / 92; b 2.5: 51 / 252 / 409 / 429 / 359 / 254 / 135; b 5: 57 / 261 / 427 / 454 / 397 / 311 / 213.
+- Liquid equity share: b 0: 0.98 / 0.47 / 0.39 / 0.40 / 0.41 / 0.45 / 0.55; b 2.5: 0.97 / 0.46 / 0.37 / 0.37 / 0.37 / 0.35 / 0.29; b 5: 0.89 / 0.45 / 0.36 / 0.34 / 0.32 / 0.29 / 0.23.
+- Consumption: within 1 unit of b 0 up to 60; 2-4% lower from 66 to 90 at b 2.5 and 5; at 25, 15% (b 2.5) and 45% (b 5) lower.
+- Bequest at death (every age weighted by the chance of dying then): mean 203, 220, 250, 306; median 162, 179, 209, 264. At 100: 0, 30, 76, 160.
+Against the expectations:
+1. b = 0 is step 1: yes (the same calibration).
+2. Saving rises at every age: only a little in working life (+1% at 45, +4-8% at 60 for b 2.5-5). Wrong as stated: the first-order bound (1.1 years of consumption at 30 for b 2.5) does not bind, because step-1 households already hold about 2.8 years of consumption at 30 for precaution. It binds only at entry, where wealth is near zero: consumption at 25-27 falls, and at b 5 the equity share at 25 drops from 1 to about 0.2. The effect is in retirement: saving at 95 is 1.4, 2 and 3.2 times b 0's.
+3. The last year's bequest is about b times consumption: yes, 30, 76 and 160 against consumption at 100 of about 31-33 (0.95, 2.4, 4.9).
+4. The equity share falls toward the Merton share 0.16: in retirement yes (at 95 from 0.55 to 0.38, 0.29, 0.23); the rise in the share after 70 at b 0 disappears. In working life almost no change, apart from entry.
+5. Consumption lower when young and late in life: only at 25-27 and from 66 on, by a few per cent; at 100 higher, since there is wealth left to consume.
+6. No bankruptcy: yes.
+Commit: this entry, pushed to main.
+Open: the next rung (DC only, steps 9-12, built on step 6, gamma 5).
+
 ### 2026-10-26 Bequest motive, CGM rung (step 1); expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: test the bequest motive rung by rung (CGM, then DC only, housing only for renters and owners apart, then both), settling each ambiguity at its rung. Decided for the CGM rung (26 October): the paper's form, chi B^(1-gamma)/(1-gamma) with B liquid wealth after returns plus, for owners, (1 - sell_cost) H, no shifter and no income in B (what the code does); b = chi^(1/gamma) held fixed across the ladder, so chi = b^gamma per step (gamma is 10 at step 1, 5 from step 2; case suffix `_beqb<10 b>`); the last period solved as any other with death certain.
 Runs, on the DSRI pod, one at a time: step 1, one arm (no housing), `pow3_32x16_lim_u3n40_qn4_as_nc11` (u3 and q collapse), gh 5, 10,000 households, b = 0, 1, 2.5, 5 (chi 0, 1, 9,537, 9.8 million), with `diagnostics/bequest/bequest_runs.m`.
