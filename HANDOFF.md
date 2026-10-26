@@ -43,6 +43,19 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-26 Owner dashboards, both maintenance rules, with and without the absorbing floor: results (spec: none, asked by Quinn in Claude Code)
+Follows the expectations entry below (177bcc9). Solved the two runs without the floor side by side (current value 13 min, purchase price 24 min), then the new `diagnostics/nibud/floor_rule_dashboards.m`. Output (gitignored), `summary_step16/`: `16_base_owner_<purchase|current>_<floor|topup>.png` (the four dashboards) and `16_base_owner_floor_rules.png` (the four overlaid, the purchase price with the floor as reference).
+Median consumption at 30 / at 70, peak mean liquid saving (times entry income), bankrupt (floor) or floored (top-up) by 85, entry value:
+- Purchase price, floor EUR 5,000: 0.384 / 1.020, 1.12, 1.1%, 0.318.
+- Purchase price, top-up 1e-6: 0.357 / 1.024, 1.29, 0.0%, 0.277.
+- Current value, floor EUR 5,000: 0.332 / 0.770, 2.72, 14.3%, 0.254.
+- Current value, top-up 1e-6: 0.125 / 0.814, 5.51, 2.6%, 0.022.
+Results: on the purchase price the floor changes little (young consumption 7% higher with it, saving a little lower, a higher young equity share; almost no one is near the floor without it). On the current value without the floor young owners consume a third of what they do with it, save twice as much and hold no equity before 60; the floor turns that into bankruptcy in old age. The current production setting (purchase price, c_min 0) is the second line.
+Against the expectations: as expected.
+Checks run: none (no code in `+solver`, `+config`, `+ladder` or `+model` changed).
+Commit: this entry with `floor_rule_dashboards.m`, pushed to main.
+Open: as in docs/HANDOFF_2026-10-26.md, section 5.
+
 ### 2026-10-26 Owner dashboards, both maintenance rules, with and without the absorbing floor; expectations (spec: none, asked by Quinn in Claude Code)
 Quinn: show the full dashboards for the base, with maintenance on the purchase price and on the current value, each with the absorbing floor (c_min 5,000) and without it (the yearly top-up at 1e-6).
 Grid: the axis-study base, bunched 16x16, u3 at 10 bunched, q at 4, active-set. With the floor both are solved (25 October); without it, solving `16:owner:pow3_16x16_lim_u3p2_qn4_as_nc11` and the same with `_mop`, side by side. Then `figures.dashboard` for the four and `figures.compare` of the four.
