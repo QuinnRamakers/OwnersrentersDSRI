@@ -43,6 +43,28 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-27 Bequest motive, combined rung (steps 13, 14, 17, 18; renter 15): results (spec: none, asked by Quinn in Claude Code)
+Changed plan (Quinn, 27 October): steps 15 and 16 dropped. The steps 13-17 batch (98b665a, code as e9ae85e) was stopped during the step-15 owner solve, after step 15 renters had finished; then steps 18 and 17 ran at 4229833 (code as c52a528, with the bankruptcy rule; inert at 17) from a second folder on the pod. `bequest_runs(s, arm, [0 2.5])`, `pow3_32x16_lim_u3n40_qn4_as_nc11`, gh 5, active-set, 10,000 households, one solve at a time on 32 threads, except that step 13 renter shared the machine with the test run from 09:47 to 10:02. Renters 34x18x40x1 grid points, owners 34x18x40x5. Pages in `/Solutionstorage/results/bequest` and `runs/bequest_combined/` on Quinn's PC.
+Solve minutes, renter b 0 / 2.5, owner b 0 / 2.5: step 13 12.8 / 20.8, 34.7 / 45.0; step 14 10.3 / 13.6, 34.2 / 43.1; step 15 8.1 / 10.4 (renter only); step 17 7.5 / 10.5, 52.1 / 74.7; step 18 7.3 / 10.1, 44.7 / 61.2.
+`model.checks`: c_bound_25_39 0.00% and offgrid 0 in all 18 solves; thin_u1 0.00. Share of household-years at the floor (bankrupt at 18), b 0 / 2.5: renters 13 0.0000 / 0.0000, 14 0.0007 / 0.0005, 17 0.0015 / 0.0011, 18 0.0158 / 0.0061; owners 13 0.0018 / 0.0018, 14 0.0033 / 0.0033, 17 0.0000 / 0.0000, 18 0.0071 / 0.0066. ce_entry renters 0.49 / 0.48 (13), 0.018 / 0.017 (14), 0.010 / 0.009 (15), 0.005 / 0.004 (17), 0.21 / 0.19 (18); owners 0.0023 (13), 0.0000 (14), 0.114 (17), 0.307 / 0.302 (18).
+Means by age, EUR 2025 (30 / 66 / 75 / 85 / 95), b 0 then 2.5:
+- Renter liquid saving: step 13 46k / 210k / 155k / 71k / 9k and 48k / 260k / 229k / 171k / 114k; step 14 50k / 177k / 138k / 75k / 16k and 51k / 200k / 172k / 122k / 69k; step 17 52k / 144k / 91k / 37k / 6k and 52k / 167k / 125k / 81k / 51k; step 18 24k / 117k / 71k / 26k / 3k and 28k / 146k / 111k / 74k / 49k.
+- Renter liquid equity share at 75 / 95: step 13 0.87 / 0.97 and 0.60 / 0.32; step 18 0.59 / 0.93 and 0.25 / 0.15.
+- Renter consumption, b 2.5 against b 0: 1-7% lower from 30 to 75 (step 18: 7% at 30, 4% at 60-66), 5-10% higher at 95.
+- Renter bequest at death, mean (median): step 13 82k (36k) and 172k (138k); 14 79k (55k) and 122k (100k); 15 48k (26k) and 88k (74k); 17 51k (28k) and 90k (75k); 18 38k (17k) and 81k (68k). At 100 with b 2.5: 92k, 47k, 41k, 40k, 41k.
+- Renters bankrupt by 85 at step 18: 2.0% at b 0, 0.8% at b 2.5; by 100 about 16% and 5% (page, panel j).
+- Owners: b 2.5 within 0.1% of b 0 at every age at steps 13, 14 and 17 (step 17 identical to the euro), within 1% at 18. Bequest at death 1.74M (13), 1.78M (14), 1.57M (17, 18). Owners bankrupt by 85 at step 18: 1.0% at both b.
+Against the expectations:
+1. Renters at step 13 as at step 11: yes in retirement (saving at 95 9k against 114k; equity share at 95 0.97 against 0.32; bequest at death doubles). Liquid wealth at b 0 lasts to about 90 rather than running out soon after 67: rent is paid for life.
+2. Owners at 13 and 14: no reaction, yes.
+3. Owners at 17: still no reaction, yes, identical to the euro: the gross house covers the bequest.
+4. Taxes: the renters' added bequest at death is 89k at step 13 and 39-43k from step 14 on, so the income tax roughly halves it in euros; box 3 (15) changes little beyond that.
+5. Step 16: not run.
+6. Step 18: bankruptcy falls, yes: renters bankrupt by 85 from 2.0% to 0.8%, household-years at the floor from 1.6% to 0.6%. Owners unchanged (1.0%).
+Not part of the bequest test: at steps 13-14, with maintenance on the current value, owners consume almost nothing young at both b (mean consumption at 30: 10.9k at 13, 0.5k at 14; entry value 0.002 and 0.000); renters at 14-17 consume 5.8-7.4k at 30 (rent and taxes). The absorbing floor at 18 raises early consumption for both (renter 9.2k, owner 15.6k at 30).
+Commit: this entry, pushed to main.
+Open: whether to revisit mortgage netting, since the gross house makes owners ignore the motive at every step; the value of `beq_bankrupt`; a source for chi; `floor_node_test`.
+
 ### 2026-10-27 Bequest motive: bankrupt households valued as leaving one year of floor (spec: none, asked by Quinn in Claude Code)
 Quinn (27 October): with chi > 0 a bankrupt household is valued as leaving one year of its floor consumption at each death, not nothing (minus infinity under the paper's form) and not no bequest term (which would let bankruptcy escape the bequest penalty).
 Changed: `+config/params.m`, new primitive `beq_bankrupt = 1` (placeholder). `+config/derive.m`: `G_abs` (the discounted chance of dying at the end of each year, G_t = beta (1 - p_t) + beta p_t G_{t+1}, G_T = beta) and `D_beq = D_abs + chi beq_bankrupt^(1-gamma) G_abs` (equal to `D_abs` when chi = 0); refuses `beq_bankrupt` not positive. `+solver/bellman_step_lna.m`: the bankrupt value and the bankruptcy test at the quadrature nodes use `D_beq`. `tests/run_tests.m`: `floor_derive` checks `G_abs` against the explicit sum, `D_beq = D_abs` at chi = 0 and the refusal; new `bequest_bankrupt` (step 18 renter, small grid, c_min 10,000, b 2.5: the value at every bankrupt node against u(F)[D_t + chi beq_bankrupt^(1-gamma) G_t] summed from the survival table, at a working age, a retired age and 100, to 1e-12). CALIBRATION.md (`beq_bankrupt` row; the absorbing floor), TODO.md (item 4), CLAUDE.md (known limit). Saved results without `beq_bankrupt` count as a different calibration (`ladder.same_calibration`).
