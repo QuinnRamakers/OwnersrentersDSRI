@@ -32,6 +32,7 @@ p.sex            = 1;         % 'table' income only: 1 men, 2 women, 3 pooled (m
 p.gamma = 5;                  % relative risk aversion
 p.beta  = 0.96;               % time discount factor (placeholder)
 p.chi   = 0;                  % bequest intensity (placeholder)
+p.beq_bankrupt = 1;           % a bankrupt household is valued as leaving this many years of its floor consumption (placeholder)
 
 % Labour income. Owners use income_coef and sigma_l_log; renters the _rent fields.
 p.income_source       = 'dhs';     % 'dhs': DHS cubic in euros; 'poly': CGM cubic, not in euros; 'table': BKV age effects

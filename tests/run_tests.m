@@ -25,7 +25,7 @@ if opts.solve
     checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
                        @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test, ...
-                       @bequest_off_identical, @bequest_last_year}];
+                       @bequest_off_identical, @bequest_last_year, @bequest_bankrupt}];
     % Some checks call the solver without model.run, so parfor would open
     % MATLAB's default pool: processes, which run out of memory on the DSRI
     % pod. Open the thread pool model.run uses instead.
@@ -278,7 +278,9 @@ end
 
 function floor_derive()
 % The absorbing floor's derived paths. D_abs is the explicit discounted
-% survival sum. With c_min the share is the same for both tenures and the
+% survival sum, G_abs the explicit discounted chance of dying at the end of
+% each year, and D_beq is D_abs without a bequest motive; derive refuses a
+% bankrupt bequest that is not positive. With c_min the share is the same for both tenures and the
 % floor at the owners' deterministic profile is c_min at every age; with
 % phi_abs the share is phi_abs to 66 and phi_abs / replacement after; off, it
 % is phi_floor. derive refuses both positive, c_min with income not in euros,
@@ -288,12 +290,18 @@ assert(p.floor_absorbing && p.c_min == 5000 && numel(p.phi_path) == p.T, ...
     'production: the absorbing floor is not at EUR 5,000');
 q = ladder.params('maint_purchase');
 assert(~q.floor_absorbing && all(q.phi_path == q.phi_floor), 'step 17: the absorbing floor is not off');
-S = cumprod([1; config.survival(p)]);
+pv = config.survival(p);
+S = cumprod([1; pv]);
 for t = 1:p.T
     k = (t:p.T).';
     D = sum(p.beta .^ (k - t) .* S(k) / S(t));
+    G = sum(p.beta .^ (k - t + 1) .* S(k) / S(t) .* (1 - pv(k)));
     assert(abs(p.D_abs(t) / D - 1) < 1e-12, 'D_abs(%d) = %.15g against %.15g', t, p.D_abs(t), D);
+    assert(abs(p.G_abs(t) / G - 1) < 1e-12, 'G_abs(%d) = %.15g against %.15g', t, p.G_abs(t), G);
 end
+assert(p.chi == 0 && isequal(p.D_beq, p.D_abs), 'D_beq is not D_abs without a bequest motive');
+q = config.params(false); q.beq_bankrupt = 0;
+assert(threw_id(@() config.derive(q), 'derive:beq_bankrupt'), 'a zero bankrupt bequest accepted');
 o = config.params(false); o.is_owner = true;  o.c_min = 8000; o = config.derive(o);
 r = config.params(false); r.is_owner = false; r.c_min = 8000; r = config.derive(r);
 dev = max(abs(o.phi_path .* exp(config.income_profile(o)) / 8000 - 1));
@@ -571,6 +579,46 @@ assert(all(r.sol.c_pol(:) > 0 & r.sol.c_pol(:) <= 1 + 1e-6), 'c out of range');
 assert(all(r.sol.pi_pol(:) >= -1e-6 & r.sol.pi_pol(:) <= 1 + 1e-6), 'pi out of range');
 ok = ~r.sim.absorbed(:, end);
 assert(any(ok) && all(r.sim.bequest(ok) > 0), 'a solvent household left no bequest');
+end
+
+function bequest_bankrupt()
+% The bankrupt household with a bequest motive: step 18, renter, small grid,
+% c_min = 10,000, b = 2.5. At every node whose liquid resources fall short of
+% the floor, the value is the closed form
+% (phi_t u1)^(1-gamma)/(1-gamma) [D_t + chi beq_bankrupt^(1-gamma) G_t] to
+% 1e-12 relative, with D_t and G_t summed here from the survival table, at a
+% working age, a retired age and the last. The solve is finite and in range
+% (pi to 1e-3: active-set can step slightly past its bounds, floor_node_test).
+p = ladder.params(18); p.is_owner = false; p.c_min = 10000; p.chi = 2.5 ^ p.gamma;
+p.grid_dims = [8 6 6 4]; p.gh_n = 3; p = config.derive(p);
+[pf, sk, an] = config.model_inputs(p);
+sol = solver.solve(p, pf, sk, an, false);
+assert(all(isfinite(sol.V(:))) && all(sol.c_pol(:) > 0 & sol.c_pol(:) <= 1 + 1e-6) && ...
+    all(sol.pi_pol(:) >= -1e-3 & sol.pi_pol(:) <= 1 + 1e-3), 'solve out of range');
+pv = config.survival(p);
+S  = cumprod([1; pv]);
+net = 1 - p.tau_inc;
+w  = p.chi * p.beq_bankrupt ^ (1 - p.gamma);
+for t = [10, p.t_ret + 5, p.T]
+    [g1, g2] = utility.grid_at(p, t);
+    [U1, U2, U3] = ndgrid(g1, g2, p.u3_grid);
+    sA = U2 .* (1 - U1) .* U3; sH = U2 .* (1 - U1) .* (1 - U3); sX = (1 - U1) .* (1 - U2);
+    if t >= p.t_ret
+        LW = sX + net * U1 + net * sA / an(t) - p.alpha * sH;
+    else
+        LW = sX + (1 - p.kappa(t)) * net * U1 - p.alpha * sH;
+    end
+    F = p.phi_path(t) * U1;
+    k = (t:p.T).';
+    D = sum(p.beta .^ (k - t) .* S(k) / S(t));
+    G = sum(p.beta .^ (k - t + 1) .* S(k) / S(t) .* (1 - pv(k)));
+    m = LW < F * (1 - 1e-9);
+    assert(any(m(:)), 'no node below the floor at t = %d', t);
+    V  = sol.V(:, :, :, 1, t);
+    Vb = F .^ (1 - p.gamma) / (1 - p.gamma) * (D + w * G);
+    err = max(abs(V(m) ./ Vb(m) - 1));
+    assert(err < 1e-12, 't = %d: value at the bankrupt nodes off the closed form by %.2g', t, err);
+end
 end
 
 function floor_node_test()

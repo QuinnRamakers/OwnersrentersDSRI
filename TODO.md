@@ -65,8 +65,9 @@ Decisions open, to be settled before step 7 is rerun:
    Since 26 October 2026 the absorbing floor is in production at c_min =
    EUR 5,000 (ladder step 18; CALIBRATION.md, "The absorbing floor"). Open:
    the source of `c_min` (Nibud minimum example budgets, single or couple, or
-   spending after housing at the bijstand level), and a bequest rule for
-   bankrupt households before `chi` is switched on.
+   spending after housing at the bijstand level). The bankrupt households'
+   bequest is set (`beq_bankrupt`, CALIBRATION.md); its value of one year of
+   floor consumption is a placeholder.
 5. **What the house is for.** A bequest (`chi > 0`, see 4) or equity release.
 6. **The outflow from data.** `h_mult` now follows the Nibud maximum mortgage
    (see 2), a ceiling rather than an estimate, and the owner's 100% LTV with

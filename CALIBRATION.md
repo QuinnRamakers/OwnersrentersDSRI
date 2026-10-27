@@ -33,6 +33,7 @@ only come from a part-year CPI average that CBS will revise.
 | `gamma` | 5 | Production choice. CGM (2005) use 10; the ladder starts there |
 | `beta` | 0.96 | Placeholder. Larsen et al. (2023) is a candidate source, not checked |
 | `chi` | 0 | Placeholder. Bequest motive off in the baseline. Form (Quinn, 26 October 2026): chi B^(1-gamma)/(1-gamma), B liquid wealth after the year's returns plus, for owners, the house net of `sell_cost`. In the last period the household dies for certain and chooses c and pi against the bequest alone. Tests across the ladder hold b = chi^(1/gamma), about the bequest over the last year's consumption, fixed: chi = b^gamma at each step's gamma (`case_params` suffix `_beqb`) |
+| `beq_bankrupt` | 1 | Placeholder (Quinn, 27 October 2026). A bankrupt household (absorbing floor) is valued as leaving this many years of its floor consumption at its death, so under the paper's form bankruptcy carries a large but finite bequest penalty instead of none: its value is u(F) [D_t + chi beq_bankrupt^(1-gamma) G_t], G_t the discounted chance of dying (`config.derive`). Inert while `chi = 0` or without the absorbing floor |
 
 ## Labour income
 
@@ -408,9 +409,11 @@ involuntary only. Decided (Quinn, 26 October 2026): adopted in production at
 c_min = 5,000, as ladder step 18. At step 16 with it, about 1% of owners with
 maintenance on the purchase price went bankrupt, all while the mortgage ran,
 and 15-17% of renters by 100 (`docs/HANDOFF_2026-10-26.md`). Open: the source
-of c_min, and a bequest rule for bankrupt households before `chi` is switched
-on (a household that leaves nothing has a bequest utility of minus infinity at
-gamma > 1).
+of c_min. With a bequest motive a bankrupt household is valued as leaving
+`beq_bankrupt` years of its floor consumption (Quinn, 27 October 2026): a
+household that leaves nothing has a bequest utility of minus infinity at
+gamma > 1, and with no bequest term at all bankruptcy would escape the
+bequest penalty.
 
 ### The top-up floor (`phi_floor`, used when the absorbing floor is off)
 

@@ -39,8 +39,10 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   The floor is F = p.phi_path(t) * Y, and it is also the lower bound of the
 %   consumption search. Where liquid resources fall short of it, the household
 %   with the absorbing floor (p.floor_absorbing) is bankrupt: it consumes F
-%   for the rest of its life, with no choices and no bequest, worth
-%   F^(1-gamma)/(1-gamma) * p.D_abs(t). Without it the household consumes the
+%   for the rest of its life, with no choices, worth
+%   F^(1-gamma)/(1-gamma) * p.D_beq(t); with a bequest motive it is valued as
+%   leaving p.beq_bankrupt years of F at its death (config.derive; D_beq =
+%   D_abs when p.chi = 0). Without it the household consumes the
 %   floor for this year only, saves nothing, and keeps its pot, house and
 %   income. The value jumps at the edge of bankruptcy; with p.abs_node_test
 %   the continuation tests each quadrature node against next year's floor
@@ -109,7 +111,7 @@ kappa_t   = p.kappa(min(t, numel(p.kappa)));
 h_beq_fac = is_owner * (p.h_mult > 0) * (1 - p.sell_cost);   % renters bequeath no housing
 phi_t     = p.phi_path(t);                    % the floor, share of gross income
 absorbing = p.floor_absorbing;
-D_t       = p.D_abs(t);
+D_t       = p.D_beq(t);                       % D_abs(t) when chi = 0
 FLOOR_EPS = 1e-12;
 
 % Take-home income per unit of gross income. Contributions are deducted
@@ -257,7 +259,7 @@ if absorbing && p.abs_node_test && ~last
     end
     if t1 <= numel(p.m_rate_path), m1 = p.m_rate_path(t1); else, m1 = 0; end
     nx = struct('on', true, 'y1', y1, 'a1', a1, 'm1', m1, 'h1', 0, ...
-                'phi1', p.phi_path(t1), 'Dfac', p.D_abs(t1) ^ inv_omg);
+                'phi1', p.phi_path(t1), 'Dfac', p.D_beq(t1) ^ inv_omg);
 end
 
 n_states = numel(Lam_all);

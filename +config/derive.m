@@ -93,6 +93,21 @@ p.D_abs = ones(p.T, 1);
 for t = p.T - 1 : -1 : 1
     p.D_abs(t) = 1 + p.beta * p_surv(t) * p.D_abs(t + 1);
 end
+% With a bequest motive a bankrupt household is valued as leaving
+% beq_bankrupt years of its floor consumption at its death. G_abs(t) is the
+% discounted chance of dying at the end of each year from t on, the weight of
+% that bequest (G_T = beta: death after the last period is certain), and
+% D_beq = D_abs + chi beq_bankrupt^(1-gamma) G_abs the bankrupt household's
+% lifetime weight on u(F); D_beq = D_abs when chi = 0.
+assert(isscalar(p.beq_bankrupt) && p.beq_bankrupt > 0, 'derive:beq_bankrupt', ...
+    'beq_bankrupt must be positive (got %g).', p.beq_bankrupt);
+p.G_abs = zeros(p.T, 1);
+G = 0;
+for t = p.T : -1 : 1
+    G = p.beta * (1 - p_surv(t)) + p.beta * p_surv(t) * G;
+    p.G_abs(t) = G;
+end
+p.D_beq = p.D_abs + p.chi * p.beq_bankrupt ^ (1 - p.gamma) * p.G_abs;
 
 % House (owner) or rent index (renter) at entry as a multiple of income, h_mult.
 % 'none': no housing, h_mult = 0. 'fixed': h_fixed. 'nibud': the largest
