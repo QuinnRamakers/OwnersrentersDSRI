@@ -43,6 +43,17 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-27 Bequest motive, combined rung (steps 13-18); expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Decided (Quinn, 26-27 October): a bankrupt household (step 18) is valued as leaving one year of its floor consumption at each death, a closed form u(F)[D_t + chi G_t] with G_t the discounted chance of dying, through a new primitive (placeholder 1; code and tests before step 18 runs); the bequest is untaxed (under the paper's form a flat inheritance tax tau is the same as b (1 - tau), so the b range covers it); the earlier decisions carry over (the paper's form, b fixed across steps, the house gross, the DC pot not bequeathed).
+Runs, on the DSRI pod, one at a time: `bequest_runs(s, arm, [0 2.5])` for s = 13, 14, 15, 16, 17 (yearly top-up; now) and 18 (after the bankruptcy rule), renters and owners, `pow3_32x16_lim_u3n40_qn4_as_nc11`, gh 5, 10,000 households: 24 solves. Renters 34x18x40x1 grid points, owners 34x18x40x5. Rough time from the PC timings: renter 8 minutes, owner 25 minutes at 13-16 and 60 at 17-18; about 9 hours in all (the last two rungs ran 2-4 times faster than estimated).
+Expected:
+1. Renters, step 13 (the DC annuity and rent): as at step 11. At b 0 liquid wealth runs out soon after 67; at b 2.5 it is rebuilt after 67 to leave about 2.4 times consumption at 100; the bequest at death rises several-fold; consumption a few per cent lower when young and higher late in life; the old-age equity share falls to about 0.3.
+2. Owners, steps 13-16 (maintenance on the current value): as at 7b and 8, the gross house covers the bequest, so owners move by a few per cent at most.
+3. Owners, step 17 (maintenance on the purchase price): the current-value problem goes, but the house still dominates the bequest, so still little reaction.
+4. Taxes: box 3 (step 15) lowers the return on liquid saving, so the renters' bequest response is somewhat smaller from 15 on; the income tax (14) lowers all levels.
+5. Step 16 (house at the Nibud maximum): a larger house and rent; the same pattern.
+6. Step 18: with bankruptcy valued as a bequest of one year of floor consumption, the share bankrupt should fall at b 2.5, at least not rise.
+
 ### 2026-10-26 Bequest motive, housing rung (steps 7b, 8): results (spec: none, asked by Quinn in Claude Code)
 Ran `bequest_runs` for 7b renter, 7b owner, 8 renter, 8 owner at b = 0, 1, 2.5, 5, at 26455f4 (code as e9ae85e) on the DSRI pod, 32 threads, one solve at a time: 16 solves in 13.6 minutes. Renters 34x18x2x1 grid points, 15-30 s a solve; owners 34x18x2x5, 48-62 s. Pages in `/Solutionstorage/results/bequest` and `runs/bequest_housing/` on Quinn's PC.
 `model.checks`: c_bound_25_39 0.00% and offgrid 0 in all 16; thin_u1 0.00; at the floor (share of household-years) renters 0.0001 at b 0-2.5 and 0.0000 at b 5 (step 8: 0.0001, then 0.0000 from b 1), owners 0.0010 (7b) and 0.0007 (8) at every b; ce_entry renters 0.533 to 0.509 (7b), owners 0.0024 (7b) and 0.0277 (8) at every b.
