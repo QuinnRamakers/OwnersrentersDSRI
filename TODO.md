@@ -92,7 +92,7 @@ setting the floor also sets the search bound.
 | `kappa_base` | Single OECD figure. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie) |
 | Housing level | `theta` 1.5% is a placeholder; `h_mult`, see above. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.48% (CALIBRATION.md). The housing dynamics and correlations are calibrated (Tables 1 and 3) |
 | `b0`, `b_alt` | Placeholders. The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now DHS household-head income (EUR 39,763 owners, 30,098 renters at 25), so the denominator, and possibly a buffer by tenure, should follow |
-| REIT moments and correlations | The leg is off and the code still has placeholders; the calibration tables give 5.43% excess return, 24.48% vol (Table 1) and the correlations in Table 3 |
+| REIT in production | The leg is off and `config.params` still has placeholders. The calibration tables' values (Table 1 moments, Table 3 correlations) are in CALIBRATION.md and run through the `_reit<n>` case suffix. Production with the REIT on needs a renter field `corr_RH_rent` and a source for the share (10% is the old placeholder) |
 | `beta`, `chi` | Placeholders, no sourced value yet |
 | Box-3 regime | 36% on actual returns with no loss offset is in force; the wealth-tax alternative (`tau_wealth`) is off. Decide which regime the baseline represents |
 | `sex = 3` pooling | Currently a plain mean of the men's and women's series. Participation-weighted? Does a single-earner household want pooled individual wages, or household labour income? |

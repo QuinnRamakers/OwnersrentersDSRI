@@ -10,6 +10,12 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-10-28 The REIT leg at the calibration tables' values, step 18 at b = 2.5
+Asked by Quinn in Claude Code on 28 October ("the full model with the consumption floor, bequest and the REIT in the retirement account", and how much longer it takes, solves run one after another); Claude Code wrote it here in short.
+Change: case suffixes `_reit<n>` (tau_REIT = n/100 at every age, Table 1 moments 5.43% and 24.48%, Table 3 gross pooled correlations: income 0.09, stock 0.76, H shock 0.17 owners and 0.59 renters) and `_rgh<n>` (gh_n_reit). Production unchanged. Solve step 18 `pow3_32x16_lim_u3n40_qn4_as_nc11_beqb25_reit10_rgh3`, renter then owner, one at a time on the pod, after a REIT-off renter timing control; compare with the saved REIT-off b = 2.5 solves.
+Why: the REIT leg has been off since it was a 10% placeholder; this is the first run with data moments, and its cost decides whether it can go into production.
+Checks that must pass: `run_tests(solve=false)` 0 failures; small-grid solves with the REIT for both tenures finite with offgrid 0; joint quadrature nodes 3 times the REIT-off count; `model.checks` read after each pod solve.
+
 ### 2026-10-23 The consumption floor as an absorbing state, linked to labour income
 Written in Claude Code on 22-23 Oct as `docs/prompts/absorbing_floor.md` (branch claude/dreamy-edison-1814gg, c710366; brought onto main with this entry); Quinn pasted it into Claude Code, which copied it here in short.
 Change: a household whose liquid resources fall below the floor F_t = phi_t Y_t goes bankrupt and consumes F_{t*} for the rest of its life, with no choices: V~^B_t = (phi_t u1)^(1-gamma)/(1-gamma) D_t, D_t = 1 + beta p_t D_{t+1}, D_T = 1. No new state. New primitives `c_min` (euros at median income; phi_t = c_min / Ybar_t, tied to final labour income in retirement) and `phi_abs` (one share of permanent labour income); derived `phi_path`, `D_abs`, `floor_absorbing`. Both 0 is today's model. The floor is also the search's lower bound for solvent households. Simulation: an absorbing flag, `absorbed` and `abs_age`; summaries over solvent households for wealth and shares; `abs_hazard`; bankrupt shares in the checks; labels "bankrupt" in the figures; `_cmin<euros>` in `case_params`.
@@ -42,6 +48,16 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-28 REIT leg at step 18, b = 2.5: code and expectations before the runs (spec: The REIT leg at the calibration tables' values)
+Changed: `diagnostics/pension_grid/case_params.m`: suffixes `_reit<n>` and `_rgh<n>` (spec above). `corr_RH` is set by tenure inside the suffix instead of through a new primitive `corr_RH_rent`, because a new primitive would make every saved solve on the pod a different calibration for `ladder.same_calibration`, so later reruns would re-solve instead of skip. CALIBRATION.md: the tables' REIT values with sources, under the REIT section; production keeps the placeholders. TODO.md: the REIT row now says what production needs (`corr_RH_rent`, a source for the share). Scripts, not committed (runs/ as before): `runs/reit_check.m`, `runs/reit18.m`, `runs/reit18.sh`.
+Checks run: `run_tests(solve=false)`: 0 of 11 checks failed. The small-grid check (`runs/reit_check.m`: settings by tenure, node count, the REIT mean on the nodes, both tenures with and without the REIT on [8 6 6 4], gh 3) runs on the pod as the first part of the job and stops it on a failure.
+Plan on the pod, folder `/Solutionstorage/OwnersrentersDSRI_reit`, one solve at a time on 32 threads: the check; the REIT-off renter at b = 2.5 re-solved, not saved, as a timing control against the saved 10.1 minutes; then renter and owner `pow3_32x16_lim_u3n40_qn4_as_nc11_beqb25_reit10_rgh3`. Pages and dashboards to `/Solutionstorage/results/reit`.
+Expected:
+1. Time: 3 REIT nodes triple the joint quadrature (375 nodes against 125), so each solve should take about 2.5-3 times as long: renter 25-30 minutes (10.1 without), owner 2.5-3 hours (61.2 without). The control should come within about 10% of 10.1 minutes.
+2. The DC fund: 10% moves from bonds to the REIT at every age, in retirement too (the glide holds no stocks after 67). The fund's expected return rises by about 0.54 points a year, so the mean pot at 67 should be about 10% higher and the mean annuity payment 10-15% higher, since the annuity is priced at the fund's expected return. The payment varies more after 67 (about 2.4% a year of REIT risk).
+3. Households: more expected retirement income means somewhat less liquid saving before 67 and slightly more consumption. The fund is now riskier and correlated with stocks (0.76), so the liquid equity share should fall a little. The REIT hedges rent (0.59) more than house prices (0.17), so renters should move more than owners.
+4. Bankruptcy and bequests: small changes. Renters' bankruptcy by 100 (5% at b = 2.5) may fall slightly; owners (about 1%) should not move. Owners' bequests are mostly the house and should not move; renters' (2.7 times entry income) may fall a little with liquid saving.
 
 ### 2026-10-28 Bequest motive, step 18: both maintenance rules and both bequests on one page (spec: none, asked by Quinn in Claude Code)
 No solves: two `figures.compare` pages (bequest view) drawn on the pod from the saved step-18 solves, code e3e6e68, 46 seconds. `18_floor_owner_maint_x_bequest.png`: owners on the purchase price and on the current value, b 0 and 2.5, in euros, purchase price at b 0 as the reference. `18_floor_all_maint_x_bequest.png`: the same four with renters at b 0 and 2.5, in multiples of each tenure's entry income, renters at b 0 as the reference. In `/Solutionstorage/results/bequest_mcv` and `runs/bequest_mcv/`.

@@ -148,6 +148,29 @@ and the share is imposed rather than chosen. Real moments, and at least the
 REIT-equity and REIT-housing correlations, are needed before the leg says
 anything.
 
+The calibration tables give those moments and correlations. The REIT is the
+NASDAQ Eurozone Real Estate Total Return Index in euros, real. The case suffix
+`_reit<n>` (`diagnostics/pension_grid/case_params.m`) runs the leg with them at
+a share of n/100. Production keeps the placeholders above: a new primitive
+value would make every saved solve a different calibration, and a nonzero
+correlation turns the fourth shock on even at a zero share.
+
+| Parameter | Value in `_reit<n>` | Source |
+|---|---|---|
+| `tau_REIT` | n/100; 0.10 in `_reit10` | The old placeholder share. No source |
+| `mu_REIT_level` | 0.0543 | Real return in euros less `r`, 2002–2024. Calibration tables, Table 1 |
+| `sigma_REIT_level` | 0.2448 | Same series, standard deviation. Table 1 |
+| `corr_RL` | 0.09 | REIT with the gross income shock, pooled, 2002–2023. Table 3 |
+| `corr_RS` | 0.76 | REIT with the stock return. Table 3 |
+| `corr_RH` | 0.17 owners, 0.59 renters | REIT with the tenure's H shock: the house price for owners, the rent for renters. Table 3 |
+
+With these values the REIT's Sharpe ratio is 0.22 against 0.21 for stocks, at
+a correlation of 0.76 between the two. `corr_RH` is one primitive for both
+tenures, so the suffix sets it by arm. A REIT in production needs a renter
+field `corr_RH_rent`, as `corr_HL_rent` and `corr_SH_rent`. Table 5 gives the
+income correlations by tenure (REIT: owners 0.14, renters −0.22); the model
+uses the pooled values for every shock.
+
 ## Taxes
 
 The DC account gets EET treatment: contributions are deductible, the fund grows

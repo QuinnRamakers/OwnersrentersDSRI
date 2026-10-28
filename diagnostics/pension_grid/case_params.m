@@ -67,9 +67,18 @@ function p = case_params(step, arm, name)
 %               at the step's gamma, so b = chi^(1/gamma), about the bequest
 %               over the last year's consumption, is the same on every step
 %               (Quinn, 26 October 2026); it changes the model
-%   Apart from _mop, _mcv, _cmin and _beqb nothing here changes the model: only grid_dims,
+%     _reit<n>  the REIT leg of the DC fund at a share of n/100 at every age
+%               (_reit10 is 10%, the old placeholder share), with the
+%               calibration tables' moments (Table 1: excess return 5.43%,
+%               vol 24.48%) and gross pooled correlations (Table 3: income
+%               0.09, stock 0.76). corr_RH is the REIT's correlation with the
+%               tenure's H shock: the house price for owners (0.17), the rent
+%               for renters (0.59). It changes the model
+%     _rgh<n>   gh_n_reit = n quadrature nodes for the REIT shock (gh_n
+%               otherwise)
+%   Apart from _mop, _mcv, _cmin, _beqb and _reit nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
-%   interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
+%   gh_n_reit, interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
@@ -138,5 +147,14 @@ if contains(extra, '_exact'), p.abs_node_test = true; end                  % ban
 if contains(extra, '_interp'), p.abs_node_test = false; end                % interpolated across the edge
 g = regexp(extra, '_beqb(\d+)', 'tokens', 'once');
 if ~isempty(g), p.chi = (str2double(g{1}) / 10) ^ p.gamma; end             % bequest at b = chi^(1/gamma)
+g = regexp(extra, '_reit(\d+)', 'tokens', 'once');
+if ~isempty(g)                                                             % REIT leg, calibration tables 1 and 3
+    p.tau_REIT = str2double(g{1}) / 100;
+    p.mu_REIT_level = 0.0543; p.sigma_REIT_level = 0.2448;
+    p.corr_RL = 0.09; p.corr_RS = 0.76;
+    p.corr_RH = 0.59; if p.is_owner, p.corr_RH = 0.17; end                 % rent for renters, house price for owners
+end
+g = regexp(extra, '_rgh(\d+)', 'tokens', 'once');
+if ~isempty(g), p.gh_n_reit = str2double(g{1}); end                        % REIT quadrature nodes
 p = config.derive(p);
 end
