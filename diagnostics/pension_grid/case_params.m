@@ -28,6 +28,9 @@ function p = case_params(step, arm, name)
 %   More suffixes:
 %     _mop      maint_on_purchase (maintenance on the purchase price), the
 %               housing variant without the ruin cliff; it changes the model
+%     _mcv      maint_on_purchase = false (maintenance on the current house
+%               value), for steps 17-18, which charge the purchase price; it
+%               changes the model
 %     _u3x2     u3 (pension against house) at twice its base points
 %     _u3n<n>   u3 at n base points instead of 10
 %     _u3p<n>   u3 bunched toward 0 with grid_pow_u3 = n
@@ -64,7 +67,7 @@ function p = case_params(step, arm, name)
 %               at the step's gamma, so b = chi^(1/gamma), about the bequest
 %               over the last year's consumption, is the same on every step
 %               (Quinn, 26 October 2026); it changes the model
-%   Apart from _mop, _cmin and _beqb nothing here changes the model: only grid_dims,
+%   Apart from _mop, _mcv, _cmin and _beqb nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
@@ -109,6 +112,7 @@ if ~isempty(g), p.gh_n = str2double(g{1}); end
 if contains(extra, '_makima'), p.interp_method = 'makima'; end
 if contains(extra, '_lim'), p.pi_nothing_saved = 'limit'; end
 if contains(extra, '_mop'), p.maint_on_purchase = true; end
+if contains(extra, '_mcv'), p.maint_on_purchase = false; end                % maintenance on the current value
 if contains(extra, '_u3x2'), p.grid_dims(3) = 2 * p.grid_dims(3); end      % pension-against-house axis doubled
 g = regexp(extra, '_u3n(\d+)', 'tokens', 'once');
 if ~isempty(g), p.grid_dims(3) = str2double(g{1}); end                     % u3 base points

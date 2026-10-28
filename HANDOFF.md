@@ -43,6 +43,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-28 Bequest motive, step 18 with maintenance on the current house value; expectations before the runs (spec: none, asked by Quinn in Claude Code)
+Quinn: the step-18 renter-owner comparison with and without the bequest motive (pages `18_floor_renter_vs_owner_b0.png` and `_beqb25.png`, drawn from the saved solves, in multiples of each tenure's entry income) also with maintenance on the current house value. New `case_params` suffix `_mcv` (`maint_on_purchase = false`). Renters pay no maintenance, so their step-18 solves are reused; owners at step 18 `pow3_32x16_lim_u3n40_qn4_as_nc11_mcv` at b = 0 and 2.5, on the DSRI pod, one at a time, `bequest_runs(18, "owner", [0 2.5], base = ..._mcv, out = .../bequest_mcv)`, then the two renter-owner pages. Rough time 1.5 hours (current-value owners took 35-45 minutes a solve at steps 13-14).
+Expected:
+1. Owners at b = 0: as at step 16 with the floor (`docs/HANDOFF_2026-10-26.md`): maintenance grows with the house price, owners save more liquid wealth than on the purchase price, and old-age bankruptcy appears (7-14% by 85 at step 16), from illiquidity.
+2. Owners at b = 2.5: unlike on the purchase price, they should react. A bankrupt owner loses the house and is valued as leaving one year of floor consumption, so the bequest motive makes old-age bankruptcy very costly: more liquid saving in old age, less bankruptcy, a little less consumption before and in retirement.
+3. The renter-owner gap: in bankruptcy it should narrow or reverse with b, since both tenures now avoid it; in bequests it stays large (the house).
+
 ### 2026-10-27 Bequest motive, combined rung (steps 13, 14, 17, 18; renter 15): results (spec: none, asked by Quinn in Claude Code)
 Changed plan (Quinn, 27 October): steps 15 and 16 dropped. The steps 13-17 batch (98b665a, code as e9ae85e) was stopped during the step-15 owner solve, after step 15 renters had finished; then steps 18 and 17 ran at 4229833 (code as c52a528, with the bankruptcy rule; inert at 17) from a second folder on the pod. `bequest_runs(s, arm, [0 2.5])`, `pow3_32x16_lim_u3n40_qn4_as_nc11`, gh 5, active-set, 10,000 households, one solve at a time on 32 threads, except that step 13 renter shared the machine with the test run from 09:47 to 10:02. Renters 34x18x40x1 grid points, owners 34x18x40x5. Pages in `/Solutionstorage/results/bequest` and `runs/bequest_combined/` on Quinn's PC.
 Solve minutes, renter b 0 / 2.5, owner b 0 / 2.5: step 13 12.8 / 20.8, 34.7 / 45.0; step 14 10.3 / 13.6, 34.2 / 43.1; step 15 8.1 / 10.4 (renter only); step 17 7.5 / 10.5, 52.1 / 74.7; step 18 7.3 / 10.1, 44.7 / 61.2.
