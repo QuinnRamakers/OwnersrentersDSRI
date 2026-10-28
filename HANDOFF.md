@@ -43,6 +43,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-28 Bequest motive, step 18: both maintenance rules and both bequests on one page (spec: none, asked by Quinn in Claude Code)
+No solves: two `figures.compare` pages (bequest view) drawn on the pod from the saved step-18 solves, code e3e6e68, 46 seconds. `18_floor_owner_maint_x_bequest.png`: owners on the purchase price and on the current value, b 0 and 2.5, in euros, purchase price at b 0 as the reference. `18_floor_all_maint_x_bequest.png`: the same four with renters at b 0 and 2.5, in multiples of each tenure's entry income, renters at b 0 as the reference. In `/Solutionstorage/results/bequest_mcv` and `runs/bequest_mcv/`.
+Read from the pages (numbers as in the two entries below):
+1. The bequest motive changes owners only on the current value; on the purchase price the b 0 and b 2.5 lines lie on top of each other everywhere except the equity share at 25-30.
+2. Maintenance on the current value against the purchase price: maintenance from a flat 2.6k a year to 27-30k at 95; housing costs after 55 20-70% of income after tax against about 7%; consumption 15-37% lower before 67 and about 50% lower at 100; liquid saving at its peak 185k (b 0) and 245k (b 2.5) against 35-40k; liquid equity share in retirement 0.53-0.75 against 0.83-1.00.
+3. Bankrupt by 100: owners on the purchase price about 1%, renters 16% and 5%, owners on the current value 44% and 33% (b 0, b 2.5).
+4. Bequest at death in multiples of entry income: renters 1.3 and 2.7, owners on the purchase price 39.4 at both b, owners on the current value 37.2 and 40.0.
+Commit: this entry, pushed to main.
+
 ### 2026-10-28 Bequest motive, step 18 with maintenance on the current house value: results (spec: none, asked by Quinn in Claude Code)
 Ran on the DSRI pod from 10:11 to 11:40 UTC, code e3e6e68 (as c52a528 plus `case_params` `_mcv`): `bequest_runs(18, "owner", [0 2.5], base = "pow3_32x16_lim_u3n40_qn4_as_nc11_mcv")`, then the two renter-owner pages against the saved step-18 renter solves. gh 5, active-set, 10,000 households, 34x18x40x5 grid points, one solve at a time on 32 threads. Solve minutes: owner b 0 41.8, b 2.5 44.9 (renters reused: 7.3 and 10.1). Pages in `/Solutionstorage/results/bequest_mcv` and `runs/bequest_mcv/` on Quinn's PC: `18_floor_renter_vs_owner_mcv_b0.png`, `_mcv_b2.5.png`, `18_floor_owner_bequest.png` and the two dashboards.
 `model.checks`: c_bound_25_39 0.01% at both b, offgrid 0, thin_u1 0.00. Household-years at the floor 0.0533 / 0.0339 (purchase price 0.0071 / 0.0066). ce_entry 0.196 / 0.168 (welfare levels not reported, CLAUDE.md).
