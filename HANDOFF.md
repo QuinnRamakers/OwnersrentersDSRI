@@ -15,12 +15,14 @@ Asked by Quinn in Claude Code on 28 October, after the owner REIT solve ran for 
 Change: `solve_cases(..., verbose = true)` prints the clock time when each case starts, the solver's progress lines (every 10th age, with that age's solve time) and the checks. Default off, so other callers print what they did before. Pod scripts pass it on.
 Why: a solve on the pod prints nothing until it ends, so how far along it is can only be guessed from the time.
 Checks that must pass: `run_tests(solve=false)` 0 failures; a small-grid case through `solve_cases` with `verbose = true` on the pod prints the start line, the age lines and the checks.
+Done: 2026-10-28
 
 ### 2026-10-28 The REIT leg at the calibration tables' values, step 18 at b = 2.5
 Asked by Quinn in Claude Code on 28 October ("the full model with the consumption floor, bequest and the REIT in the retirement account", and how much longer it takes, solves run one after another); Claude Code wrote it here in short.
 Change: case suffixes `_reit<n>` (tau_REIT = n/100 at every age, Table 1 moments 5.43% and 24.48%, Table 3 gross pooled correlations: income 0.09, stock 0.76, H shock 0.17 owners and 0.59 renters) and `_rgh<n>` (gh_n_reit). Production unchanged. Solve step 18 `pow3_32x16_lim_u3n40_qn4_as_nc11_beqb25_reit10_rgh3`, renter then owner, one at a time on the pod, after a REIT-off renter timing control; compare with the saved REIT-off b = 2.5 solves.
 Why: the REIT leg has been off since it was a 10% placeholder; this is the first run with data moments, and its cost decides whether it can go into production.
 Checks that must pass: `run_tests(solve=false)` 0 failures; small-grid solves with the REIT for both tenures finite with offgrid 0; joint quadrature nodes 3 times the REIT-off count; `model.checks` read after each pod solve.
+Done: 2026-10-28
 
 ### 2026-10-23 The consumption floor as an absorbing state, linked to labour income
 Written in Claude Code on 22-23 Oct as `docs/prompts/absorbing_floor.md` (branch claude/dreamy-edison-1814gg, c710366; brought onto main with this entry); Quinn pasted it into Claude Code, which copied it here in short.
@@ -54,6 +56,30 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-28 REIT leg at step 18, b = 2.5: results (spec: The REIT leg at the calibration tables' values)
+Changed: no code (ran ce5bcb3). Ran `runs/reit18.sh` on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_reit`, from 12:24 to 17:47 UTC, one solve at a time on 32 threads: `reit_check`, then `reit18`. gh 5 (3 REIT nodes), active-set, 10,000 households, 34x18x40 grid points (owners x5 q). Saved: `18_floor_<arm>_pow3_32x16_lim_u3n40_qn4_as_nc11_beqb25_reit10_rgh3.mat` in the standard `pension_grid` folder. Pages in `/Solutionstorage/results/reit` and `runs/reit/` on Quinn's PC: `18_floor_renter_reit_pension.png`, `18_floor_owner_reit_pension.png`, `18_floor_reit_bequest.png` (all four on one page, bequest view) and a dashboard per REIT run; the job log is `runs/reit/reit18.txt`.
+Checks run: `run_tests(solve=false)` 0 of 11 failed (ce5bcb3, and again on 6ff4296; no code changed since). `reit_check` passed: corr_RH 0.59 renters and 0.17 owners, REIT share 0.10 at every age, 375 joint nodes against 125, the REIT mean on the nodes 1.065800 against 1.065800; small grid offgrid 0 and no non-finite V for both tenures with and without the REIT. `model.checks` on the full solves, without then with the REIT: c_bound_25_39 0.0000 everywhere, offgrid [0 0 0 0], thin_u1 0.00; household-years bankrupt renter 0.0061 / 0.0049, owner 0.0066 / 0.0068; ce_entry renter 0.1861 / 0.1897, owner 0.3017 / 0.3023 (welfare levels not reported, CLAUDE.md).
+Time: the renter control without the REIT, re-solved today, took 14.1 minutes against the saved 10.1, so the pod ran about 1.4 times slower than on 27 October (load average about 92 in the morning, about 124 in the afternoon). Renter with the REIT 37.3 minutes: 2.65 times today's control (3.71 times the saved solve). Owner with the REIT 265.2 minutes: 4.34 times the saved 61.2; at today's speed the REIT-off owner would take about 85 minutes, so about 3.1 times. There is no same-day owner control, and the afternoon was busier than the renter control's hour, so the owner ratio could be a little lower. The job's last line ("all done in 266.8 min") timed only the owner and the pages, because `runs/reit18.m` reuses `t0`. A 1-minute 4-thread test (entry above) shared the CPUs during the owner solve.
+Means by age, EUR 2025 (30 / 45 / 60 / 66 / 75 / 85 / 95), without then with the REIT:
+- Renter C: 8,620 / 17,715 / 23,323 / 23,908 / 22,539 / 20,187 / 17,201 and 8,744 / 18,013 / 24,114 / 25,071 / 24,831 / 22,849 / 20,351 (+1.4% at 30, +4.9% at 66, +10.2% at 75, +18.3% at 95).
+- Renter liquid saving X: 27,611 / 121,465 / 154,206 / 146,192 / 111,041 / 73,865 / 48,973 and 27,090 / 117,610 / 142,146 / 127,604 / 101,172 / 73,396 / 55,045 (-1.9%, -3.2%, -7.8%, -12.7% at 66, then above the REIT-off line from about 86).
+- Renter DC pot at 66: 476,400 and 539,452 (+13.2%). Annuity payment before tax at 75: 29,188 and 34,952 (+19.7%).
+- Renter liquid equity share: 0.29 / 0.01 / 0.01 / 0.22 / 0.25 / 0.19 / 0.15 and 0.29 / 0.01 / 0.01 / 0.02 / 0.06 / 0.06 / 0.06.
+- Renter bankrupt: the same to 75, then 0.008 and 0.007 at 85, 0.026 and 0.020 at 95.
+- Owner C: 15,457 / 28,483 / 39,476 / 40,988 / 42,961 / 41,635 / 41,536 and 15,473 / 28,523 / 39,849 / 41,766 / 48,426 / 47,478 / 47,480 (+0.1% to 45, +1.9% at 66, +12.7% at 75, +14.3% at 95).
+- Owner X: 4,360 / 36,703 / 33,763 / 28,310 / 6,860 / 194 / 0 and 4,322 / 36,270 / 30,877 / 21,879 / 4,415 / 67 / 0 (-8.5% at 60, -22.7% at 66).
+- Owner DC pot at 66: 794,222 and 900,796 (+13.4%). Annuity payment at 75: 48,557 and 58,226 (+19.9%).
+- Owner liquid equity share: 0.64 / 0.37 / 0.24 / 0.83 / 0.99 / 1.00 / 1.00 and 0.64 / 0.39 / 0.27 / 0.02 / 0.32 / 0.41 / 0.41.
+- Owner bankrupt: 0.010 from 60 on, with and without the REIT.
+- Bequest at death, mean and median: renter 80,715 and 67,860 without, 79,085 and 67,852 with (2.68 and 2.63 times entry income, median 2.25 both); owner 1,568,002 and 1,208,876 without, 1,567,163 and 1,207,970 with (39.4 and 30.4 times entry income both).
+Against the expectations:
+1. Time: renter within the expected 2.5-3 times, owner about 3.1 times, just above. The control was 40% slower than the saved solve, not within 10%, because the pod was busier.
+2. The DC pot at 67 rose 13%, not about 10%, and the payment rose 20%, not 10-15%. The payment rises with the pot and also with the higher return the annuity is priced at (1.197 / 1.132 = 1.057).
+3. Consumption is up and liquid saving down before 67, as expected, and renters move more than owners before 67. But the liquid equity share falls much more than "a little", and only from 66: renters to 0.02-0.06 from 0.15-0.25, owners to 0.02-0.41 from 0.83-1.00. Before 60 it does not move. In retirement the fund is 90% bonds and 10% REIT, and the pot is far larger than liquid saving (at 66, renters 539k against 128k, owners 901k against 22k). The REIT leg alone (54k and 90k, correlation 0.76 with stocks) is then more stock-like risk than the liquid stocks households held without it (about 32k and 23k at 66), so they cut liquid stocks. Owners' liquid saving after 75 is close to zero, so their share there is a share of very little. The equity policy at 75 shows it: owners hold all stocks at low wealth over income and none above about 50; renters' policy falls from 0.14 to 0 instead of a flat 0.27.
+4. Bankruptcy and bequests: as expected. Renters' bankruptcy by 95 falls from 2.6% to 2.0%; owners stay at 1.0%; owners' bequests do not move; renters' mean bequest falls 2%.
+Commit: this entry, pushed to main.
+Open: (1) A same-day REIT-off owner re-solve (about 85 minutes on the pod) would give a clean owner time ratio. (2) Whether the REIT should stay in the fund after 67, where the glide holds no stocks: the retirement equity result rests on it. (3) Production still needs `corr_RH_rent` and a source for the 10% share (TODO.md).
 
 ### 2026-10-28 Progress lines in the pod log (spec: Progress lines in the pod log)
 Changed: `diagnostics/pension_grid/solve_cases.m` takes `verbose` (default false). With it on, each case prints its start time, then `model.run` prints the solver's line every 10th age (age, the policy at a probe state, that age's seconds) and the checks. Callers that leave it off print what they did before. Pod scripts should pass `verbose = true`. The running REIT job (`runs/reit18.m`) was not touched and still logs nothing during a solve.
