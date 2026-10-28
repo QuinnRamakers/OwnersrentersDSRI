@@ -8,10 +8,15 @@ function solve_cases(cases, opts)
 %   the households and seed of the ladder's standard numerics, and skipped
 %   when a result for the same calibration is already there. One line per
 %   solve with its time and model.checks.
+%
+%   solve_cases(..., verbose = true) also prints the clock time when each case
+%   starts, the solver's progress lines (every 10th age, with that age's solve
+%   time) and the checks, so a log on the pod shows how far a solve is.
 
 arguments
     cases (1,:) string
     opts.force (1,1) logical = false
+    opts.verbose (1,1) logical = false
 end
 
 num = ladder.numerics('standard');
@@ -32,7 +37,8 @@ for c = cases
             continue
         end
     end
-    r = model.run(p, N_sim = num.N_sim, verbose = false);
+    if opts.verbose, fprintf('%s start %s\n', char(datetime('now')), c); end
+    r = model.run(p, N_sim = num.N_sim, verbose = opts.verbose);
     k2 = r.checks;
     fprintf('%-6s %-10s %-6s %-22s nodes %3dx%-3d solve %6.0f s  floored %.4f  offgrid %s  entry %.4f  thin_u1 %.2f\n', ...
         ladder.number(k, S), S(k).name, arm, name, p.N_u1, p.N_u2, r.timing.solve_sec, k2.floored_share, ...

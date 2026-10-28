@@ -10,6 +10,12 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-10-28 Progress lines in the pod log
+Asked by Quinn in Claude Code on 28 October, after the owner REIT solve ran for hours with nothing in its log; Claude Code wrote it here in short.
+Change: `solve_cases(..., verbose = true)` prints the clock time when each case starts, the solver's progress lines (every 10th age, with that age's solve time) and the checks. Default off, so other callers print what they did before. Pod scripts pass it on.
+Why: a solve on the pod prints nothing until it ends, so how far along it is can only be guessed from the time.
+Checks that must pass: `run_tests(solve=false)` 0 failures; a small-grid case through `solve_cases` with `verbose = true` on the pod prints the start line, the age lines and the checks.
+
 ### 2026-10-28 The REIT leg at the calibration tables' values, step 18 at b = 2.5
 Asked by Quinn in Claude Code on 28 October ("the full model with the consumption floor, bequest and the REIT in the retirement account", and how much longer it takes, solves run one after another); Claude Code wrote it here in short.
 Change: case suffixes `_reit<n>` (tau_REIT = n/100 at every age, Table 1 moments 5.43% and 24.48%, Table 3 gross pooled correlations: income 0.09, stock 0.76, H shock 0.17 owners and 0.59 renters) and `_rgh<n>` (gh_n_reit). Production unchanged. Solve step 18 `pow3_32x16_lim_u3n40_qn4_as_nc11_beqb25_reit10_rgh3`, renter then owner, one at a time on the pod, after a REIT-off renter timing control; compare with the saved REIT-off b = 2.5 solves.
@@ -48,6 +54,11 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-28 Progress lines in the pod log (spec: Progress lines in the pod log)
+Changed: `diagnostics/pension_grid/solve_cases.m` takes `verbose` (default false). With it on, each case prints its start time, then `model.run` prints the solver's line every 10th age (age, the policy at a probe state, that age's seconds) and the checks. Callers that leave it off print what they did before. Pod scripts should pass `verbose = true`. The running REIT job (`runs/reit18.m`) was not touched and still logs nothing during a solve.
+Checks run on the pod in a scratch copy (`/tmp`, own output folder, a 4-thread pool, removed afterwards), 17:13-17:14 UTC, beside the owner REIT solve: `run_tests(solve=false)`: 0 of 11 checks failed. `solve_cases("18:renter:pow3_8x6_u3n6_qn4_gh3", verbose = true)` printed the start line, nine age lines (t = 75, 70, 60, ..., 10, 1, 0.5-3.2 s each), the checks table and the usual summary line: solve 52 s, offgrid [0 0 0 0], floored 0.0523. The owner REIT solve shared the pod's 32 CPUs with these 4 threads for about a minute, which adds well under a minute to its time.
+Commit: this entry, pushed to main.
 
 ### 2026-10-28 REIT leg at step 18, b = 2.5: code and expectations before the runs (spec: The REIT leg at the calibration tables' values)
 Changed: `diagnostics/pension_grid/case_params.m`: suffixes `_reit<n>` and `_rgh<n>` (spec above). `corr_RH` is set by tenure inside the suffix instead of through a new primitive `corr_RH_rent`, because a new primitive would make every saved solve on the pod a different calibration for `ladder.same_calibration`, so later reruns would re-solve instead of skip. CALIBRATION.md: the tables' REIT values with sources, under the REIT section; production keeps the placeholders. TODO.md: the REIT row now says what production needs (`corr_RH_rent`, a source for the share). Scripts, not committed (runs/ as before): `runs/reit_check.m`, `runs/reit18.m`, `runs/reit18.sh`.
