@@ -43,6 +43,23 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-28 Bequest motive, step 18 with maintenance on the current house value: results (spec: none, asked by Quinn in Claude Code)
+Ran on the DSRI pod from 10:11 to 11:40 UTC, code e3e6e68 (as c52a528 plus `case_params` `_mcv`): `bequest_runs(18, "owner", [0 2.5], base = "pow3_32x16_lim_u3n40_qn4_as_nc11_mcv")`, then the two renter-owner pages against the saved step-18 renter solves. gh 5, active-set, 10,000 households, 34x18x40x5 grid points, one solve at a time on 32 threads. Solve minutes: owner b 0 41.8, b 2.5 44.9 (renters reused: 7.3 and 10.1). Pages in `/Solutionstorage/results/bequest_mcv` and `runs/bequest_mcv/` on Quinn's PC: `18_floor_renter_vs_owner_mcv_b0.png`, `_mcv_b2.5.png`, `18_floor_owner_bequest.png` and the two dashboards.
+`model.checks`: c_bound_25_39 0.01% at both b, offgrid 0, thin_u1 0.00. Household-years at the floor 0.0533 / 0.0339 (purchase price 0.0071 / 0.0066). ce_entry 0.196 / 0.168 (welfare levels not reported, CLAUDE.md).
+Means by age, EUR 2025 (30 / 45 / 60 / 66 / 75 / 85 / 95), owners on the current value, b 0 then 2.5 (purchase price at b 0 in brackets):
+- Consumption 11.5k / 21.8k / 31.2k / 33.4k / 33.5k / 31.4k / 23.9k and 10.2k / 20.1k / 30.4k / 33.1k / 34.3k / 33.6k / 26.6k (15.6k / 28.4k / 39.4k / 40.9k / 42.9k / 41.6k / 41.5k).
+- Liquid saving 16k / 117k / 178k / 183k / 170k / 115k / 29k and 21k / 148k / 236k / 247k / 239k / 174k / 59k (3.7k / 34k / 33k / 28k / 6.7k / 0.2k / 0).
+- Liquid equity share 0.85 / 0.07 / 0.06 / 0.64 / 0.65 / 0.62 / 0.75 and 0.81 / 0.04 / 0.05 / 0.55 / 0.56 / 0.53 / 0.60 (0.68 / 0.38 / 0.25 / 0.83 / 0.99 / 1.00 / 1.00).
+- Bankrupt by 85: 6.8% and 4.2% (1.0%); by 100 about 44% and 33% (page, panel j).
+- Bequest at death, mean (median): 1.48M (1.25M) and 1.59M (1.33M) (1.57M, 1.21M); at 100 1.62M and 1.80M (2.68M).
+Against the expectations:
+1. Owners at b 0 save far more liquid wealth than on the purchase price (183k against 28k at 66) and consume 18-26% less from 30 to 66: yes. Old-age bankruptcy appears, 6.8% by 85, just under the 7-14% of step 16. The bequest at 100 is lower than on the purchase price because the owners whose house rose most pay the most maintenance and go bankrupt, so the survivors hold smaller houses.
+2. Owners at b 2.5 react, yes: liquid saving up 27-35% from 30 to 66 and 52-99% at 85-95, consumption 11% lower at 30 and 3% at 60, equity share in retirement 0.09-0.15 lower, bankrupt by 85 from 6.8% to 4.2%. Mean consumption after 75 rises (2-12%) because fewer households sit at the floor.
+3. The renter-owner gap: bankruptcy by 85 narrows from 4.8 to 3.4 points (renters 2.0% to 0.8%), but by 100 it stays at about 28 points (renters 16% to 5%, owners 44% to 33%), and it does not reverse: owners stay several times as likely to go bankrupt (by 85, 3.4 times at b 0 and 5.3 times at b 2.5). The bequest gap stays large: at death 37 against 1.3 times entry income at b 0, 40 against 2.7 at b 2.5.
+Also seen: at b 2.5 the equity-share policy at 75 is not smooth near the bankruptcy edge (W/Y about 2-3, panel r, both tenures); a grid limit at the floor (CLAUDE.md), not studied.
+Commit: this entry, pushed to main.
+Open: as on 27 October (mortgage netting, `beq_bankrupt`, a source for chi, `floor_node_test`).
+
 ### 2026-10-28 Bequest motive, step 18 with maintenance on the current house value; expectations before the runs (spec: none, asked by Quinn in Claude Code)
 Quinn: the step-18 renter-owner comparison with and without the bequest motive (pages `18_floor_renter_vs_owner_b0.png` and `_beqb25.png`, drawn from the saved solves, in multiples of each tenure's entry income) also with maintenance on the current house value. New `case_params` suffix `_mcv` (`maint_on_purchase = false`). Renters pay no maintenance, so their step-18 solves are reused; owners at step 18 `pow3_32x16_lim_u3n40_qn4_as_nc11_mcv` at b = 0 and 2.5, on the DSRI pod, one at a time, `bequest_runs(18, "owner", [0 2.5], base = ..._mcv, out = .../bequest_mcv)`, then the two renter-owner pages. Rough time 1.5 hours (current-value owners took 35-45 minutes a solve at steps 13-14).
 Expected:
