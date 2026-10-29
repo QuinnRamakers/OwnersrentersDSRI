@@ -421,8 +421,9 @@ function glide_age100()
 % The 100-minus-age glide: production keeps the span glide; with 'age100' the
 % fund's risky share is (100 - age)/100 at every age, retirement included,
 % split at reit_risky, and the annuity is priced off it (a lower price in
-% retirement than the all-bond fund's). A result without glide_rule is
-% production; derive refuses an unknown rule.
+% retirement than the all-bond fund's). Its mirror 'reverse' holds age/100,
+% split the same way. A result without glide_rule is production; derive
+% refuses an unknown rule.
 p = config.params();
 assert(strcmp(p.glide_rule, 'span'), 'production is not the span glide');
 assert(ladder.same_calibration(rmfield(p, 'glide_rule'), p), 'a result without glide_rule is not production');
@@ -436,6 +437,11 @@ assert(~ladder.same_calibration(q, p), 'age100 is the same calibration as span')
 a_span = pension.annuity_price(p, profile, shocks);
 a_100  = pension.annuity_price(q, profile, shocks);
 assert(all(a_100(q.t_ret : q.T - 1) < a_span(q.t_ret : q.T - 1)), 'the annuity is not priced off the risky fund');
+q.glide_rule = 'reverse'; q = config.derive(q);
+risky = config.tau_effective(q) + config.reit_effective(q);
+assert(max(abs(risky - ages / 100)) < 1e-12, 'the reverse risky share is not age/100');
+assert(max(abs(config.reit_effective(q) - q.reit_risky * ages / 100)) < 1e-12, 'the reverse REIT split');
+assert(~ladder.same_calibration(q, p), 'reverse is the same calibration as span');
 q.glide_rule = 'other';
 assert(threw_id(@() config.derive(q), 'derive:glide_rule'), 'derive took an unknown glide rule');
 end

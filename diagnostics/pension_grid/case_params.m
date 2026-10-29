@@ -95,7 +95,20 @@ function p = case_params(step, arm, name)
 %               risky share is (100 - age)/100 at every age, retirement
 %               included, split at reit_risky, and the annuity is priced off
 %               it. It changes the model
-%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh, _dcfree and _g100 nothing here changes the model: only grid_dims,
+%     _grev     the reverse glide (glide_rule = 'reverse'): the fund's risky
+%               share is age/100 at every age, retirement included, split at
+%               reit_risky. It changes the model
+%     _fix<n>   a constant fund: risky share n/100 at every age, retirement
+%               included (glide_cap n/100, glide_span 1, and tau_decum and
+%               reit_decum carrying the same split after 67), split at
+%               reit_risky, so with _rr<n> for the split: _fix100_rr0 all
+%               stocks, _fix100_rr100 all REIT, _fix0 all bonds, _fix60 60%
+%               risky (half REIT at production's split). The annuity is priced
+%               off it. It changes the model
+%     _nodc     no DC pillar (kappa_base = 0): the contribution stays in
+%               take-home pay, taxed as income, and the pot is empty. It
+%               changes the model
+%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh, _dcfree, _g100, _grev, _fix and _nodc nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   gh_n_reit, interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
@@ -185,6 +198,16 @@ g = regexp(extra, '_rgh(\d+)', 'tokens', 'once');
 if ~isempty(g), p.gh_n_reit = str2double(g{1}); end                        % REIT quadrature nodes
 if contains(extra, '_dcfree'), p.dc_choice = true; end                     % the household picks the fund's shares
 if contains(extra, '_g100'), p.glide_rule = 'age100'; end                  % the glide at 100 minus age
+if contains(extra, '_grev'), p.glide_rule = 'reverse'; end                 % the reverse glide, age/100
+g = regexp(extra, '_fix(\d+)', 'tokens', 'once');
+if ~isempty(g)                                                             % a constant fund at every age, after _rr
+    assert(strcmp(p.glide_rule, 'span'), 'case_params:fix', '_fix needs the span glide, not _g100 or _grev');
+    risky = str2double(g{1}) / 100;
+    assert(risky <= 1, 'case_params:fix', '_fix<n> needs n <= 100');
+    p.glide_cap = risky; p.glide_span = 1;
+    p.tau_decum = (1 - p.reit_risky) * risky; p.reit_decum = p.reit_risky * risky;
+end
+if contains(extra, '_nodc'), p.kappa_base = 0; end                         % no DC pillar
 p = config.derive(p);
 end
 

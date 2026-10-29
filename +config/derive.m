@@ -31,16 +31,19 @@ p.t_ret = p.retirement_age - p.age0 + 1;
 % DC glide path over the T-1 transitions: the fund's risky share. 'span':
 % glide_cap far from retirement, then linear to zero at retirement, zero
 % after. 'age100': (100 - age)/100 at every age, retirement included, so the
-% annuity is priced off a fund that still holds risk. The REIT holds
+% annuity is priced off a fund that still holds risk. 'reverse': its mirror,
+% age/100 at every age, risk rising with age. The REIT holds
 % reit_risky of it (reit_glide, read by config.reit_effective) and stocks the
 % rest, so the bond leg does not depend on reit_risky.
 assert(isscalar(p.reit_risky) && p.reit_risky >= 0 && p.reit_risky <= 1, 'derive:reit_risky', ...
     'reit_risky must lie in [0, 1] (got %s).', mat2str(p.reit_risky));
-assert((ischar(p.glide_rule) || isstring(p.glide_rule)) && any(strcmp(char(p.glide_rule), {'span', 'age100'})), ...
-    'derive:glide_rule', 'glide_rule must be ''span'' or ''age100'' (got %s).', mat2str(p.glide_rule));
+assert((ischar(p.glide_rule) || isstring(p.glide_rule)) && any(strcmp(char(p.glide_rule), {'span', 'age100', 'reverse'})), ...
+    'derive:glide_rule', 'glide_rule must be ''span'', ''age100'' or ''reverse'' (got %s).', mat2str(p.glide_rule));
 ages    = (p.age0 : p.age0 + p.T - 2).';
 if strcmp(char(p.glide_rule), 'age100')
     glide = max(0.0, (100 - ages) / 100);
+elseif strcmp(char(p.glide_rule), 'reverse')
+    glide = min(1.0, ages / 100);
 else
     glide = max(0.0, min(p.glide_cap, (p.retirement_age - ages) / p.glide_span));
     glide(ages >= p.retirement_age) = 0.0;
