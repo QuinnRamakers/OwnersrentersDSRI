@@ -85,6 +85,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-29 Renters' housing burden in retirement by fund rule (spec: none, asked by Quinn in Claude Code)
+No solves: `runs/burden_stats.m` and a third figure in `runs/paper_figs.m`, on the pooled-income small-grid solves of 10:32-10:55 (5f10bdb), drawn on the pod. Burden: housing costs over retirement income after tax (state pension plus the private payment), per household from 67; 40% is Eurostat's housing cost overburden threshold.
+Renters, share of all renters above 40% at 67 / 75 / 85 / 95: no REIT 50.3 / 57.6 / 65.8 / 69.6; REIT 25% 48.8 / 56.0 / 64.7 / 69.6; REIT 50% 47.5 / 55.1 / 63.4 / 68.5; REIT 100% 46.0 / 53.6 / 61.3 / 66.2; REIT 10% all ages 40.4 / 47.3 / 55.6 / 62.0; REIT 50% at rent correlation 0 47.2 / 54.5 / 62.0 / 66.5; REIT 10% at rent correlation 0 40.0 / 47.2 / 54.9 / 60.6. Above 40% or bankrupt: no REIT 51.3 / 59.1 / 69.0 / 77.1, REIT 50% 48.5 / 56.6 / 66.4 / 75.1, REIT 10% 41.6 / 48.9 / 58.4 / 67.6. Bankrupt at 95: 7.5% (no REIT), 6.6% (REIT 50%), 7.5% (REIT 50% at rent correlation 0), 5.6% (REIT 10%), 6.3% (REIT 10% at 0). Median burden at 67 / 95: 40.3% / 51.2% (no REIT), 39.3% / 50.0% (REIT 50%), 36.4% / 46.6% (REIT 10%); 90th percentile 63.6% / 76.6%, 62.1% / 75.7%, 59.3% / 73.2%.
+Owners: no household above 30% under any rule; median 6.5-7.2%, 90th percentile 11.0-11.7%; 0.6% bankrupt.
+Reading: the REIT lowers the whole renter distribution, mostly by the higher payment; the rent correlation shows in the extreme tail (bankruptcy at 95: 6.6% against 7.5% at correlation 0 under REIT 50%) more than at the 40% line, where the two correlations give about the same shares.
+Figure `fig3_renter_housing_stress` (PNG and PDF in `/Solutionstorage/results/paper/new` and `runs/paper/new`): (a) share above 40% or bankrupt by age, (b) share above each burden level at 85, renters under no REIT, REIT 50% and REIT 10%, owners without the REIT for reference.
+Commit: this entry, pushed to main.
+Open: as in the entry below.
+
 ### 2026-10-29 Pooled income: the REIT set on the small grid, renters with a REIT uncorrelated with rent, paper figures (specs: One pooled income process for owners and renters; Renters with a REIT uncorrelated with rent)
 Ran `runs/pool_small.sh` on the pod, code 5f10bdb, 10:32-10:55 UTC (22.7 minutes): `rr_small5` (both tenures, stock only, `_rr25`, `_rr50`, `_rr100`, `_reit10`), `rh_small` (renters `_rr50_rh0`, `_reit10_rh0`; its check passed: corr_RH 0, 81 nodes, weights sum to 1). Step 18 at b = 2.5 on `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`. Every earlier solve of the same name was moved to `pension_grid/superseded/` (12 files, "the earlier solve is kept as ..."). Log in `runs/pool_small/pool_small.txt` on Quinn's PC. The `_rh0` runs of 10:03 on the separate cubics are in `superseded/` and not reported.
 `model.checks`, all 12 solves: c_bound_25_39 0.0000, offgrid [0 0 0 0], thin_u1 0.00. Solve seconds: renters 36.9-51.6, owners 119.3-222.8.
