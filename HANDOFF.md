@@ -10,6 +10,12 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-10-29 Renters with a REIT uncorrelated with rent, small grid
+Asked by Quinn in Claude Code on 29 October ("Yes, run it"), to tell whether renters gain more than owners from the REIT because it hedges rent or because the pension is a larger part of their wealth; Claude Code wrote it here in short.
+Change: case suffix `_rh<n>`: with `_reit` or `_rr`, corr_RH = n/100 in place of Table 3's value. Solve renter `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25_rr50_rh0` and `..._reit10_rh0` on the pod with progress lines; compare with the same rules at corr_RH 0.59 and with stock only.
+Why: rent risk is small in the model (1.79% a year), so the hedge may explain little of the renters' gain.
+Checks that must pass: `run_tests(solve=false)` 0 failures; the two cases have corr_RH 0, 81 joint nodes and a valid shock grid; `model.checks` read after each solve.
+
 ### 2026-10-29 Keep superseded solves
 Asked by Quinn in Claude Code on 29 October, after finding that a re-solve of the same case name at another calibration overwrites the saved file ("Yes, keep them"); Claude Code wrote it here in short.
 Change: `utility.keep_superseded(file)` moves an existing result into `superseded/` next to it, named with its save time; `solve_cases` calls it just before saving. The ladder's own savers (`ladder.run`, `robustness`, `sensitivity`, `grid_axes`) are not changed.
@@ -70,6 +76,14 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-29 Renters with a REIT uncorrelated with rent: code and expectations before the runs (spec: Renters with a REIT uncorrelated with rent)
+Changed: `diagnostics/pension_grid/case_params.m`: suffix `_rh<n>` (spec above); it refuses a case without the REIT. Scripts, not committed: `runs/rh_small.m`.
+Expected:
+1. Rent growth has a volatility of 1.79% a year, and stocks are already correlated 0.43 with it, so the hedge is worth little. Most of the renters' gain should remain at corr_RH 0: REIT 50% from +0.55% to about +0.4-0.5%, the 10% rule from +1.34% to about +1.1-1.3%. If so, renters gain more than owners mainly because the pension is a larger part of their wealth.
+2. With corr_RH 0 the fund under `_rr50` is less correlated with rent than the stock-only fund, so a gain below stock only's is possible but unlikely.
+3. Pot, payment and the liquid equity share should not move against corr_RH 0.59: the correlation changes the risk households face, not the fund's expected return.
+4. Time: about 40 seconds and 1 minute.
 
 ### 2026-10-29 Keep superseded solves: checks (spec: Keep superseded solves)
 Checks run on the pod at 09:44 UTC on 99c0106 (`git archive HEAD` into `/tmp/cgm_keep`, output in `/tmp/cgm_keep_out`, both left in the container's `/tmp`): `run_tests(solve=false)` 0 of 11 failed. `solve_cases("18:renter:pow3_8x6_u3n6_qn4_gh3")` solved and saved (20 s); the same call again printed "exists, skipped"; with `force = true` it re-solved (10 s), printed "the earlier solve is kept as .../pension_grid/superseded/18_floor_renter_pow3_8x6_u3n6_qn4_gh3_20261029_094425.mat" and saved the new one. The folder then held 1 file and `superseded/` 1, saved at 09:44:35 and 09:44:25.

@@ -81,9 +81,13 @@ function p = case_params(step, arm, name)
 %               all-bond fund in retirement are as without the REIT. _rr100
 %               holds no stocks in the fund. Moments and correlations as
 %               _reit<n>. It changes the model
+%     _rh<n>    with _reit or _rr, the REIT's correlation with the tenure's
+%               H shock set to n/100 instead of the tables' value (_rh0: a
+%               REIT uncorrelated with rent or the house price). It changes
+%               the model
 %     _rgh<n>   gh_n_reit = n quadrature nodes for the REIT shock (gh_n
 %               otherwise)
-%   Apart from _mop, _mcv, _cmin, _beqb, _reit and _rr nothing here changes the model: only grid_dims,
+%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr and _rh nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   gh_n_reit, interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
@@ -165,6 +169,11 @@ if ~isempty(g)                                                             % REI
     p.tau_REIT = s * config.derive(p).tau_S;
     p.glide_cap = (1 - s) * p.glide_cap; p.glide_span = p.glide_span / (1 - s);   % stocks: (1 - s) of the glide
     p = reit_tables(p);
+end
+g = regexp(extra, '_rh(\d+)', 'tokens', 'once');
+if ~isempty(g)                                                             % REIT with the H shock, in place of Table 3
+    assert(config.reit_active(p), 'case_params:rh', '_rh needs _reit or _rr');
+    p.corr_RH = str2double(g{1}) / 100;
 end
 g = regexp(extra, '_rgh(\d+)', 'tokens', 'once');
 if ~isempty(g), p.gh_n_reit = str2double(g{1}); end                        % REIT quadrature nodes
