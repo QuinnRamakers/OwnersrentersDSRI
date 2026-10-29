@@ -75,6 +75,7 @@ Expected:
 4. Consumption: up by about the pension gain in retirement (2-8%), less than 1% before 67. Liquid saving a little lower before 67.
 5. Bankruptcy and bequests: small changes. Renters' bankruptcy may fall slightly with the higher payment.
 6. Entry value: rises with n, a few tenths of a percent at 25-50% and up to about 1% at 100%, renters a little more than owners (the REIT moves with rents, 0.59; with house prices 0.17).
+8. Added by Quinn during the run (29 October): the REIT at 10% of the fund at every age (`_reit10`, the 28 October rule) on the same small grid, both tenures, as a fifth rule (`runs/rr_small5.m`, `runs/rr_small5.sh`, started when the first job ends). Expected: the full grid's pattern, the DC pot about 13% and the payment about 20% higher, and the liquid equity share near zero after 66; entry value about +2% renters and +0.2% owners. Renter about 1 minute, owner 4-6.
 7. Small grid against the full grid (stock only against the saved full-grid solves): the same shapes, but more bankruptcy on the small grid (the [8 6 6 4] check grid had 4% of household-years against 0.6% on the full grid) and entry values and levels a few percent off. Comparisons across n on the small grid are the result; the levels are not.
 
 ### 2026-10-28 REIT leg at step 18, b = 2.5: results (spec: The REIT leg at the calibration tables' values)
