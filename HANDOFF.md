@@ -15,12 +15,14 @@ Asked by Quinn in Claude Code on 29 October ("it should have been run using the 
 Change: ladder step `income` and `config.params` together: `income_coef` = `income_coef_rent` = [6.9733, 0.20986, -0.3776, 0.2207] (Table 2, gross, All: a0 6.9733, a1 0.20986, a2 -0.03776, a3 0.002207, in code form [a0, a1, 10 a2, 100 a3]); `sigma_l_log` = `sigma_l_log_rent` = 0.0675 (Table 2, gross, All); `dhs_price_factor` = 1.2516 = CPI(2025)/CPI(2020) = 134.56/107.51 (CBS 83131NED, all items, annual). Tests updated where they pinned the separate cubics. CALIBRATION.md and TODO.md updated. Then re-solve on the pod, small grid, step 18 at b = 2.5: both tenures under stock only, `_rr25`, `_rr50`, `_rr100`, `_reit10`, and renters under `_rr50_rh0`, `_reit10_rh0`; the superseded solves move to `superseded/`.
 Why: owners and renters should differ in tenure, not in income; the separate cubics made owners' pensions 1.66 times renters'.
 Checks that must pass: full `run_tests` 0 failures (it touches `+config`, `+ladder` and the tests); the income profile at 25 and at the peak against the coefficients; `model.checks` read after each solve.
+Done: 2026-10-29
 
 ### 2026-10-29 Renters with a REIT uncorrelated with rent, small grid
 Asked by Quinn in Claude Code on 29 October ("Yes, run it"), to tell whether renters gain more than owners from the REIT because it hedges rent or because the pension is a larger part of their wealth; Claude Code wrote it here in short.
 Change: case suffix `_rh<n>`: with `_reit` or `_rr`, corr_RH = n/100 in place of Table 3's value. Solve renter `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25_rr50_rh0` and `..._reit10_rh0` on the pod with progress lines; compare with the same rules at corr_RH 0.59 and with stock only.
 Why: rent risk is small in the model (1.79% a year), so the hedge may explain little of the renters' gain.
 Checks that must pass: `run_tests(solve=false)` 0 failures; the two cases have corr_RH 0, 81 joint nodes and a valid shock grid; `model.checks` read after each solve.
+Done: 2026-10-29
 
 ### 2026-10-29 Keep superseded solves
 Asked by Quinn in Claude Code on 29 October, after finding that a re-solve of the same case name at another calibration overwrites the saved file ("Yes, keep them"); Claude Code wrote it here in short.
@@ -82,6 +84,27 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-29 Pooled income: the REIT set on the small grid, renters with a REIT uncorrelated with rent, paper figures (specs: One pooled income process for owners and renters; Renters with a REIT uncorrelated with rent)
+Ran `runs/pool_small.sh` on the pod, code 5f10bdb, 10:32-10:55 UTC (22.7 minutes): `rr_small5` (both tenures, stock only, `_rr25`, `_rr50`, `_rr100`, `_reit10`), `rh_small` (renters `_rr50_rh0`, `_reit10_rh0`; its check passed: corr_RH 0, 81 nodes, weights sum to 1). Step 18 at b = 2.5 on `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`. Every earlier solve of the same name was moved to `pension_grid/superseded/` (12 files, "the earlier solve is kept as ..."). Log in `runs/pool_small/pool_small.txt` on Quinn's PC. The `_rh0` runs of 10:03 on the separate cubics are in `superseded/` and not reported.
+`model.checks`, all 12 solves: c_bound_25_39 0.0000, offgrid [0 0 0 0], thin_u1 0.00. Solve seconds: renters 36.9-51.6, owners 119.3-222.8.
+Rules in order: stock only, REIT 25%, 50%, 100% of the risky share, REIT 10% of the fund at every age.
+- Entry value: renter 0.317825, 0.318580, 0.319045, 0.319212, 0.321012 (+0.24%, +0.38%, +0.44%, +1.00%); owner 0.355338, 0.355496, 0.355545, 0.355350, 0.356088 (+0.04%, +0.06%, +0.00%, +0.21%).
+- Renters with the REIT uncorrelated with rent: `_rr50_rh0` 0.317573 (-0.08% on stock only, against +0.38% at 0.59); `_reit10_rh0` 0.320221 (+0.75%, against +1.00%).
+- DC pot at 66, stock only: renter 593,500, owner 593,530 (577,423 and 794,829 with the separate cubics). Annuity payment at 75: 36,434 and 36,299. Payment gains by rule: renters +2.0%, +4.2%, +8.6%, +19.9%; owners +2.1%, +4.3%, +8.8%, +20.0%.
+- Housing costs over the payment after tax, median household, at 67 / 95: renters 63.5% / 80.6% (stock only), 61.3% / 77.9% (REIT 50%), 54.8% / 70.9% (REIT 10%); owners 11.3%, 10.9% and 9.8%, flat.
+- Liquid equity share at 30 / 45 / 60 / 66 / 75: renters 0.58 / 0.12 / 0.08 / 0.29 / 0.23 (stock only), 0.58 / 0.13 / 0.09 / 0.30 / 0.23 (REIT 50%), 0.54 / 0.12 / 0.07 / 0.05 / 0.10 (REIT 10%); owners at 45 / 60 / 66 / 75: 0.56 / 0.46 / 0.87 / 0.99, 0.57 / 0.50 / 0.89 / 0.99, 0.58 / 0.40 / 0.08 / 0.88.
+- Bankrupt household-years: renters 1.83%, 1.72%, 1.67%, 1.74%, 1.53% (by 95: 7.5%, 6.9%, 6.6%, 6.8%, 5.6%); owners 0.38% under every rule.
+- Bequest at death, mean: renters 62,329 (stock only) to 66,614 (REIT 10%); owners 1.355 million under every rule.
+Against the expectations of the pooled-income entry:
+1. Pots and payments are now equal across tenures; renters' pot rose 24% and owners' fell 25%, as expected.
+2. Renters' bankruptcy fell a little (1.98% to 1.83% of household-years); owners' halved (0.79% to 0.38%), more than expected, with the lower income risk.
+3. Liquid equity shares: owners' rose (0.45 to 0.56 at 45), as expected; young renters' fell (0.76 to 0.58 at 30), not as expected.
+4. The REIT: payment gains as before and the same for both tenures; renters still gain far more welfare, and the gap narrowed (REIT 50%: +0.38% against +0.06%, from +0.55% against +0.06%), as expected.
+Against the expectations of the rent-correlation entry: wrong. The renters' gain at REIT 50% disappears entirely without the rent correlation (-0.08%), and a quarter of it goes under the 10% rule (+1.00% to +0.75%). Replacing stocks (correlated 0.43 with rent) by a REIT correlated 0.59 with rent is what helps renters; a REIT uncorrelated with rent is a worse rent hedge than the stocks it replaces. Rent risk is small per year (1.79%) but permanent and large against retirement income: rent is 64-81% of the median renter's pension payment.
+Paper figures (Quinn, 29 October: welfare gains in the text; figures for housing costs against the pension and for the liquid equity share), `runs/paper_figs.m`, drawn on the pod for both the separate cubics ("old") and the pooled income ("new"): `fig1_housing_over_pension` (housing costs as % of the payment after tax, median household, 67-100, both tenures, three rules) and `fig2_liquid_equity_share` (by age, one panel per tenure, left out where mean liquid saving is under EUR 1,000 or the owners' entry buffer has not yet gone into the house), PNG 300 dpi and PDF, in `/Solutionstorage/results/paper/{old,new}` and `runs/paper/{old,new}`. The pod's headless renderer measures text at 72 pixels per inch and draws it larger, so the script uses an installed font and places the y-axis titles and legends itself.
+Commit: this entry, pushed to main.
+Open: (1) The paper-figure script lives in `runs/` (not committed); move it into the repo if the figures go in the paper. (2) All REIT results are on the small grid; the renters' welfare levels on it are well off the full grid. (3) Full-grid solves at the pooled income do not exist yet.
 
 ### 2026-10-29 One pooled income process: code and expectations before the runs (spec: One pooled income process for owners and renters)
 Changed: `+ladder/steps.m` (step `income`) and `+config/params.m`: the pooled cubic, shock std 0.0675 and `dhs_price_factor` 1.2516 for both tenures (spec above). `tests/run_tests.m`: `income_profile` targets EUR 33,829 at 25 and 60,589 at 48 for both tenures, std 0.0675; `tenure_arms` expects one arm at the income step and tests the arm labels on a deliberately split income; the Nibud check expects 4.521 for both; the tenure-switch and `h_rule = 'none'` checks use a split income or expect one arm. CALIBRATION.md: the Labour income section (pooled, Table 2, the CPI factor with its CBS source, the old values kept as history), the Nibud section (4.521 for both), the floor note and the entry buffer note. TODO.md: the income-polynomial row removed (decided and done), the `h_mult`, `b0` and price-year notes updated.
