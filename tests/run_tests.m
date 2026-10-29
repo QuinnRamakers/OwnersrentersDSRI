@@ -21,7 +21,7 @@ end
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
           @reit_production, @reit_off_untouched, ...
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
-          @nibud_rule, @floor_derive, @dc_choice_param};
+          @nibud_rule, @floor_derive, @dc_choice_param, @glide_age100};
 if opts.solve
     checks = [checks, {@dc_choice_dominates, @dc_choice_smoke, ...
                        @collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
@@ -415,6 +415,29 @@ q = p; q.dc_choice = true;
 assert(~ladder.same_calibration(q, p), 'dc_choice on is the same calibration as off');
 q.dc_choice = 2;
 assert(threw_id(@() config.derive(q), 'derive:dc_choice'), 'derive took dc_choice = 2');
+end
+
+function glide_age100()
+% The 100-minus-age glide: production keeps the span glide; with 'age100' the
+% fund's risky share is (100 - age)/100 at every age, retirement included,
+% split at reit_risky, and the annuity is priced off it (a lower price in
+% retirement than the all-bond fund's). A result without glide_rule is
+% production; derive refuses an unknown rule.
+p = config.params();
+assert(strcmp(p.glide_rule, 'span'), 'production is not the span glide');
+assert(ladder.same_calibration(rmfield(p, 'glide_rule'), p), 'a result without glide_rule is not production');
+q = p; q.glide_rule = 'age100'; q = config.derive(q);
+ages  = (q.age0 : q.age0 + q.T - 2).';
+risky = config.tau_effective(q) + config.reit_effective(q);
+assert(max(abs(risky - (100 - ages) / 100)) < 1e-12, 'the risky share is not (100 - age)/100');
+assert(max(abs(config.reit_effective(q) - q.reit_risky * (100 - ages) / 100)) < 1e-12, 'the REIT split');
+assert(~ladder.same_calibration(q, p), 'age100 is the same calibration as span');
+[profile, shocks] = config.model_inputs(p);
+a_span = pension.annuity_price(p, profile, shocks);
+a_100  = pension.annuity_price(q, profile, shocks);
+assert(all(a_100(q.t_ret : q.T - 1) < a_span(q.t_ret : q.T - 1)), 'the annuity is not priced off the risky fund');
+q.glide_rule = 'other';
+assert(threw_id(@() config.derive(q), 'derive:glide_rule'), 'derive took an unknown glide rule');
 end
 
 function dc_choice_dominates()

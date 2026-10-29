@@ -10,6 +10,13 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-10-29 The glide at 100 minus age, as a case suffix
+Asked by Quinn in Claude Code on 29 October ("what is the glide path here? I thought it was 100-age?", then "Yes, as a suffix"); Claude Code wrote it here in short.
+Change: new primitive `glide_rule` ('span' in production, the current rule; 'age100': the fund's risky share (100 - age)/100 at every age, retirement included, split at `reit_risky`). The annuity is priced off it, as off any fund share. `ladder.same_calibration` reads a missing `glide_rule` as 'span'. Case suffix `_g100`. The dashboard's settings box names the rule. Production unchanged.
+Why: the span glide holds no risk from 67, so the free-choice gain in retirement is measured against an all-bond fund; 100 minus age is the common rule of thumb.
+Checks that must pass: `run_tests(solve=false)` and the full `run_tests` 0 failures, with a new check (production keeps the span glide; with 'age100' the risky share is (100 - age)/100 to 1e-12 and the REIT reit_risky of it; the retirement annuity prices are below the all-bond fund's; derive refuses an unknown rule). On the pod, small grid `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`, step 19, both tenures: `_g100` and `_g100_dcfree`, compared with the saved span glide and `_dcfree`; `model.checks` read after each solve.
+Done: 2026-10-29
+
 ### 2026-10-29 Free DC investment choice: the stock and the REIT share, at every age
 Asked by Quinn in Claude Code on 29 October ("Is the free dc account version still in the code? If so lets bring it up to date and run it"), with these choices: the household picks the fund's stock and REIT shares, also in retirement; the runs go in a pod script that Quinn launches. Claude Code wrote it here in short. The research version (`solver-active-set`, 05ab0fa) chose the stock share only, and only while working.
 Change: new primitive `dc_choice` (false in production). With it on, at every age but the last and at every node with a pot next year, the household picks the fund's stock share tau_S and REIT share tau_R, with tau_S, tau_R >= 0 and tau_S + tau_R <= 1; with the REIT off, tau_R is 0. The search runs production's (c, pi) search at the glide's shares first and keeps it as a candidate, so from the same continuation the free value is never below the glide's. Then two rounds of a sweep over the two shares at the incumbent (c, pi) and the (c, pi) sweep at the incumbent shares, then fmincon over all four. The annuity stays priced off the fund's own shares (all bonds from 67): the household's shares move the pot and so the payouts, not the payout rule. `sol.tau_pol` and `sol.reit_pol`; the simulator applies them; `model.summarize` reports the panel's mean shares. `ladder.same_calibration` reads a missing `dc_choice` as false, so saved solves stay valid. Case suffix `_dcfree`.
@@ -98,6 +105,19 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-29 The glide at 100 minus age, as a case suffix (spec: The glide at 100 minus age, as a case suffix)
+Changed: `+config/params.m` (new primitive `glide_rule`, 'span'), `+config/derive.m` ('age100': risky share (100 - age)/100 at every age, retirement included; refuses an unknown rule), `+ladder/same_calibration.m` (a missing `glide_rule` reads as 'span', a missing `dc_choice` as false), `diagnostics/pension_grid/case_params.m` (`_g100`), `+figures/dashboard.m` (the settings box names the rule), `tests/run_tests.m` (new fast check `glide_age100`), CALIBRATION.md (the `glide_rule` row).
+Checks run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_g100` (this commit's code), 14:42-15:14 UTC, 32 threads (`runs/g100.sh`, `runs/g100_check.m`; log `runs/g100/g100.txt` on Quinn's PC):
+- `run_tests(solve=false)`: 0 of 15 failed. Full `run_tests`: 0 of 30 failed, 2 skipped (the same two baselines), 10.4 minutes.
+- Step 19 at b = 2.5 on `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`, saved: `_g100` renter 38 s, owner 221 s; `_g100_dcfree` renter 142 s, owner 865 s. `model.checks`: c_bound_25_39 0.0000, offgrid [0 0 0 0] and thin_u1_40 0.00 for all four; bankrupt household-years renter 0.0137 and 0.0141, owner 0.0038 and 0.0039.
+- Entry value against the span glide (small grid; welfare levels not reported, CLAUDE.md): renters 100 - age +0.76%, span free +2.20%, free with the 100 - age annuity +2.24%; owners +0.24%, +0.54%, +0.54%. Free choice over its own default fund: renters +2.20% (span) and +1.46% (100 - age); owners +0.54% and +0.30%.
+- Free choice picks the same shares under either rule (fund risky share at 67: renters 0.30, owners 0.34). What the rule changes is the annuity: priced off a fund that still holds risk, the payout starts higher. Mean payout at 67 / 95: renters 37.8k / 39.1k (span), 46.3k / 47.5k (100 - age), 45.9k / 69.4k (span free), 51.9k / 60.7k (100 - age free); owners 37.8k flat, 46.3k / 46.2k, 41.8k / 63.0k, 47.1k / 54.8k. Payout p10 at 67: renters 20.0k, 23.1k, 20.8k, 23.6k.
+- Renters bankrupt at 95: 6.6% (span), 5.0% (100 - age), 3.5% (span free), 4.2% (100 - age free). Owners 0.6% under all four.
+- Figures on Quinn's PC (`runs/dc_free/`, script `runs/g100_figs.m`): `fig_g100_compare` and the usual dashboard for each `_g100` arm. `fig_dcfree_exposures` (`runs/dc_free_exposures.m`) now also has the fund balance and stocks and the REIT as separate fractions of total wealth.
+What it means: about a third of renters' free-choice gain over the span glide, and nearly half of owners', is what a fund that keeps some risk after 67 already gives. Under 100 - age the annuity is priced at the risky fund's expected return, so payouts are higher and level, and under free choice they are front-loaded relative to the span pricing.
+Commit: this entry, pushed to main.
+Open: (1) small grid only. (2) The annuity is priced off the fund's shares, not the household's; which pricing a comparison uses changes the timing of payouts (TODO.md).
 
 ### 2026-10-29 Free DC choice: figures and the dashboard (spec: none, asked by Quinn in Claude Code)
 No solves. The four step 19 small-grid solves (glide and `_dcfree`, both tenures) copied from the pod and re-simulated on Quinn's PC with their seeds.

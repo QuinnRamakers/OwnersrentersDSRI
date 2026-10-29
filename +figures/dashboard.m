@@ -255,8 +255,10 @@ L{end+1} = sprintf('Income %s, permanent shock std %.4f, replacement %.1f%%', ..
 L{end+1} = sprintf('r=%.2f%%   |   equity premium %.2f%%   |   equity vol %.2f%%   |   corr_{SL}=%.2f', ...
     100 * p.r, 100 * p.mu_S_level, 100 * p.sigma_S_level, p.corr_SL);
 if d.has_pension
-    L{end+1} = sprintf('DC: \\kappa_t=%.1f-%.1f%% of gross (franchise-based), glide %.2f', ...
-        100 * min(kapw), 100 * max(kapw), p.glide_cap);
+    glide = sprintf('glide %.2f', p.glide_cap);
+    if isfield(p, 'glide_rule') && strcmp(char(p.glide_rule), 'age100'), glide = 'glide 100 - age'; end
+    L{end+1} = sprintf('DC: \\kappa_t=%.1f-%.1f%% of gross (franchise-based), %s', ...
+        100 * min(kapw), 100 * max(kapw), glide);
     if isfield(p, 'dc_choice') && p.dc_choice
         L{end+1} = 'Free DC choice: the household picks the fund''s stock and REIT shares at every age';
     end
