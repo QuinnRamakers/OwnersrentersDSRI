@@ -164,6 +164,12 @@ correlation turns the fourth shock on even at a zero share.
 | `corr_RS` | 0.76 | REIT with the stock return. Table 3 |
 | `corr_RH` | 0.17 owners, 0.59 renters | REIT with the tenure's H shock: the house price for owners, the rent for renters. Table 3 |
 
+The suffix `_rr<n>` uses the same values but puts the REIT inside the glide's
+risky share instead of beside it: stocks get (1 - n/100) of
+min(0.8, years to retirement / 35) and the REIT n/100 of it, so the fund's
+bond leg, and the all-bond fund in retirement, do not change. The split has no
+source; it is a sensitivity.
+
 With these values the REIT's Sharpe ratio is 0.22 against 0.21 for stocks, at
 a correlation of 0.76 between the two. `corr_RH` is one primitive for both
 tenures, so the suffix sets it by arm. A REIT in production needs a renter

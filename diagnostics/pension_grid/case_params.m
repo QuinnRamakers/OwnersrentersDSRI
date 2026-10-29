@@ -74,9 +74,16 @@ function p = case_params(step, arm, name)
 %               0.09, stock 0.76). corr_RH is the REIT's correlation with the
 %               tenure's H shock: the house price for owners (0.17), the rent
 %               for renters (0.59). It changes the model
+%     _rr<n>    the REIT at n% of the fund's risky share: the glide's risky
+%               share min(0.8, years to retirement / 35) is split into stocks
+%               (1 - n/100 of it, through glide_cap and glide_span) and the
+%               REIT (n/100 of it, a tau_REIT path), so the bond leg and the
+%               all-bond fund in retirement are as without the REIT. _rr100
+%               holds no stocks in the fund. Moments and correlations as
+%               _reit<n>. It changes the model
 %     _rgh<n>   gh_n_reit = n quadrature nodes for the REIT shock (gh_n
 %               otherwise)
-%   Apart from _mop, _mcv, _cmin, _beqb and _reit nothing here changes the model: only grid_dims,
+%   Apart from _mop, _mcv, _cmin, _beqb, _reit and _rr nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   gh_n_reit, interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
@@ -148,13 +155,25 @@ if contains(extra, '_interp'), p.abs_node_test = false; end                % int
 g = regexp(extra, '_beqb(\d+)', 'tokens', 'once');
 if ~isempty(g), p.chi = (str2double(g{1}) / 10) ^ p.gamma; end             % bequest at b = chi^(1/gamma)
 g = regexp(extra, '_reit(\d+)', 'tokens', 'once');
-if ~isempty(g)                                                             % REIT leg, calibration tables 1 and 3
+if ~isempty(g)                                                             % REIT leg at a share of the fund
     p.tau_REIT = str2double(g{1}) / 100;
-    p.mu_REIT_level = 0.0543; p.sigma_REIT_level = 0.2448;
-    p.corr_RL = 0.09; p.corr_RS = 0.76;
-    p.corr_RH = 0.59; if p.is_owner, p.corr_RH = 0.17; end                 % rent for renters, house price for owners
+    p = reit_tables(p);
+end
+g = regexp(extra, '_rr(\d+)', 'tokens', 'once');
+if ~isempty(g)                                                             % REIT as a share of the glide's risky part
+    s = str2double(g{1}) / 100;
+    p.tau_REIT = s * config.derive(p).tau_S;
+    p.glide_cap = (1 - s) * p.glide_cap; p.glide_span = p.glide_span / (1 - s);   % stocks: (1 - s) of the glide
+    p = reit_tables(p);
 end
 g = regexp(extra, '_rgh(\d+)', 'tokens', 'once');
 if ~isempty(g), p.gh_n_reit = str2double(g{1}); end                        % REIT quadrature nodes
 p = config.derive(p);
+end
+
+function p = reit_tables(p)
+% The calibration tables' REIT moments (Table 1) and gross pooled correlations (Table 3)
+p.mu_REIT_level = 0.0543; p.sigma_REIT_level = 0.2448;
+p.corr_RL = 0.09; p.corr_RS = 0.76;
+p.corr_RH = 0.59; if p.is_owner, p.corr_RH = 0.17; end                     % rent for renters, house price for owners
 end
