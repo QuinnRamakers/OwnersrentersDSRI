@@ -76,7 +76,7 @@ each checked on the baseline without the other:
 | 1 | `cgm` | | CGM core: gamma 10, CGM income cubic, 68% replacement at 65, r 2%, equity vol 15.7%; no housing, pension or taxes |
 | 2 | `gamma5` | 1 | risk aversion 5 |
 | 3 | `retire67` | 2 | retirement at 67 |
-| 4 | `income` | 3 | DHS income cubic in euros and permanent shock std, separately for owners and renters |
+| 4 | `income` | 3 | DHS income cubic in euros and permanent shock std, pooled: the same for owners and renters |
 | 5 | `market` | 4 | real rate 1.15%, equity premium 4.56%, equity vol 21.6% |
 | 6 | `corr_SL` | 5 | income-stock correlation 0.04 |
 | 7 | `housing` | 6 | housing at 4x entry income; house prices 3.73% (vol 8.35%), rents 0.99% (vol 1.79%); the mortgage payment a rate on the current house value |
@@ -89,13 +89,14 @@ each checked on the baseline without the other:
 | 13 | `pension` | 8 | housing with the AOW and the DC pension (glide) |
 | 14 | `inctax` | 13 | EET income tax at 38.2% |
 | 15 | `box3` | 14 | box-3 tax at 36% on the liquid account, no loss offset |
-| 16 | `nibud` | 15 | the house at entry is the Nibud 2026 maximum mortgage at the tenure's income at 25 (4.45x owners, 4.16x renters) |
+| 16 | `nibud` | 15 | the house at entry is the Nibud 2026 maximum mortgage at the tenure's income at 25 (4.52x for both tenures) |
 | 17 | `maint_purchase` | 16 | owners' maintenance on the purchase price instead of the current house value (steps 7-16 keep the current value) |
 | 18 | `floor` | 17 | the absorbing consumption floor at c_min = EUR 5,000 (steps 1-17 keep the yearly top-up at 1e-6 of income) |
+| 19 | `reit` | 18 | half the DC glide's risky share in a listed real estate fund (REIT), half in stocks, none in retirement; steps 1-18 hold no REIT |
 
-Step 18 is `config.params()` exactly; `run_tests` checks this. To change the
+Step 19 is `config.params()` exactly; `run_tests` checks this. To change the
 calibration, edit a value in a step or append a step after the last one (a
-floor level, a housing multiple from LISS, the REIT leg). A step inserted between
+floor level, a housing multiple from LISS). A step inserted between
 two others takes a letter (7b), so the steps after it keep their numbers.
 `ladder.params(8)`, `ladder.params('7b')` or `ladder.params('annuity')`
 returns the calibration at that step, and an override that names a field that
@@ -176,8 +177,9 @@ after each solve and shown on the dashboard).
   consumption and income over all. In the panel (`sim`), `absorbed` marks the
   bankrupt years and `abs_age` the age at entry; `c_frac` and `pi` are NaN in
   those years.
-- **The REIT parameters are placeholders**, with the same risk-return ratio
-  as equity, so the REIT leg (off by default) cannot yet answer anything.
+- **The REIT share has no data source.** Production holds half the glide's risky
+  share in the REIT since 29 October 2026 (ladder step 19), a choice made from
+  small-grid runs; its moments and correlations are the calibration tables'.
 
 ## The model in brief
 
@@ -257,7 +259,8 @@ What it leaves out is on other branches and recoverable with git:
 - `freetau-dc-choice` and older branches on GitHub: the August welfare work.
 
 Changes from the research defaults, all recorded in CALIBRATION.md: the REIT
-share is 0 (it was a 10% placeholder); the search sweeps (c, pi) before
+share is half the glide's risky share (it was a 10% placeholder at every age);
+the search sweeps (c, pi) before
 fmincon instead of pi after it; the u1 axis starts at 0.0008 instead of 0.002,
 because owners reach 0.0013; the default grid is [20 20 12] with gh_n = 5
 instead of [28 20 20] with gh_n = 7; and simulations start from the entry

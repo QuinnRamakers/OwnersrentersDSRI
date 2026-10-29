@@ -15,7 +15,8 @@ function s = summarize(p, sim)
 %   Shares, 1 x T:
 %     pi             mean liquid equity share (also pi_p10, pi_p50, pi_p90)
 %     c_frac         mean share of liquid resources consumed
-%     dc_share       the fund's equity share (the glide; 0 in the last period)
+%     dc_share       the fund's stock share (the glide less its REIT part; 0 in
+%                    the last period); dc_reit the fund's REIT share
 %     equity_share   stocks in the liquid account and the fund over their sum,
 %                    aggregated across households
 %     burden         median housing cost over net income
@@ -96,6 +97,7 @@ s.pi_p10  = pis.p10; s.pi_p50 = pis.p50; s.pi_p90 = pis.p90;
 cfs = stats(sim.c_frac, out);
 s.c_frac  = cfs.mean;
 s.dc_share = [config.tau_effective(p).', 0];
+s.dc_reit  = [config.reit_effective(p).', 0];
 s.equity_share = sum(stock, 1) ./ max(sum(fin, 1), realmin);
 burden = hc ./ max(net_income, realmin);
 if ~isempty(out), burden(out) = NaN; end

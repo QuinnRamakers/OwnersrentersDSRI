@@ -17,7 +17,7 @@ function shocks = shock_grid(p)
 %   corr_SL/corr_HL/corr_SH (and corr_RL/corr_RS/corr_RH) are correlations
 %   with a single composite income shock: the model has no aggregate versus
 %   idiosyncratic split, so each one stands for both channels. The H shock's
-%   pair is the tenure's (config.h_corr): house price for owners, rent for
+%   three are the tenure's (config.h_corr): house price for owners, rent for
 %   renters.
 %
 %   Returns:
@@ -71,8 +71,7 @@ shocks.w_REIT = wzr;
 
 corr_RL = field_or(p, 'corr_RL', 0);
 corr_RS = field_or(p, 'corr_RS', 0);
-corr_RH = field_or(p, 'corr_RH', 0);
-[corr_HL, corr_SH] = config.h_corr(p);   % the H shock's correlations, by tenure
+[corr_HL, corr_SH, corr_RH] = config.h_corr(p);   % the H shock's correlations, by tenure
 
 if config.reit_active(p)
     % Four shocks (income L, stock S, housing H, REIT R): gh_n^3 * gh_n_reit

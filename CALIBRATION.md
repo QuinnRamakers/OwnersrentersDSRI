@@ -112,7 +112,7 @@ giving about 10.0% at 25 rising to 14.0% at 50 on the owners' DHS profile, and
 |---|---|---|
 | `kappa_base` | 0.186 | Placeholder. OECD *Pensions at a Glance*: the 2022 country note gives 18.6% as the rate above the franchise; the 2025 edition (Table 3.4) repeats the number without restating that |
 | `franchise` | EUR 18,475 | Minimum AOW-franchise per 1-1-2025, art. 18a lid 3 Wet LB, Belastingdienst CAP. The 2026 figure is EUR 19,172 and belongs only with a 2026 income factor |
-| `glide_cap`, `glide_span` | 0.8, 35 | Fund equity share `min(0.8, years to retirement / 35)`: 0.8 until 39, linear to 0 at 67. A stylised lifecycle fund |
+| `glide_cap`, `glide_span` | 0.8, 35 | Fund risky share `min(0.8, years to retirement / 35)`: 0.8 until 39, linear to 0 at 67. A stylised lifecycle fund. Since 29 October 2026 half of it is in the REIT and half in stocks (`reit_risky`, below) |
 | `tau_decum` | `[]` | Fund equity share in retirement; empty keeps the glide's 0 (an all-bond fund) |
 
 `kappa_t` is evaluated on the **deterministic** income profile, not each
@@ -131,51 +131,51 @@ Dutch funds (DNB or Pensioenfederatie), not a single OECD figure.
 
 ## REIT in the DC fund
 
-A second risky asset held only inside the DC fund, with the stock and bond
-legs; the bond leg is `1 - tau_S - tau_REIT`. It is a fourth lognormal shock,
-and a zero share with zero correlations removes it from the quadrature
-altogether, so the baseline pays nothing for it.
+A second risky asset held only inside the DC fund, beside the stock and bond
+legs; the bond leg is `1 - tau_S - tau_REIT`. It is a fourth lognormal shock.
+The REIT is the NASDAQ Eurozone Real Estate Total Return Index in euros, real.
+
+Production holds it since 29 October 2026 (ladder step 19; steps 1-18 hold
+none). The glide's risky share, min(0.8, years to retirement / 35) and 0 from
+67, is split: stocks hold (1 - `reit_risky`) of it and the REIT `reit_risky`
+of it. The bond leg and the all-bond fund in retirement are as without the
+REIT, so the annuity prices from 67 do not move.
 
 | Parameter | Value | Source |
 |---|---|---|
-| `tau_REIT` | 0 | Off in the baseline |
-| `mu_REIT_level`, `sigma_REIT_level` | 0.03, 0.12 | Placeholders |
-| `corr_RL`, `corr_RS`, `corr_RH` | 0 | Placeholders |
-
-With these placeholders the REIT has the same Sharpe ratio as equity (0.25), so
-the mean-variance split between the two is 57/43 whatever the correlations,
-and the share is imposed rather than chosen. Real moments, and at least the
-REIT-equity and REIT-housing correlations, are needed before the leg says
-anything.
-
-The calibration tables give those moments and correlations. The REIT is the
-NASDAQ Eurozone Real Estate Total Return Index in euros, real. The case suffix
-`_reit<n>` (`diagnostics/pension_grid/case_params.m`) runs the leg with them at
-a share of n/100. Production keeps the placeholders above: a new primitive
-value would make every saved solve a different calibration, and a nonzero
-correlation turns the fourth shock on even at a zero share.
-
-| Parameter | Value in `_reit<n>` | Source |
-|---|---|---|
-| `tau_REIT` | n/100; 0.10 in `_reit10` | The old placeholder share. No source |
+| `reit_risky` | 0.5 | Quinn, 29 October 2026, from the small-grid runs at 25%, 50% and 100% of the risky share (HANDOFF, 29 October): 50% raised the entry value of both tenures, renters by 0.38% and owners by 0.06%. No data source |
+| `tau_REIT` | 0 | A further REIT share at every age, retirement included; only `_reit<n>` sets it |
+| `reit_decum` | [] | No REIT in retirement |
 | `mu_REIT_level` | 0.0543 | Real return in euros less `r`, 2002–2024. Calibration tables, Table 1 |
 | `sigma_REIT_level` | 0.2448 | Same series, standard deviation. Table 1 |
 | `corr_RL` | 0.09 | REIT with the gross income shock, pooled, 2002–2023. Table 3 |
 | `corr_RS` | 0.76 | REIT with the stock return. Table 3 |
-| `corr_RH` | 0.17 owners, 0.59 renters | REIT with the tenure's H shock: the house price for owners, the rent for renters. Table 3 |
-
-The suffix `_rr<n>` uses the same values but puts the REIT inside the glide's
-risky share instead of beside it: stocks get (1 - n/100) of
-min(0.8, years to retirement / 35) and the REIT n/100 of it, so the fund's
-bond leg, and the all-bond fund in retirement, do not change. The split has no
-source; it is a sensitivity.
+| `corr_RH` | 0.17 | Owners: REIT with the house price. Table 3 |
+| `corr_RH_rent` | 0.59 | Renters: REIT with the rent. Table 3 |
 
 With these values the REIT's Sharpe ratio is 0.22 against 0.21 for stocks, at
-a correlation of 0.76 between the two. `corr_RH` is one primitive for both
-tenures, so the suffix sets it by arm. A REIT in production needs a renter
-field `corr_RH_rent`, as `corr_HL_rent` and `corr_SH_rent`. Table 5 gives the
-income correlations by tenure (REIT: owners 0.14, renters −0.22); the model
-uses the pooled values for every shock.
+a correlation of 0.76 between the two. Table 5 gives the income correlations
+by tenure (REIT: owners 0.14, renters −0.22); the model uses the pooled values
+for every shock. The REIT shock takes `gh_n_reit` quadrature nodes (Numerics).
+
+The REIT's moments are production's on every ladder step. With no share and no
+correlations nothing reads them, and the fourth shock is left out of the
+quadrature altogether, so steps 1-18 pay nothing for it. `ladder.same_calibration`
+does not compare the REIT fields when the REIT is off in both results, so the
+REIT-off solves saved before 29 October, with the old placeholder moments
+(0.03 and 0.12, the same Sharpe ratio as equity), are still the same
+calibration.
+
+Case suffixes (`diagnostics/pension_grid/case_params.m`):
+`_rr<n>` sets `reit_risky` to n/100 (production is `_rr50`); `_reit<n>` holds
+the REIT at n/100 of the fund at every age, retirement included, in place of
+the split (the 28 October rule; 10% was the old placeholder share, with no
+source); `_rh<n>` sets the REIT's correlation with the H shock to n/100 for
+both tenures; `_rgh<n>` sets `gh_n_reit`. The `_reit` and `_rr` solves saved
+before 29 October set the correlation by tenure in `corr_RH` and the split
+through `glide_cap`, `glide_span` and a `tau_REIT` path. They are the same
+model, but a different calibration for `ladder.same_calibration`, and re-solve
+when run again.
 
 ## Taxes
 
@@ -233,7 +233,7 @@ Table 1 reports means and standard deviations of annual real arithmetic growth
 rates, which is what the `_level` inputs take; `config.derive` turns them into
 the log-normal parameters. Table 3 also gives the house price–rent correlation
 (0.21) and the REIT's correlations; the first has no place in the model, since
-no household faces both processes, and the REIT is off.
+no household faces both processes; the REIT's are in the REIT section.
 
 The correlations are wired through a Cholesky factor in both `grids.shock_grid`
 and `simulate.paths_lna`, so giving them values costs nothing in runtime or node
@@ -508,6 +508,7 @@ exact grid nodes.
 | `corr_SL` | 0 | CGM (2005) baseline |
 | `corr_HL`, `corr_HL_rent`, `corr_SH`, `corr_SH_rent` | 0 | No housing correlations until step 8 |
 | `h_rule`, `kappa_base` | `'none'`, 0 | No housing, no DC pillar |
+| `reit_risky`, `tau_REIT`, `corr_RL`, `corr_RS`, `corr_RH`, `corr_RH_rent` | 0 | No REIT until step 19 |
 | taxes | 0 | None |
 
 Renters and owners share this income process until the income step (4), so
@@ -525,7 +526,9 @@ production glide above, 12 `replacement` 0.307. Retirement income stays at
 CGM's 68.2% of final income through step 11. Step 13 puts housing (step 8)
 together with the AOW and the DC pension; 14 and 15 add the taxes. Steps
 7–15 keep the house at 4 times entry income (`h_rule = 'fixed'`); 16 sets it
-by the Nibud rule.
+by the Nibud rule, 17 charges owners' maintenance on the purchase price, 18
+adds the absorbing floor, and 19 puts half the glide's risky share in the REIT
+(REIT section above).
 
 Around step 12, `ladder.sensitivity` moves `replacement` to 0.20 and 0.40 and
 `kappa_base` to 0.10 and 0.30, one at a time. These are illustrative values for
@@ -539,6 +542,7 @@ Not calibration targets; accuracy choices, justified by convergence checks.
 |---|---|---|
 | `grid_dims` | [32 16 40 4] | Base nodes on (u1, u2, u3, q); the entry anchors add up to two on u1 and u2, and q = 1 one on q. Where q is not a state the q axis is the single node 1. Quinn, 26 October 2026 ([20 20 12 8] before), from refining each axis on its own at step 16 with the absorbing floor at EUR 5,000 (`docs/HANDOFF_2026-10-26.md`): u2 and q change nothing at 32 and 64 or 8 and 16 points; u3 matters most and settles between 40 and 80; u1 moves young households and is still moving at 64. Nothing settles before about 35-40. One owner solve takes about 100 minutes with maintenance on the current value and about 4 hours on the purchase price (two solves side by side, 16 cores) |
 | `gh_n` | 5 | Gauss-Hermite nodes per shock; 3 and 5 gave the same policies wherever compared, and 5 and 7 at step 16 with the absorbing floor |
+| `gh_n_reit` | `[]` | Nodes for the REIT shock; `[]` takes `gh_n`, so 5 (Quinn, 29 October 2026). The joint quadrature then has 625 nodes against 125 without the REIT. The 28 October full-grid REIT solves used 3 (375 nodes) and took 2.65 times (renter) and about 3.1 times (owner) the time without the REIT; 3 against 5 has not been compared |
 | `use_refine` | true | Global (c, pi) sweep before fmincon at every node. Without it the local solve lands on the wrong peak: at step 2 the equity share at 93-99 was up to 0.09 too low, and at the production calibration (quick numerics) the mean liquid equity share was off by up to 0.24 |
 | `fmincon_algorithm` | `'active-set'` | Local solve after the sweep (Quinn, 24 October 2026; `'interior-point'` before). At step 16 with the absorbing floor at EUR 5,000, sweep plus active-set (with `N_c` 11) gave the same life cycles as sweep plus interior-point (owner 24x24, renter 32x32: consumption within 0.05%, liquid equity share within 0.012 through 95), solved in 27 and 16 minutes instead of 44 and 28, and settled for a worse choice than another routine found at fewer grid points (one-step test: owner 1.2% against 1.7%, renter 0.3% against 0.5%). `'interior-point'` stays an option and is the robustness check (`ladder.robustness`); `'sqp'` settled for a worse choice at up to a third of the grid points at 66. Active-set and interior-point give the same answer on a thread pool and a process pool; sqp did not at step 1 (HANDOFF, 24 October) |
 | `fmincon_objective` | `'ce'` | What the local solve minimises. `'ce'`: the Bellman objective in certainty-equivalent units relative to the seed, `-(rhs/rhs_seed)^(1/(1-gamma))`, a monotone transform with the same optimum, equal to -1 at the seed at every node and finite as consumption goes to zero (suggested by the coauthor, 15 October 2026). `'utility'`: the objective in utility units divided by the median absolute value of next period's V, as before 15 October 2026 |

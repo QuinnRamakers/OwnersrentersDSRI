@@ -116,7 +116,7 @@ sA_path(:,1)  = A_path(:,1) ./ W_path(:,1);
 sH_path(:,1)  = H_path(:,1) ./ W_path(:,1);
 
 [mu_HR, sigma_HR]     = config.h_process(p);   % house price (owner) or rent index (renter)
-[corr_HL, corr_SH]    = config.h_corr(p);      % that shock's correlations, by tenure
+[corr_HL, corr_SH, corr_RH] = config.h_corr(p);   % that shock's correlations, by tenure
 [mu_REIT, sigma_REIT] = config.reit_process(p);
 tau_e   = config.tau_effective(p);             % fund stock share, (T-1) x 1
 reit_e  = config.reit_effective(p);            % fund REIT share, (T-1) x 1
@@ -132,8 +132,8 @@ if reit_on
     eps_R_ind = randn(N, T-1);
     Sigma = [1,         p.corr_SL, corr_HL,   p.corr_RL; ...
              p.corr_SL, 1,         corr_SH,   p.corr_RS; ...
-             corr_HL,   corr_SH,   1,         p.corr_RH; ...
-             p.corr_RL, p.corr_RS, p.corr_RH, 1        ];
+             corr_HL,   corr_SH,   1,         corr_RH;   ...
+             p.corr_RL, p.corr_RS, corr_RH,   1        ];
     Zc = chol(Sigma, 'lower') * [eps_Y_ind(:).'; eps_S_ind(:).'; eps_H_ind(:).'; eps_R_ind(:).'];
     eps_R = reshape(Zc(4, :), N, T-1);
 else

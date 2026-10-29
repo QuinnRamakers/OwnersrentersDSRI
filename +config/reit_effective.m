@@ -7,9 +7,9 @@ function reit_e = reit_effective(p)
 %   fund holds three assets: a stock share tau_S (config.tau_effective), a REIT
 %   share reit_e (this function), and the residual 1 - tau_S - reit_e in bonds.
 %
-%   p.tau_REIT accepts, exactly as p.tau_S / p.tau_decum do, so a constant share
-%   today can grow into a full glide later without touching the solver,
-%   simulator or annuity pricer that read this:
+%   The share is the REIT's part of the glide, p.reit_glide = reit_risky times
+%   the glide's risky share (config.derive), plus p.tau_REIT, which accepts,
+%   exactly as p.tau_S / p.tau_decum do:
 %     scalar                 constant REIT share at every age.
 %     vector, T-1 or T long   a full path; the first T-1 entries are used.
 %
@@ -17,27 +17,29 @@ function reit_e = reit_effective(p)
 %   mirroring p.tau_decum. Anything set here is priced: pension.annuity_price
 %   reads this function, so the annuity and the portfolio can never disagree.
 %
-%   Absent / empty p.tau_REIT means no REIT (all-zero share), which reproduces
-%   the pre-REIT model; config.reit_active gates the fourth shock on the same
-%   condition.
+%   Absent / empty p.reit_glide and p.tau_REIT (a p-struct saved before they
+%   existed) mean no REIT (all-zero share), which reproduces the pre-REIT
+%   model; config.reit_active gates the fourth shock on the same condition.
 
 T     = p.T;
 t_ret = p.t_ret;
 
-if ~isfield(p, 'tau_REIT') || isempty(p.tau_REIT)
-    reit_e = zeros(T - 1, 1);
-    return
+reit_e = zeros(T - 1, 1);
+if isfield(p, 'reit_glide') && ~isempty(p.reit_glide)
+    reit_e = reshape(p.reit_glide(1 : T - 1), [], 1);
 end
 
-r = p.tau_REIT(:);
-if isscalar(r)
-    reit_e = repmat(r, T - 1, 1);
-elseif numel(r) >= T - 1
-    reit_e = r(1 : T - 1);
-else
-    error('reit_effective:tau_REIT_length', ...
-        ['p.tau_REIT must be a scalar or a vector of at least T-1 = %d ' ...
-         'entries (got %d).'], T - 1, numel(r));
+if isfield(p, 'tau_REIT') && ~isempty(p.tau_REIT)
+    r = p.tau_REIT(:);
+    if isscalar(r)
+        reit_e = reit_e + r;
+    elseif numel(r) >= T - 1
+        reit_e = reit_e + r(1 : T - 1);
+    else
+        error('reit_effective:tau_REIT_length', ...
+            ['p.tau_REIT must be a scalar or a vector of at least T-1 = %d ' ...
+             'entries (got %d).'], T - 1, numel(r));
+    end
 end
 
 if isfield(p, 'reit_decum') && ~isempty(p.reit_decum)

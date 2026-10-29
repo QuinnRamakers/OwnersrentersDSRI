@@ -57,18 +57,20 @@ p.corr_SH_rent  = 0.43;       % renter: corr(stock return, rent growth)
 % DC pension
 p.kappa_base = 0.186;         % contribution rate on income above the franchise (placeholder); 0 removes the DC pillar
 p.franchise  = 18475;         % AOW franchise, euros
-p.glide_cap  = 0.8;           % fund equity share far from retirement
-p.glide_span = 35;            % fund equity share = min(glide_cap, years to retirement / glide_span)
+p.glide_cap  = 0.8;           % fund risky share far from retirement
+p.glide_span = 35;            % fund risky share = min(glide_cap, years to retirement / glide_span)
 p.tau_decum  = [];            % fund equity share in retirement; [] keeps the glide's zero
 
 % REIT leg of the DC fund. A zero share and zero correlations remove the fourth shock.
-p.tau_REIT         = 0;       % REIT share of the fund, scalar or T-1 path
-p.reit_decum       = [];      % REIT share in retirement; [] keeps tau_REIT
-p.mu_REIT_level    = 0.03;    % REIT excess return (placeholder)
-p.sigma_REIT_level = 0.12;    % REIT return volatility (placeholder)
-p.corr_RL          = 0;       % corr(REIT return, income shock)
-p.corr_RS          = 0;       % corr(REIT return, stock return)
-p.corr_RH          = 0;       % corr(REIT return, H growth)
+p.reit_risky       = 0.5;     % REIT part of the glide's risky share, the rest in stocks (Quinn, 29 October 2026)
+p.tau_REIT         = 0;       % further REIT share of the fund, scalar or T-1 path
+p.reit_decum       = [];      % REIT share in retirement; [] keeps the glide's zero plus tau_REIT
+p.mu_REIT_level    = 0.0543;  % REIT excess return
+p.sigma_REIT_level = 0.2448;  % REIT return volatility
+p.corr_RL          = 0.09;    % corr(REIT return, income shock)
+p.corr_RS          = 0.76;    % corr(REIT return, stock return)
+p.corr_RH          = 0.17;    % owner: corr(REIT return, house-price growth)
+p.corr_RH_rent     = 0.59;    % renter: corr(REIT return, rent growth)
 
 % Housing. Renters pay alpha*H on a rent index H; owners pay maintenance and the mortgage.
 p.is_owner      = false;      % tenure; also selects the income fields without housing

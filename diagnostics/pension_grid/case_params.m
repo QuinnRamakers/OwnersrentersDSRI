@@ -68,23 +68,24 @@ function p = case_params(step, arm, name)
 %               over the last year's consumption, is the same on every step
 %               (Quinn, 26 October 2026); it changes the model
 %     _reit<n>  the REIT leg of the DC fund at a share of n/100 at every age
-%               (_reit10 is 10%, the old placeholder share), with the
-%               calibration tables' moments (Table 1: excess return 5.43%,
-%               vol 24.48%) and gross pooled correlations (Table 3: income
-%               0.09, stock 0.76). corr_RH is the REIT's correlation with the
-%               tenure's H shock: the house price for owners (0.17), the rent
-%               for renters (0.59). It changes the model
-%     _rr<n>    the REIT at n% of the fund's risky share: the glide's risky
-%               share min(0.8, years to retirement / 35) is split into stocks
-%               (1 - n/100 of it, through glide_cap and glide_span) and the
-%               REIT (n/100 of it, a tau_REIT path), so the bond leg and the
-%               all-bond fund in retirement are as without the REIT. _rr100
-%               holds no stocks in the fund. Moments and correlations as
-%               _reit<n>. It changes the model
-%     _rh<n>    with _reit or _rr, the REIT's correlation with the tenure's
-%               H shock set to n/100 instead of the tables' value (_rh0: a
-%               REIT uncorrelated with rent or the house price). It changes
-%               the model
+%               (_reit10 is 10%, the old placeholder share) in place of the
+%               glide's split (reit_risky = 0), with the calibration tables'
+%               moments (Table 1: excess return 5.43%, vol 24.48%) and gross
+%               pooled correlations (Table 3: income 0.09, stock 0.76, the
+%               tenure's H shock: corr_RH 0.17 with the house price for
+%               owners, corr_RH_rent 0.59 with the rent for renters). It
+%               changes the model
+%     _rr<n>    the REIT at n% of the fund's risky share (reit_risky =
+%               n/100): the glide's risky share min(0.8, years to retirement /
+%               35) is split into stocks, 1 - n/100 of it, and the REIT, so
+%               the bond leg and the all-bond fund in retirement are as
+%               without the REIT. _rr100 holds no stocks in the fund.
+%               Moments and correlations as _reit<n>. Production since step
+%               19 is _rr50. It changes the model
+%     _rh<n>    with the REIT on (_reit, _rr or step 19), the REIT's
+%               correlation with the H shock set to n/100 for both tenures
+%               instead of the tables' value (_rh0: a REIT uncorrelated with
+%               rent or the house price). It changes the model
 %     _rgh<n>   gh_n_reit = n quadrature nodes for the REIT shock (gh_n
 %               otherwise)
 %   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr and _rh nothing here changes the model: only grid_dims,
@@ -160,20 +161,18 @@ g = regexp(extra, '_beqb(\d+)', 'tokens', 'once');
 if ~isempty(g), p.chi = (str2double(g{1}) / 10) ^ p.gamma; end             % bequest at b = chi^(1/gamma)
 g = regexp(extra, '_reit(\d+)', 'tokens', 'once');
 if ~isempty(g)                                                             % REIT leg at a share of the fund
-    p.tau_REIT = str2double(g{1}) / 100;
+    p.tau_REIT = str2double(g{1}) / 100; p.reit_risky = 0;
     p = reit_tables(p);
 end
 g = regexp(extra, '_rr(\d+)', 'tokens', 'once');
 if ~isempty(g)                                                             % REIT as a share of the glide's risky part
-    s = str2double(g{1}) / 100;
-    p.tau_REIT = s * config.derive(p).tau_S;
-    p.glide_cap = (1 - s) * p.glide_cap; p.glide_span = p.glide_span / (1 - s);   % stocks: (1 - s) of the glide
+    p.reit_risky = str2double(g{1}) / 100;
     p = reit_tables(p);
 end
 g = regexp(extra, '_rh(\d+)', 'tokens', 'once');
 if ~isempty(g)                                                             % REIT with the H shock, in place of Table 3
-    assert(config.reit_active(p), 'case_params:rh', '_rh needs _reit or _rr');
-    p.corr_RH = str2double(g{1}) / 100;
+    assert(config.reit_active(p), 'case_params:rh', '_rh needs the REIT on: _reit, _rr or step 19');
+    p.corr_RH = str2double(g{1}) / 100; p.corr_RH_rent = p.corr_RH;
 end
 g = regexp(extra, '_rgh(\d+)', 'tokens', 'once');
 if ~isempty(g), p.gh_n_reit = str2double(g{1}); end                        % REIT quadrature nodes
@@ -181,8 +180,9 @@ p = config.derive(p);
 end
 
 function p = reit_tables(p)
-% The calibration tables' REIT moments (Table 1) and gross pooled correlations (Table 3)
+% The calibration tables' REIT moments (Table 1) and gross pooled correlations
+% (Table 3), production's values since step 19
 p.mu_REIT_level = 0.0543; p.sigma_REIT_level = 0.2448;
 p.corr_RL = 0.09; p.corr_RS = 0.76;
-p.corr_RH = 0.59; if p.is_owner, p.corr_RH = 0.17; end                     % rent for renters, house price for owners
+p.corr_RH = 0.17; p.corr_RH_rent = 0.59;                                   % house price for owners, rent for renters
 end

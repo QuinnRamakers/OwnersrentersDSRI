@@ -246,6 +246,12 @@ L{end+1} = sprintf('r=%.2f%%   |   equity premium %.2f%%   |   equity vol %.2f%%
 if d.has_pension
     L{end+1} = sprintf('DC: \\kappa_t=%.1f-%.1f%% of gross (franchise-based), glide %.2f', ...
         100 * min(kapw), 100 * max(kapw), p.glide_cap);
+    if config.reit_active(p)
+        [~, ~, cRH] = config.h_corr(p);
+        L{end+1} = sprintf(['REIT: up to %.0f%% of the fund, premium %.2f%%, vol %.2f%%   |   ' ...
+            'corr with income %.2f, stock %.2f, H %.2f'], 100 * max(config.reit_effective(p)), ...
+            100 * p.mu_REIT_level, 100 * p.sigma_REIT_level, p.corr_RL, p.corr_RS, cRH);
+    end
 else
     L{end+1} = 'No DC pension';
 end

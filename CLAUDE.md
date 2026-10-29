@@ -16,7 +16,7 @@ Use the session-start skill at the beginning and the session-end skill at the en
 ## Calibration rules
 
 - A new input is a primitive in `config.params`, one line, with its source in CALIBRATION.md. Anything that follows from inputs goes in `config.derive`.
-- `ladder.same_calibration` compares every primitive, so a saved result for a different calibration is never reused as if it were comparable. A value kept only in a derived field escapes that check, so do not do that.
+- `ladder.same_calibration` compares every primitive, so a saved result for a different calibration is never reused as if it were comparable. A value kept only in a derived field escapes that check, so do not do that. The one exception: when the REIT is off in both results it skips the REIT fields (names with reit or REIT, and corr_RL, corr_RS, corr_RH, corr_RH_rent), since nothing reads them then; `run_tests` checks this.
 - The last ladder step must equal `config.params()`. `run_tests` checks this. To change the production calibration, change the step and `params` together.
 - Editing a ladder step re-solves it and every step built on it (the ladder branches at step 6; `ladder.parent`). Compare steps only at the same numerics (quick, standard or fine).
 - An override that names a field that is not a primitive is an error. Do not work around it.
@@ -33,7 +33,7 @@ Use the session-start skill at the beginning and the session-end skill at the en
 
 - Grids at the absorbing floor of EUR 5,000 (`docs/HANDOFF_2026-10-26.md`): u2 and q change nothing; u3 matters most (for owners on the current house value above all) and u1 moves young households. The production grid since 26 October 2026 is bunched u1 at 32, u2 at 16, u3 at 40 evenly spaced and q at 4 (`config.params`). Nothing is settled before about 35-40, and welfare levels move with every refinement. Report behaviour, not welfare levels, until the housing outflow is settled (TODO.md, item 1). Production charges owners' maintenance on the purchase price since 26 October 2026 (ladder step 17); steps 7-16 use the current value.
 - The absorbing floor is in production at c_min = EUR 5,000 since 26 October 2026 (ladder step 18; steps 1-17 have the yearly top-up). The source of the level is open. With `chi > 0` a bankrupt household is valued as leaving `beq_bankrupt` years of its floor consumption (placeholder 1, 27 October 2026). Welfare levels move with every grid refinement. With maintenance on the current value, owner bankruptcy is illiquidity (no equity release). Sources: `docs/HANDOFF_2026-10-24.md`, `docs/HANDOFF_2026-10-26.md`.
-- The REIT parameters are placeholders and the REIT leg is off.
+- The REIT leg is on in production since 29 October 2026 (ladder step 19; steps 1-18 hold none): half the DC glide's risky share, none in retirement. Its moments and correlations are the calibration tables'; the share (`reit_risky` 0.5) has no data source. Step 19 has no full-grid solve yet.
 - Free DC investment choice, glide-path comparisons and the September diagnostics live on the `solver-active-set` branch (tag `research-2026-09`), not here.
 
 ## Practicalities

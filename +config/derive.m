@@ -4,7 +4,8 @@ function p = derive(p)
 %   p = config.derive(p)
 %
 %   Rebuilds, from the primitives alone: the log-return moments of the three
-%   lognormal processes, the retirement period, the DC glide path, the
+%   lognormal processes, the retirement period, the DC glide path and its
+%   split into stocks and the REIT, the
 %   contribution-rate profile, the consumption floor by age and the horizon
 %   that values bankruptcy, the house at entry (h_mult, from h_rule), the
 %   mortgage schedule, the periods in which the
@@ -27,12 +28,17 @@ p.mu_R    = log(1 + p.mu_R_level) - 0.5 * p.sigma_R^2;
 
 p.t_ret = p.retirement_age - p.age0 + 1;
 
-% DC glide path over the T-1 transitions: glide_cap far from retirement, then
-% linear to zero at retirement, zero after.
+% DC glide path over the T-1 transitions: the fund's risky share, glide_cap
+% far from retirement, then linear to zero at retirement, zero after. The REIT
+% holds reit_risky of it (reit_glide, read by config.reit_effective) and
+% stocks the rest, so the bond leg does not depend on reit_risky.
+assert(isscalar(p.reit_risky) && p.reit_risky >= 0 && p.reit_risky <= 1, 'derive:reit_risky', ...
+    'reit_risky must lie in [0, 1] (got %s).', mat2str(p.reit_risky));
 ages    = (p.age0 : p.age0 + p.T - 2).';
 glide   = max(0.0, min(p.glide_cap, (p.retirement_age - ages) / p.glide_span));
 glide(ages >= p.retirement_age) = 0.0;
-p.tau_S = glide;
+p.tau_S      = (1 - p.reit_risky) * glide;
+p.reit_glide = p.reit_risky * glide;
 
 assert(p.LTV == 1.00, 'derive:LTV', ...
     ['LTV = %.4f: only 1.00 is implemented. A lower LTV needs a down-payment ' ...

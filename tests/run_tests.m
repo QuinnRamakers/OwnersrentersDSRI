@@ -19,6 +19,7 @@ arguments
 end
 
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
+          @reit_production, @reit_off_untouched, ...
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
           @nibud_rule, @floor_derive};
 if opts.solve
@@ -98,7 +99,9 @@ function ladder_branches()
 % have no DC pillar; the combined step has both. The annuity mortgage is a
 % step of its own between housing and the housing correlations, numbered 7b,
 % so the steps after it keep their numbers. The three funds are all bonds,
-% all stocks, and the production glide.
+% all stocks, and the production glide, whose risky share production splits
+% between stocks and the REIT (step 19, the last). No step before it holds
+% the REIT.
 S = ladder.steps();
 assert(ladder.parent('dc_bonds') == ladder.index('corr_SL'), 'dc_bonds parent');
 assert(ladder.parent('pension') == ladder.index('housing_corr'), 'pension parent');
@@ -106,7 +109,14 @@ assert(ladder.parent('housing') == ladder.index('corr_SL'), 'housing parent');
 assert(ladder.parent('annuity') == ladder.index('housing'), 'annuity parent');
 assert(ladder.parent('housing_corr') == ladder.index('annuity'), 'housing_corr parent');
 assert(ladder.index('7b') == ladder.index('annuity') && ladder.index(8) == ladder.index('housing_corr') ...
-    && ladder.index(18) == numel(S), 'step numbers');
+    && ladder.index(18) == ladder.index('floor') && ladder.index(19) == numel(S) ...
+    && strcmp(S(end).name, 'reit'), 'step numbers');
+for k = 1:numel(S) - 1
+    for owner = [false true]
+        p = ladder.params(S(k).name); p.is_owner = owner;
+        assert(~config.reit_active(p), '%s: a REIT before step 19', S(k).name);
+    end
+end
 assert(~ladder.params('nibud').maint_on_purchase && ladder.params('maint_purchase').maint_on_purchase, ...
     'maintenance on the current value to step 16, on the purchase price at step 17');
 assert(~ladder.params('maint_purchase').floor_absorbing && ladder.params('floor').c_min == 5000, ...
@@ -128,8 +138,71 @@ assert(ladder.params('dc_glide').replacement == 0.68212 && ladder.params('aow').
     'replacement along the DC branch');
 assert(all(config.tau_effective(ladder.params('dc_bonds')) == 0), 'all-bond fund');
 assert(all(config.tau_effective(ladder.params('dc_stocks')) == 1), 'all-stock fund');
-assert(isequal(config.tau_effective(ladder.params('dc_glide')), config.tau_effective(config.params())), ...
+p = config.params();
+assert(isequal(config.tau_effective(ladder.params('dc_glide')), config.tau_effective(p) + config.reit_effective(p)), ...
     'glide fund differs from production');
+end
+
+function reit_production()
+% Production holds the REIT: the glide's risky share, min(0.8, years to
+% retirement / 35) and 0 from 67, half in stocks and half in the REIT, so the
+% risky share, the bond leg and the all-bond fund in retirement are step 18's
+% and the annuity prices from 67 do not move. On the quadrature nodes, gh_n^4
+% of them, the REIT has the tables' correlations with income, the stock and
+% the tenure's H shock (house price 0.17, rent 0.59), and its mean gross
+% return is 1 + r + mu_REIT_level.
+for owner = [false true]
+    p = config.params(false); p.is_owner = owner; p = config.derive(p);
+    q = ladder.params('floor'); q.is_owner = owner; q = config.derive(q);
+    assert(config.reit_active(p) && ~config.reit_active(q), 'owner %d: the REIT should be on at step 19 only', owner);
+    g = config.tau_effective(q);
+    tS = config.tau_effective(p); tR = config.reit_effective(p);
+    assert(isequal(tS, 0.5 * g) && isequal(tR, 0.5 * g) && isequal(tS + tR, g), ...
+        'owner %d: the fund is not the glide split in half', owner);
+    assert(max(g) == 0.8 && all(g(p.t_ret:end) == 0) && all(config.reit_effective(q) == 0), ...
+        'owner %d: the glide or the REIT share at step 18', owner);
+    sk = grids.shock_grid(p); w = sk.joint.w(:) / sum(sk.joint.w);
+    assert(numel(w) == p.gh_n ^ 4, 'owner %d: %d joint nodes, not gh_n^4', owner, numel(w));
+    lr = log(sk.joint.R_REIT(:)); lh = log(sk.joint.R_H(:)); ly = sk.joint.eps_Y_unit(:); ls = log(sk.joint.R_S(:));
+    wc = @(x, y) sum(w .* (x - sum(w .* x)) .* (y - sum(w .* y))) / ...
+         sqrt(sum(w .* (x - sum(w .* x)).^2) * sum(w .* (y - sum(w .* y)).^2));
+    [~, ~, cRH] = config.h_corr(p);
+    assert(cRH == 0.17 * owner + 0.59 * ~owner, 'owner %d: corr_RH %.2f', owner, cRH);
+    got = [wc(ly, lr), wc(ls, lr), wc(lh, lr)];
+    assert(max(abs(got - [p.corr_RL, p.corr_RS, cRH])) < 1e-10, ...
+        'owner %d: REIT node correlations %s against %s', owner, mat2str(got, 4), mat2str([p.corr_RL, p.corr_RS, cRH]));
+    m = sum(w .* sk.joint.R_REIT(:));
+    assert(abs(m / (1 + p.r + p.mu_REIT_level) - 1) < 1e-8, 'owner %d: REIT mean %.6f on the nodes', owner, m);
+    [~, ~, an] = config.model_inputs(p); [~, ~, an0] = config.model_inputs(q);
+    assert(isequal(an(p.t_ret:end), an0(p.t_ret:end)), 'owner %d: annuity prices from 67 moved', owner);
+end
+end
+
+function reit_off_untouched()
+% With the REIT off (step 18, both tenures) nothing reads its other fields:
+% moving its moments, its quadrature nodes and the renters' correlation of an
+% owner leaves the income profile, the joint quadrature nodes and the annuity
+% prices bit-identical, and same_calibration ignores them, also for a result
+% saved before the REIT fields existed, with the old placeholder moments.
+% With the REIT on (step 19) the same moves make a different calibration.
+for owner = [false true]
+    p = ladder.params('floor'); p.is_owner = owner; p.gh_n = 3; p = config.derive(p);
+    q = p; q.mu_REIT_level = 0.01; q.sigma_REIT_level = 0.4; q.gh_n_reit = 7;
+    if owner, q.corr_RH_rent = 0.3; end
+    q = config.derive(q);
+    assert(~config.reit_active(q), 'owner %d: the moves turned the REIT on', owner);
+    [pf, sk, an] = config.model_inputs(p); [qf, qk, qn] = config.model_inputs(q);
+    assert(isequaln(pf, qf) && isequaln(sk.joint, qk.joint) && isequaln(an, qn), ...
+        'owner %d: a REIT field moved a step without the REIT', owner);
+    assert(ladder.same_calibration(p, q), 'owner %d: REIT fields compared with the REIT off', owner);
+    old = rmfield(p, {'reit_risky', 'corr_RH_rent', 'reit_glide'});
+    old.mu_REIT_level = 0.03; old.sigma_REIT_level = 0.12;
+    assert(ladder.same_calibration(old, p), 'owner %d: a REIT-off result saved before the REIT fields', owner);
+    r = ladder.params('reit'); r.is_owner = owner; r = config.derive(r);
+    s = r; s.mu_REIT_level = 0.01;
+    assert(~ladder.same_calibration(r, s) && ~ladder.same_calibration(old, r) && ~ladder.same_calibration(p, r), ...
+        'owner %d: REIT fields not compared with the REIT on', owner);
+end
 end
 
 function income_profile()

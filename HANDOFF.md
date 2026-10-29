@@ -10,6 +10,13 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-10-29 The REIT leg in production: half the glide's risky share
+Asked by Quinn in Claude Code on 29 October ("finalise that the reit now works. and document that having it turned on is the new production"), with these choices: the REIT at 50% of the glide's risky share; 5 quadrature nodes for the REIT shock, as for the other shocks; saved solves without the REIT stay valid. Claude Code wrote it here in short.
+Change: new primitives `reit_risky` (the REIT's part of the glide's risky share; the rest is stocks) and `corr_RH_rent` (renters' REIT-rent correlation). `config.params`: `reit_risky` 0.5, `mu_REIT_level` 0.0543, `sigma_REIT_level` 0.2448, `corr_RL` 0.09, `corr_RS` 0.76, `corr_RH` 0.17 (owners), `corr_RH_rent` 0.59 (renters), `gh_n_reit` [] (= gh_n). `config.derive` splits the glide: stocks (1 - reit_risky) of it, the REIT reit_risky of it (derived `reit_glide`, read by `config.reit_effective`); the bond leg and the all-bond fund in retirement do not change. `config.h_corr` returns the tenure's REIT-H correlation, read by the shock grid and the simulator. New ladder step 19 `reit` with the REIT on; step 1 sets the share and the REIT correlations to 0, so steps 1-18 solve the same model as before. `ladder.same_calibration` skips the REIT fields when the REIT is off in both results (off, nothing reads them), so saved REIT-off solves stay valid. `case_params`: `_rr<n>` sets `reit_risky`, `_reit<n>` sets `reit_risky` 0 and `tau_REIT`, `_rh<n>` sets both REIT-H correlations. CALIBRATION.md, TODO.md, README.md and CLAUDE.md say the REIT is on in production.
+Why: the small-grid runs of 28-29 October show the leg works with the tables' values, and Quinn chose the rule that raises entry welfare for both tenures (renters +0.38%, owners +0.06% on the small grid).
+Checks that must pass: `run_tests(solve=false)` and the full `run_tests` 0 failures, with new checks (the split of the glide; the REIT correlations on the quadrature nodes by tenure; `same_calibration` with the REIT off and on; the shock grid and annuity prices of a REIT-off step unchanged when the REIT fields move). On the pod, small grid: step 18 at b = 2.5, both tenures, re-solved in a scratch folder, bit-identical to the saved stock-only solve; step 19 at b = 2.5 bit-identical to the saved `_rr50` solve; `model.checks` read after each solve.
+Done: 2026-10-29
+
 ### 2026-10-29 One pooled income process for owners and renters
 Asked by Quinn in Claude Code on 29 October ("it should have been run using the same pooled gross income polynomial as in this document", `calibration_notes (2).pdf`), with these choices: production, not a case suffix; the pooled permanent shock std too; convert the table's 2020 euros to 2025; redo the small-grid REIT set. Claude Code wrote it here in short. It carries out the plan in CALIBRATION.md of 23 October.
 Change: ladder step `income` and `config.params` together: `income_coef` = `income_coef_rent` = [6.9733, 0.20986, -0.3776, 0.2207] (Table 2, gross, All: a0 6.9733, a1 0.20986, a2 -0.03776, a3 0.002207, in code form [a0, a1, 10 a2, 100 a3]); `sigma_l_log` = `sigma_l_log_rent` = 0.0675 (Table 2, gross, All); `dhs_price_factor` = 1.2516 = CPI(2025)/CPI(2020) = 134.56/107.51 (CBS 83131NED, all items, annual). Tests updated where they pinned the separate cubics. CALIBRATION.md and TODO.md updated. Then re-solve on the pod, small grid, step 18 at b = 2.5: both tenures under stock only, `_rr25`, `_rr50`, `_rr100`, `_reit10`, and renters under `_rr50_rh0`, `_reit10_rh0`; the superseded solves move to `superseded/`.
@@ -84,6 +91,30 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-29 The REIT leg in production (spec: The REIT leg in production: half the glide's risky share)
+Changed:
+- `+config/params.m`: new primitives `reit_risky` 0.5 and `corr_RH_rent` 0.59; the REIT moments and correlations at the tables' values (`mu_REIT_level` 0.0543, `sigma_REIT_level` 0.2448, `corr_RL` 0.09, `corr_RS` 0.76, `corr_RH` 0.17); `gh_n_reit` stays [] (= gh_n, 5).
+- `+config/derive.m`: stocks get (1 - reit_risky) of the glide and the REIT reit_risky of it (derived `reit_glide`).
+- `+config/reit_effective.m`: adds `reit_glide` to `tau_REIT`.
+- `+config/h_corr.m`: a third output, the tenure's REIT-H correlation, read by `+grids/shock_grid.m` and `+simulate/paths_lna.m`.
+- `+config/reit_active.m`: also on for `reit_risky`; the tenure's corr_RH.
+- `+ladder/steps.m`: step 1 sets the share and the REIT correlations to 0; new step 19 `reit` is production.
+- `+ladder/same_calibration.m`: skips the REIT fields when the REIT is off in both results.
+- `+model/summarize.m`: `dc_reit`. `+figures/dashboard.m`: a REIT line in the settings text.
+- `diagnostics/pension_grid/case_params.m`: `_rr<n>` sets `reit_risky`, `_reit<n>` sets `reit_risky` 0, `_rh<n>` both REIT-H correlations.
+- `tests/run_tests.m`: new `reit_production` and `reit_off_untouched`; `ladder_branches` expects step 19 last and no REIT before it.
+- CALIBRATION.md (REIT section rewritten; glide row; step-1 table; ladder text; `gh_n_reit` under Numerics), README.md (ladder table to 19, with the stale step 4 and 16 rows fixed; limits), TODO.md (the REIT row is now the open questions on the share), CLAUDE.md (known limits; the `same_calibration` exception).
+Checks run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_reitprod` (this commit's code), 13:03-13:17 UTC, one MATLAB at a time, 32 threads (`runs/reit_prod.sh`, log `runs/reit_prod/reit_prod.txt` on Quinn's PC):
+- `run_tests(solve=false)`: 0 of 13 checks failed.
+- Full `run_tests`: 0 of 26 failed, 2 skipped (`floor_off_identical` and `bequest_off_identical`; their baselines predate the pooled income), 6.6 minutes. The production solves in `smoke_both_tenures`, `figures_render` and `bequest_last_year` now carry the REIT.
+- `runs/reit_prod_check.m`, small grid `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25` (gh 3, so 81 joint nodes with the REIT):
+  - Step 18, both tenures: the saved stock-only solve is still the same calibration for `same_calibration`. A re-solve (not saved) is bit-identical: V, c and pi, and all 27 summary fields. Renter 21 s, owner 121 s.
+  - Step 19, both tenures, saved as `19_reit_<arm>_..._beqb25.mat`: bit-identical to the saved `18_floor_<arm>_..._beqb25_rr50.mat` in V, c and pi and all 27 summary fields. `same_calibration` calls them different (expected: `_rr50` set the split through `glide_cap`, `glide_span` and a `tau_REIT` path). Renter 39 s, owner 222 s.
+  - `model.checks`, step 18 then step 19: c_bound_25_39 0.0000 for all; offgrid [0 0 0 0] for all; bankrupt household-years renter 0.0183 and 0.0167, owner 0.0038 and 0.0038. Entry value, step 19 against step 18: renter +0.38%, owner +0.06%, as the `_rr50` row of the welfare table (welfare levels not reported, CLAUDE.md).
+What it means: production is now step 19 with the REIT at half the glide's risky share. Steps 1-18 solve exactly as before, and their saved solves are reused. The saved `_reit` and `_rr` solves from before today are the same model but a different calibration, and re-solve if run again.
+Commit: this entry, pushed to main.
+Open: (1) step 19 has no full-grid solve; with 5 REIT nodes the joint quadrature is 625 nodes, so an owner solve may take about 5 times the REIT-off time (the 3-node run took about 3.1 times). (2) The share has no data source (TODO.md). (3) 3 against 5 REIT nodes has not been compared.
 
 ### 2026-10-29 Paper figures cut down, welfare table (spec: none, asked by Quinn in Claude Code)
 No solves. `runs/paper_figs.m` redrawn for "new" and "old" (Quinn: only the renters' panel of figure 1, a table of welfare by strategy for both tenures, the 10% rule out of the figures). Figure 1 is now `fig1_rent_over_pension` (renters' rent as % of the pension payment, median household; replaces `fig1_housing_over_pension`). Figures 1-3 show three rules: no REIT, REIT 50% and 100% of the risky share. New `tab_reit_welfare.tex` (booktabs), written from the solves: change in certainty-equivalent consumption at entry against stocks only, REIT 25% / 50% / 100% of the risky share, renters +0.24 / +0.38 / +0.44, owners +0.04 / +0.06 / 0.00 (pooled income, small grid). The script still prints the 10% rule (renters +1.00, owners +0.21). In `runs/paper/{new,old}`.
