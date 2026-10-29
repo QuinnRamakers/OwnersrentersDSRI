@@ -91,7 +91,7 @@ Ran `runs/pool_small.sh` on the pod, code 5f10bdb, 10:32-10:55 UTC (22.7 minutes
 Rules in order: stock only, REIT 25%, 50%, 100% of the risky share, REIT 10% of the fund at every age.
 - Entry value: renter 0.317825, 0.318580, 0.319045, 0.319212, 0.321012 (+0.24%, +0.38%, +0.44%, +1.00%); owner 0.355338, 0.355496, 0.355545, 0.355350, 0.356088 (+0.04%, +0.06%, +0.00%, +0.21%).
 - Renters with the REIT uncorrelated with rent: `_rr50_rh0` 0.317573 (-0.08% on stock only, against +0.38% at 0.59); `_reit10_rh0` 0.320221 (+0.75%, against +1.00%).
-- DC pot at 66, stock only: renter 593,500, owner 593,530 (577,423 and 794,829 with the separate cubics). Annuity payment at 75: 36,434 and 36,299. Payment gains by rule: renters +2.0%, +4.2%, +8.6%, +19.9%; owners +2.1%, +4.3%, +8.8%, +20.0%.
+- DC pot at 66, stock only: renter 593,500, owner 593,530 (477,423 and 794,829 with the separate cubics). Annuity payment at 75: 36,434 and 36,299. Payment gains by rule: renters +2.0%, +4.2%, +8.6%, +19.9%; owners +2.1%, +4.3%, +8.8%, +20.0%.
 - Housing costs over the payment after tax, median household, at 67 / 95: renters 63.5% / 80.6% (stock only), 61.3% / 77.9% (REIT 50%), 54.8% / 70.9% (REIT 10%); owners 11.3%, 10.9% and 9.8%, flat.
 - Liquid equity share at 30 / 45 / 60 / 66 / 75: renters 0.58 / 0.12 / 0.08 / 0.29 / 0.23 (stock only), 0.58 / 0.13 / 0.09 / 0.30 / 0.23 (REIT 50%), 0.54 / 0.12 / 0.07 / 0.05 / 0.10 (REIT 10%); owners at 45 / 60 / 66 / 75: 0.56 / 0.46 / 0.87 / 0.99, 0.57 / 0.50 / 0.89 / 0.99, 0.58 / 0.40 / 0.08 / 0.88.
 - Bankrupt household-years: renters 1.83%, 1.72%, 1.67%, 1.74%, 1.53% (by 95: 7.5%, 6.9%, 6.6%, 6.8%, 5.6%); owners 0.38% under every rule.
