@@ -10,6 +10,12 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-10-29 Keep superseded solves
+Asked by Quinn in Claude Code on 29 October, after finding that a re-solve of the same case name at another calibration overwrites the saved file ("Yes, keep them"); Claude Code wrote it here in short.
+Change: `utility.keep_superseded(file)` moves an existing result into `superseded/` next to it, named with its save time; `solve_cases` calls it just before saving. The ladder's own savers (`ladder.run`, `robustness`, `sensitivity`, `grid_axes`) are not changed.
+Why: solves from before 26 October are gone from the pod, and every production change would lose more.
+Checks that must pass: `run_tests(solve=false)` 0 failures; on the pod in a scratch output folder, a small case solved and then re-solved with `force = true` leaves the new solve in place and the first one in `superseded/`.
+
 ### 2026-10-29 The REIT as a share of the fund's risky assets, small grid
 Asked by Quinn in Claude Code on 29 October ("run them with only stock, reit at 25% of risky assets, reit at 50, reit at 100% of risky", on a much smaller grid for the rest of the session); Claude Code wrote it here in short.
 Change: case suffix `_rr<n>`: the glide's risky share min(0.8, years to retirement / 35) is split into stocks, (1 - n/100) of it, and the REIT, n/100 of it, through `glide_cap`, `glide_span` and a `tau_REIT` path. The bond leg and the all-bond fund in retirement stay as they are. The REIT moments and correlations are those of `_reit<n>`. No new primitive; production unchanged. Solve step 18 at b = 2.5 on the small grid `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25` (16 x 8 base points, u3 10, q 4, 3 nodes per shock), renter and owner, stock only and `_rr25`, `_rr50`, `_rr100`, one at a time on the pod with progress lines.
@@ -62,6 +68,12 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-29 Keep superseded solves: code, checks not yet run (spec: Keep superseded solves)
+Changed: `+utility/keep_superseded.m` (new): moves an existing result into `superseded/` next to it as `<name>_yyyyMMdd_HHmmss.mat` (its save time). `diagnostics/pension_grid/solve_cases.m` calls it just before `save` and prints where the earlier solve went. The ladder's savers still overwrite.
+Checks run: none yet. The pod is busy with the small-grid REIT jobs, and runs stay on the pod; the spec's checks run when the jobs end and go in a later entry. Not marked done.
+Commit: this entry, pushed to main.
+Open: the spec's checks.
 
 ### 2026-10-29 The REIT as a share of the fund's risky assets, small grid: code and expectations before the runs (spec: The REIT as a share of the fund's risky assets)
 Changed: `diagnostics/pension_grid/case_params.m`: suffix `_rr<n>` (spec above); the REIT moments and correlations moved into a local function shared with `_reit<n>`. CALIBRATION.md: a paragraph on `_rr<n>` in the REIT section. Scripts, not committed: `runs/rr_check.m` (the split), `runs/rr_precheck.m`, `runs/rr_small.m`, `runs/rr_small.sh`, `runs/pension_over_housing.m` (Quinn asked, 29 October: the private pension payment after tax over housing costs by age, per household, mean and median over households not bankrupt; rent for renters, maintenance plus the mortgage payment for owners).

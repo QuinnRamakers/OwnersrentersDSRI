@@ -6,8 +6,10 @@ function solve_cases(cases, opts)
 %   Each case is <step>:<arm>:<numerics name> (case_params). Results are saved
 %   as <standard numerics dir>/pension_grid/NN_<step>_<arm>_<name>.mat, with
 %   the households and seed of the ladder's standard numerics, and skipped
-%   when a result for the same calibration is already there. One line per
-%   solve with its time and model.checks.
+%   when a result for the same calibration is already there. A saved result
+%   that a new solve replaces (another calibration, or force) is first moved
+%   to pension_grid/superseded/ with its save time in the name, so it is
+%   never lost. One line per solve with its time and model.checks.
 %
 %   solve_cases(..., verbose = true) also prints the clock time when each case
 %   starts, the solver's progress lines (every 10th age, with that age's solve
@@ -43,6 +45,8 @@ for c = cases
     fprintf('%-6s %-10s %-6s %-22s nodes %3dx%-3d solve %6.0f s  floored %.4f  offgrid %s  entry %.4f  thin_u1 %.2f\n', ...
         ladder.number(k, S), S(k).name, arm, name, p.N_u1, p.N_u2, r.timing.solve_sec, k2.floored_share, ...
         mat2str(k2.offgrid), k2.ce_entry, k2.thin_u1_40);
+    old = utility.keep_superseded(file);
+    if ~isempty(old), fprintf('the earlier solve is kept as %s\n', old); end
     save(file, '-struct', 'r');
 end
 end
