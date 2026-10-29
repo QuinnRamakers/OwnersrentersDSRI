@@ -85,6 +85,11 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-29 Paper figures cut down, welfare table (spec: none, asked by Quinn in Claude Code)
+No solves. `runs/paper_figs.m` redrawn for "new" and "old" (Quinn: only the renters' panel of figure 1, a table of welfare by strategy for both tenures, the 10% rule out of the figures). Figure 1 is now `fig1_rent_over_pension` (renters' rent as % of the pension payment, median household; replaces `fig1_housing_over_pension`). Figures 1-3 show three rules: no REIT, REIT 50% and 100% of the risky share. New `tab_reit_welfare.tex` (booktabs), written from the solves: change in certainty-equivalent consumption at entry against stocks only, REIT 25% / 50% / 100% of the risky share, renters +0.24 / +0.38 / +0.44, owners +0.04 / +0.06 / 0.00 (pooled income, small grid). The script still prints the 10% rule (renters +1.00, owners +0.21). In `runs/paper/{new,old}`.
+Commit: this entry, pushed to main.
+Open: the figure script is in `runs/`, not committed.
+
 ### 2026-10-29 Paper figures restyled (spec: none, asked by Quinn in Claude Code)
 No solves. `runs/paper_figs.m` redrawn on the pod for the pooled income ("new") and the separate cubics ("old"), after a figure Quinn sent: "Panel A:" titles with an italic subtitle, framed axes without grid lines, a serif font (DejaVu Serif on the pod), percent scales, and one legend at the bottom in two rows. The four fund rules have the same style in every figure, Okabe-Ito colours with a distinct line style each, so none depends on colour alone: no REIT grey dotted, REIT 50% of the risky share blue solid, REIT 100% orange dashed, REIT 10% of the fund at every age green dash-dot. Figure 1 is now two panels (renters' rent, owners' maintenance, as % of the pension payment); figure 2 the liquid equity share by tenure; figure 3 renters in housing stress (above 40% of retirement income or bankrupt, by age; the distribution at 85). The legend and the y-axis titles are placed by hand because the pod's headless renderer measures text smaller than it draws it. Numbers as in the entries below. Files: `fig1_housing_over_pension`, `fig2_liquid_equity_share`, `fig3_renter_housing_stress` (PNG 300 dpi, PDF) in `runs/paper/{new,old}`.
 Commit: this entry, pushed to main.
