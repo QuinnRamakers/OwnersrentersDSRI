@@ -87,11 +87,10 @@ setting the floor also sets the search bound.
 
 | Input | Status |
 |---|---|
-| Income polynomial by tenure | Decided (Quinn, 23 October 2026): owners and renters will use the same polynomial, a DHS cubic estimated on both tenures pooled. Not implemented; the code still has separate DHS cubics (`income_coef`, `income_coef_rent`). Waiting on the pooled coefficients from Quinn. To decide: whether `sigma_l_log` is shared too. With one polynomial the entry income is the same for both tenures, so the Nibud `h_mult`, the contribution-rate profile and the entry incomes in the `b0` and `tau_inc` rows below no longer differ by tenure. If the shock std is shared as well, the steps without housing are solved once instead of for each tenure (`model.tenures_differ`) |
-| `h_mult` | Production uses the Nibud 2026 maximum mortgage at entry income (`h_rule = 'nibud'`, ladder step 16): 4.45 owners, 4.16 renters; `h_fixed` 4.0 at steps 7-15 is a placeholder. To decide: the test rate (`r_m` is real, the norm's rate nominal); box 1 or box 3 (the model has no interest deduction); the 2025 tables for the price year; the EUR 17,000 increase; whether renters follow the rule. Still wanted: an income-contingent assignment fitted on LISS, with the Nibud rule as its ceiling |
+| `h_mult` | Production uses the Nibud 2026 maximum mortgage at entry income (`h_rule = 'nibud'`, ladder step 16): 4.52 for both tenures, which share one income process since 29 October 2026; `h_fixed` 4.0 at steps 7-15 is a placeholder. To decide: the test rate (`r_m` is real, the norm's rate nominal); box 1 or box 3 (the model has no interest deduction); the 2025 tables for the price year; the EUR 17,000 increase; whether renters follow the rule. Still wanted: an income-contingent assignment fitted on LISS, with the Nibud rule as its ceiling |
 | `kappa_base` | Single OECD figure. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie) |
 | Housing level | `theta` 1.5% is a placeholder; `h_mult`, see above. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.48% (CALIBRATION.md). The housing dynamics and correlations are calibrated (Tables 1 and 3) |
-| `b0`, `b_alt` | Placeholders. The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now DHS household-head income (EUR 39,763 owners, 30,098 renters at 25), so the denominator, and possibly a buffer by tenure, should follow |
+| `b0`, `b_alt` | Placeholders. The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now the pooled DHS cubic (EUR 33,829 at 25 for both tenures, 2025 euros), so the denominator should follow |
 | REIT in production | The leg is off and `config.params` still has placeholders. The calibration tables' values (Table 1 moments, Table 3 correlations) are in CALIBRATION.md and run through the `_reit<n>` case suffix. Production with the REIT on needs a renter field `corr_RH_rent` and a source for the share (10% is the old placeholder) |
 | `beta`, `chi` | Placeholders, no sourced value yet |
 | Box-3 regime | 36% on actual returns with no loss offset is in force; the wealth-tax alternative (`tau_wealth`) is off. Decide which regime the baseline represents |
@@ -182,8 +181,8 @@ tested on branch edge-fix, did not help).
   mechanics, including the missing loss offset on the liquid account.
 - **Franchise.** Never stated, although `kappa_t` depends on it: EUR 18,475
   (1-1-2025, art. 18a lid 3 Wet LB).
-- **Price year.** 2025: the DHS income cubic is in 2025 euros, as is the
-  franchise.
+- **Price year.** 2025: the DHS income cubic is estimated in 2020 euros and
+  raised to 2025 by CPI (`dhs_price_factor`); the franchise is in 2025 euros.
 - **Entry state.** The initial liquid buffer is unstated and drives results.
 - **Off-by-ones.** The DHS sample ends at 65, so the cubic is extrapolated one
   year to 66, the last working year; `tau` has `T-1` transitions.

@@ -133,11 +133,12 @@ assert(isequal(config.tau_effective(ladder.params('dc_glide')), config.tau_effec
 end
 
 function income_profile()
-% DHS cubic in 2025 euros, by tenure: the level at 25 and at the peak against
-% the values computed from the published coefficients, the peak age, the
-% tenure's shock std, and the step down by the replacement rate at retirement.
-target = struct('owner',  struct('y25', 39763, 'peak', 50, 'ypeak', 74656, 'sigma', 0.0816), ...
-                'renter', struct('y25', 30098, 'peak', 49, 'ypeak', 52013, 'sigma', 0.0843));
+% The pooled DHS cubic, 2020 euros raised to 2025, the same for both tenures:
+% the level at 25 and at the peak against the values computed from the
+% published coefficients, the peak age, the shock std, and the step down by
+% the replacement rate at retirement.
+target = struct('owner',  struct('y25', 33829, 'peak', 48, 'ypeak', 60589, 'sigma', 0.0675), ...
+                'renter', struct('y25', 33829, 'peak', 48, 'ypeak', 60589, 'sigma', 0.0675));
 for owner = [true false]
     p = config.params(false); p.is_owner = owner; p = config.derive(p);
     if owner, e = target.owner; else, e = target.renter; end
@@ -166,6 +167,8 @@ for k = 1:numel(S)
     end
 end
 p = ladder.params('income');
+assert(strcmp(model.tenure(p), 'nohousing'), 'the pooled income step should keep one arm');
+p.income_coef_rent(1) = p.income_coef_rent(1) - 0.3;                     % split the income, to test the labels
 q = p; q.is_owner = true;
 assert(strcmp(model.tenure(p), 'nohousing_renter') && strcmp(model.tenure(q), 'nohousing_owner'), ...
     'labels of the no-housing arms');
@@ -238,7 +241,7 @@ assert(config.nibud_lti(30000, 0.0348, true) == config.nibud_lti(30000, 0.0348, 
     'the increase applied at the first income row');
 assert(abs((config.nibud_lti(39763, 0.0348, true) - config.nibud_lti(39763, 0.0348, false)) * 39763 - 17000) < 1e-8, ...
     'the increase is not EUR 17,000');
-expect = struct('owner', 4.446, 'renter', 4.155);
+expect = struct('owner', 4.521, 'renter', 4.521);
 for owner = [true false]
     p = config.params(false); p.is_owner = owner; p = config.derive(p);
     Y0 = exp(config.income_profile(p)); Y0 = Y0(1);
@@ -254,16 +257,20 @@ end
 % p was derived again after a tenure switch (ladder.load, ladder.report), and
 % switching the rule on a derived p returns to h_fixed.
 p = config.params();
-q = p; q.is_owner = true;
+ps = p; ps.income_coef_rent(1) = ps.income_coef_rent(1) - 0.3;           % poorer renters, so the two multiples differ
+ps = config.derive(ps);
+q = ps; q.is_owner = true;
 o = config.derive(q);
-assert(ladder.same_calibration(o, q) && o.h_mult ~= p.h_mult, 'tenure switch: same_calibration depends on derive');
+assert(ladder.same_calibration(o, q) && o.h_mult ~= ps.h_mult, 'tenure switch: same_calibration depends on derive');
 q = p; q.h_rule = 'fixed'; q = config.derive(q);
 assert(q.h_mult == q.h_fixed, 'switching to fixed kept the Nibud multiple');
 q = p; q.h_rule = 'none'; q = config.derive(q);
-assert(q.h_mult == 0 && strcmp(model.tenure(q), 'nohousing_renter'), 'h_rule none');
+assert(q.h_mult == 0 && strcmp(model.tenure(q), 'nohousing'), 'h_rule none');
 % model.run refuses a tenure switch without derive, also where kappa is the
 % same for both tenures (no DC pillar)
-q = ladder.params('housing_corr'); q.h_rule = 'nibud'; q = config.derive(q);
+q = ladder.params('housing_corr'); q.h_rule = 'nibud';
+q.income_coef_rent(1) = q.income_coef_rent(1) - 0.3;                     % split the income, so the tenures derive differently
+q = config.derive(q);
 q.is_owner = true;
 assert(threw_id(@() model.run(q, verbose = false), 'model:run_not_derived'), ...
     'model.run accepted an underived tenure switch');
@@ -408,22 +415,17 @@ end
 end
 
 function nohousing_arms_corr()
-% The step that adds the income-stock correlation, on a small grid: two arms
-% that differ, and the correlation on the quadrature nodes and in the panel
-% equal to corr_SL.
+% The step that adds the income-stock correlation, on a small grid: one arm,
+% since owners and renters share the income process, and the correlation on
+% the quadrature nodes and in the panel equal to corr_SL.
 p = ladder.params('corr_SL');
 p.grid_dims = [6 5 4 3]; p.gh_n = 3;
-C = struct();
-for owner = [false true]
-    pa = p; pa.is_owner = owner; pa = config.derive(pa);
-    r = model.run(pa, N_sim = 2000, verbose = false);
-    assert(all(isfinite(r.sol.V(:))), 'non-finite value');
-    assert(abs(r.checks.corr_SL_nodes - p.corr_SL) < 1e-10, 'nodes correlation %.4f', r.checks.corr_SL_nodes);
-    assert(abs(r.checks.corr_SL_sim - p.corr_SL) < 0.01, 'panel correlation %.4f', r.checks.corr_SL_sim);
-    C.(r.tenure) = r;
-end
-assert(isfield(C, 'nohousing_renter') && isfield(C, 'nohousing_owner'), 'arm labels');
-assert(~isequal(C.nohousing_renter.sol.c_pol, C.nohousing_owner.sol.c_pol), 'the arms should differ');
+p = config.derive(p);
+assert(strcmp(model.tenure(p), 'nohousing'), 'one arm without housing');
+r = model.run(p, N_sim = 2000, verbose = false);
+assert(all(isfinite(r.sol.V(:))), 'non-finite value');
+assert(abs(r.checks.corr_SL_nodes - p.corr_SL) < 1e-10, 'nodes correlation %.4f', r.checks.corr_SL_nodes);
+assert(abs(r.checks.corr_SL_sim - p.corr_SL) < 0.01, 'panel correlation %.4f', r.checks.corr_SL_sim);
 end
 
 function annuity_flat_prices()

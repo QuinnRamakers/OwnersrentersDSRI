@@ -36,12 +36,12 @@ p.beq_bankrupt = 1;           % a bankrupt household is valued as leaving this m
 
 % Labour income. Owners use income_coef and sigma_l_log; renters the _rent fields.
 p.income_source       = 'dhs';     % 'dhs': DHS cubic in euros; 'poly': CGM cubic, not in euros; 'table': BKV age effects
-p.income_coef         = [7.7979, 0.17253, -0.2784, 0.1405];   % owner: log y = a1 + a2 age + a3 age^2/100 + a4 age^3/1e4
-p.income_coef_rent    = [7.5302, 0.17828, -0.3126, 0.1784];   % renter, same form
-p.sigma_l_log         = 0.0816;    % owner permanent income shock std; log income is a random walk
-p.sigma_l_log_rent    = 0.0843;    % renter permanent income shock std
+p.income_coef         = [6.9733, 0.20986, -0.3776, 0.2207];   % owners and renters pooled: log y = a1 + a2 age + a3 age^2/100 + a4 age^3/1e4
+p.income_coef_rent    = [6.9733, 0.20986, -0.3776, 0.2207];   % renter, the same pooled cubic
+p.sigma_l_log         = 0.0675;    % permanent income shock std, pooled; log income is a random walk
+p.sigma_l_log_rent    = 0.0675;    % renter, the same pooled value
 p.replacement         = 0.307;     % first-pillar (AOW) income as a share of final wage
-p.dhs_price_factor    = 1.0;       % DHS euros to 2025 prices; the DHS cubic is already in 2025 euros
+p.dhs_price_factor    = 1.2516;    % DHS euros to 2025 prices: CPI(2025)/CPI(2020), the cubic is in 2020 euros
 p.income_price_factor = 1.3456;    % 'table' only: CPI(2025)/CPI(2015), rescales the BKV euro anchor
 
 % Financial market

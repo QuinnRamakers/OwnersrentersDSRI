@@ -37,49 +37,49 @@ only come from a part-year CPI average that CBS will revise.
 
 ## Labour income
 
-The working-age profile is a cubic in age estimated on gross income of the
-household head in the DNB Household Survey (DHS), waves 1993–2024, heads aged
-25–65, separately for owners and renters (Quinn's calibration notes, 12 Oct
-2026, Table 3, gross):
+The working-age profile is a cubic in age estimated on gross income (labour
+income and transfers: DHS gross without capital income, student support and
+inheritance) in the DNB Household Survey (DHS), ages 25–65, owners and renters
+pooled (calibration notes, `calibration_notes (2).pdf`, Table 2, gross income,
+column All):
 
 ```
 log y = a0 + a1 age + a2 age^2/10 + a3 age^3/100
 ```
 
-in log euros of 2025. The code's cubic divides by 100 and 1e4 instead, so the
-code coefficients are `[a0, a1, 10 a2, 100 a3]`. Owners use `income_coef` and
-`sigma_l_log`, renters `income_coef_rent` and `sigma_l_log_rent`
-(`config.income_process`). A step without housing whose two sets differ is
-solved for both tenures (`model.tenures_differ`).
+in log euros of 2020. The code's cubic divides by 100 and 1e4 instead, so the
+code coefficients are `[a0, a1, 10 a2, 100 a3]`. Owners and renters use the
+same cubic and the same permanent shock std (Quinn, 29 October 2026): owners
+and renters differ in tenure, not in income. The code keeps the renter fields
+(`income_coef_rent`, `sigma_l_log_rent`, read by `config.income_process`) and
+sets them equal to the owner fields, so a step without housing has one arm
+(`model.tenures_differ`).
 
 | Parameter | Value | Source |
 |---|---|---|
 | `income_source` | `'dhs'` | The DHS cubic, in euros |
-| `income_coef` | [7.7979, 0.17253, -0.2784, 0.1405] | Owners, Table 3. EUR 39,763 at 25, peak 74,656 at 50 |
-| `income_coef_rent` | [7.5302, 0.17828, -0.3126, 0.1784] | Renters, Table 3. EUR 30,098 at 25, peak 52,013 at 49 |
-| `dhs_price_factor` | 1.0 | The DHS euros are already in 2025 prices |
-| `sigma_l_log` | 0.0816 | Owners, permanent shock std, Table 3 |
-| `sigma_l_log_rent` | 0.0843 | Renters, permanent shock std, Table 3 |
+| `income_coef` | [6.9733, 0.20986, -0.3776, 0.2207] | Table 2, gross, All: a0 6.9733, a1 0.20986, a2 -0.03776, a3 0.002207. EUR 33,829 at 25 and a peak of 60,589 at 48, in 2025 euros |
+| `income_coef_rent` | the same | Owners and renters pooled |
+| `dhs_price_factor` | 1.2516 | CPI(2025)/CPI(2020) = 134.56/107.51, CBS 83131NED, all items, annual averages (2015 = 100) |
+| `sigma_l_log` | 0.0675 | Table 2, gross, All, permanent shock std |
+| `sigma_l_log_rent` | the same | Table 2 does not identify a renter value (negative slope in the variance regression) and its note says the model uses the all-household value |
 | `replacement` | 0.307 | DNB, *Toereikendheid van pensioenen*, Table 3, median first-pillar replacement rate |
 
-Table 3 reports 39,749 and 74,557 (owners) and 30,094 and 51,972 (renters);
-the gap is coefficient rounding. The sample ends at 65, so age 66, the last
-working year, is the cubic extrapolated one year.
+In 2020 euros the coefficients give 27,028 at 25 and 48,409 at the peak;
+Table 2 reports 27,022 and 48,366, and the gap is coefficient rounding. The
+sample ends at 65, so age 66, the last working year, is the cubic extrapolated
+one year.
 
 `sigma_l_log` is the permanent component because this model's income process
 is a pure random walk — every shock compounds forward. The transitory
-component (DHS std 0.119 for owners and 0.138 for renters; CGM 0.2717) has no
-home in a single-shock structure and is omitted.
+component (Table 2, gross, All: 0.2954; CGM 0.2717) has no home in a
+single-shock structure and is omitted.
 
-Without a franchise the model is homothetic in income, so the owners' higher
-level does not matter before the DC pillar enters; until then the tenures
-differ through the shape of the profile and the shock std.
-
-Planned (Quinn, 23 October 2026): owners and renters will use the same income
-polynomial, a DHS cubic estimated on owners and renters pooled. The separate
-cubics above are what the code uses until Quinn sends the pooled coefficients
-and the change is implemented. Whether the shock std is shared too is open
-(TODO.md, section 2).
+Until 29 October 2026 the model used separate cubics in 2025 euros (calibration
+notes of 12 October, Table 3: owners [7.7979, 0.17253, -0.2784, 0.1405], EUR
+39,763 at 25; renters [7.5302, 0.17828, -0.3126, 0.1784], EUR 30,098 at 25)
+and shock stds of 0.0816 and 0.0843. With them owners' DC pensions were 1.66
+times renters', because contributions are paid above the franchise.
 
 The first pillar is `replacement` times final working income rather than a
 flat AOW amount, which keeps the model homothetic. It removes the floor that a
@@ -368,25 +368,24 @@ used.
 |---|---|---|
 | Table | below AOW age, box 1 | The household buys at 25 with an annuity mortgage, whose interest is deductible |
 | Test rate | `r_m`, bracket 3.001–3.5% | The model's own mortgage rate, so the payment at entry is the norm's share of income apart from the increase |
-| Income | gross household-head income at 25, single earner | DHS: EUR 39,763 owners, 30,098 renters |
+| Income | gross income at 25, single earner | DHS, owners and renters pooled: EUR 33,829 (2025 euros) |
 | Increase | EUR 17,000 (`nibud_extra`) | The Tijdelijke regeling hypothecair krediet allows it for groups without personal unavoidable expenses; the workbook's calculator adds it by default for a single earner above the first income row |
 | Energy-label amounts | none | The model has no energy label |
 
-At production this gives `h_mult` = 4.446 for owners (share 21.6%) and 4.155
-for renters (share 19.3%); without the increase, 4.018 and 3.591. The renter
-follows the same rule on its own income, so its rent is `alpha` times the house
-it could have bought.
+At production this gives `h_mult` = 4.521 for both tenures (4.018 without the
+increase), since owners and renters share one income process. The renter
+follows the same rule, so its rent is `alpha` times the house it could have
+bought. With the separate income cubics used until 29 October 2026 it was
+4.446 for owners and 4.155 for renters.
 
 What to keep in mind:
 
-- The renter's entry income sits just above the first row, where the share
-  rises fastest with income and where the increase starts.
-- The table is in 2026 euros and income in 2025 euros. Raising both entry
-  incomes by 3% moves the owner's multiple to 4.434 and the renter's to 4.306.
-  The 2025 tables would match the price year.
+- The table is in 2026 euros and income in 2025 euros. The 2025 tables would
+  match the price year. (At the separate cubics, raising both entry incomes by
+  3% moved the multiples to 4.434 and 4.306.)
 - The box-1 shares assume the interest is deducted, which the model does not
-  do. The box-3 table (no deduction) gives 3.57 for owners and 3.34 for
-  renters.
+  do. At the separate cubics the box-3 table (no deduction) gave 3.57 for
+  owners and 3.34 for renters.
 - The norm tests the contract's nominal rate; `r_m` is real.
 - The norm is a ceiling, and not everyone borrows to it. The intended
   assignment is still an income-contingent estimate from LISS (log house value
@@ -420,9 +419,9 @@ stays homothetic.
   income profile (in retirement 0.307 Ybar_66, so the floor is tied to final
   labour income), for both tenures. The floor is c_min for the median owner at
   every age and c_min Y_t / Ybar_t for every other household, renters
-  included: the same share of income for owners and renters. Once both
-  tenures use the pooled income cubic (Labour income, above), the owners'
-  profile is the common one.
+  included: the same share of income for owners and renters. Since 29
+  October 2026 both tenures use the pooled income cubic (Labour income,
+  above), so the owners' profile is the common one.
 - `phi_abs`: phi_t = phi_abs to 66 and phi_abs / replacement from 67, that is
   phi_abs times permanent labour income, final labour income in retirement.
 
@@ -486,9 +485,9 @@ in the ratio. The denominator is the men's wage because the model runs
 `sex = 1`, and the buffer is measured in years of the modelled agent's income.
 
 The denominator is out of date. It is the BKV men's wage, while the income
-profile is now DHS household-head income (EUR 39,763 for owners and 30,098 for
-renters at 25), so both values stay placeholders until the buffer is measured
-against the DHS income, possibly by tenure (TODO.md, section 2).
+profile is now the pooled DHS cubic (EUR 33,829 at 25 for both tenures, 2025
+euros), so both values stay placeholders until the buffer is measured against
+the DHS income (TODO.md, section 2).
 
 Simulated households enter with `b0` years of income in liquid wealth, and the
 value at entry is read there (`utility.welfare_anchor`); both entry states are

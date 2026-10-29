@@ -10,6 +10,12 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-10-29 One pooled income process for owners and renters
+Asked by Quinn in Claude Code on 29 October ("it should have been run using the same pooled gross income polynomial as in this document", `calibration_notes (2).pdf`), with these choices: production, not a case suffix; the pooled permanent shock std too; convert the table's 2020 euros to 2025; redo the small-grid REIT set. Claude Code wrote it here in short. It carries out the plan in CALIBRATION.md of 23 October.
+Change: ladder step `income` and `config.params` together: `income_coef` = `income_coef_rent` = [6.9733, 0.20986, -0.3776, 0.2207] (Table 2, gross, All: a0 6.9733, a1 0.20986, a2 -0.03776, a3 0.002207, in code form [a0, a1, 10 a2, 100 a3]); `sigma_l_log` = `sigma_l_log_rent` = 0.0675 (Table 2, gross, All); `dhs_price_factor` = 1.2516 = CPI(2025)/CPI(2020) = 134.56/107.51 (CBS 83131NED, all items, annual). Tests updated where they pinned the separate cubics. CALIBRATION.md and TODO.md updated. Then re-solve on the pod, small grid, step 18 at b = 2.5: both tenures under stock only, `_rr25`, `_rr50`, `_rr100`, `_reit10`, and renters under `_rr50_rh0`, `_reit10_rh0`; the superseded solves move to `superseded/`.
+Why: owners and renters should differ in tenure, not in income; the separate cubics made owners' pensions 1.66 times renters'.
+Checks that must pass: full `run_tests` 0 failures (it touches `+config`, `+ladder` and the tests); the income profile at 25 and at the peak against the coefficients; `model.checks` read after each solve.
+
 ### 2026-10-29 Renters with a REIT uncorrelated with rent, small grid
 Asked by Quinn in Claude Code on 29 October ("Yes, run it"), to tell whether renters gain more than owners from the REIT because it hedges rent or because the pension is a larger part of their wealth; Claude Code wrote it here in short.
 Change: case suffix `_rh<n>`: with `_reit` or `_rr`, corr_RH = n/100 in place of Table 3's value. Solve renter `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25_rr50_rh0` and `..._reit10_rh0` on the pod with progress lines; compare with the same rules at corr_RH 0.59 and with stock only.
@@ -76,6 +82,17 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-29 One pooled income process: code and expectations before the runs (spec: One pooled income process for owners and renters)
+Changed: `+ladder/steps.m` (step `income`) and `+config/params.m`: the pooled cubic, shock std 0.0675 and `dhs_price_factor` 1.2516 for both tenures (spec above). `tests/run_tests.m`: `income_profile` targets EUR 33,829 at 25 and 60,589 at 48 for both tenures, std 0.0675; `tenure_arms` expects one arm at the income step and tests the arm labels on a deliberately split income; the Nibud check expects 4.521 for both; the tenure-switch and `h_rule = 'none'` checks use a split income or expect one arm. CALIBRATION.md: the Labour income section (pooled, Table 2, the CPI factor with its CBS source, the old values kept as history), the Nibud section (4.521 for both), the floor note and the entry buffer note. TODO.md: the income-polynomial row removed (decided and done), the `h_mult`, `b0` and price-year notes updated.
+Checks run on the pod (`/Solutionstorage/OwnersrentersDSRI_pool`): the first full `run_tests` failed 1 of 24, `nibud_rule` ("model.run accepted an underived tenure switch": with one income process both tenures derive the same `kappa` and `h_mult`, so a switch without derive is harmless and cannot be seen), and the second, after that check was given a split income, failed `nohousing_arms_corr` ("arm labels": the step without housing now has one arm). That check now solves the one arm and tests the income-stock correlation on it. Then full `run_tests`: 0 of 24 checks failed, 2 skipped (`floor_off_identical`, `bequest_off_identical`: CGM_FLOOR_BASELINE and CGM_BEQUEST_BASELINE not set), 10:25-10:32 UTC.
+Computed on the pod from the new code: income EUR 33,828.8 at 25, 60,588.7 at the peak at 48 and 56,684.9 at 66 for both tenures; `h_mult` 4.521025 for both (4.018494 without the EUR 17,000 increase).
+Expected, small grid, step 18 at b = 2.5, against the runs with separate cubics:
+1. The contribution base above the franchise over 25-66 is 1.26 times the old renters' and 0.76 times the old owners', so the DC pot at 66 should rise about 25% for renters and fall about 25% for owners, and the two tenures' pots and payments should now be about equal.
+2. The rent index is the Nibud house at entry income, now 4.521 times income for renters against 4.155, so rent rises 9% relative to income; together with higher income and a lower shock std, renters' bankruptcy should move little, perhaps down. Owners: income falls, the house multiple barely moves; bankruptcy about the same.
+3. The lower shock std (0.0675 against 0.0816 and 0.0843) means less precautionary saving and somewhat higher liquid equity shares for both tenures.
+4. The REIT results: the payment gains by rule (about 2%, 4%, 8.5% and 20%) should not change, and should again be the same for both tenures. Renters should still gain more welfare than owners, since the house is still most of owners' wealth; the gap may narrow because renters' pensions grow relative to owners'.
+5. Time: as on 29 October, renters under a minute, owners 3-4 minutes; about 35-40 minutes for the 12 solves.
 
 ### 2026-10-29 Renters with a REIT uncorrelated with rent: code and expectations before the runs (spec: Renters with a REIT uncorrelated with rent)
 Changed: `diagnostics/pension_grid/case_params.m`: suffix `_rh<n>` (spec above); it refuses a case without the REIT. Scripts, not committed: `runs/rh_small.m`.
