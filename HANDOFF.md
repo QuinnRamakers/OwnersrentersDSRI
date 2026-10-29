@@ -15,12 +15,14 @@ Asked by Quinn in Claude Code on 29 October, after finding that a re-solve of th
 Change: `utility.keep_superseded(file)` moves an existing result into `superseded/` next to it, named with its save time; `solve_cases` calls it just before saving. The ladder's own savers (`ladder.run`, `robustness`, `sensitivity`, `grid_axes`) are not changed.
 Why: solves from before 26 October are gone from the pod, and every production change would lose more.
 Checks that must pass: `run_tests(solve=false)` 0 failures; on the pod in a scratch output folder, a small case solved and then re-solved with `force = true` leaves the new solve in place and the first one in `superseded/`.
+Done: 2026-10-29
 
 ### 2026-10-29 The REIT as a share of the fund's risky assets, small grid
 Asked by Quinn in Claude Code on 29 October ("run them with only stock, reit at 25% of risky assets, reit at 50, reit at 100% of risky", on a much smaller grid for the rest of the session); Claude Code wrote it here in short.
 Change: case suffix `_rr<n>`: the glide's risky share min(0.8, years to retirement / 35) is split into stocks, (1 - n/100) of it, and the REIT, n/100 of it, through `glide_cap`, `glide_span` and a `tau_REIT` path. The bond leg and the all-bond fund in retirement stay as they are. The REIT moments and correlations are those of `_reit<n>`. No new primitive; production unchanged. Solve step 18 at b = 2.5 on the small grid `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25` (16 x 8 base points, u3 10, q 4, 3 nodes per shock), renter and owner, stock only and `_rr25`, `_rr50`, `_rr100`, one at a time on the pod with progress lines.
 Why: the 10% run put the REIT into the retirement fund, which otherwise holds no stocks, and that drove liquid stocks to near zero after 66. This keeps the fund's risky share and asks what the REIT does in place of stocks. The small grid is for speed (Quinn, 29 October).
 Checks that must pass: `run_tests(solve=false)` 0 failures; for each n and tenure, tau_S + tau_REIT equals the stock-only glide to 1e-12, the REIT share is n/100 of it, and both are 0 from 67; `model.checks` read after each solve.
+Done: 2026-10-29
 
 ### 2026-10-28 Progress lines in the pod log
 Asked by Quinn in Claude Code on 28 October, after the owner REIT solve ran for hours with nothing in its log; Claude Code wrote it here in short.
@@ -68,6 +70,37 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-29 Keep superseded solves: checks (spec: Keep superseded solves)
+Checks run on the pod at 09:44 UTC on 99c0106 (`git archive HEAD` into `/tmp/cgm_keep`, output in `/tmp/cgm_keep_out`, both left in the container's `/tmp`): `run_tests(solve=false)` 0 of 11 failed. `solve_cases("18:renter:pow3_8x6_u3n6_qn4_gh3")` solved and saved (20 s); the same call again printed "exists, skipped"; with `force = true` it re-solved (10 s), printed "the earlier solve is kept as .../pension_grid/superseded/18_floor_renter_pow3_8x6_u3n6_qn4_gh3_20261029_094425.mat" and saved the new one. The folder then held 1 file and `superseded/` 1, saved at 09:44:35 and 09:44:25.
+Commit: this entry, pushed to main.
+Open: the ladder's savers (`ladder.run`, `robustness`, `sensitivity`, `grid_axes`) still overwrite; giving them `utility.keep_superseded` touches `+ladder`, so it needs the full `run_tests`.
+
+### 2026-10-29 The REIT as a share of the fund's risky assets, small grid: results (spec: The REIT as a share of the fund's risky assets)
+Ran on the pod, code 7ad2798: `runs/rr_small.sh` 09:16-09:37 UTC (tests, `rr_check`, eight solves, report) and `runs/rr_small5.sh` 09:37-09:43 (the 10% rule at every age, `_reit10`, both tenures; the report with five rules; the full-grid entry values). Step 18, b = 2.5, `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25` (18x10x10 points, owners x5 q; 27 joint nodes, 81 with the REIT), 10,000 households, 32 threads. Pages in `/Solutionstorage/results/rr_small` and `runs/rr_small/` on Quinn's PC: `18_rr_small_renter_pension.png`, `18_rr_small_owner_pension.png`, `18_rr_small_pension_over_housing.png`; logs `rr_small.txt`, `rr_small5.txt`. The full-grid payment-over-housing page redrawn with its legend: `runs/reit/18_floor_reit_pension_over_housing.png`.
+`model.checks`, all ten solves: c_bound_25_39 0.0000, offgrid [0 0 0 0], thin_u1 0.00.
+Rules in order: stock only, REIT 25%, 50%, 100% of the risky share, REIT 10% of the fund at every age.
+- Solve seconds: renter 39.4, 37.5, 38.9, 57.0, 55.3; owner 162.8, 215.8, 217.6, 217.6, 220.2.
+- Entry value: renter 0.262884, 0.263733, 0.264332, 0.264642, 0.266419 (+0.32%, +0.55%, +0.67%, +1.34% on stock only); owner 0.314054, 0.314198, 0.314229, 0.313959, 0.314656 (+0.05%, +0.06%, -0.03%, +0.19%).
+- Full grid, from the saved solves at full precision: renter 0.186103 without the REIT, 0.189672 with 10% at every age (+1.918%); owner 0.301730 and 0.302320 (+0.195%).
+- DC pot at 66: renter 477,423, 487,126, 497,160, 518,275, 540,543 (+2.0%, +4.1%, +8.6%, +13.2%); owner 794,829, 811,389, 828,418, 864,697, 901,282 (+2.1%, +4.2%, +8.8%, +13.4%).
+- Annuity payment before tax at 75: renter 29,340, 29,920, 30,528, 31,826, 35,105 (+2.0%, +4.0%, +8.5%, +19.6%); owner 48,594, 49,597, 50,628, 52,825, 58,258 (+2.1%, +4.2%, +8.7%, +19.9%).
+- Consumption at 66 / 75: renter 23,333 / 21,533, 23,486 / 21,715, 23,607 / 21,946, 23,763 / 22,587, 24,316 / 23,902; owner 42,495 / 43,128, 42,699 / 43,626, 42,831 / 44,194, 42,867 / 45,547, 43,493 / 48,547.
+- Liquid saving at 66: renter 117,123, 114,213, 112,269, 111,242, 102,289; owner 34,558, 33,031, 32,111, 32,124, 27,678.
+- Liquid equity share at 30 / 60 / 66 / 75: renter 0.76 / 0.05 / 0.28 / 0.24, 0.76 / 0.06 / 0.29 / 0.24, 0.78 / 0.06 / 0.29 / 0.24, 0.82 / 0.08 / 0.29 / 0.24, 0.75 / 0.04 / 0.05 / 0.11; owner 0.71 / 0.35 / 0.87 / 0.99, 0.70 / 0.37 / 0.88 / 0.99, 0.69 / 0.38 / 0.89 / 0.99, 0.69 / 0.39 / 0.89 / 0.99, 0.71 / 0.32 / 0.06 / 0.84.
+- Bankrupt household-years: renter 1.98%, 1.88%, 1.85%, 1.86%, 1.65% (at 95: 8.5%, 8.0%, 7.8%, 7.7%, 6.6%); owner 0.79%, 0.79%, 0.78%, 0.79%, 0.79% (1.1% from 60 in all five).
+- Bequest at death, mean: renter 66,547, 65,938, 65,871, 67,301, 67,606; owner 1.569 million in all five.
+- Payment after tax over housing costs, mean at 67 / 95: renter 1.70 / 1.36, 1.73 / 1.38, 1.76 / 1.40, 1.83 / 1.46, 2.03 / 1.60; owner, flat over age, 11.32, 11.56, 11.80, 12.31, 13.59.
+Against the expectations:
+1. Time: renters 0.6-1.0 minutes, owners 2.7-3.7, both jobs about 27 minutes. The REIT adds 0-45% on this grid, not 2-3 times: with few grid points per age the threads are not kept busy, so the extra nodes cost little.
+2. The pot and the payment rose by 2%, 4% and 8.5-8.8% for 25%, 50% and 100%, as expected, and the 10% rule by 13% and 20%, as on the full grid.
+3. The liquid equity share does not collapse after 66 under `_rr`, as expected; the 10% rule collapses it as on the full grid. Before 67 the share rises slightly with the REIT share (renters at 30 from 0.76 to 0.82 at 100%, owners at 60 from 0.35 to 0.39), where I expected a small fall: with fewer stocks in the fund, households hold a few more in the liquid account.
+4. Consumption in retirement up 1-5% under `_rr` and 11-13% under the 10% rule; at 25% it is below the 2% I expected. Liquid saving at 66 down 2-7% under `_rr`.
+5. Bankruptcy and bequests: small changes, as expected; renters' bankruptcy by 95 falls from 8.5% to 7.7% (100%) and 6.6% (10% rule).
+6. Entry value: renters gain 0.3-0.7% under `_rr`, rising with the share but flattening at 100%, and 1.3% under the 10% rule; owners gain at most 0.06% and lose 0.03% at 100%. Renters gain more, as expected.
+7. Small grid against the full grid, stock only: the pot and the payment agree within 0.5%. Renters are far off: entry value 0.263 against 0.186 (+41%), bankrupt household-years 1.98% against 0.61%, equity share at 30 0.76 against 0.29, consumption at 30 11,034 against 8,620. Owners are closer: entry value +4%, consumption within 4%. The 10% rule's effects on the two grids: entry value renters +1.34% against +1.92%, owners +0.19% against +0.20%; pot +13.2% on both; payment +19.6% against +19.7%. So the small grid gets the pension and the owners right but understates the renters' welfare gain by about a third, and its renter levels should not be read.
+Commit: this entry, pushed to main.
+Open: (1) Whether `_rr` with 25-50% should be checked on the full grid, given the renter levels on the small grid. (2) The source for any REIT share in production (TODO.md).
 
 ### 2026-10-29 Keep superseded solves: code, checks not yet run (spec: Keep superseded solves)
 Changed: `+utility/keep_superseded.m` (new): moves an existing result into `superseded/` next to it as `<name>_yyyyMMdd_HHmmss.mat` (its save time). `diagnostics/pension_grid/solve_cases.m` calls it just before `save` and prints where the earlier solve went. The ladder's savers still overwrite.
