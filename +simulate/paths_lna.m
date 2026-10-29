@@ -89,18 +89,31 @@ q_grid  = p.q_grid(:);
 iq1     = find(q_grid == 1);
 q_dep   = numel(q_grid) > 1 & flipud(cummax(flipud(double(p.q_live(:))))) > 0;
 annuity = strcmp(p.mortgage, 'annuity');
+dc_on = isfield(p, 'dc_choice') && p.dc_choice;   % the household picks the fund's shares
+assert(~dc_on || isfield(sol, 'tau_pol'), 'paths_lna:no_tau_pol', ...
+    'dc_choice is set but sol has no tau_pol.');
 pp_c  = cell(T, 1);
 pp_pi = cell(T, 1);
+pp_tS = cell(T, 1);
+pp_tR = cell(T, 1);
 for t = 1:T
     [g1, g2] = utility.grid_at(p, t);
     if q_dep(t)
         ax = {g1, g2, p.u3_grid, q_grid};
         pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,:,t), 'linear', 'nearest');
         pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,:,t), 'linear', 'nearest');
+        if dc_on
+            pp_tS{t} = griddedInterpolant(ax, sol.tau_pol(:,:,:,:,t), 'linear', 'nearest');
+            pp_tR{t} = griddedInterpolant(ax, sol.reit_pol(:,:,:,:,t), 'linear', 'nearest');
+        end
     else
         ax = {g1, g2, p.u3_grid};
         pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,iq1,t), 'linear', 'nearest');
         pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,iq1,t), 'linear', 'nearest');
+        if dc_on
+            pp_tS{t} = griddedInterpolant(ax, sol.tau_pol(:,:,:,iq1,t), 'linear', 'nearest');
+            pp_tR{t} = griddedInterpolant(ax, sol.reit_pol(:,:,:,iq1,t), 'linear', 'nearest');
+        end
     end
 end
 
@@ -226,9 +239,11 @@ for t = 1:T
         qq = min(max(q_raw, q_grid(1)), q_grid(end));
         cf_raw = pp_c{t}(u1q, u2q, u3q, qq);
         pi_raw = pp_pi{t}(u1q, u2q, u3q, qq);
+        if dc_on, tS_raw = pp_tS{t}(u1q, u2q, u3q, qq); tR_raw = pp_tR{t}(u1q, u2q, u3q, qq); end
     else
         cf_raw = pp_c{t}(u1q, u2q, u3q);
         pi_raw = pp_pi{t}(u1q, u2q, u3q);
+        if dc_on, tS_raw = pp_tS{t}(u1q, u2q, u3q); tR_raw = pp_tR{t}(u1q, u2q, u3q); end
     end
     cf  = max(min(cf_raw, 1), 0);
     pi_ = max(min(pi_raw, 1), 0);
@@ -270,8 +285,21 @@ for t = 1:T
     R_S_at_draw = config.after_tax_stock(p, R_S_draw);
     R_X         = (1 - pi_) .* Rf_at + pi_ .* R_S_at_draw;
 
-    tau_t   = tau_e(t);
-    tau_R_t = reit_e(t);
+    if dc_on
+        % The household's own shares, put back on the simplex; a bankrupt
+        % household has no pot, and keeps the fund's.
+        tau_t   = min(max(tS_raw, 0), 1);
+        tau_R_t = min(max(tR_raw, 0), 1);
+        tot  = tau_t + tau_R_t;
+        over = tot > 1;
+        tau_t(over)   = tau_t(over) ./ tot(over);
+        tau_R_t(over) = tau_R_t(over) ./ tot(over);
+        tau_t(~look)   = tau_e(t);
+        tau_R_t(~look) = reit_e(t);
+    else
+        tau_t   = tau_e(t);
+        tau_R_t = reit_e(t);
+    end
     tau_A_path(:,t)  = tau_t;
     reit_A_path(:,t) = tau_R_t;
     if reit_on

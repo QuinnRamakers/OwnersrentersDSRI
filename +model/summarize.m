@@ -16,7 +16,9 @@ function s = summarize(p, sim)
 %     pi             mean liquid equity share (also pi_p10, pi_p50, pi_p90)
 %     c_frac         mean share of liquid resources consumed
 %     dc_share       the fund's stock share (the glide less its REIT part; 0 in
-%                    the last period); dc_reit the fund's REIT share
+%                    the last period); dc_reit the fund's REIT share. With
+%                    p.dc_choice the means of the households' own shares
+%                    (also dc_share_p10/p50/p90 and dc_reit_p10/p50/p90)
 %     equity_share   stocks in the liquid account and the fund over their sum,
 %                    aggregated across households
 %     burden         median housing cost over net income
@@ -98,6 +100,14 @@ cfs = stats(sim.c_frac, out);
 s.c_frac  = cfs.mean;
 s.dc_share = [config.tau_effective(p).', 0];
 s.dc_reit  = [config.reit_effective(p).', 0];
+if isfield(p, 'dc_choice') && p.dc_choice
+    % The households' own shares; a bankrupt household has no pot.
+    out_t = []; if ~isempty(out), out_t = out(:, 1:T-1); end
+    ts = stats(sim.tau_A, out_t); tr = stats(sim.reit_A, out_t);
+    s.dc_share = [ts.mean, 0]; s.dc_reit = [tr.mean, 0];
+    s.dc_share_p10 = [ts.p10, 0]; s.dc_share_p50 = [ts.p50, 0]; s.dc_share_p90 = [ts.p90, 0];
+    s.dc_reit_p10  = [tr.p10, 0]; s.dc_reit_p50  = [tr.p50, 0]; s.dc_reit_p90  = [tr.p90, 0];
+end
 s.equity_share = sum(stock, 1) ./ max(sum(fin, 1), realmin);
 burden = hc ./ max(net_income, realmin);
 if ~isempty(out), burden(out) = NaN; end

@@ -21,9 +21,10 @@ end
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
           @reit_production, @reit_off_untouched, ...
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
-          @nibud_rule, @floor_derive};
+          @nibud_rule, @floor_derive, @dc_choice_param};
 if opts.solve
-    checks = [checks, {@collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
+    checks = [checks, {@dc_choice_dominates, @dc_choice_smoke, ...
+                       @collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
                        @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test, ...
                        @bequest_off_identical, @bequest_last_year, @bequest_bankrupt}];
@@ -401,6 +402,67 @@ q = config.params(false); q.phi_abs = -0.1;
 assert(threw_id(@() config.derive(q), 'derive:floor_negative'), 'negative phi_abs accepted');
 q = config.params(false); q.c_min = 1e-3;
 assert(threw_id(@() config.derive(q), 'derive:floor_low'), 'a floor below phi_floor accepted');
+end
+
+function dc_choice_param()
+% dc_choice is a primitive, off in production. A result saved before it
+% existed is the same calibration as production; one with it on is not; and
+% derive refuses anything but true or false.
+p = config.params();
+assert(isfield(config.params(false), 'dc_choice') && ~p.dc_choice, 'dc_choice is not an off primitive');
+assert(ladder.same_calibration(rmfield(p, 'dc_choice'), p), 'a result without dc_choice is not production');
+q = p; q.dc_choice = true;
+assert(~ladder.same_calibration(q, p), 'dc_choice on is the same calibration as off');
+q.dc_choice = 2;
+assert(threw_id(@() config.derive(q), 'derive:dc_choice'), 'derive took dc_choice = 2');
+end
+
+function dc_choice_dominates()
+% Free DC choice against the fund's shares from one continuation: production
+% on a small grid, both tenures, at 40 (working) and 75 (retired). The
+% continuation and the warm start are the fund's solve a year later. The
+% fund's shares are a candidate of the free search, so the free value is at
+% least the fund's at every node, exactly; it is higher somewhere, and the
+% shares lie on tau_S, tau_R >= 0, tau_S + tau_R <= 1.
+for owner = [false true]
+    p = config.params();
+    p.grid_dims = [6 5 4 3]; p.gh_n = 3; p.is_owner = owner;
+    p = config.derive(p);
+    [profile, shocks, ann_price] = config.model_inputs(p);
+    sol = solver.solve(p, profile, shocks, ann_price, false);
+    pf = p; pf.dc_choice = true;
+    for age = [40 75]
+        t = age - p.age0 + 1;
+        pol = struct('c', sol.c_pol(:,:,:,:,t+1), 'pi', sol.pi_pol(:,:,:,:,t+1));
+        Vg = sol.V(:,:,:,:,t);
+        [Vf, ~, ~, tS, tR] = solver.bellman_step_lna(t, sol.V(:,:,:,:,t+1), pf, profile, shocks, ann_price, pol);
+        short = max(Vg(:) - Vf(:));
+        assert(short <= 0, '%s at %d: the free value falls short of the fund''s by %.3g', model.tenure(p), age, short);
+        assert(any(Vf(:) > Vg(:)), '%s at %d: free choice is never better', model.tenure(p), age);
+        assert(all(tS(:) >= 0 & tR(:) >= 0 & tS(:) + tR(:) <= 1 + 1e-12), '%s at %d: shares off the simplex', model.tenure(p), age);
+    end
+end
+end
+
+function dc_choice_smoke()
+% A small free-choice solve and panel for each tenure: finite values, the
+% shares on the simplex in the policies and the panel, households that hold
+% different shares, and no off-grid lookups.
+for owner = [false true]
+    p = config.params();
+    p.grid_dims = [6 5 4 3]; p.gh_n = 3; p.is_owner = owner; p.dc_choice = true;
+    p = config.derive(p);
+    r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
+    assert(all(isfinite(r.sol.V(:))), 'non-finite value');
+    tS = r.sol.tau_pol; tR = r.sol.reit_pol;
+    assert(all(tS(:) >= 0 & tR(:) >= 0 & tS(:) + tR(:) <= 1 + 1e-12), 'policy shares off the simplex');
+    s = r.sim;
+    assert(all(s.tau_A(:) >= 0 & s.reit_A(:) >= 0 & s.tau_A(:) + s.reit_A(:) <= 1 + 1e-12), 'panel shares off the simplex');
+    ok = ~s.absorbed(:, 1:end-1);
+    assert(std(s.tau_A(ok)) > 0 || std(s.reit_A(ok)) > 0, 'every household holds the same shares');
+    assert(isfield(r.summary, 'dc_share_p50'), 'no share percentiles in the summary');
+    assert(sum(r.checks.offgrid) == 0, 'off-grid lookups');
+end
 end
 
 function tf = threw_id(f, id)

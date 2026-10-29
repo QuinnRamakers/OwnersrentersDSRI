@@ -126,10 +126,13 @@ differences rather than levels.
   transitory shock. Partial persistence needs a fourth state dimension. If a
   transitory shock is added, retirement income must be keyed to the permanent
   component, as in CGM.
-- **Free DC investment choice and glide-path comparisons.** Implemented on the
-  research branch, parked until 1 is settled. The annuity there is priced off
-  the plan's glide, not the chosen share; say which question a comparison
-  answers.
+- **Free DC investment choice.** On main since 29 October 2026 (`dc_choice`,
+  case suffix `_dcfree`; off in production): the household picks the fund's
+  stock and REIT shares at every age. Open: the annuity is priced off the
+  fund's own shares (all bonds from 67), so a household holding risk in
+  retirement gets rising, riskier payouts, not level ones; say which question
+  a comparison answers. Welfare levels wait for 1. The glide-path sweep is
+  still only on the research branch.
 
 ## 6. Numerics
 

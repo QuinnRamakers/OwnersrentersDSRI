@@ -114,6 +114,7 @@ giving about 10.0% at 25 rising to 14.0% at 50 on the owners' DHS profile, and
 | `franchise` | EUR 18,475 | Minimum AOW-franchise per 1-1-2025, art. 18a lid 3 Wet LB, Belastingdienst CAP. The 2026 figure is EUR 19,172 and belongs only with a 2026 income factor |
 | `glide_cap`, `glide_span` | 0.8, 35 | Fund risky share `min(0.8, years to retirement / 35)`: 0.8 until 39, linear to 0 at 67. A stylised lifecycle fund. Since 29 October 2026 half of it is in the REIT and half in stocks (`reit_risky`, below) |
 | `tau_decum` | `[]` | Fund equity share in retirement; empty keeps the glide's 0 (an all-bond fund) |
+| `dc_choice` | false | Off in production: the fund runs its own shares. True (case suffix `_dcfree`) lets the household pick the fund's stock and REIT shares at every age, retirement included (Quinn, 29 October 2026). A modelling switch, no data source |
 
 `kappa_t` is evaluated on the **deterministic** income profile, not each
 household's realised income. A rate depending on realised `Y` would break the
@@ -125,6 +126,14 @@ The DC pot earns the survival credit 1/p_t from age 25, not only in
 retirement, and is converted at 67 into a variable annuity whose price `a_t`
 keeps expected payouts level: `a_t = 1 + p_t a_{t+1} / E[R^A]`. Whatever
 equity share the fund holds in retirement is priced in.
+
+With `dc_choice` the household picks the stock share `tau_S` and the REIT
+share `tau_R` of its own pot each year, with `tau_S, tau_R >= 0` and
+`tau_S + tau_R <= 1` (the REIT share is 0 when the REIT is off). The fund's
+shares (the glide, all bonds from 67) are always one of its options. The
+annuity is still priced off the fund's shares, so the payout rule `A/a_t` does
+not change: a household that holds more risk in retirement gets payouts that
+are riskier and rise in expectation, instead of level ones.
 
 Open: `kappa_base` should be an aggregate participant-weighted rate across
 Dutch funds (DNB or Pensioenfederatie), not a single OECD figure.

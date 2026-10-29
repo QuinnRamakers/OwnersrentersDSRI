@@ -88,7 +88,10 @@ function p = case_params(step, arm, name)
 %               rent or the house price). It changes the model
 %     _rgh<n>   gh_n_reit = n quadrature nodes for the REIT shock (gh_n
 %               otherwise)
-%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr and _rh nothing here changes the model: only grid_dims,
+%     _dcfree   free DC investment choice (dc_choice = true): the household
+%               picks the fund's stock and REIT shares at every age, the
+%               fund's own shares one of its options. It changes the model
+%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh and _dcfree nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   gh_n_reit, interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
@@ -176,6 +179,7 @@ if ~isempty(g)                                                             % REI
 end
 g = regexp(extra, '_rgh(\d+)', 'tokens', 'once');
 if ~isempty(g), p.gh_n_reit = str2double(g{1}); end                        % REIT quadrature nodes
+if contains(extra, '_dcfree'), p.dc_choice = true; end                     % the household picks the fund's shares
 p = config.derive(p);
 end
 

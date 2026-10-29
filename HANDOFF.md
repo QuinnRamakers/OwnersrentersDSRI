@@ -10,6 +10,13 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-10-29 Free DC investment choice: the stock and the REIT share, at every age
+Asked by Quinn in Claude Code on 29 October ("Is the free dc account version still in the code? If so lets bring it up to date and run it"), with these choices: the household picks the fund's stock and REIT shares, also in retirement; the runs go in a pod script that Quinn launches. Claude Code wrote it here in short. The research version (`solver-active-set`, 05ab0fa) chose the stock share only, and only while working.
+Change: new primitive `dc_choice` (false in production). With it on, at every age but the last and at every node with a pot next year, the household picks the fund's stock share tau_S and REIT share tau_R, with tau_S, tau_R >= 0 and tau_S + tau_R <= 1; with the REIT off, tau_R is 0. The search runs production's (c, pi) search at the glide's shares first and keeps it as a candidate, so from the same continuation the free value is never below the glide's. Then two rounds of a sweep over the two shares at the incumbent (c, pi) and the (c, pi) sweep at the incumbent shares, then fmincon over all four. The annuity stays priced off the fund's own shares (all bonds from 67): the household's shares move the pot and so the payouts, not the payout rule. `sol.tau_pol` and `sol.reit_pol`; the simulator applies them; `model.summarize` reports the panel's mean shares. `ladder.same_calibration` reads a missing `dc_choice` as false, so saved solves stay valid. Case suffix `_dcfree`.
+Why: the comparison of free choice with the glide was parked on the research branch since 1 October; main has changed since (floor, mortgage state, bequest, REIT).
+Checks that must pass: `run_tests(solve=false)` and the full `run_tests` 0 failures, with new checks (from one continuation the free step's value is at least the glide step's at every node, for a working and a retired age and both tenures, and higher somewhere; the shares lie in the simplex; a small free-choice solve and panel for both tenures, finite, on the grid). On the pod, small grid `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`, step 19, both tenures: the glide re-solved (not saved) is bit-identical to the saved step 19 solve; `_dcfree` solved and compared with it; `model.checks` read after each solve.
+Done: 2026-10-29
+
 ### 2026-10-29 The REIT leg in production: half the glide's risky share
 Asked by Quinn in Claude Code on 29 October ("finalise that the reit now works. and document that having it turned on is the new production"), with these choices: the REIT at 50% of the glide's risky share; 5 quadrature nodes for the REIT shock, as for the other shocks; saved solves without the REIT stay valid. Claude Code wrote it here in short.
 Change: new primitives `reit_risky` (the REIT's part of the glide's risky share; the rest is stocks) and `corr_RH_rent` (renters' REIT-rent correlation). `config.params`: `reit_risky` 0.5, `mu_REIT_level` 0.0543, `sigma_REIT_level` 0.2448, `corr_RL` 0.09, `corr_RS` 0.76, `corr_RH` 0.17 (owners), `corr_RH_rent` 0.59 (renters), `gh_n_reit` [] (= gh_n). `config.derive` splits the glide: stocks (1 - reit_risky) of it, the REIT reit_risky of it (derived `reit_glide`, read by `config.reit_effective`); the bond leg and the all-bond fund in retirement do not change. `config.h_corr` returns the tenure's REIT-H correlation, read by the shock grid and the simulator. New ladder step 19 `reit` with the REIT on; step 1 sets the share and the REIT correlations to 0, so steps 1-18 solve the same model as before. `ladder.same_calibration` skips the REIT fields when the REIT is off in both results (off, nothing reads them), so saved REIT-off solves stay valid. `case_params`: `_rr<n>` sets `reit_risky`, `_reit<n>` sets `reit_risky` 0 and `tau_REIT`, `_rh<n>` sets both REIT-H correlations. CALIBRATION.md, TODO.md, README.md and CLAUDE.md say the REIT is on in production.
@@ -91,6 +98,32 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-29 Free DC investment choice: the stock and the REIT share, at every age (spec: Free DC investment choice: the stock and the REIT share, at every age)
+Changed:
+- `+config/params.m`: new primitive `dc_choice`, false. `+config/derive.m` refuses anything but true or false.
+- `+solver/bellman_step_lna.m`: with `dc_choice`, two more outputs, `tau_pol` and `reit_pol`. At every age but the last and every node with a pot next year, `free_dc_search` runs after the glide search: the warm start, two rounds of `sweep_dc` (the shares on a 0.05 grid of the simplex, then three shrinking windows) and `sweep_cpi`, then fmincon over (c, pi, tau_S, tau_R) with tau_S + tau_R <= 1. The glide result stays a candidate. Below the top-up floor (no absorbing floor) the shares alone are searched. With `dc_choice` off the step runs as before.
+- `+solver/solve_lifecycle_lna.m`: `sol.tau_pol` and `sol.reit_pol`, the shares in the warm start and in the progress lines.
+- `+simulate/paths_lna.m`: each household's shares, read off the policies and put back on the simplex; `sim.tau_A` and `sim.reit_A` are theirs. A bankrupt household keeps the fund's.
+- `+model/summarize.m`: with `dc_choice`, `dc_share` and `dc_reit` are the panel's means (solvent households), with p10, p50 and p90.
+- `+ladder/same_calibration.m`: a missing `dc_choice` reads as false, so saved solves stay valid.
+- `diagnostics/pension_grid/case_params.m`: `_dcfree`.
+- `tests/run_tests.m`: `dc_choice_param` (fast), `dc_choice_dominates`, `dc_choice_smoke`.
+- CALIBRATION.md (Pension: the `dc_choice` row and the annuity under free choice), TODO.md, README.md, CLAUDE.md.
+Checks run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_dcfree` (this commit's code), 13:44-14:17 UTC, one MATLAB at a time, 32 threads (`runs/dc_free.sh`, log `runs/dc_free/dc_free.txt` on Quinn's PC):
+- `run_tests(solve=false)`: 0 of 14 checks failed.
+- Full `run_tests`: 0 of 29 failed, 2 skipped (`floor_off_identical` and `bequest_off_identical`; their baselines predate the pooled income), 10.7 minutes. `dc_choice_dominates` (143 s): from one continuation the free value is at least the glide's at every node, exactly, and higher somewhere, both tenures at 40 and 75. `dc_choice_smoke` (115 s) passed.
+- `runs/dc_free_check.m`, step 19 at b = 2.5 on the small grid `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25` (Quinn: a grid smaller than production first):
+  - The saved step 19 solves are still the same calibration for `same_calibration`. The glide re-solved (not saved) is bit-identical to them in V, c and pi and all 28 summary fields, both tenures. Renter 37 s, owner 227 s.
+  - `_dcfree`, saved as `19_reit_<arm>_..._beqb25_dcfree.mat`: renter 144 s, owner 873 s, 3.9 and 3.8 times the glide.
+  - `model.checks`, glide then free: c_bound_25_39 0.0000 for all; offgrid [0 0 0 0] for all; thin_u1_40 0.00 for all; bankrupt household-years renter 0.0167 and 0.0131, owner 0.0038 and 0.0039. Entry value, free against glide: renter +2.20%, owner +0.54% (small grid; welfare levels not reported, CLAUDE.md).
+  - The fund's shares, means at 30 / 40 / 60 / 67 / 85 (the glide holds 0.40 / 0.39 / 0.10 / 0 / 0 in each): renter stocks 0.07 / 0.41 / 0.16 / 0.11 / 0.11, REIT 0.93 / 0.53 / 0.24 / 0.18 / 0.18; owner stocks 0.20 / 0.54 / 0.17 / 0.14 / 0.13, REIT 0.75 / 0.36 / 0.18 / 0.19 / 0.17. At 30 the median renter holds 0.98 in the REIT.
+  - Liquid equity share at 67, free (glide): renter 0.003 (0.29), owner 0.000 (0.95).
+  - Pot at 66: renter 743k (619k), owner 675k (619k). Payout mean at 67 / 95: renter 45.9k / 69.4k (37.8k / 39.1k), owner 41.8k / 63.0k (37.8k / 37.8k). Payout p10 at 67: renter 20.8k (20.0k), owner 20.6k (20.0k).
+  - Renters bankrupt: 1.7% at 66 (1.0%), 3.5% at 95 (6.6%); renters' mean bequest 96k (45k). Owners: 0.6% bankrupt and a mean bequest of 2.30 million under both.
+What it means: with free choice the young put almost the whole pot in risk, renters mostly in the REIT, and the share falls with age. In retirement both tenures keep about 30% of the pot in risk and move the liquid account out of equity: risk goes where it is sheltered from box 3. Because the annuity is priced off the all-bond fund, that risk shows up as payouts that rise with age, and renters' late-life bankruptcy roughly halves.
+Commit: this entry, pushed to main.
+Open: (1) The annuity is priced off the fund's shares, not the household's (TODO.md); a comparison of payouts should say so. (2) Small grid only, no full-grid solve; free choice takes about 4 times as long. (3) `runs/dc_free_check.m` and `runs/dc_free.sh` are in `runs/`, not committed.
 
 ### 2026-10-29 The REIT leg in production (spec: The REIT leg in production: half the glide's risky share)
 Changed:

@@ -254,8 +254,10 @@ What it leaves out is on other branches and recoverable with git:
   (`diagnostics/`, with `HANDOVER.md`, `FACTORIAL_FINDINGS.md` and the
   `NOTES_*` files carrying the evidence for the statements above), the
   alternative coordinate charts and interpolation schemes, the simplex solver,
-  free DC investment choice, the glide-path sweep and its welfare comparison,
-  and the earlier dashboards (`make_plots.m`).
+  the stock-only free DC choice of August, the glide-path sweep and its
+  welfare comparison, and the earlier dashboards (`make_plots.m`). Free DC
+  choice of the stock and the REIT share at every age is on main since 29
+  October 2026 (`dc_choice`, off in production).
 - `freetau-dc-choice` and older branches on GitHub: the August welfare work.
 
 Changes from the research defaults, all recorded in CALIBRATION.md: the REIT

@@ -1,7 +1,8 @@
-function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
+function [V_t, c_pol, pi_pol, tau_pol, reit_pol] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
 %BELLMAN_STEP_LNA  One backward-induction step on the (u1, u2, u3, q) grid.
 %
 %   [V_t, c_pol, pi_pol] = solver.bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
+%   [V_t, c_pol, pi_pol, tau_pol, reit_pol] = ...    % with p.dc_choice
 %
 %   Coordinates and their map to wealth shares (W = X + A + H + Y):
 %       u1 = Y/W,   u2 = (A+H)/(W-Y),   u3 = A/(A+H)
@@ -36,6 +37,18 @@ function [V_t, c_pol, pi_pol] = bellman_step_lna(t, V_next, p, profile, shocks, 
 %   retirement, and a local solve from the warm start alone settles on the
 %   wrong one there. The sweep is what finds the right basin.
 %
+%   With p.dc_choice the household also picks the stock share tau_S and the
+%   REIT share tau_R of its pot, with tau_S, tau_R >= 0 and tau_S + tau_R <= 1
+%   (tau_R = 0 with the REIT off), at every age but the last. The search above
+%   runs first at the fund's own shares and is kept as a candidate, so from
+%   the same continuation the free value is never below the fund's. Then
+%   free_dc_search: two rounds of a sweep over the shares at the incumbent
+%   (c, pi) and of the (c, pi) sweep at the incumbent shares, then fmincon
+%   over all four. tau_pol and reit_pol hold the shares, the fund's own where
+%   there is nothing to choose (no pot next year, a bankrupt household, the
+%   last period); both are empty without dc_choice. The annuity price is the
+%   fund's either way.
+%
 %   The floor is F = p.phi_path(t) * Y, and it is also the lower bound of the
 %   consumption search. Where liquid resources fall short of it, the household
 %   with the absorbing floor (p.floor_absorbing) is bankrupt: it consumes F
@@ -65,6 +78,10 @@ iq1    = find(q_grid == 1);
 V_t    = nan(N1, N2, N3, Nq);
 c_pol  = nan(N1, N2, N3, Nq);
 pi_pol = nan(N1, N2, N3, Nq);
+dc_on    = isfield(p, 'dc_choice') && p.dc_choice;   % the household picks the fund's shares
+tau_pol  = [];
+reit_pol = [];
+if dc_on, tau_pol = zeros(N1, N2, N3, Nq); reit_pol = zeros(N1, N2, N3, Nq); end
 
 % Does q enter this year's problem (now or through any later year), and does
 % it enter the continuation?
@@ -151,7 +168,7 @@ if last && p.chi <= 0
         end
         V_t(:, :, :, iq) = V_s; c_pol(:, :, :, iq) = c_s; pi_pol(:, :, :, iq) = pi_s;
     end
-    [V_t, c_pol, pi_pol] = copy_slices(V_t, c_pol, pi_pol, q_now, iq1);
+    [V_t, c_pol, pi_pol, tau_pol, reit_pol] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol);
     return
 end
 
@@ -168,6 +185,8 @@ if last
     % No later period: no income, and the last payout has spent the pot.
     G_next = zeros(size(eps_Y));
     R_A    = zeros(size(R_S));
+    tau    = 0;                              % the shares stored, with nothing to choose
+    tau_R  = 0;
 else
     G_next = exp(profile.mu_growth(t) + profile.sigma_l_log(t) .* eps_Y);
     % DC fund return with the survival credit: bonds, stock and REIT legs.
@@ -269,6 +288,7 @@ sH_pts  = SH_all(:);
 
 have_warm = ~isempty(pol_next) && isstruct(pol_next) && isfield(pol_next, 'c') ...
             && isequal(size(pol_next.c, 1:4), [N1 N2 N3 Nq]);
+have_warm_dc = have_warm && isfield(pol_next, 'tau') && ~isempty(pol_next.tau);
 
 % Without housing H = 0 on every path, so u3 = A/(A+H) is 1 wherever the
 % household holds a pension pot, and the u3 = 0 slice is reached only at
@@ -291,6 +311,11 @@ else
     solve_k = (1:n_states).';
 end
 n_solve = numel(solve_k);
+
+% Free DC choice at every age but the last, when there is a DC pillar. dcx
+% carries what the fund's return needs; with the REIT off its share stays 0.
+free_dc = dc_on && ~last && ~no_dc;
+dcx = struct('R_S', R_S, 'R_REIT', R_REIT, 'Rf', p.Rf, 'pt', pt, 'reit', config.reit_active(p));
 
 % The equity share stored where nothing is saved (c = 1)
 pi_limit = isfield(p, 'pi_nothing_saved') && strcmp(validatestring(p.pi_nothing_saved, ...
@@ -317,15 +342,25 @@ for iq = slices
         cw_pts = nan(n_states, 1);
         pw_pts = nan(n_states, 1);
     end
+    if have_warm_dc
+        tw_pts = reshape(pol_next.tau(:, :, :, iq), [], 1);
+        rw_pts = reshape(pol_next.reit(:, :, :, iq), [], 1);
+    else
+        tw_pts = nan(n_states, 1);
+        rw_pts = nan(n_states, 1);
+    end
     V_sub  = zeros(n_solve, 1);
     c_sub  = zeros(n_solve, 1);
     pi_sub = zeros(n_solve, 1);
+    tS_sub = zeros(n_solve, 1);
+    tR_sub = zeros(n_solve, 1);
 
     parfor j = 1:n_solve
         k = solve_k(j);
         lam = lam_pts(k); sA = sA_pts(k); sH = sH_pts(k);
         sX  = 1 - lam - sA - sH;
         c_warm = cw_pts(k); pi_warm = pw_pts(k);
+        tS_sub(j) = tau; tR_sub(j) = tau_R;          % the fund's shares unless chosen below
 
         if is_retired
             LW_W              = sX + contrib_factor * lam + net_inc * sA / ann_t ...
@@ -362,6 +397,13 @@ for iq = slices
             if beq_eff > 0
                 beq_base = max(h_beq_fac * H_next_W, FLOOR_EPS);
                 val = val + beq_eff * sum(w_join .* (beq_base .^ one_m_g / one_m_g));
+            end
+            if free_dc && A_next_pre_return > 0
+                % Nothing saved, but the pot is still invested: the shares alone.
+                [tS_f, tR_f, val] = sweep_dc(tau, tau_R, val, u_f, 0, A_next_pre_return, dcx, ...
+                    H_next_W, Y_next_W, w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
+                    FLOOR_EPS, nx);
+                tS_sub(j) = tS_f; tR_sub(j) = tR_f;
             end
             best = -inf;
             if val > best, best = val; end
@@ -423,22 +465,34 @@ for iq = slices
         end
 
         if V_opt > maxval
-            V_sub(j) = V_opt; c_sub(j) = x_opt(1); pi_sub(j) = x_opt(2);
+            v_j = V_opt; c_j = x_opt(1); p_j = x_opt(2);
         else
-            V_sub(j) = maxval; c_sub(j) = c_seed; pi_sub(j) = pi_seed;
+            v_j = maxval; c_j = c_seed; p_j = pi_seed;
+        end
+        if free_dc && A_next_pre_return > 0
+            [v_f, x_f] = free_dc_search(v_j, [c_j, p_j, tau, tau_R], ...
+                [c_warm, pi_warm, tw_pts(k), rw_pts(k)], LW_W, Rf_at, R_S_at, A_next_pre_return, dcx, ...
+                H_next_W, Y_next_W, w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
+                c_floor, dc0, dp0, nx, use_ce, inv_omg, obj_scale, opts_opt);
+            if v_f > v_j
+                v_j = v_f; c_j = x_f(1); p_j = x_f(2);
+                tS_sub(j) = x_f(3); tR_sub(j) = x_f(4);
+                A_next_W = fund_return(dcx, x_f(3), x_f(4)) * A_next_pre_return;
+            end
         end
         % With nothing saved the equity share has no effect and every share ties.
         % Store a share that interpolation and next year's warm start can use:
         % 100% in equity, or with p.pi_nothing_saved = 'limit' the share the
         % household would choose for its first euro of saving.
-        if c_sub(j) >= 1
+        if c_j >= 1
             if pi_limit
-                pi_sub(j) = limit_share(LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
+                p_j = limit_share(LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
                     w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
             else
-                pi_sub(j) = 1;
+                p_j = 1;
             end
         end
+        V_sub(j) = v_j; c_sub(j) = c_j; pi_sub(j) = p_j;
     end
 
     V_flat  = zeros(n_states, 1); V_flat(solve_k)  = V_sub;
@@ -452,19 +506,173 @@ for iq = slices
     V_t(:, :, :, iq)    = reshape(V_flat, N1, N2, N3);
     c_pol(:, :, :, iq)  = reshape(c_flat, N1, N2, N3);
     pi_pol(:, :, :, iq) = reshape(pi_flat, N1, N2, N3);
+    if dc_on
+        tS_flat = zeros(n_states, 1); tS_flat(solve_k) = tS_sub;
+        tR_flat = zeros(n_states, 1); tR_flat(solve_k) = tR_sub;
+        if u3_keep > 0
+            tS_flat = copy_u3_slice(tS_flat, N1, N2, g2, u3_keep);
+            tR_flat = copy_u3_slice(tR_flat, N1, N2, g2, u3_keep);
+        end
+        tau_pol(:, :, :, iq)  = reshape(tS_flat, N1, N2, N3);
+        reit_pol(:, :, :, iq) = reshape(tR_flat, N1, N2, N3);
+    end
 end
-[V_t, c_pol, pi_pol] = copy_slices(V_t, c_pol, pi_pol, q_now, iq1);
+[V_t, c_pol, pi_pol, tau_pol, reit_pol] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol);
 end
 
 % ------------------------------------------------------------------------
-function [V, c, pi_] = copy_slices(V, c, pi_, q_now, iq1)
+function varargout = copy_slices(q_now, iq1, varargin)
 %COPY_SLICES  Where q enters neither this year nor later, every q slice is the
-%   one solved.
-if q_now || size(V, 4) == 1, return; end
-Nq = size(V, 4);
-V   = repmat(V(:, :, :, iq1), 1, 1, 1, Nq);
-c   = repmat(c(:, :, :, iq1), 1, 1, 1, Nq);
-pi_ = repmat(pi_(:, :, :, iq1), 1, 1, 1, Nq);
+%   one solved. Empty arrays (the fund's shares without dc_choice) pass through.
+varargout = varargin;
+for i = 1:numel(varargin)
+    a = varargin{i};
+    if q_now || isempty(a) || size(a, 4) == 1, continue; end
+    varargout{i} = repmat(a(:, :, :, iq1), 1, 1, 1, size(a, 4));
+end
+end
+
+% ------------------------------------------------------------------------
+function [v_b, x_b] = free_dc_search(v0, x0, xw, LW_W, Rf_at, R_S_at, A_pre, dcx, H_next_W, Y_next_W, ...
+                                     w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, ...
+                                     dc0, dp0, nx, use_ce, inv_omg, obj_scale, opts_opt)
+%FREE_DC_SEARCH  Consumption, the equity share and the fund's stock and REIT
+%   shares together, from x0 = [c, pi, tau_S, tau_R], the solution at the
+%   fund's own shares, with value v0. A_pre is the pot before this year's
+%   return. The warm start xw (next period's choice at this node) is tried
+%   first; then two rounds of the shares' sweep at the incumbent (c, pi)
+%   (sweep_dc) and of the (c, pi) sweep at the incumbent shares (sweep_cpi);
+%   then fmincon over all four from the incumbent, with the shares bounded
+%   below by 0 and in sum by 1. Returns x0 unchanged unless something beats v0.
+rhs4 = @(x) bellman_rhs(x(1), x(2), LW_W, Rf_at, R_S_at, fund_return(dcx, x(3), x(4)) * A_pre, ...
+                        H_next_W, Y_next_W, w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+v_b = v0; x_b = x0(:).';
+if all(isfinite(xw))
+    [tS, tR] = simplex(xw(3), xw(4), dcx.reit);
+    xw = [min(max(xw(1), c_floor), 1), min(max(xw(2), 0), 1), tS, tR];
+    v = rhs4(xw);
+    if v > v_b, v_b = v; x_b = xw; end
+end
+for r = 1:2
+    c = x_b(1); pi_eq = x_b(2);
+    u_now  = (c * LW_W) ^ one_m_g / one_m_g;
+    X_next = ((1 - pi_eq) * Rf_at + pi_eq .* R_S_at) * (1 - c) * LW_W;
+    [tS, tR, v] = sweep_dc(x_b(3), x_b(4), v_b, u_now, X_next, A_pre, dcx, H_next_W, Y_next_W, ...
+                           w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, 0, nx);
+    if v > v_b, v_b = v; x_b(3:4) = [tS, tR]; end
+    A_next_W = fund_return(dcx, x_b(3), x_b(4)) * A_pre;
+    [c, pi_eq, v] = sweep_cpi(x_b(1), x_b(2), v_b, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
+                              w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, c_floor, dc0, dp0, nx);
+    if v > v_b, v_b = v; x_b(1:2) = [c, pi_eq]; end
+end
+if use_ce
+    obj = @(x) -(rhs4(x) / v_b) ^ inv_omg;     % -1 at the incumbent
+else
+    obj = @(x) -obj_scale * rhs4(x);
+end
+lb = [c_floor; 0; 0; 0];
+ub = [1; 1; 1; double(dcx.reit)];
+try
+    [x_try, ~, exitflag] = fmincon(obj, x_b(:), [0 0 1 1], 1, [], [], lb, ub, [], opts_opt);
+    if exitflag >= 0
+        [tS, tR] = simplex(x_try(3), x_try(4), dcx.reit);
+        x_try = [min(max(x_try(1), c_floor), 1), min(max(x_try(2), 0), 1), tS, tR];
+        v = rhs4(x_try);
+        if v > v_b, v_b = v; x_b = x_try; end
+    end
+catch
+end
+end
+
+% ------------------------------------------------------------------------
+function [tS_b, tR_b, v_b] = sweep_dc(tS0, tR0, v0, u_now, X_next_W, A_pre, dcx, H_next_W, Y_next_W, ...
+                                      w, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, beq_lo, nx)
+%SWEEP_DC  Derivative-free search of the fund's stock and REIT shares at a
+%   fixed (c, pi), which fix this year's utility u_now and next year's liquid
+%   wealth X_next_W. Round 1 evaluates every pair of shares on a 0.05 grid
+%   with tau_S + tau_R <= 1 (the stock share alone with the REIT off), plus
+%   the seed; rounds 2-4 a 9 x 9 window around the incumbent, projected onto
+%   the simplex, shrinking by four each round. beq_lo bounds the bequest
+%   below (FLOOR_EPS where nothing is saved). Returns the seed unchanged
+%   unless something beats v0.
+tS_b = tS0; tR_b = tR0; v_b = v0;
+d = 0.05;
+for r = 1:4
+    if r == 1
+        g = linspace(0, 1, 21);
+        if dcx.reit, [S, R] = ndgrid(g, g); else, S = g; R = zeros(size(g)); end
+        keep = S(:) + R(:) <= 1 + 1e-12;
+        [tS, tR] = simplex([S(keep); tS0].', [R(keep); tR0].', dcx.reit);
+    else
+        [S, R] = ndgrid(tS_b + d * (-1 : 0.25 : 1), tR_b + d * (-1 : 0.25 : 1));
+        [tS, tR] = simplex(S(:).', R(:).', dcx.reit);
+        u = unique([tS; tR].', 'rows');
+        tS = u(:, 1).'; tR = u(:, 2).';
+        d = d / 4;
+    end
+    A_next = fund_return(dcx, tS, tR) * A_pre;   % n_shock x M
+    v = rhs_vec(u_now, X_next_W, A_next, H_next_W, Y_next_W, w, pp_z, q_n, one_m_g, ...
+                beta_eff, beq_eff, h_beq_fac, beq_lo, nx);
+    [mv, im] = max(v);
+    if mv > v_b
+        v_b = mv; tS_b = tS(im); tR_b = tR(im);
+    end
+end
+end
+
+% ------------------------------------------------------------------------
+function R_A = fund_return(dcx, tS, tR)
+%FUND_RETURN  The fund's return with the survival credit at each quadrature
+%   node (rows) for stock shares tS and REIT shares tR (scalars or rows, one
+%   column each): bonds, stock and REIT legs, as R_A in the step.
+R_A = ((1 - tS - tR) * dcx.Rf + dcx.R_S * tS + dcx.R_REIT * tR) / dcx.pt;
+end
+
+% ------------------------------------------------------------------------
+function [tS, tR] = simplex(tS, tR, reit)
+%SIMPLEX  Stock and REIT shares put back on tS, tR >= 0, tS + tR <= 1; the
+%   REIT share is 0 with the REIT off.
+tS  = min(max(tS, 0), 1);
+tR  = min(max(tR, 0), 1) .* reit;
+tot = tS + tR;
+over = tot > 1;
+tS(over) = tS(over) ./ tot(over);
+tR(over) = tR(over) ./ tot(over);
+end
+
+% ------------------------------------------------------------------------
+function rhs = rhs_vec(u_now, X_next, A_next, H_next_W, Y_next_W, w, pp_z, q_n, one_m_g, ...
+                       beta_eff, beq_eff, h_beq_fac, beq_lo, nx)
+%RHS_VEC  bellman_rhs at M candidates at once: u_now is a scalar or 1 x M,
+%   X_next and A_next are n_shock x M (a column or a scalar is the same for
+%   every candidate). The bequest is bounded below by beq_lo. Returns M x 1.
+n = numel(w);
+M = max([numel(u_now), size(X_next, 2), size(A_next, 2)]);
+X_next = X_next + zeros(n, M);
+A_next = A_next + zeros(n, M);
+rhs = u_now(:) + zeros(M, 1);
+if beta_eff > 0
+    denAH = A_next + H_next_W;
+    W_g   = X_next + denAH + Y_next_W;
+    u1_n  = max(min(Y_next_W ./ W_g, 1), 0);
+    u2_n  = max(min(denAH ./ max(X_next + denAH, 1e-12), 1), 0);
+    u3_n  = max(min(A_next ./ max(denAH, 1e-12), 1), 0);
+    if isempty(q_n)
+        z_n = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:)), n, M);
+    else
+        q_rep = repmat(q_n, 1, M);
+        z_n = reshape(pp_z(u1_n(:), u2_n(:), u3_n(:), q_rep(:)), n, M);
+    end
+    CE_n = W_g .* z_n;
+    if nx.on
+        CE_n = bankrupt_nodes(CE_n, X_next, A_next, H_next_W, Y_next_W, nx);
+    end
+    rhs = rhs + beta_eff * (w.' * (CE_n .^ one_m_g / one_m_g)).';
+end
+if beq_eff > 0
+    beq_base = max(X_next + h_beq_fac * H_next_W, beq_lo);
+    rhs = rhs + beq_eff * (w.' * (beq_base .^ one_m_g / one_m_g)).';
+end
 end
 
 % ------------------------------------------------------------------------

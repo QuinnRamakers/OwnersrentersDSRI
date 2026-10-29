@@ -60,6 +60,7 @@ p.franchise  = 18475;         % AOW franchise, euros
 p.glide_cap  = 0.8;           % fund risky share far from retirement
 p.glide_span = 35;            % fund risky share = min(glide_cap, years to retirement / glide_span)
 p.tau_decum  = [];            % fund equity share in retirement; [] keeps the glide's zero
+p.dc_choice  = false;         % true: the household picks the fund's stock and REIT shares at every age; false: the fund's own shares
 
 % REIT leg of the DC fund. A zero share and zero correlations remove the fourth shock.
 p.reit_risky       = 0.5;     % REIT part of the glide's risky share, the rest in stocks (Quinn, 29 October 2026)
