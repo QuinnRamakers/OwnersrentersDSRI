@@ -117,7 +117,15 @@ title(ax, '(h)  Share of available resources spent on consumption', 'FontSize', 
 w = a < a(end);                                   % nothing is held in the last period
 ax = tile(tl, ret, FS);
 band(ax, a(w), d.pi(:, w), col, 'Liquid savings: stock share chosen by the household', LWD);
-if d.has_pension
+if d.has_pension && isfield(p, 'dc_choice') && p.dc_choice
+    % Free DC choice: the households' own fund shares, over the solvent.
+    tA = [d.sim.tau_A, nan(size(d.sim.tau_A, 1), 1)];  tA(~d.solvent) = NaN;
+    rA = [d.sim.reit_A, nan(size(d.sim.reit_A, 1), 1)]; rA(~d.solvent) = NaN;
+    band(ax, a(w), tA(:, w), [0.75 0.25 0.25], 'Pension fund: stock share chosen by the household', LWD);
+    if config.reit_active(p)
+        band(ax, a(w), rA(:, w), [0.85 0.60 0.20], 'Pension fund: REIT share chosen by the household', LWD);
+    end
+elseif d.has_pension
     plot(ax, a(w), d.tau_path(w), '--', 'Color', [0.75 0.25 0.25], 'LineWidth', LWD, ...
         'DisplayName', 'Pension fund: stock share set by the plan''s glide path');
 end
@@ -230,6 +238,9 @@ t = r.tenure;
 if isfield(r, 'step')
     t = sprintf('Step %s, %s: %s', r.step.number, r.step.label, r.tenure);
 end
+if isfield(r.p, 'dc_choice') && r.p.dc_choice
+    t = [t, ', free DC choice'];
+end
 end
 
 function L = info_text(r, d)
@@ -246,10 +257,15 @@ L{end+1} = sprintf('r=%.2f%%   |   equity premium %.2f%%   |   equity vol %.2f%%
 if d.has_pension
     L{end+1} = sprintf('DC: \\kappa_t=%.1f-%.1f%% of gross (franchise-based), glide %.2f', ...
         100 * min(kapw), 100 * max(kapw), p.glide_cap);
+    if isfield(p, 'dc_choice') && p.dc_choice
+        L{end+1} = 'Free DC choice: the household picks the fund''s stock and REIT shares at every age';
+    end
     if config.reit_active(p)
         [~, ~, cRH] = config.h_corr(p);
-        L{end+1} = sprintf(['REIT: up to %.0f%% of the fund, premium %.2f%%, vol %.2f%%   |   ' ...
-            'corr with income %.2f, stock %.2f, H %.2f'], 100 * max(config.reit_effective(p)), ...
+        share = sprintf('up to %.0f%% of the fund', 100 * max(config.reit_effective(p)));
+        if isfield(p, 'dc_choice') && p.dc_choice, share = 'share chosen by the household'; end
+        L{end+1} = sprintf(['REIT: %s, premium %.2f%%, vol %.2f%%   |   ' ...
+            'corr with income %.2f, stock %.2f, H %.2f'], share, ...
             100 * p.mu_REIT_level, 100 * p.sigma_REIT_level, p.corr_RL, p.corr_RS, cRH);
     end
 else

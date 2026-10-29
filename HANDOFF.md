@@ -99,6 +99,16 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-29 Free DC choice: figures and the dashboard (spec: none, asked by Quinn in Claude Code)
+No solves. The four step 19 small-grid solves (glide and `_dcfree`, both tenures) copied from the pod and re-simulated on Quinn's PC with their seeds.
+Changed: `+figures/dashboard.m`. With `dc_choice`, panel (i) draws the households' own fund stock and REIT shares (mean and 10th-90th percentile band) in place of the glide line, the title says "free DC choice", and the settings box says the household picks the shares. With `dc_choice` off the dashboard is as before.
+Figures (in `runs/dc_free/`, scripts `runs/dc_free_policies.m` and `runs/dc_free_exposures.m`): `fig_dcfree_lifecycle` (the four choices by age, free against glide), `fig_dcfree_by_wealth` (the choices by decile of financial wealth over income at 30, 45, 60 and 75), `fig_dcfree_exposures` (holdings, exposures and the REIT-stock mix, owners and renters overlapping), `dashboard_<arm>_<glide|free>`.
+- REIT over REIT plus stocks, holdings-weighted: inside the fund, renters about 0.55-0.6 from 40 on and owners 0.4-0.57, against the glide's 0.5; both near 1 before 30. Risky share of the fund at 67: renters 0.28, owners 0.32 (glide 0). Stocks plus REIT over liquid saving plus the pot at 30: renters 0.88, owners 0.95 (glide 0.77 and 0.80).
+- Owners hold no risk in the fund at 25 and jump to it by 27-29. Not looked into.
+Checks: `run_tests(solve=false)` on Quinn's PC: 0 of 14 failed. The four dashboards render.
+Commit: this entry, pushed to main.
+Open: the dashboard's panels (j) and (k) count stocks only, not the REIT (also under the glide); `fig_dcfree_exposures` counts both.
+
 ### 2026-10-29 Free DC investment choice: the stock and the REIT share, at every age (spec: Free DC investment choice: the stock and the REIT share, at every age)
 Changed:
 - `+config/params.m`: new primitive `dc_choice`, false. `+config/derive.m` refuses anything but true or false.
