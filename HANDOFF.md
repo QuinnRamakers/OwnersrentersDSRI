@@ -113,6 +113,16 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 Poster panels: four panels of the free-choice asset-holdings figure at print size (spec: none, asked by Quinn in Claude Code)
+No solves, no model change. New `runs/poster_panels/poster_panels.m` (not committed) redraws panels (k), (h), (f) and (g) of `fig_dcfree_exposures_free` as poster panels (a)-(d) from the same saved solves (step 19, b = 2.5, small grid, `_dcfree`, both tenures), with that figure's `series()` copied unchanged. Each panel 6.1 x 4.6 in, vector PDF (page box set to exactly 439.2 x 331.2 pt after MATLAB's print, which rounds to whole points) and 300 dpi PNG (1830 x 1380 px); Arial (Fira Sans is not installed on Quinn's PC), 24 pt; renters #D55E00, owners #0072B2; 3.5 pt lines; no titles or legends. Also a CSV per panel and `numbers.txt`.
+Numbers (`numbers.txt`; shares are holdings-weighted ratios of totals over solvent households, as in the figure, not means of household ratios):
+- REIT share of all risky assets, mean over 35-50: renters 0.532, owners 0.400.
+- Risky share of the pension account: renters above owners at 26-65 and 88-99; owners above at 66-87.
+- Risky share of both accounts, largest renters - owners gap over 30-67: 0.124 at 40 (renters 0.742, owners 0.866).
+- Total wealth = X + A + housing equity + human capital; owners' housing equity is the house less the outstanding fixed-payment mortgage; renters' is 0 (the rent index is not in it).
+- Stock share of private savings, mean over 40-65: renters 0.117, owners 0.519; owners' mean private savings over 40-65 EUR 16.1 thousand (start of year), renters' EUR 69.4 thousand.
+Commit: this entry, pushed to main.
+
 ### 2026-10-30 DC fund strategies: welfare at higher starting savings (spec: none, asked by Quinn in Claude Code)
 No solves. Quinn asked for the welfare results "with a higher starting wealth, say 15000". New script `runs/entry_wealth.m` (not committed) reads the saved step 19 solves at other savings at 25, everything else at entry as before (no pot, the home at 4.52 times income, q = 1): EUR 2,675 (`b0`) and 7,709 (`b_alt`), both exact grid nodes, and 15,000, 30,000 and 50,000 (0.44, 0.89 and 1.48 years of income), interpolated in certainty-equivalent units as the solver's continuation; linear interpolation in V_tilde (as `utility.welfare_anchor`) is printed as a check. Run on the pod single-threaded next to the REIT-fraction job, 30 October about 10:50 UTC (`runs/entry_wealth.txt`; tables `runs/strategies/<grid>/entry_wealth.md`).
 Checks: at EUR 2,675 the read-off equals every saved `ce_entry` exactly (largest relative gap 0). Linear against CE interpolation: median gap over the fund rules 0.00-0.12 points; the largest gaps are all in no pension saving (medium grid up to 1.0 point, small up to 3.6). There the CE reading agrees across grids (owners at 15,000 / 30,000 / 50,000: small +7.20 / +4.57 / +2.33, medium +7.12 / +4.50 / +2.28) and the linear one does not (small +7.70 / +8.18 / +5.25, medium +8.14 / +4.83 / +3.31), so the CE numbers are reported.
