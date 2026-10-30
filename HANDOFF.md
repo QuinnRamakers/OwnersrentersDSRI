@@ -113,6 +113,28 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 DC fund strategies: 100 - age at more REIT fractions (spec: none, asked by Quinn in Claude Code)
+Quinn: "also run it with 2/3d, 3/4, 1/4,1/3 reit fraction of 100-age". Four new arms with the 100 - age glide, a quarter, a third (`_rr33`, 0.33), two thirds (`_rr67`, 0.67) and three quarters of the risky part in REIT, next to the existing stocks only, half and REIT only. No model change: `case_params` already reads `_g100_rr<n>`. The arms were added to `runs/strategies.m` and `runs/entry_wealth.m` (not committed), together with a new figure `fig_strategies_reit_fraction`. Run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_strat`, 30 October, one MATLAB at a time, no tests (code 96500c3 as in the overnight run, full tests passed there). Log `runs/strategies_rr.txt`.
+- Small grid: 8 solves in 25.4 minutes, 10:37-11:03 UTC (renters 51-94 s, owners 260-344 s). Medium grid: 8 solves in 109.8 minutes, 11:03-12:53 UTC (renters 197-278 s, owners 1,002-1,648 s).
+- `model.checks`, all 16 solves: c_bound_25_39 0.0000, offgrid [0 0 0 0], thin_u1_40 0.00. Bankrupt household-years: renters 0.0137-0.0145 small, 0.0073-0.0077 medium; owners 0.0038 small, 0.0036 medium.
+- The figure step in both runs failed on a concatenation bug in the new figure (`[0; W(k,:)]`), so it was fixed and both grids were redrawn on the pod from the saved solves (`runs/redraw.txt`), together with `entry_wealth` for both grids (12:54-12:57 UTC, no errors; `codeIssues` on `runs/strategies.m` 0 errors, 0 warnings; the entry-savings read-off at EUR 2,675 equals every saved `ce_entry`, largest relative gap 0). The value labels now go above the higher tenure and below the lower one at each point (on the medium grid they collided at stocks only, where renters fall below owners). Copied to `runs/strategies/{small,medium}/`; the figures inspected. `run_tests(solve=false)` on Quinn's PC: 0 of 15 failed.
+
+100 - age, change against the lifecycle fund at the entry state, medium grid (small in brackets):
+
+| REIT share of the risky part | Renters (%) | Owners (%) |
+|---|---:|---:|
+| 0, stocks only | -0.10 (+0.26) | +0.16 (+0.15) |
+| 1/4 | +0.59 (+0.59) | +0.23 (+0.22) |
+| 1/3 | +0.72 (+0.66) | +0.25 (+0.23) |
+| 1/2 | +0.89 (+0.76) | +0.26 (+0.24) |
+| 2/3 | +0.93 (+0.82) | +0.26 (+0.24) |
+| 3/4 | +0.89 (+0.83) | +0.25 (+0.23) |
+| 1, REIT only | +0.56 (+0.75) | +0.19 (+0.17) |
+
+What it means: renters gain from moving the risky part from stocks to REIT, 1.0 point on the medium grid and 0.6 on the small, with the best split at two thirds REIT on the medium grid (2/3-3/4 on the small grid) and a loss going all-REIT. For owners the REIT split hardly matters: the whole range is 0.1 point, flat from a third to three quarters. This fits REIT as a hedge of the renters' rent, which owners already have through the house. Only free choice beats the best 100 - age split for renters (+2.62); for owners no pension saving stays first. With more savings at 25 the picture is the same (medium grid, renters / owners; stocks only, 1/2, 2/3, REIT only): at EUR 15,000 -0.10 / +0.20, +1.05 / +0.33, +1.09 / +0.33, +0.67 / +0.25; at EUR 50,000 -0.11 / +0.27, +1.15 / +0.44, +1.22 / +0.44, +0.79 / +0.33 (`runs/strategies/medium/entry_wealth.md`).
+Commit: this entry, pushed to main.
+Open: as in the results entry below; the new scripts are in `runs/`, not committed.
+
 ### 2026-10-30 Poster panels: four panels of the free-choice asset-holdings figure at print size (spec: none, asked by Quinn in Claude Code)
 No solves, no model change. New `runs/poster_panels/poster_panels.m` (not committed) redraws panels (k), (h), (f) and (g) of `fig_dcfree_exposures_free` as poster panels (a)-(d) from the same saved solves (step 19, b = 2.5, small grid, `_dcfree`, both tenures), with that figure's `series()` copied unchanged. Each panel 6.1 x 4.6 in, vector PDF (page box set to exactly 439.2 x 331.2 pt after MATLAB's print, which rounds to whole points) and 300 dpi PNG (1830 x 1380 px); Arial (Fira Sans is not installed on Quinn's PC), 24 pt; renters #D55E00, owners #0072B2; 3.5 pt lines; no titles or legends. Also a CSV per panel and `numbers.txt`.
 Numbers (`numbers.txt`; shares are holdings-weighted ratios of totals over solvent households, as in the figure, not means of household ratios):
