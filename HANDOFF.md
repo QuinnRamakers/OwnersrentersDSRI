@@ -113,6 +113,20 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 DC fund strategies: max-min over the fund rules only, and a page against each tenure's best rule (spec: none, asked by Quinn in Claude Code)
+No solves, no numbers changed. Quinn: "free choice, and no pension account should be left out of the maxmin and only added in the overall one or as the benchmark", and "one version where the benchmark within the group is the best one of the set (excluding freedc and no pension account)". Changed `runs/strategies.m` only (not committed):
+- The red outline now marks the max-min fund rule: free choice and no pension saving stay on every page as rows and benchmarks, but are never marked. A benchmark common to both tenures is still left out (0 for both).
+- New `fig_strategies_exposure_side_by_side_vs_best_rule`: each tenure against its own best fund rule (free choice and no pension excluded), so the chips are each strategy's loss against the best fixed rule for that group. Here each tenure's best rule stays eligible, and the max-min is the rule with the smallest worse-tenure loss (minimax regret).
+- Changes that round to 0.00 are printed with three decimals.
+Max-min fund rule, computed from the six-decimal `ce_entry` values, medium grid (small in brackets), renters / owners:
+- Against the lifecycle fund: 100 - age, 1/2 REIT, +0.891 / +0.262 (1/2 REIT, +0.764 / +0.245). 2/3 REIT is 0.004 points behind for owners, a tie in practice.
+- Against no pension saving: 100 - age, 1/2 REIT, +3.063 / -10.099 (1/2 REIT, +1.269 / -9.121).
+- Against free choice: 100 - age, 2/3 REIT, -1.642 / -0.200 (3/4 REIT, -1.340 / -0.307).
+- Against each tenure's best rule (medium: renters 2/3 REIT, owners 1/2 REIT; small: renters 3/4 REIT, owners 1/2 REIT): 100 - age, 2/3 REIT on both grids, +0.000 / -0.004 (-0.006 / -0.007).
+Reading: one fund rule, 100 - age with about two thirds of the risky part in REIT, is within 0.01% of the best fixed rule for both renters and owners. Every outline in the figures matches these numbers. Free choice still beats every fund rule for renters (+1.67% against their best rule, medium), and no pension still beats them all for owners (+11.23%).
+Checks: `codeIssues` 0 errors, 0 warnings; both grids redrawn on the pod from the saved solves, copied to `runs/strategies/{small,medium}/`; the figures inspected.
+Commit: this entry, pushed to main.
+
 ### 2026-10-30 DC fund strategies: exposure page against no pension and free choice, the max-min strategy marked (spec: none, asked by Quinn in Claude Code)
 No solves, no numbers changed. Quinn: "once with no account as the benchmark and then with free dc as the benchmark also add a redline or marking to the maxmin optimal one per that plot". Changed `runs/strategies.m` only (not committed): the side-by-side exposure page is also drawn against no pension saving (`fig_strategies_exposure_side_by_side_vs_no_pension`) and against free choice (`_vs_free_choice`). The rows keep their order, because within a tenure the ranking does not depend on the benchmark; only the chips change. On every exposure page a red outline marks the max-min strategy: the highest worse-of-the-two-tenures change against the benchmark, with the benchmark left out (it is 0 for both by construction).
 Max-min, medium grid (small grid in brackets):
