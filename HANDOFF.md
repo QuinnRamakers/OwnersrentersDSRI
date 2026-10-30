@@ -113,6 +113,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 DC fund strategies: short names in the figures (spec: none, asked by Quinn in Claude Code)
+No solves, no numbers changed. Quinn asked for shorter strategy names on the welfare chart and the side-by-side exposure page, and for "Risk rising with age" to be called "0+age 50% reit". Changed `runs/strategies.m` and `runs/entry_wealth.m` only (not committed):
+- `_grev` is now "0 + age, 1/2 REIT" everywhere, written like "100 - age, 1/2 REIT".
+- The welfare chart and the three exposure pages use short names (`short_names`): Lifecycle fund, No pension, Free choice, All REIT, 60/40, 100 - age, stocks / REIT. The notes under the welfare chart define them. The tables keep the full names. The freed space went to the bars and bands.
+Checks: `codeIssues` 0 errors, 0 warnings on both scripts; both grids redrawn on the pod from the saved solves, together with `entry_wealth` (read-off at EUR 2,675 equals every saved `ce_entry`, gap 0), copied to `runs/strategies/{small,medium}/`; the figures inspected.
+Commit: this entry, pushed to main.
+
 ### 2026-10-30 DC fund strategies: 100 - age at more REIT fractions (spec: none, asked by Quinn in Claude Code)
 Quinn: "also run it with 2/3d, 3/4, 1/4,1/3 reit fraction of 100-age". Four new arms with the 100 - age glide, a quarter, a third (`_rr33`, 0.33), two thirds (`_rr67`, 0.67) and three quarters of the risky part in REIT, next to the existing stocks only, half and REIT only. No model change: `case_params` already reads `_g100_rr<n>`. The arms were added to `runs/strategies.m` and `runs/entry_wealth.m` (not committed), together with a new figure `fig_strategies_reit_fraction`. Run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_strat`, 30 October, one MATLAB at a time, no tests (code 96500c3 as in the overnight run, full tests passed there). Log `runs/strategies_rr.txt`.
 - Small grid: 8 solves in 25.4 minutes, 10:37-11:03 UTC (renters 51-94 s, owners 260-344 s). Medium grid: 8 solves in 109.8 minutes, 11:03-12:53 UTC (renters 197-278 s, owners 1,002-1,648 s).
