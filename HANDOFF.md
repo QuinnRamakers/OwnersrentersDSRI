@@ -113,6 +113,16 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 DC fund strategies: exposure page against no pension and free choice, the max-min strategy marked (spec: none, asked by Quinn in Claude Code)
+No solves, no numbers changed. Quinn: "once with no account as the benchmark and then with free dc as the benchmark also add a redline or marking to the maxmin optimal one per that plot". Changed `runs/strategies.m` only (not committed): the side-by-side exposure page is also drawn against no pension saving (`fig_strategies_exposure_side_by_side_vs_no_pension`) and against free choice (`_vs_free_choice`). The rows keep their order, because within a tenure the ranking does not depend on the benchmark; only the chips change. On every exposure page a red outline marks the max-min strategy: the highest worse-of-the-two-tenures change against the benchmark, with the benchmark left out (it is 0 for both by construction).
+Max-min, medium grid (small grid in brackets):
+- Against the lifecycle fund: free choice, renters +2.62%, owners +0.46% (free choice, +2.20% / +0.54%).
+- Against no pension saving: free choice, renters +4.83%, owners -9.92% (free choice, +2.71% / -8.86%). Every pension strategy costs owners 9.9-11.3%.
+- Against free choice: 100 - age, 2/3 REIT, renters -1.64%, owners -0.20% (100 - age, 3/4 REIT, -1.34% / -0.31%). Owners gain +11.02% from no pension against free choice.
+With the benchmark included, no pension saving would be the max-min against itself, and free choice against itself: no strategy makes both tenures better off than either.
+Checks: `codeIssues` 0 errors, 0 warnings; both grids redrawn on the pod from the saved solves, copied to `runs/strategies/{small,medium}/`; the figures inspected.
+Commit: this entry, pushed to main.
+
 ### 2026-10-30 DC fund strategies: short names in the figures (spec: none, asked by Quinn in Claude Code)
 No solves, no numbers changed. Quinn asked for shorter strategy names on the welfare chart and the side-by-side exposure page, and for "Risk rising with age" to be called "0+age 50% reit". Changed `runs/strategies.m` and `runs/entry_wealth.m` only (not committed):
 - `_grev` is now "0 + age, 1/2 REIT" everywhere, written like "100 - age, 1/2 REIT".
