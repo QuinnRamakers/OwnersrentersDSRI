@@ -113,6 +113,24 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 DC fund strategies: welfare at higher starting savings (spec: none, asked by Quinn in Claude Code)
+No solves. Quinn asked for the welfare results "with a higher starting wealth, say 15000". New script `runs/entry_wealth.m` (not committed) reads the saved step 19 solves at other savings at 25, everything else at entry as before (no pot, the home at 4.52 times income, q = 1): EUR 2,675 (`b0`) and 7,709 (`b_alt`), both exact grid nodes, and 15,000, 30,000 and 50,000 (0.44, 0.89 and 1.48 years of income), interpolated in certainty-equivalent units as the solver's continuation; linear interpolation in V_tilde (as `utility.welfare_anchor`) is printed as a check. Run on the pod single-threaded next to the REIT-fraction job, 30 October about 10:50 UTC (`runs/entry_wealth.txt`; tables `runs/strategies/<grid>/entry_wealth.md`).
+Checks: at EUR 2,675 the read-off equals every saved `ce_entry` exactly (largest relative gap 0). Linear against CE interpolation: median gap over the fund rules 0.00-0.12 points; the largest gaps are all in no pension saving (medium grid up to 1.0 point, small up to 3.6). There the CE reading agrees across grids (owners at 15,000 / 30,000 / 50,000: small +7.20 / +4.57 / +2.33, medium +7.12 / +4.50 / +2.28) and the linear one does not (small +7.70 / +8.18 / +5.25, medium +8.14 / +4.83 / +3.31), so the CE numbers are reported.
+Change against the lifecycle fund, medium grid (small in brackets), renters / owners:
+
+| Savings at 25 | No pension saving | Free choice |
+|---:|---:|---:|
+| EUR 2,675 | -2.11 / +11.53 (-0.50 / +10.31) | +2.62 / +0.46 (+2.20 / +0.54) |
+| EUR 7,709 | -3.30 / +9.29 (-2.41 / +9.19) | +2.94 / +0.50 (+2.62 / +0.55) |
+| EUR 15,000 | -3.74 / +7.12 (-3.08 / +7.20) | +3.04 / +0.55 (+2.79 / +0.59) |
+| EUR 30,000 | -4.23 / +4.50 (-3.63 / +4.57) | +3.20 / +0.63 (+2.90 / +0.68) |
+| EUR 50,000 | -4.88 / +2.28 (-4.13 / +2.33) | +3.32 / +0.72 (+2.91 / +0.79) |
+
+At EUR 15,000 the fund rules keep their order for both tenures (medium: 100 - age half REIT +1.05 / +0.33, all stocks -4.60 / -1.05, all bonds -5.19 / -1.09).
+What it means: the owners' gain without a pension comes mostly from starting with almost no savings. It falls from +11.5% at EUR 2,675 to +7.1% at EUR 15,000 and +2.3% at EUR 50,000, and is still positive there. Renters lose more without a pension the more they start with (-2.1% to -4.9%). The ranking of the fund rules does not depend on the starting savings.
+Commit: this entry, pushed to main.
+Open: where the owners' gain without a pension crosses zero (above EUR 50,000); `runs/entry_wealth.m` is in `runs/`, not committed.
+
 ### 2026-10-30 Risky-share plots without the first and last year (spec: none, asked by Quinn in Claude Code)
 No solves. Quinn: "exclude period 1 from the total risky asset plots as it is giving discontinuities". At 25 the pension pot is empty, so its shares jump (owners under free choice hold none at 25 and about 0.95 at 27); at 100 nothing is held and the summary records 0, which drew a vertical drop at the end of every fund line.
 Changed (in `runs/`, not committed): `runs/strategies.m`, the "risky share of the pension fund" row of both life-cycle pages leaves out 25 and 100, and the exposure pages' bands start at 26; `runs/dc_free_exposures.m`, every share panel starts at 26 (the euro panels keep 25); `runs/g100_figs.m`, its three share panels start at 26.
