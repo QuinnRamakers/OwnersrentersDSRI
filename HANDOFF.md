@@ -113,6 +113,17 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 DC fund strategies: plain names, the entry state, exposure pages (spec: none, asked by Quinn in Claude Code)
+No solves; tables and figures redrawn on the pod from the saved solves (`strategies(grid, solve = false)`, both grids), copied to `runs/strategies/{small,medium}/`. Changed `runs/strategies.m` only (not committed):
+- Plain names (Quinn: "production grid somebody will not understand"): Standard lifecycle fund (was production glide), No pension saving, Free choice of fund mix, All stocks, All real estate (REIT), All bonds, 60% risky 40% bonds, 100 - age stocks + REIT / stocks only / REIT only, Risk rising with age (was reverse glide). `welfare.md` defines each and says what welfare is.
+- The entry state, in `welfare.md` and under the welfare figure (both tenures, age 25): gross income EUR 33,829; savings EUR 2,675 (`b0` 0.079 years of income, placeholder); no pension pot; a home worth EUR 152,941 (`h_mult` 4.52). Owners: 100% mortgage, 30-year real annuity at 3.48%, EUR 8,295 a year, plus maintenance EUR 2,294; 55% of take-home pay. Renters: rent 5.6%, EUR 8,565 a year; 45% of take-home pay. Take-home pay EUR 19,141 after 38.2% income tax and a contribution of EUR 2,856 (8.4% of gross); EUR 20,906 without a pension.
+- New `fig_strategies_exposure_renters` and `_owners`: one row per strategy, the fund's stock, REIT and bond shares by age as stacked bands (free choice: the households' mean shares), rows sorted by that tenure's welfare, and a chip shaded purple (worse) to green (better) by the change against the standard fund, capped at 3%.
+- Welfare figure laid out by hand (the headless renderer clipped the longer names and overlapped the legend), with notes on the strategies and the entry state.
+Checks: `codeIssues` 0 errors, 0 warnings; both grids redrawn without error; the figures inspected.
+Reading: the entry burden explains much of the owners' result without a pension. At 25 their housing costs take 55% of take-home pay against renters' 45%, and the contribution takes another EUR 2,856 of gross pay in exactly those years.
+Commit: this entry, pushed to main.
+Open: as in the entry below.
+
 ### 2026-10-30 DC fund strategies, renters and owners: results (spec: DC fund strategies against no pension account and free choice, renters and owners)
 No code change. Checks run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_strat` (96500c3 plus `runs/strategies.m` and `runs/strategies.sh`), 29 October 17:19-23:29 UTC, one MATLAB at a time, 32 threads. Log `runs/strategies/strategies.txt`, tables and figures `runs/strategies/{small,medium}/` on Quinn's PC (from `/Solutionstorage/results/strategies/`).
 - `run_tests(solve=false)` 0 of 15 failed. Full `run_tests` 0 of 30 failed, 2 skipped (the same two baselines), 10.9 minutes. The pre-check passed on both grids.
