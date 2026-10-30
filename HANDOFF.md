@@ -113,6 +113,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 Poster panels, version 2: panel (b) label "Share in REITs" (spec: none, asked by Quinn in Claude Code)
+No solves, no numbers changed. Quinn: "change b to share in reits". Changed `runs/poster_panels_v2/poster_panels_v2.m` only (not committed): the y-axis label of (b) is "Share in REITs", one line. With no two-line label left, the left margin is back to 1.3 in on all four panels (plot area 4.44 x 3.45 in). Labels now: (a), (c), (d) "Share in risky assets"; (b) "Share in REITs".
+Checks run: the script ran without errors. Each PNG is 1830 x 1380 px; each PDF has MediaBox [0 0 439.2 331.2], font ArialMT; the y axis is in pixel column 388 in all four PNGs; nothing drawn within 0.07 in of any edge; panel (b) inspected.
+Commit: this entry, pushed to main.
+Open: none.
+
 ### 2026-10-30 Poster panels, version 2: new y-axis labels (spec: none, asked by Quinn in Claude Code)
 No solves, no numbers changed. Quinn: "it should be Share in risky assets, and Share of risky assets in REITs", then "d should be the same share in risky assets". Changed `runs/poster_panels_v2/poster_panels_v2.m` only (not committed): the y-axis label is "Share in risky assets" on (a), (c) and (d), and "Share of risky assets / in REITs" on (b), on two lines because at 24 pt it is 4.5 in long and the page is 4.6 in tall. The left margin grew from 1.3 to 1.7 in on all four panels so the plot areas still line up (plot area now 4.04 x 3.45 in). Panels rewritten in `runs/poster_panels_v2/`.
 Checks run: the script ran without errors. Each PNG is 1830 x 1380 px; each PDF has MediaBox [0 0 439.2 331.2], font ArialMT; the y axis is in pixel column 508 in all four PNGs; nothing drawn within 0.07 in of any edge; panels (b) and (d) inspected. No model code changed, so no tests run beyond the earlier `run_tests(solve=false)` today (0 of 15 failed).
