@@ -113,6 +113,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 DC fund strategies: the lifecycle fund named, renters and owners side by side (spec: none, asked by Quinn in Claude Code)
+No solves; both grids redrawn on the pod from the saved solves, copied to `runs/strategies/{small,medium}/`. Changed `runs/strategies.m` only (not committed):
+- The default fund is now named for what it does, "Lifecycle, 80% risky to 0% at 67" (Quinn: "the standard does not explain what it is"); tables, chips and notes compare against "the lifecycle fund".
+- New `fig_strategies_exposure_side_by_side`: the renters' and owners' exposure pages on one page, each side sorted by its own welfare. The single-tenure pages stay.
+Checks: `codeIssues` 0 errors, 0 warnings; both grids redrawn without error; the figures inspected.
+Commit: this entry, pushed to main.
+Open: as in the results entry below.
+
 ### 2026-10-30 DC fund strategies: plain names, the entry state, exposure pages (spec: none, asked by Quinn in Claude Code)
 No solves; tables and figures redrawn on the pod from the saved solves (`strategies(grid, solve = false)`, both grids), copied to `runs/strategies/{small,medium}/`. Changed `runs/strategies.m` only (not committed):
 - Plain names (Quinn: "production grid somebody will not understand"): Standard lifecycle fund (was production glide), No pension saving, Free choice of fund mix, All stocks, All real estate (REIT), All bonds, 60% risky 40% bonds, 100 - age stocks + REIT / stocks only / REIT only, Risk rising with age (was reverse glide). `welfare.md` defines each and says what welfare is.
