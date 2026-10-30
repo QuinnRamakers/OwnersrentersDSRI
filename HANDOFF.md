@@ -15,6 +15,7 @@ Asked by Quinn in Claude Code on 29 October ("run me a series of interesting pot
 Change: `glide_rule` takes 'reverse' (risky share age/100 at every age, split at `reit_risky`). Case suffixes `_grev`, `_fix<n>` (risky share n/100 at every age, retirement included, split at `reit_risky`; with `_rr0` all stocks, with `_rr100` all REIT) and `_nodc` (`kappa_base` 0: the contribution stays in take-home pay, taxed). Production unchanged. Eleven arms, step 19 at b = 2.5, both tenures: the production glide, `_nodc`, `_dcfree`, `_fix100_rr0`, `_fix100_rr100`, `_fix0`, `_fix60`, `_g100`, `_g100_rr0`, `_g100_rr100`, `_grev`. Scripts `runs/strategies.m` and `runs/strategies.sh`.
 Why: the fund rule's welfare effect should differ by tenure: renters' REIT moves with their rent (0.59), owners' with a house they already hold (0.17), and the pension is a larger part of renters' wealth.
 Checks that must pass: `run_tests(solve=false)` and the full `run_tests` 0 failures (`glide_age100` extended to 'reverse'); the pre-check in `runs/strategies.m` (each arm's risky and REIT shares equal its rule to 1e-12 for both tenures, `kappa_base` 0 only for `_nodc`, `dc_choice` only for `_dcfree`, the REIT shock on in all); on the pod, the eleven arms on `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`, then on `pow3_24x12_lim_u3n20_qn4_as_nc11_gh3_beqb25`; `model.checks` read after each solve.
+Done: 2026-10-30
 
 ### 2026-10-29 The glide at 100 minus age, as a case suffix
 Asked by Quinn in Claude Code on 29 October ("what is the glide path here? I thought it was 100-age?", then "Yes, as a suffix"); Claude Code wrote it here in short.
@@ -111,6 +112,53 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-10-30 DC fund strategies, renters and owners: results (spec: DC fund strategies against no pension account and free choice, renters and owners)
+No code change. Checks run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_strat` (96500c3 plus `runs/strategies.m` and `runs/strategies.sh`), 29 October 17:19-23:29 UTC, one MATLAB at a time, 32 threads. Log `runs/strategies/strategies.txt`, tables and figures `runs/strategies/{small,medium}/` on Quinn's PC (from `/Solutionstorage/results/strategies/`).
+- `run_tests(solve=false)` 0 of 15 failed. Full `run_tests` 0 of 30 failed, 2 skipped (the same two baselines), 10.9 minutes. The pre-check passed on both grids.
+- Small grid `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`: 16 new solves in 31.2 minutes (renter 20-40 s, owner 41-234 s); the production glide, `_dcfree` and `_g100` were reused. Medium grid `pow3_24x12_lim_u3n20_qn4_as_nc11_gh3_beqb25`: all 22 in 327 minutes (renter 144-351 s, free choice 1,301 s; owner 57-1,865 s, free choice 3,923 s). None was skipped by the deadline.
+- `model.checks`, all 44 solves: c_bound_25_39 0.0000 and thin_u1_40 0.00; offgrid [0 0 0 0] except 100% stocks (u1 16) and 100% REIT (u1 25), both grids and tenures. Bankrupt household-years, medium (small): renters production 0.0094 (0.0167), no pension account 0.0612 (0.0906), free choice 0.0049 (0.0131), 100% bonds 0.0195 (0.0342), the rest 0.0075-0.0118 (0.0137-0.0244); owners 0.0022-0.0036 (0.0027-0.0039) in every arm.
+
+Entry welfare, change in `ce_entry` against the production glide, percent (small grids; levels not reported, CLAUDE.md):
+
+| Strategy | Renters, small | Owners, small | Renters, medium | Owners, medium |
+|---|---:|---:|---:|---:|
+| No pension account | -0.50 | +10.31 | -2.11 | +11.53 |
+| Free DC choice | +2.20 | +0.54 | +2.62 | +0.46 |
+| 100 - age, half REIT | +0.76 | +0.24 | +0.89 | +0.26 |
+| 100 - age, REIT | +0.75 | +0.17 | +0.56 | +0.19 |
+| 100 - age, stocks | +0.26 | +0.15 | -0.10 | +0.16 |
+| 60/40 | +0.37 | +0.06 | -0.96 | +0.12 |
+| Reverse glide, age/100 | -0.74 | -0.23 | -2.26 | -0.15 |
+| 100% REIT | -1.32 | -1.20 | -3.92 | -1.11 |
+| 100% stocks | -1.78 | -0.90 | -4.06 | -0.83 |
+| 100% bonds | -4.13 | -0.81 | -4.76 | -0.87 |
+
+Against no pension account: the production glide renters +0.50 (small) / +2.15 (medium), owners -9.34 / -10.33; free choice renters +2.71 / +4.83, owners -8.86 / -9.92. Every fund rule is below no pension account for owners (-8.9 to -11.3). The renter - owner gap against no pension account is +6.4 to +14.8 points in every arm and on both grids. Full tables in `runs/strategies/<grid>/welfare.md`.
+
+Behaviour, medium grid (means; wealth and shares over solvent households):
+- No pension account. Owners consume 16.2k at 30 against 13.8k with the production glide (+17%), and 12.6k at 95 against 32.9k; 1.2% are bankrupt at 95 (0.5%); the mean bequest is about the same (2.28 against 2.31 million). Renters consume 12.8k at 30 against 13.0k, and 8.6k at 95 against 19.7k; 33.4% are bankrupt at 95 (4.0%).
+- The fund's risk crowds out liquid equity. Renters' liquid equity share at 40: 0.09 with 100% stocks, 0.81 with 100% bonds, 0.12 with the production glide. Owners' at 67: 0.00 under every fund that keeps risk after 67, 0.97 under the production glide, 0.88 under bonds.
+- Risk after 67. The annuity is priced off the fund, so mean payouts at 67 are 103k (100% stocks), 135k (100% REIT), 62k (60/40) and 46k (100 - age, half REIT), against 38k (production) and 24k (bonds). Under 100% risk the 10th percentile falls with age: renters 22.2k at 67 to 8.0k at 95 (stocks) and 6.9k (REIT), against 21.0k under production. Renters bankrupt at 95: 1.6% free choice, 3.0-3.7% under 100 - age, 4.0% production, 5.1-5.3% under 100% risk, 8.9% under bonds.
+- Free choice keeps 0.27-0.36 of the pot in risk after 67 for renters and 0.28-0.33 for owners, and holds 1.00 (renters) and 0.90 (owners) at 30.
+
+Small against medium grid. Within each tenure the top three (free choice, 100 - age half REIT, 100 - age REIT) and the bottom group keep their places, and owners' first seven are in the same order. For renters, 60/40 (+0.37 to -0.96) and 100 - age stocks only (+0.26 to -0.10) fall below production, and no pension account falls from -0.50 to -2.11. The renter - owner gap against production keeps its sign in 8 of 10 arms; 60/40 and 100 - age stocks only flip, both within 0.5 points on the small grid. Levels move: the production glide's `ce_entry` goes from 0.3190 to 0.2905 for renters and from 0.3555 to 0.3498 for owners.
+
+Expectations of 29 October:
+1. Partly held. Small grid 31 minutes against about 40. Medium 5.45 hours against 4-5 (owners' fixed funds 20-31 minutes against 15-20), but done by 23:29 UTC.
+2. Held. Free choice is the best fund rule for both tenures on both grids, also above the funds that keep risk after 67.
+3. Held. The REIT against stocks: renters +0.46 / +0.14 points in the all-risky fund and +0.49 / +0.66 within 100 - age (small / medium); owners -0.30 / -0.28 and +0.02 / +0.03.
+4. Partly held. 100% stocks and 100% REIT are below 100 - age for both tenures and below production for owners, as expected, but also below production for renters (-1.3 to -4.1), not above.
+5. Partly held. 100% bonds is below production for both, by more for renters (-4.1 / -4.8 against -0.8 / -0.9). But it is below no pension account for both tenures, not above.
+6. Not held for owners. No pension account is 10-12% above production for owners. For renters it is below production, by 0.5% and 2.1%, not several percent.
+7. Partly held. 60/40 is near the glide for owners. For renters it is above production on the small grid and between production and 100% risk on the medium.
+8. Not held. The reverse glide is the lowest of the glide rules, but above all three all-in funds, and for owners well above bonds.
+9. Held. Renters' welfare spans 6.3 / 7.4 points across the fund rules, owners' 1.7 / 1.6. Renters' bankruptcy at 95 falls under 100 - age (3.0-3.7% against 4.0%) but rises under 100% risk (5.1-5.3%).
+10. Mostly held (previous paragraph).
+
+What it means: the pension account divides the tenures. For renters it raises entry welfare, by 2.2% with the production glide and 4.8% with free choice on the medium grid, and it keeps them out of bankruptcy at the end of life. For owners it lowers entry welfare by about 10% on both grids: the contribution falls in the years of the mortgage and maintenance at 100% LTV, while the house carries their old age and bequest. Within the pension, renters' welfare depends on the fund four to five times as much as owners'. Renters gain from REIT exposure, which moves with their rent; owners slightly prefer stocks. All-in rules hurt both: 100% risk to 100 makes the payout risky, and 100% bonds forgoes the premium when young. Free choice beats every fixed rule, by much more for renters. Welfare is read at one entry state with almost no liquid wealth, and the verdict on the DC pension has changed sign with the entry buffer before (TODO.md, item 3); owners also have no equity release. So the owners' result against no pension account needs a check at another entry state before it is reported.
+Commit: this entry, pushed to main.
+Open: (1) The owners' gain without a pension account at the other entry buffer (`b_alt`). (2) A full-grid solve of the main arms (production, no pension account, free choice, 100 - age half REIT). (3) `runs/strategies.m` and `runs/strategies.sh` are in `runs/`, not committed.
 
 ### 2026-10-29 DC fund strategies: smoke on the pod and the overnight launch (spec: DC fund strategies against no pension account and free choice, renters and owners)
 No code change since 96500c3 apart from the figure layout in `runs/strategies.m` (not committed): value labels clear of the axis, and the life-cycle legend drawn on fixed positions because legend() overlaps on the pod's headless renderer.
