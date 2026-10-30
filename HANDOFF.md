@@ -113,6 +113,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-10-30 Risky-share plots without the first and last year (spec: none, asked by Quinn in Claude Code)
+No solves. Quinn: "exclude period 1 from the total risky asset plots as it is giving discontinuities". At 25 the pension pot is empty, so its shares jump (owners under free choice hold none at 25 and about 0.95 at 27); at 100 nothing is held and the summary records 0, which drew a vertical drop at the end of every fund line.
+Changed (in `runs/`, not committed): `runs/strategies.m`, the "risky share of the pension fund" row of both life-cycle pages leaves out 25 and 100, and the exposure pages' bands start at 26; `runs/dc_free_exposures.m`, every share panel starts at 26 (the euro panels keep 25); `runs/g100_figs.m`, its three share panels start at 26.
+Redrawn: the strategy pages on the pod from the saved solves (`strategies('small', solve = false)` and `'medium'`, 10:1x UTC, no errors in the log), copied to `runs/strategies/{small,medium}/`; `fig_dcfree_exposures`, `fig_dcfree_exposures_free` and `fig_g100_compare` on Quinn's PC. The figures inspected. No numbers in the tables changed.
+Commit: this entry, pushed to main.
+
 ### 2026-10-30 DC fund strategies: the lifecycle fund named, renters and owners side by side (spec: none, asked by Quinn in Claude Code)
 No solves; both grids redrawn on the pod from the saved solves, copied to `runs/strategies/{small,medium}/`. Changed `runs/strategies.m` only (not committed):
 - The default fund is now named for what it does, "Lifecycle, 80% risky to 0% at 67" (Quinn: "the standard does not explain what it is"); tables, chips and notes compare against "the lifecycle fund".
