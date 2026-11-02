@@ -115,7 +115,16 @@ function p = case_params(step, arm, name)
 %               in production. It changes the model
 %     _fr<n>    the franchise in euros: _fr19200, or _fr0 for none, the rate
 %               on all of pay. It changes the model
-%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh, _dcfree, _g100, _grev, _fix, _nodc, _kb and _fr nothing here changes the model: only grid_dims,
+%     _ys<n>    gross income scaled by n/10000 at every age: _ys10813 by
+%               1.0813, _ys12710 by 1.271. The DHS cubic is estimated on pay
+%               net of the employee and employer contributions, so it is
+%               grossed up by (1 + rate), as in the literature (Quinn, 2
+%               November 2026). Everything read off the profile follows: the
+%               contribution, tax, the Nibud house, the floor's share of
+%               income (c_min stays in euros) and the AOW (replacement times
+%               final pay). Done through dhs_price_factor, which only sets
+%               the cubic's level. It changes the model
+%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh, _dcfree, _g100, _grev, _fix, _nodc, _kb, _fr and _ys nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   gh_n_reit, interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
@@ -222,6 +231,11 @@ if ~isempty(g)                                                             % con
 end
 g = regexp(extra, '_fr(\d+)', 'tokens', 'once');
 if ~isempty(g), p.franchise = str2double(g{1}); end                        % franchise, euros; 0 none
+g = regexp(extra, '_ys(\d+)', 'tokens', 'once');
+if ~isempty(g)                                                             % gross income scaled at every age
+    assert(strcmp(p.income_source, 'dhs'), 'case_params:ys', '_ys scales the DHS cubic: income_source must be ''dhs''');
+    p.dhs_price_factor = p.dhs_price_factor * str2double(g{1}) / 1e4;
+end
 p = config.derive(p);
 end
 

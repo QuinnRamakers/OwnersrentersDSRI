@@ -26,8 +26,10 @@ function fig = compare(rs, labels, ttl, file, opts)
 %     grid nodes, and a box with each result's settings and checks.
 %
 %   view='pension' shows the DC pension account in place of net worth, and in
-%   place of the policy at 30 the stock share of financial wealth (stock in
-%   the liquid account and the DC fund over liquid saving plus the fund).
+%   place of the policy at 30 liquid savings plus the pension account and the
+%   stock share of financial wealth (stock in the liquid account and the DC
+%   fund over liquid saving plus the fund); the settings box then takes one
+%   tile.
 %
 %   view='bequest' shows in place of net worth the bequest if the household
 %   dies at the end of that age (liquid wealth after the year's returns plus
@@ -40,6 +42,8 @@ function fig = compare(rs, labels, ttl, file, opts)
 %   Levels are in thousands of euros (or CGM units) when every result has the
 %   same income units and entry income, and in multiples of entry income
 %   otherwise, so steps with different income units still line up.
+%   euros=true keeps euros when the units match but entry incomes differ,
+%   for results whose income level is itself what changed.
 
 arguments
     rs cell
@@ -47,6 +51,7 @@ arguments
     ttl = ''
     file = ''
     opts.view (1,:) char {mustBeMember(opts.view, {'default', 'pension', 'bequest'})} = 'default'
+    opts.euros (1,1) logical = false
 end
 
 n = numel(rs);
@@ -57,7 +62,7 @@ pension_view = strcmp(opts.view, 'pension');
 bequest_view = strcmp(opts.view, 'bequest');
 
 same_units = all(cellfun(@(d) strcmp(d.unit, D{1}.unit), D)) && ...
-             all(cellfun(@(r) abs(r.summary.Y0 / rs{1}.summary.Y0 - 1) < 1e-9, rs));
+             (opts.euros || all(cellfun(@(r) abs(r.summary.Y0 / rs{1}.summary.Y0 - 1) < 1e-9, rs)));
 if same_units
     scl = cellfun(@(d) d.scale, D); unit = D{1}.unit;
 else
@@ -191,10 +196,16 @@ else
 end
 title(ax, sprintf('(%s)  Housing costs over income after tax and contributions', letter(k)), 'FontSize', FT);
 
-% Row 4: the equity share policy at three ages, or in the pension view the
-% stock share of financial wealth and the policy at two
+% Row 4: the equity share policy at three ages, or in the pension view
+% financial wealth, its stock share and the policy at two
 ages = [30 55 75];
+span = 2;
 if pension_view
+    ax = tile(tl, ret, FS); k = k + 1;
+    runs_panel(ax, D, @(d) d.X + d.A, scl, cols, styles, lw);
+    ylabel(ax, unit);
+    title(ax, sprintf('(%s)  Liquid savings plus pension account', letter(k)), 'FontSize', FT);
+    span = 1;
     ax = tile(tl, ret, FS); k = k + 1;
     for i = n:-1:1
         d = D{i}; a = d.ages(1:end-1);
@@ -232,7 +243,7 @@ for j = 1:numel(ages)
 end
 
 % Settings and checks
-ax = nexttile(tl, [1 2]); axis(ax, 'off'); k = k + 1;
+ax = nexttile(tl, [1 span]); axis(ax, 'off'); k = k + 1;
 L = info_lines(rs, labels);
 if bequest_view
     L = [L, {''}, bequest_lines(rs, labels, D, scl, unit)];

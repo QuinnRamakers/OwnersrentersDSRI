@@ -16,6 +16,7 @@ Change: case suffixes `_kb<n>` (`kappa_base` n/10000) and `_fr<n>` (`franchise` 
 Next, after Quinn has read these: income scaled by 1.0813 with 8.13% and with 18.97%, and by 1.271 with 27.1%, each with and without the franchise.
 Why: the OP/NP table splits the premium into employer and employee parts; this shows how welfare moves with the rate and the franchise before deciding how income enters.
 Checks that must pass: `run_tests(solve=false)` 0 failures; the pre-check in `runs/contrib.m` (each arm's contribution path equals its rule to 1e-12 for both tenures, no other primitive moved); on the pod, the six arms on `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`; `model.checks` read after each solve.
+Done: 2026-11-02
 
 ### 2026-10-29 DC fund strategies against no pension account and free choice, renters and owners
 Asked by Quinn in Claude Code on 29 October ("run me a series of interesting potential investment strategies over night ... show that renters and owners have different welfare results. I will need the free dc, no pension account and the strategies", on the DSRI, not on the production grid), with these choices: 100% stocks, 100% REIT, 100% bonds, 60/40 and 100 - age keep their mix after 67 (the annuity priced off the fund); 100 - age in three splits (half REIT, stocks only, REIT only); a reverse glide; the small grid, then a medium grid as a check. Claude Code wrote it here in short.
@@ -120,6 +121,47 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-02 OP/NP contribution rates with income scaled by (1 + rate), small grid: results (spec: OP/NP contribution rates, with and without the franchise, small grid)
+Changed:
+- `diagnostics/pension_grid/case_params.m`: suffix `_ys<n>`, gross income times n/10000 at every age, through `dhs_price_factor` (it only sets the DHS cubic's level; `_ys` asserts `income_source` 'dhs'). Quinn: "we estimate an income polynomial based on income after the employee and employer contribution so the starting value should be increased. 1+rate should be used as it is in literature". Everything read off the profile follows: the contribution, tax, the Nibud house, the floor's share of pay (c_min stays EUR 5,000) and the AOW (replacement times final pay).
+- `+figures/compare.m`: option `euros` (levels stay in euros when entry pay differs). In the pension view a new panel, liquid savings plus the pension account, opens row 4, and the settings box takes one tile (Quinn: "add a pension and financial wealth combined plot to the dashboards").
+- Scripts, not committed: `runs/contrib.m` (six scaled arms; welfare in euros, `ce_entry` times entry pay, since `ce_entry` is in multiples of entry pay; four comparison pages per tenure, pension view) and `runs/contrib.sh`.
+- The entry below said the pillar has no tax gain; corrected there: the fund return is untaxed, liquid returns pay 36% with no loss offset.
+Production and CALIBRATION.md unchanged: no primitive moved.
+Checks run:
+- Quinn's PC (R2025b): `run_tests(solve=false)` 0 of 15 failed, after `_ys` and again after the new panel. `contrib('small', solve = false)`: the pre-check passed for all 14 arms, both tenures (income equals production's times the scale to 1e-12, contribution paths equal their rules, nothing else moved). Pay at 25 / 66, AOW, house or rent index at entry, floor share at 25: production 33,829 / 56,685, 17,402, 4.52 x pay = 152,941, 0.148; x1.0813 36,579 / 61,293, 18,817, 4.48 x pay = 163,993, 0.137; x1.271 42,996 / 72,047, 22,118, 4.41 x pay = 189,781, 0.116. Contribution share of gross pay at 25 / 35 / 48 / 60 / 66 above EUR 19,200: x1.271 27.1% 0.1500 / 0.1926 / 0.2034 / 0.2000 / 0.1988; x1.0813 18.97% 0.0901 / 0.1252 / 0.1341 / 0.1313 / 0.1303; x1.0813 8.13% 0.0386 / 0.0537 / 0.0575 / 0.0563 / 0.0558. The new page layout drawn on two saved owner solves (`runs/dc_free`) without errors.
+- DSRI pod, `/Solutionstorage/OwnersrentersDSRI_contrib` (5658a5f plus the changes above), `runs/contrib.sh`, 11:36-12:03 UTC, 32 threads: fast tests 0 of 15 failed; pages of the saved solves drawn first; 12 new solves in 25.7 minutes (renter 35-55 s, owner 198-210 s); eight pages. Log `runs/contrib/contrib2.txt`, table `runs/contrib/small/welfare.md`, pages `runs/contrib/small/fig_contrib_<tenure>_<franchise|allpay|scaled_franchise|scaled_allpay>.png` on Quinn's PC.
+- `model.checks`, the 12 scaled solves: offgrid [0 0 0 0] and thin_u1_40 0.00 in all; c_bound_25_39 0.0000-0.0001 (owners at 27.1% of all pay: 0.0001 at x1.271, against 0.0686 unscaled). Bankrupt household-years: renters 0.0135-0.0383, owners 0.0012-0.0195.
+
+Entry welfare, certainty-equivalent consumption in euros, percent (small grid; levels not reported, CLAUDE.md). The unscaled rows equal the entry below, since their entry pay is production's:
+
+| Arm | Renters vs production | Owners vs production | Renters vs no pension | Owners vs no pension |
+|---|---:|---:|---:|---:|
+| Production, 18.6% above 18,475 | 0 | 0 | +0.50 | -9.34 |
+| No pension saving | -0.50 | +10.31 | 0 | 0 |
+| 27.1% above 19,200 | -4.05 | -7.87 | -3.57 | -16.48 |
+| 27.1% of all pay | -23.27 | -37.72 | -22.89 | -43.54 |
+| 18.97% above 19,200 | +0.09 | +0.18 | +0.59 | -9.18 |
+| 18.97% of all pay | -9.63 | -16.97 | -9.18 | -24.73 |
+| 8.13% above 19,200 | +0.52 | +8.55 | +1.03 | -1.59 |
+| 8.13% of all pay | +0.43 | +3.59 | +0.93 | -6.09 |
+| Pay x1.271, 27.1% above 19,200 | +18.23 | +12.07 | +18.82 | +1.60 |
+| Pay x1.271, 27.1% of all pay | -1.49 | -16.21 | -1.00 | -24.04 |
+| Pay x1.0813, 18.97% above 19,200 | +8.01 | +7.49 | +8.55 | -2.55 |
+| Pay x1.0813, 18.97% of all pay | -1.93 | -9.71 | -1.44 | -18.15 |
+| Pay x1.0813, 8.13% above 19,200 | +8.81 | +17.52 | +9.35 | +6.54 |
+| Pay x1.0813, 8.13% of all pay | +8.80 | +12.60 | +9.34 | +2.08 |
+
+Behaviour (means):
+- Take-home pay at 25, both tenures: production 19.1k, no pension 20.9k; x1.271 27.1% above 19,200 22.6k, of all pay 19.4k; x1.0813 18.97% 20.6k / 18.3k; x1.0813 8.13% 21.7k / 20.8k.
+- Consumption at 25 and 85. Renters: production 8.6k / 21.4k; x1.271 27.1% above 9.9k / 43.4k, of all pay 7.7k / 61.0k; x1.0813 18.97% above 9.2k / 24.0k, of all pay 7.8k / 36.3k; x1.0813 8.13% above 9.9k / 16.6k, of all pay 9.4k / 18.6k. Owners: production 10.1k / 32.9k; x1.271 27.1% 11.1k / 59.7k and 7.0k / 78.8k; x1.0813 18.97% 10.7k / 36.7k and 8.5k / 50.4k; x1.0813 8.13% 11.6k / 23.8k and 11.1k / 28.3k.
+- Annuity payout at 67, renters: production 37.8k; x1.271 27.1% 77.5k (above 19,200) and 110.9k (all pay); x1.0813 18.97% 42.6k and 65.5k; x1.0813 8.13% 18.2k and 27.9k.
+- Bankrupt share. Renters at 95: production 6.6%; x1.271 27.1% 2.8% and 6.5% (all of it by 66); x1.0813 18.97% 5.2% and 3.5%; x1.0813 8.13% 20.9% and 13.5%. Owners from 60 on: production 0.6%; x1.271 27.1% 0.8% and 2.6% (0.5% at 30); x1.0813 18.97% 0.5% and 1.1%; x1.0813 8.13% 0.2% and 0.3%.
+
+What it means: against production the scaled arms mix a higher pay level with the rule, so compare them within one scale. There the franchise costs what it cost unscaled: dropping it costs renters 0.0, 9.9 and 19.7 points and owners 4.9, 17.2 and 28.3 points at 8.13%, 18.97% and 27.1%. Without the franchise the gross-up is consistent: take-home is (1 + r)(1 - r) = 1 - r^2 of no pension's (0.993 at 8.13%, 0.927 at 27.1%) and the pot gets r of the grossed-up pay. Against no pension at today's pay, renters gain 9.3% at 8.13% and lose 1.0% at 27.1%; owners gain 2.1% and lose 24.0%. At 27.1% of all pay, take-home at 25 is production's (19.4k against 19.1k) and the payout three times production's, yet owners lose 16% against production: they value liquidity while the mortgage is paid. With the franchise, (1 + rate) gives the household more than the rule takes, because the rule takes only the share above EUR 19,200 (15.0% of pay at 25 at 27.1% x1.271): take-home at 25 is 22.6k, above no pension's 20.9k, which is most of the +18% (renters) and +12% (owners).
+Commit: this entry, pushed to branch `contrib-rates`; not on main.
+Open: (1) A gross-up consistent with the franchise: gross pay Y + r max(Y - F, 0), which is (1 + r) Y without a franchise (x1.117 at 25 and x1.179 at 66 for 27.1% above EUR 19,200, against x1.271). (2) A no-pension arm at the scaled pay, if no pension should mean the employer pays the contribution as wages. (3) The AOW rises with the scale (replacement times final pay); it is a flat amount in reality. (4) EUR 19,200 is likely a 2026 figure against income in 2025 euros. (5) Merge `contrib-rates` into main so chat sees it. (6) `runs/contrib.m` and `runs/contrib.sh` are in `runs/`, not committed.
+
 ### 2026-11-02 OP/NP contribution rates, with and without the franchise, small grid: results (spec: OP/NP contribution rates, with and without the franchise, small grid)
 Changed: `diagnostics/pension_grid/case_params.m`: suffixes `_kb<n>` (`kappa_base` n/10000) and `_fr<n>` (`franchise` in euros, 0 for none); `_kb` together with `_nodc` is an error. Scripts, not committed: `runs/contrib.m` (pre-check, solves through `solve_cases`, report, `welfare.md`) and `runs/contrib.sh`. Production and CALIBRATION.md unchanged: no primitive moved.
 Checks run:
@@ -146,7 +188,7 @@ Behaviour (means):
 - Bankrupt share. Renters at 95: production 6.6%, no pension 49.1%, 27.1% above 19,200 3.7%, 27.1% of all pay 8.4% (all of it by 66), 8.13% above 19,200 23.3%, 8.13% of all pay 14.9%. Owners from 60 on: production 0.6%, 27.1% above 19,200 1.1%, 27.1% of all pay 6.2% (3.0% already at 30), 8.13% above 19,200 0.2%.
 - 18.97% above 19,200 is production within noise: the same rate path from 35 on.
 
-What it means: with the whole rate taken from the household's take-home pay, welfare falls with the rate for both tenures above production's level, and steeply: 27.1% of all pay costs renters 23% and owners 38%. The tax rate is the same in and out, so the pillar has no tax gain to set against forced saving at 25 with a high housing burden. Renters are nearly flat from 3.5% to 13% of pay and do best at 8.13%; owners do better the lower the rate, and no arm beats no pension for them. The franchise matters more the higher the rate: dropping it costs renters 0.1, 9.7 and 19.2 points and owners 5.0, 17.2 and 29.9 points at 8.13%, 18.97% and 27.1%. These arms charge the household the employer's share too; the scaled-income arms are the test of that.
+What it means: with the whole rate taken from the household's take-home pay, welfare falls with the rate for both tenures above production's level, and steeply: 27.1% of all pay costs renters 23% and owners 38%. The income tax rate is the same in and out (38.2%), so there is no rate gain. The pillar's gains are the untaxed fund return (liquid returns pay 36% with no loss offset), the survival credit and the annuity, and above about 13% of pay they do not outweigh forced saving at 25 with a high housing burden. (Corrected 2 November: this sentence said the pillar had no tax gain.) Renters are nearly flat from 3.5% to 13% of pay and do best at 8.13%; owners do better the lower the rate, and no arm beats no pension for them. The franchise matters more the higher the rate: dropping it costs renters 0.1, 9.7 and 19.2 points and owners 5.0, 17.2 and 29.9 points at 8.13%, 18.97% and 27.1%. These arms charge the household the employer's share too; the scaled-income arms are the test of that.
 Commit: this entry, pushed to branch `contrib-rates` (Quinn chose the branch); not on main.
 Open: (1) The scaled-income arms in the spec's "Next": how the scaling enters is to settle with Quinn first. (2) Owners at 27.1% of all pay hit the consumption search's lower bound in 6.9% of household-years at 25-39; read that arm with care. (3) The franchise of EUR 19,200 is likely a 2026 figure against income in 2025 euros. (4) Merge `contrib-rates` into main so chat sees it. (5) `runs/contrib.m` and `runs/contrib.sh` are in `runs/`, not committed.
 
