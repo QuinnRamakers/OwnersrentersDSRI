@@ -121,6 +121,33 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-02 OP/NP contribution rates: replacement over career-average pay against a 74.7% gross and 96% net benchmark (spec: OP/NP contribution rates, with and without the franchise, small grid)
+No solves, no model code changed. Quinn gave a benchmark of 74.7% gross and 96% net, defined over lifetime average pay revalued with economy-wide wage growth ("workers earn the same percentage of average-worker earnings throughout their career. Therefore, final earnings are equal to lifetime average earnings revalued ..."). The model's pay is real with an age profile and shocks and no economy-wide wage growth, so the matching base is each household's plain average pay at 25-66. `table_all` in `runs/contrib.m` (not committed) adds that version: gross, the AOW plus the payout at 67 over average gross pay at 25-66; net, income after tax at 67 over average take-home pay at 25-66; mean and median over households not bankrupt at 67, with the gap to the benchmark.
+Checks run: `contrib('small', solve = false, pages = false)` on Quinn's PC (no solves there; ran without errors) and on the pod on the 28 saved solves (pre-check passed; `runs/contrib/small/all_results.md`, log `runs/contrib/contrib4.txt`).
+
+Replacement at 67 over career-average pay, percent, mean (gap to the benchmark) / median, renters (owners within 2.9 points):
+
+| Arm | Gross | Net |
+|---|---:|---:|
+| Production, 18.6% above 18,475 | 98.4 (+23.7) / 93.3 | 112.2 (+16.2) / 106.4 |
+| No pension saving | 32.5 (-42.2) / 31.8 | 32.5 (-63.5) / 31.8 |
+| 27.1% above 19,200 | 126.1 (+51.4) / 118.6 | 152.9 (+56.9) / 143.9 |
+| 27.1% of all pay | 181.2 (+106.5) / 167.6 | 248.6 (+152.6) / 229.9 |
+| 18.97% above 19,200 | 98.2 (+23.5) / 93.2 | 112.0 (+16.0) / 106.2 |
+| 18.97% of all pay | 137.4 (+62.7) / 127.9 | 169.5 (+73.5) / 157.8 |
+| 8.13% above 19,200 | 60.7 (-14.0) / 58.9 | 64.1 (-31.9) / 62.2 |
+| 8.13% of all pay | 77.7 (+3.0) / 74.1 | 84.6 (-11.4) / 80.7 |
+| Pay x1.271, 27.1% above 19,200 | 138.1 (+63.4) / 129.2 | 171.7 (+75.7) / 160.8 |
+| Pay x1.271, 27.1% of all pay | 181.6 (+106.9) / 167.7 | 249.1 (+153.1) / 230.1 |
+| Pay x1.0813, 18.97% above 19,200 | 101.2 (+26.5) / 95.9 | 116.1 (+20.1) / 109.9 |
+| Pay x1.0813, 18.97% of all pay | 137.4 (+62.7) / 127.9 | 169.5 (+73.5) / 157.8 |
+| Pay x1.0813, 8.13% above 19,200 | 62.0 (-12.7) / 60.1 | 65.6 (-30.4) / 63.5 |
+| Pay x1.0813, 8.13% of all pay | 77.7 (+3.0) / 74.1 | 84.6 (-11.4) / 80.7 |
+
+What it means: career-average pay is about 95% of pay at 66 (the AOW alone is 32.5% of it against 30.7% of final pay), so every rate rises 2-8 points and the ranking does not change. 8.13% of all pay meets the gross benchmark (mean +3.0, median -0.6) and falls 11-15 points short of the net one; production is 24 points over gross and 16 over net. No arm meets both: in the benchmark net is 1.29 times gross, in the model 1.09-1.14 near the benchmark, because one income tax rate (38.2%) applies before and after 67 and net exceeds gross only by the contribution that stops. Without a franchise the scaled and unscaled arms give the same rates, since the rule is then proportional to pay.
+Commit: this entry, pushed to branch `contrib-rates`; not on main.
+Open: as in the entries below; also, a lower income tax rate from 67 (Dutch retirees pay no AOW premium) would be needed to meet both benchmarks at once.
+
 ### 2026-11-02 OP/NP contribution rates: replacement rates and one table of all results (spec: OP/NP contribution rates, with and without the franchise, small grid)
 No solves, no model code changed. Quinn: "could you calculate for me the average replacement as well, and show me all results in one table", and "are taxes turned on currently?". `runs/contrib.m` (not committed) gets `table_all`, which writes `all_results.md`: every arm and both tenures on one table, and the replacement rate at 67 per household, over households not bankrupt at 67. Gross: the AOW plus the annuity payout over gross pay at 66. Net: income after tax at 67 over take-home pay at 66 (after the contribution and tax). It also reads the tax parameters out of every saved solve. Option `pages` skips the comparison pages.
 Checks run: on Quinn's PC `contrib('small', solve = false, pages = false)` ran without errors (no solves there, empty table). On the pod, `/Solutionstorage/OwnersrentersDSRI_contrib`, the same call on the 28 saved solves: the pre-check passed again; table in `runs/contrib/small/all_results.md`, log `runs/contrib/contrib3.txt` on Quinn's PC. Taxes in all 28 saved solves, identical: tau_inc 0.382, tau_cg_bond 0.36, tau_cg_stock 0.36, cg_loss_offset 0, tau_wealth 0. Take-home at 25 checks by hand: 33,829 x (1 - 0.0844) x (1 - 0.382) = 19,141 in production, 33,829 x 0.618 = 20,906 without a pension.
