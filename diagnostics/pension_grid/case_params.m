@@ -108,7 +108,14 @@ function p = case_params(step, arm, name)
 %     _nodc     no DC pillar (kappa_base = 0): the contribution stays in
 %               take-home pay, taxed as income, and the pot is empty. It
 %               changes the model
-%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh, _dcfree, _g100, _grev, _fix and _nodc nothing here changes the model: only grid_dims,
+%     _kb<n>    the contribution rate on pay above the franchise, kappa_base
+%               = n/10000: _kb2710 27.1%, _kb1897 18.97%, _kb813 8.13% (the
+%               OP/NP total, employer and employee rates; Quinn, 2 November
+%               2026). Deducted from take-home pay and paid into the pot as
+%               in production. It changes the model
+%     _fr<n>    the franchise in euros: _fr19200, or _fr0 for none, the rate
+%               on all of pay. It changes the model
+%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh, _dcfree, _g100, _grev, _fix, _nodc, _kb and _fr nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   gh_n_reit, interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
@@ -208,6 +215,13 @@ if ~isempty(g)                                                             % a c
     p.tau_decum = (1 - p.reit_risky) * risky; p.reit_decum = p.reit_risky * risky;
 end
 if contains(extra, '_nodc'), p.kappa_base = 0; end                         % no DC pillar
+g = regexp(extra, '_kb(\d+)', 'tokens', 'once');
+if ~isempty(g)                                                             % contribution rate above the franchise
+    assert(~contains(extra, '_nodc'), 'case_params:kb', '_kb sets a contribution, _nodc removes it: use one');
+    p.kappa_base = str2double(g{1}) / 1e4;
+end
+g = regexp(extra, '_fr(\d+)', 'tokens', 'once');
+if ~isempty(g), p.franchise = str2double(g{1}); end                        % franchise, euros; 0 none
 p = config.derive(p);
 end
 
