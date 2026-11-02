@@ -14,6 +14,7 @@ Rules:
 Asked by Quinn in Claude Code on 2 November ("run the current version with the contribution rates of 27.1, 18.97, 8.13 separately, both with and without the franchise correction ... Do not run it on the full grid ... but a smaller sized one"), from an OP/NP premium table (total 27.1%, employer 18.97%, employee 8.13%, franchise EUR 19,200). Claude Code wrote it here in short.
 Change: case suffixes `_kb<n>` (`kappa_base` n/10000) and `_fr<n>` (`franchise` in euros, 0 for none) in `diagnostics/pension_grid/case_params.m`. Production unchanged. Six arms, step 19 at b = 2.5, both tenures, against production and `_nodc`: 27.1%, 18.97% and 8.13%, each above EUR 19,200 and on all of pay. The mechanics stay production's: the contribution comes out of take-home pay before tax and goes into the pot; income is not scaled. Scripts `runs/contrib.m` and `runs/contrib.sh`.
 Next, after Quinn has read these: income scaled by 1.0813 with 8.13% and with 18.97%, and by 1.271 with 27.1%, each with and without the franchise.
+Why: the OP/NP table splits the premium into employer and employee parts; this shows how welfare moves with the rate and the franchise before deciding how income enters.
 Checks that must pass: `run_tests(solve=false)` 0 failures; the pre-check in `runs/contrib.m` (each arm's contribution path equals its rule to 1e-12 for both tenures, no other primitive moved); on the pod, the six arms on `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`; `model.checks` read after each solve.
 
 ### 2026-10-29 DC fund strategies against no pension account and free choice, renters and owners
@@ -118,6 +119,36 @@ Checks that must pass: `run_tests` reports 0 failures. `ladder.run('all', numeri
 Done: 2026-10-12
 
 ## Log (from Claude Code)
+
+### 2026-11-02 OP/NP contribution rates, with and without the franchise, small grid: results (spec: OP/NP contribution rates, with and without the franchise, small grid)
+Changed: `diagnostics/pension_grid/case_params.m`: suffixes `_kb<n>` (`kappa_base` n/10000) and `_fr<n>` (`franchise` in euros, 0 for none); `_kb` together with `_nodc` is an error. Scripts, not committed: `runs/contrib.m` (pre-check, solves through `solve_cases`, report, `welfare.md`) and `runs/contrib.sh`. Production and CALIBRATION.md unchanged: no primitive moved.
+Checks run:
+- Quinn's PC (R2025b): `run_tests(solve=false)` 0 of 15 failed. `contrib('small', solve = false)`: the pre-check passed. Contribution rate on gross pay at 25 / 35 / 48 / 60 / 66: production 0.0844 / 0.1202 / 0.1293 / 0.1264 / 0.1254; 27.1% above 19,200 0.1172 / 0.1714 / 0.1851 / 0.1808 / 0.1792; 18.97% above 19,200 0.0820 / 0.1200 / 0.1296 / 0.1266 / 0.1254; 8.13% above 19,200 0.0352 / 0.0514 / 0.0555 / 0.0542 / 0.0538; without the franchise the flat rate; 0 from 67.
+- DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_contrib` (5c374c9 plus the two scripts), `runs/contrib.sh`, 09:30-09:56 UTC, 32 threads: fast tests 0 of 15 failed; the pre-check passed for both tenures; 12 new solves in 25.6 minutes (renter 36-56 s, owner 211-216 s); production and `_nodc` reused from the strategy runs. Log `runs/contrib/contrib.txt` and table `runs/contrib/small/welfare.md` on Quinn's PC.
+- `model.checks`, all 16 solves on `pow3_16x8_lim_u3n10_qn4_as_nc11_gh3_beqb25`: offgrid [0 0 0 0] and thin_u1_40 0.00 in all; c_bound_25_39 0.0000-0.0001 except owners at 27.1% of all pay, 0.0686. Bankrupt household-years: renters 0.0164-0.0459, owners 0.0012-0.0523, highest at 27.1% of all pay for both.
+
+Entry welfare, change in `ce_entry`, percent (small grid; levels not reported, CLAUDE.md):
+
+| Arm | Renters vs production | Owners vs production | Renters vs no pension | Owners vs no pension |
+|---|---:|---:|---:|---:|
+| Production, 18.6% above 18,475 | 0 | 0 | +0.50 | -9.34 |
+| No pension saving | -0.50 | +10.31 | 0 | 0 |
+| 27.1% above 19,200 | -4.05 | -7.87 | -3.57 | -16.48 |
+| 27.1% of all pay | -23.27 | -37.72 | -22.89 | -43.54 |
+| 18.97% above 19,200 | +0.09 | +0.18 | +0.59 | -9.18 |
+| 18.97% of all pay | -9.63 | -16.97 | -9.18 | -24.73 |
+| 8.13% above 19,200 | +0.52 | +8.55 | +1.03 | -1.59 |
+| 8.13% of all pay | +0.43 | +3.59 | +0.93 | -6.09 |
+
+Behaviour (means):
+- Consumption at 25 and 85. Renters: production 8.6k / 21.4k, no pension 9.6k / 12.4k, 27.1% above 19,200 8.1k / 29.7k, 27.1% of all pay 5.9k / 47.1k, 8.13% above 19,200 9.2k / 15.2k. Owners: production 10.1k / 32.9k, no pension 11.1k / 18.9k, 27.1% above 19,200 9.1k / 42.6k, 27.1% of all pay 5.0k (the floor) / 60.4k, 8.13% above 19,200 10.8k / 21.7k.
+- Annuity payout at 67, renters: production 37.8k, 27.1% above 19,200 54.1k, 27.1% of all pay 87.6k, 18.97% of all pay 60.7k, 8.13% above 19,200 16.1k, 8.13% of all pay 25.8k.
+- Bankrupt share. Renters at 95: production 6.6%, no pension 49.1%, 27.1% above 19,200 3.7%, 27.1% of all pay 8.4% (all of it by 66), 8.13% above 19,200 23.3%, 8.13% of all pay 14.9%. Owners from 60 on: production 0.6%, 27.1% above 19,200 1.1%, 27.1% of all pay 6.2% (3.0% already at 30), 8.13% above 19,200 0.2%.
+- 18.97% above 19,200 is production within noise: the same rate path from 35 on.
+
+What it means: with the whole rate taken from the household's take-home pay, welfare falls with the rate for both tenures above production's level, and steeply: 27.1% of all pay costs renters 23% and owners 38%. The tax rate is the same in and out, so the pillar has no tax gain to set against forced saving at 25 with a high housing burden. Renters are nearly flat from 3.5% to 13% of pay and do best at 8.13%; owners do better the lower the rate, and no arm beats no pension for them. The franchise matters more the higher the rate: dropping it costs renters 0.1, 9.7 and 19.2 points and owners 5.0, 17.2 and 29.9 points at 8.13%, 18.97% and 27.1%. These arms charge the household the employer's share too; the scaled-income arms are the test of that.
+Commit: this entry, pushed to branch `contrib-rates` (Quinn chose the branch); not on main.
+Open: (1) The scaled-income arms in the spec's "Next": how the scaling enters is to settle with Quinn first. (2) Owners at 27.1% of all pay hit the consumption search's lower bound in 6.9% of household-years at 25-39; read that arm with care. (3) The franchise of EUR 19,200 is likely a 2026 figure against income in 2025 euros. (4) Merge `contrib-rates` into main so chat sees it. (5) `runs/contrib.m` and `runs/contrib.sh` are in `runs/`, not committed.
 
 ### 2026-10-30 Poster panels, version 2: panel (b) label "Share in REITs" (spec: none, asked by Quinn in Claude Code)
 No solves, no numbers changed. Quinn: "change b to share in reits". Changed `runs/poster_panels_v2/poster_panels_v2.m` only (not committed): the y-axis label of (b) is "Share in REITs", one line. With no two-line label left, the left margin is back to 1.3 in on all four panels (plot area 4.44 x 3.45 in). Labels now: (a), (c), (d) "Share in risky assets"; (b) "Share in REITs".
