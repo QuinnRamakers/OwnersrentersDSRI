@@ -121,6 +121,33 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-02 OP/NP contribution rates: replacement rates and one table of all results (spec: OP/NP contribution rates, with and without the franchise, small grid)
+No solves, no model code changed. Quinn: "could you calculate for me the average replacement as well, and show me all results in one table", and "are taxes turned on currently?". `runs/contrib.m` (not committed) gets `table_all`, which writes `all_results.md`: every arm and both tenures on one table, and the replacement rate at 67 per household, over households not bankrupt at 67. Gross: the AOW plus the annuity payout over gross pay at 66. Net: income after tax at 67 over take-home pay at 66 (after the contribution and tax). It also reads the tax parameters out of every saved solve. Option `pages` skips the comparison pages.
+Checks run: on Quinn's PC `contrib('small', solve = false, pages = false)` ran without errors (no solves there, empty table). On the pod, `/Solutionstorage/OwnersrentersDSRI_contrib`, the same call on the 28 saved solves: the pre-check passed again; table in `runs/contrib/small/all_results.md`, log `runs/contrib/contrib3.txt` on Quinn's PC. Taxes in all 28 saved solves, identical: tau_inc 0.382, tau_cg_bond 0.36, tau_cg_stock 0.36, cg_loss_offset 0, tau_wealth 0. Take-home at 25 checks by hand: 33,829 x (1 - 0.0844) x (1 - 0.382) = 19,141 in production, 33,829 x 0.618 = 20,906 without a pension.
+
+Replacement at 67, percent, mean / median over households (renters; owners are 0 to 9 points higher, most at 27.1% of all pay; both tenures in `all_results.md`):
+
+| Arm | Gross | Net |
+|---|---:|---:|
+| Production, 18.6% above 18,475 | 96.5 / 88.6 | 110.3 / 101.3 |
+| No pension saving | 30.7 / 30.7 | 30.7 / 30.7 |
+| 27.1% above 19,200 | 123.1 / 112.5 | 150.0 / 137.1 |
+| 27.1% of all pay | 173.9 / 158.2 | 238.6 / 217.0 |
+| 18.97% above 19,200 | 96.3 / 88.5 | 110.1 / 101.2 |
+| 18.97% of all pay | 134.0 / 121.4 | 165.3 / 149.9 |
+| 8.13% above 19,200 | 59.1 / 55.6 | 62.4 / 58.7 |
+| 8.13% of all pay | 76.1 / 70.1 | 82.8 / 76.4 |
+| Pay x1.271, 27.1% above 19,200 | 135.1 / 123.0 | 168.7 / 153.5 |
+| Pay x1.271, 27.1% of all pay | 175.5 / 158.9 | 240.8 / 218.0 |
+| Pay x1.0813, 18.97% above 19,200 | 99.4 / 91.1 | 114.3 / 104.7 |
+| Pay x1.0813, 18.97% of all pay | 134.2 / 121.6 | 165.6 / 150.1 |
+| Pay x1.0813, 8.13% above 19,200 | 60.3 / 56.7 | 63.9 / 60.0 |
+| Pay x1.0813, 8.13% of all pay | 76.1 / 70.2 | 82.9 / 76.4 |
+
+What it means: the AOW alone gives 30.7% (the `replacement` parameter). Production's pot (641k at 67) adds 66 points gross on average, so production replaces 96.5% of final gross pay and 110% of final take-home pay, since the contribution stops at 67. The mean sits 4 to 22 points above the median, more the bigger the pot: fund returns and final-pay shocks skew it. The pot grows untaxed at the glide's returns and earns the survival credit from 25, which is why even 18.6% above the franchise replaces about all of final pay. Net exceeds gross because take-home at 66 is net of the contribution as well as tax.
+Commit: this entry, pushed to branch `contrib-rates`; not on main.
+Open: as in the entry below; also, production's replacement of about 97% of final gross pay is high against the usual 70% ambition, and worth a look at the pot's return and survival credit before it goes in the paper.
+
 ### 2026-11-02 OP/NP contribution rates with income scaled by (1 + rate), small grid: results (spec: OP/NP contribution rates, with and without the franchise, small grid)
 Changed:
 - `diagnostics/pension_grid/case_params.m`: suffix `_ys<n>`, gross income times n/10000 at every age, through `dhs_price_factor` (it only sets the DHS cubic's level; `_ys` asserts `income_source` 'dhs'). Quinn: "we estimate an income polynomial based on income after the employee and employer contribution so the starting value should be increased. 1+rate should be used as it is in literature". Everything read off the profile follows: the contribution, tax, the Nibud house, the floor's share of pay (c_min stays EUR 5,000) and the AOW (replacement times final pay).
