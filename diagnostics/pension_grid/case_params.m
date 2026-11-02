@@ -124,7 +124,13 @@ function p = case_params(step, arm, name)
 %               income (c_min stays in euros) and the AOW (replacement times
 %               final pay). Done through dhs_price_factor, which only sets
 %               the cubic's level. It changes the model
-%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh, _dcfree, _g100, _grev, _fix, _nodc, _kb, _fr and _ys nothing here changes the model: only grid_dims,
+%     _yg<n>    gross pay grossed up by the franchise rule, gross_rate =
+%               n/10000: pay plus n/10000 times pay above the franchise in
+%               force at every age, (1 + n/10000) times pay with _fr0
+%               (Quinn, 2 November 2026: the gross-up based on the franchise
+%               as well). Everything read off the profile follows, as with
+%               _ys. It changes the model
+%   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh, _dcfree, _g100, _grev, _fix, _nodc, _kb, _fr, _ys and _yg nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   gh_n_reit, interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
 %   pi_nothing_saved and abs_node_test are set.
@@ -235,6 +241,11 @@ g = regexp(extra, '_ys(\d+)', 'tokens', 'once');
 if ~isempty(g)                                                             % gross income scaled at every age
     assert(strcmp(p.income_source, 'dhs'), 'case_params:ys', '_ys scales the DHS cubic: income_source must be ''dhs''');
     p.dhs_price_factor = p.dhs_price_factor * str2double(g{1}) / 1e4;
+end
+g = regexp(extra, '_yg(\d+)', 'tokens', 'once');
+if ~isempty(g)                                                             % pay grossed up by the franchise rule
+    assert(~contains(extra, '_ys'), 'case_params:yg', '_yg and _ys both gross up pay: use one');
+    p.gross_rate = str2double(g{1}) / 1e4;
 end
 p = config.derive(p);
 end

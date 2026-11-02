@@ -122,6 +122,16 @@ switch p.income_source
         error('income_profile:source', 'p.income_source must be ''dhs'', ''poly'' or ''table''.');
 end
 
+% Gross-up for contributions the source data had already deducted: pay plus
+% gross_rate times pay above the franchise, which is (1 + gross_rate) times
+% pay without one. A result saved before gross_rate existed has none.
+if isfield(p, 'gross_rate') && p.gross_rate > 0
+    assert(~strcmp(p.income_source, 'poly'), 'income_profile:poly_gross', ...
+        'gross_rate needs income in euros: use income_source = ''dhs'' or ''table''.');
+    Yw = exp(logY_work);
+    logY_work = log(Yw + p.gross_rate * max(Yw - p.franchise, 0));
+end
+
 logY = nan(T, 1);
 logY(work_idx) = logY_work;
 

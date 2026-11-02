@@ -21,7 +21,7 @@ end
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
           @reit_production, @reit_off_untouched, ...
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
-          @nibud_rule, @floor_derive, @dc_choice_param, @glide_age100};
+          @nibud_rule, @floor_derive, @dc_choice_param, @glide_age100, @gross_rate_param};
 if opts.solve
     checks = [checks, {@dc_choice_dominates, @dc_choice_smoke, ...
                        @collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
@@ -444,6 +444,25 @@ assert(max(abs(config.reit_effective(q) - q.reit_risky * ages / 100)) < 1e-12, '
 assert(~ladder.same_calibration(q, p), 'reverse is the same calibration as span');
 q.glide_rule = 'other';
 assert(threw_id(@() config.derive(q), 'derive:glide_rule'), 'derive took an unknown glide rule');
+end
+
+function gross_rate_param()
+% gross_rate is a primitive, off in production. A result saved before it
+% existed is production; one with it on is not. On, working pay is Y plus
+% gross_rate times pay above the franchise, (1 + gross_rate) Y without one,
+% and the AOW follows grossed-up final pay.
+p = config.params();
+assert(isfield(config.params(false), 'gross_rate') && p.gross_rate == 0, 'gross_rate is not an off primitive');
+assert(ladder.same_calibration(rmfield(p, 'gross_rate'), p), 'a result without gross_rate is not production');
+Y0 = exp(config.income_profile(p));
+q = p; q.gross_rate = 0.271; q = config.derive(q);
+assert(~ladder.same_calibration(q, p), 'gross_rate on is the same calibration as off');
+w = 1 : p.t_ret - 1;
+Y = exp(config.income_profile(q));
+assert(max(abs(Y(w) ./ (Y0(w) + 0.271 * max(Y0(w) - p.franchise, 0)) - 1)) < 1e-12, 'the gross-up above the franchise');
+assert(abs(Y(q.t_ret) / Y(q.t_ret - 1) - p.replacement) < 1e-12, 'the AOW does not follow grossed-up final pay');
+q.franchise = 0;
+assert(max(abs(exp(config.income_profile(q)) ./ Y0 - 1.271)) < 1e-12, 'without a franchise the gross-up is not (1 + rate)');
 end
 
 function dc_choice_dominates()

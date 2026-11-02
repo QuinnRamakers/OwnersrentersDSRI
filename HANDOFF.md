@@ -121,6 +121,56 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-02 OP/NP contribution rates: net replacement after housing (spec: none, asked by Quinn in Claude Code)
+No solves, no model code changed. Quinn: "net income with and without housing as separate columns". `table_all` in `runs/contrib.m` (not committed) adds a third replacement rate over career-average pay: net after housing, income after tax at 67 less housing costs (rent; maintenance plus the mortgage payment) over the household's average of the same at 25-66 (take-home pay less housing costs). No benchmark for it. Gross is before tax and housing; net is after tax (and the contribution while working) but before housing.
+Checks run: `contrib('small', solve = false, pages = false)` on the pod on the 34 saved solves: the pre-check passed, the taxes identical in all 34; `runs/contrib/small/all_results.md`, log `runs/contrib/contrib6.txt` on Quinn's PC.
+
+Net replacement before and after housing, over career-average pay, mean (median), renters / owners:
+
+| Arm | Net | Net after housing |
+|---|---:|---:|
+| Production, 18.6% above 18,475 | 112.2 / 112.4 | 106.1 (97.9) / 146.3 (137.0) |
+| No pension saving | 32.5 / 32.4 | -12.6 (-8.5) / 33.5 (33.0) |
+| 27.1% above 19,200 | 152.9 / 153.6 | 173.0 (156.5) / 208.7 (192.7) |
+| 18.97% above 19,200 | 112.0 / 112.2 | 105.7 (97.6) / 146.0 (136.8) |
+| 8.13% above 19,200 | 64.1 / 64.1 | 32.4 (33.7) / 76.9 (74.3) |
+| 8.13% of all pay | 84.6 / 84.7 | 63.2 (60.3) / 106.0 (99.8) |
+| Pay +27.1% above F, 27.1% above 19,200 | 165.2 / 165.9 | 191.6 (173.1) / 223.0 (205.6) |
+| Pay +8.13% above F, 18.97% above 19,200 | 114.5 / 114.7 | 109.9 (101.4) / 148.7 (139.3) |
+| Pay +8.13% above F, 8.13% above 19,200 | 65.0 / 65.0 | 34.7 (35.8) / 77.8 (75.1) |
+
+What it means: before housing the tenures replace the same share; after housing owners are 20-45 points ahead in every arm with a pension (least at 27.1% of all pay, most at 8.13% above the franchise). An owner's mortgage is paid off at 55, so at 67 only maintenance is left against a working-life average that carries 30 years of payments; a renter's rent keeps growing (0.99% a year, real) and stays. Without a pension a renter's income after tax and rent is negative at 67 (-12.6%): the AOW after tax does not cover the rent. For renters it rises above net only where the pension is large (27.1%, and 18.97% of all pay), because then the rent is a smaller share of retirement income than of take-home pay.
+Commit: this entry, pushed to branch `contrib-rates`; not on main.
+Open: as in the entries below.
+
+### 2026-11-02 OP/NP contribution rates: pay grossed up by the franchise rule, small grid (spec: none, asked by Quinn in Claude Code)
+Quinn: "run it with the income scaling being based on the franchise as well". With a franchise, (1 + rate) grossed pay up by more than the rule takes (open item 1 of the scaled-income entry below).
+Changed:
+- New primitive `gross_rate` (`config.params`, 0 in production): working pay on the deterministic profile becomes `Y + gross_rate * max(Y - franchise, 0)` in `config.income_profile`, `(1 + gross_rate) Y` without a franchise; the AOW, contribution, Nibud house and floor share follow. `ladder.same_calibration` reads a missing `gross_rate` as 0, so solves saved before it are production's. Row in CALIBRATION.md (Pension). Test `gross_rate_param` in `run_tests` (fast): off in production, a result without it is production, on is not, the gross-up rule to 1e-12, the AOW from grossed-up final pay, and (1 + rate) without a franchise.
+- `diagnostics/pension_grid/case_params.m`: suffix `_yg<n>` (`gross_rate` n/10000; with `_ys` an error).
+- `runs/contrib.m` (not committed): three arms, `_yg2710_kb2710_fr19200`, `_yg813_kb1897_fr19200`, `_yg813_kb813_fr19200`; the pre-check checks each arm's pay against its scale and gross-up; page `fig_contrib_<tenure>_grossup_franchise.png`. `runs/contrib.sh` (not committed).
+Checks run:
+- Quinn's PC (R2025b): `run_tests(solve=false)` 0 of 16 failed. Full `run_tests` on the pod (the same files, 32 threads, `runs/fulltests.txt` there): 0 of 31 failed, 2 skipped (`floor_off_identical` and `bequest_off_identical`, whose baseline solves are not named by `CGM_FLOOR_BASELINE` and `CGM_BEQUEST_BASELINE`), 11.0 minutes; the local full run passed its first 17 checks and was stopped as slower. `contrib('small', solve = false, pages = false)`: the pre-check passed for all 17 arms, both tenures. Pay over today's at 25 / 35 / 48 / 60 / 66: 27.1% gross-up 1.1172 / 1.1714 / 1.1851 / 1.1808 / 1.1792; 8.13% 1.0352 / 1.0514 / 1.0555 / 1.0542 / 1.0538. Contribution share of gross pay at the same ages: 27.1% 0.1333 / 0.1860 / 0.1985 / 0.1946 / 0.1932; 18.97% on the 8.13% gross-up 0.0857 / 0.1234 / 0.1327 / 0.1298 / 0.1287; 8.13% 0.0367 / 0.0529 / 0.0569 / 0.0556 / 0.0552. Pay at 25: 37,793 (27.1%) and 35,018 (8.13%), against 42,996 and 36,579 under (1 + rate).
+- DSRI pod, `/Solutionstorage/OwnersrentersDSRI_contrib` (a5de943 plus the changes above), `runs/contrib.sh`, 13:07-13:24 UTC, 32 threads: fast tests 0 of 16 failed; the 28 saved solves reused ("exists, skipped" 28 times); 6 new solves (renter 39-56 s, owner 226-235 s); 10 pages. Log `runs/contrib/contrib5.txt`, tables `runs/contrib/small/welfare.md` and `all_results.md` on Quinn's PC.
+- `model.checks`, the 6 new solves: offgrid [0 0 0 0], c_bound_25_39 0.0000 and thin_u1_40 0.00 in all; bankrupt household-years renters 0.0110-0.0378, owners 0.0012-0.0040.
+
+Results, renters / owners (welfare: certainty-equivalent consumption at 25 in euros, percent; replacement at 67 over career-average pay, mean, gap to 74.7% gross and 96% net in brackets):
+
+| Arm | Welfare vs production | Welfare vs no pension | Take-home at 25 (k EUR) | Gross replacement | Net replacement |
+|---|---:|---:|---:|---:|---:|
+| Pay +27.1% above F, 27.1% above 19,200 | +11.29 / +6.07 | +11.85 / -3.84 | 20.2 | 133.9 (+59.2) / 134.4 | 165.2 (+69.2) / 165.9 |
+| (1 + rate): pay x1.271, 27.1% above 19,200 | +18.23 / +12.07 | +18.82 / +1.60 | 22.6 | 138.1 (+63.4) / 138.7 | 171.7 (+75.7) / 172.6 |
+| Pay +8.13% above F, 18.97% above 19,200 | +5.52 / +5.22 | +6.05 / -4.61 | 19.8 | 100.0 (+25.3) / 100.2 | 114.5 (+18.5) / 114.7 |
+| (1 + rate): pay x1.0813, 18.97% above 19,200 | +8.01 / +7.49 | +8.55 / -2.55 | 20.6 | 101.2 (+26.5) / 101.4 | 116.1 (+20.1) / 116.3 |
+| Pay +8.13% above F, 8.13% above 19,200 | +6.35 / +14.59 | +6.88 / +3.88 | 20.8 | 61.5 (-13.2) / 61.5 | 65.0 (-31.0) / 65.0 |
+| (1 + rate): pay x1.0813, 8.13% above 19,200 | +8.81 / +17.52 | +9.35 / +6.54 | 21.7 | 62.0 (-12.7) / 62.0 | 65.6 (-30.4) / 65.6 |
+
+Behaviour (renters / owners): consumption at 25 8.9k / 10.3k, 8.9k / 10.5k and 9.5k / 11.3k for the three new arms; at 85 39.1k / 53.6k, 23.2k / 35.3k and 16.2k / 23.1k. Payout at 67 68.7k, 40.8k and 17.4k. Bankrupt by 95: 2.3% / 0.6%, 5.2% / 0.5%, 20.5% / 0.2%.
+
+What it means: grossing up by the franchise rule gives take-home pay of today's pay less rate^2 times pay above the franchise, after tax: 20.2k at 25 for 27.1% against no pension's 20.9k, where (1 + rate) gave 22.6k. That removes about 7 points of the 27.1% arm's gain for renters (+18.2 to +11.3) and 6 for owners (+12.1 to +6.1), and 2.3-2.9 points from the two arms on the 8.13% gross-up. The ranking holds: on the same 8.13% gross-up, 8.13% beats 18.97% for both tenures (renters +6.4 against +5.5, owners +14.6 against +5.2). Owners still lose against no pension at today's pay at 18.97% and 27.1%. Replacement rates move by 0.5-6.5 points (most for 27.1%, net): the gross-up raises pay and pot nearly in proportion.
+Commit: this entry, pushed to branch `contrib-rates`; not on main.
+Open: (1) A no-pension arm at grossed-up pay, if no pension should mean the employer pays the contribution as wages. (2) A lower income tax from 67, to meet both replacement benchmarks at once. (3) EUR 19,200 against 2025 euros; CALIBRATION.md gives EUR 19,172 for 2026. (4) Merge `contrib-rates` into main. (5) `runs/` scripts not committed.
+
 ### 2026-11-02 OP/NP contribution rates: replacement over career-average pay against a 74.7% gross and 96% net benchmark (spec: OP/NP contribution rates, with and without the franchise, small grid)
 No solves, no model code changed. Quinn gave a benchmark of 74.7% gross and 96% net, defined over lifetime average pay revalued with economy-wide wage growth ("workers earn the same percentage of average-worker earnings throughout their career. Therefore, final earnings are equal to lifetime average earnings revalued ..."). The model's pay is real with an age profile and shocks and no economy-wide wage growth, so the matching base is each household's plain average pay at 25-66. `table_all` in `runs/contrib.m` (not committed) adds that version: gross, the AOW plus the payout at 67 over average gross pay at 25-66; net, income after tax at 67 over average take-home pay at 25-66; mean and median over households not bankrupt at 67, with the gap to the benchmark.
 Checks run: `contrib('small', solve = false, pages = false)` on Quinn's PC (no solves there; ran without errors) and on the pod on the 28 saved solves (pre-check passed; `runs/contrib/small/all_results.md`, log `runs/contrib/contrib4.txt`).

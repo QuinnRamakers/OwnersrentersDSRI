@@ -57,6 +57,7 @@ p.corr_SH_rent  = 0.43;       % renter: corr(stock return, rent growth)
 % DC pension
 p.kappa_base = 0.186;         % contribution rate on income above the franchise (placeholder); 0 removes the DC pillar
 p.franchise  = 18475;         % AOW franchise, euros
+p.gross_rate = 0;             % pay grossed up by gross_rate times pay above the franchise ((1 + gross_rate) without one); 0 off
 p.glide_rule = 'span';        % 'span': min(glide_cap, years to retirement / glide_span), 0 from retirement; 'age100': (100 - age)/100 at every age; 'reverse': age/100 at every age
 p.glide_cap  = 0.8;           % fund risky share far from retirement
 p.glide_span = 35;            % fund risky share = min(glide_cap, years to retirement / glide_span)
