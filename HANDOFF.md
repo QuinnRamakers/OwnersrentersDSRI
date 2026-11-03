@@ -113,6 +113,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-03 Overlay figures with the legend in every panel (spec: none, asked by Quinn in Claude Code)
+No solves, no numbers changed. Quinn: "could you give me the old graphs but add the legend in all plots". `figures.compare` takes `legends=true` (default false, so other figures are unchanged): every panel with data gets the results' legend, drawn from stand-in lines in each result's style; panel (f) keeps its income lines. The corner is chosen in code (`quiet_corner`: fewest line points, never over a note or a labelled reference line), because `Location='best'` put legends in the wrong tiles of the invisible tiled figure. The change sits in one block at the end of the figure and one local function, away from the lines the `contrib-rates` branch changes in the same file. Redrawn with `runs/floor_maint_legends.m` (not committed): the renter and owner overlays of the larger-grid run below, as `<tenure>_floor_maint_legends.png` in `runs/floor_maint/pow3_32x8_lim_u3n40_qn4_as_nc11_gh3_beqb25/` on Quinn's PC.
+Checks run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_legends` (main 2ced150 plus the change), 13:40 UTC: `codeIssues` on the edited file and the script, 0 issues; both figures in 0.8 minutes; `run_tests(solve=false)` 0 of 15 failed. Both figures inspected: a legend in all 17 data panels of each, none over the median-u2 notes or the "all income" label.
+Commit: `+figures/compare.m` and this entry, pushed to main.
+Open: none.
+
 ### 2026-11-03 Owners on the purchase price with the floor at 5 quadrature nodes and 10 q points: plan and expectations before the run (spec: none, asked by Quinn in Claude Code)
 Quinn: "could you run one model for me with the original price floor with 5 quadrature notes and 10 points on this grid". No code change. Step 19 (production, REIT on), b = 2.5, owners, maintenance on the purchase price, the absorbing floor: case `pow3_32x8_lim_u3n40_qn9_as_nc11_gh5_beqb25`, that is the grid of the entry below with 5 nodes per shock (5^4 = 625 joint nodes, against 3^4 = 81) and q at 10 points (9 evenly spaced on [0, 2.5] plus q = 1, against 5). Read as 10 q points in all, since the solve log counts q = 1 in. Compared with the same case at 3 nodes and 5 q points (`pow3_32x8_lim_u3n40_qn4_as_nc11_gh3_beqb25`, solved today). Scripts `runs/pp_gh5.m` and `runs/pp_gh5.sh` (not committed), run on the pod in `/Solutionstorage/OwnersrentersDSRI_floormaint` (2ca114c; main differs only in HANDOFF).
 Expectations:

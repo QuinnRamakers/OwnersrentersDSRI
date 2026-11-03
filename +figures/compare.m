@@ -37,6 +37,9 @@ function fig = compare(rs, labels, ttl, file, opts)
 %   The settings box adds chi, b = chi^(1/gamma) and the mean and median
 %   bequest at death.
 %
+%   legends=true puts the results' legend in every panel with data, not only
+%   in the first; panel (f) keeps its income lines as well.
+%
 %   Levels are in thousands of euros (or CGM units) when every result has the
 %   same income units and entry income, and in multiples of entry income
 %   otherwise, so steps with different income units still line up.
@@ -46,6 +49,7 @@ arguments
     labels cell
     ttl = ''
     file = ''
+    opts.legends (1,1) logical = false
     opts.view (1,:) char {mustBeMember(opts.view, {'default', 'pension', 'bequest'})} = 'default'
 end
 
@@ -241,6 +245,27 @@ text(ax, 0, 1, L, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
     'FontSize', FS - 1.5, 'Interpreter', 'none', 'FontName', 'Consolas');
 title(ax, sprintf('(%s)  Settings and checks', letter(k)), 'FontSize', FT);
 
+% legends=true: every panel with data gets the results' legend, drawn from
+% stand-in lines in each result's style (every panel draws result i alike)
+if opts.legends
+    for ax = findall(fig, 'Type', 'axes', 'Visible', 'on').'
+        if isempty(findobj(ax, 'Type', 'line')), continue; end   % "No ... in these results"
+        hk = gobjects(1, 0); sk = cell(1, 0);
+        if ~isempty(ax.Legend)                                   % keep entries that are not results
+            keep = ~ismember(ax.Legend.String, labels);
+            hk = reshape(ax.Legend.PlotChildren(keep), 1, []); sk = ax.Legend.String(keep);
+            delete(ax.Legend);
+        end
+        loc = quiet_corner(ax);
+        hp = gobjects(1, n);
+        for i = 1:n
+            hp(i) = plot(ax, NaN, NaN, styles{i}, 'Color', cols(i, :), 'LineWidth', lw(i));
+        end
+        legend(ax, [hp, hk], [labels(:).', sk], 'Location', loc, 'FontSize', LFS, ...
+            'Interpreter', 'none', 'AutoUpdate', 'off');
+    end
+end
+
 if ~isempty(file)
     axs = findall(fig, 'Type', 'axes');
     for i = 1:numel(axs)
@@ -278,6 +303,34 @@ end
 function s = letter(k)
 % a, b, ..., z, then aa, ab, ...
 if k <= 26, s = char('a' + k - 1); else, s = [char('a' + floor((k - 1) / 26) - 1), char('a' + mod(k - 1, 26))]; end
+end
+
+function loc = quiet_corner(ax)
+% The corner of ax with the fewest drawn line points, for a legend, and none
+% of the notes (text in normalized units, labels of reference lines). 'best'
+% misplaces legends in an invisible tiled figure, so the corner is chosen here.
+x = []; y = [];
+for l = findobj(ax, 'Type', 'line').'
+    x = [x, l.XData(:).']; y = [y, l.YData(:).']; %#ok<AGROW>
+end
+xl = xlim(ax); yl = ylim(ax);
+if strcmp(ax.XScale, 'log'), x = log(x); xl = log(xl); end
+u = (x - xl(1)) / diff(xl); v = (y - yl(1)) / diff(yl);
+un = []; vn = [];                                % where the notes sit
+for t = findobj(ax, 'Type', 'text').'
+    if strcmp(t.Units, 'normalized'), un(end+1) = t.Position(1); vn(end+1) = t.Position(2); end %#ok<AGROW>
+end
+for c = findall(ax, 'Type', 'constantline').'
+    if ~isempty(c.Label) && strcmp(c.InterceptAxis, 'y')
+        un(end+1) = 0.5 * strcmp(c.LabelHorizontalAlignment, 'center') + strcmp(c.LabelHorizontalAlignment, 'right'); %#ok<AGROW>
+        vn(end+1) = (c.Value - yl(1)) / diff(yl); %#ok<AGROW>
+    end
+end
+C = {'northwest', 0, 1; 'northeast', 1, 1; 'southwest', 0, 0; 'southeast', 1, 0};
+near = @(a, b, cx, cy) sum(abs(a - cx) < 0.45 & abs(b - cy) < 0.4);
+cnt = cellfun(@(cx, cy) near(u, v, cx, cy) + 1e6 * near(un, vn, cx, cy), C(:, 2), C(:, 3));
+[~, i] = min(cnt);
+loc = C{i, 1};
 end
 
 % ------------------------------------------------------------------------
