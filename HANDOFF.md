@@ -1332,6 +1332,37 @@ Commit: this entry with CALIBRATION.md and TODO.md, pushed to main.
 Open: whether `sigma_l_log` is shared; then the code change in `config.params` and `+ladder/steps.m` (step 4 on).
 Update, same day: Quinn chose a DHS cubic estimated on owners and renters pooled, and will send the coefficients. CALIBRATION.md and TODO.md say so.
 
+### 2026-10-22 DSRI pipeline test after the pod was redeployed (spec: none, asked by Quinn in Claude Code)
+Quinn: test the DSRI connection. Sync the repo to /Solutionstorage/OwnersrentersDSRI, run the fast tests and a quick-grid solve there in the background, pull runs/ back. Only whether the pipeline works, not the results.
+Found: the `matlab` deployment was recreated on 22 October at about 15:00 UTC, image `mathworks/matlab:r2025a`. The PVC `matlab` (25 Gi) is now mounted at /home/matlab/persistent, and /Solutionstorage did not exist. The volume holds an old copy of the repo in `main/` (15 August) and the init container's empty `source/`, `results/`, `scripts/`. The image has no git and no rsync.
+Ran:
+1. `oc whoami`: P70093213, project sbe-guest-ovsr. `oc get pods -l app=matlab`: matlab-74dccbd887-zrfg5, Running, node c-0107, limits 32 CPU and 200 Gi.
+2. In the pod, a symlink /Solutionstorage -> /home/matlab/persistent (container filesystem, gone on restart). `git archive origin/main` (7b5143d) unpacked to /Solutionstorage/OwnersrentersDSRI, 159 files, no .git.
+3. `runs/dsri_test.sh`, detached, log `runs/dsri_test.txt`: `matlab -sd /Solutionstorage/OwnersrentersDSRI -batch 'disp(version); disp(utility.cpu_quota); assert(exist("fmincon") > 0); addpath tests; run_tests(solve=false)'`, then `run_model(config.params(), tag="dsri_test")` with CGM_STATE_GRID='8 6 6 4', CGM_GH_N=3, CGM_OUTPUT_DIR=/Solutionstorage/OwnersrentersDSRI/runs/dsri_test.
+4. Extra, log `runs/dsri_test_noassert.txt`: `license('test', ...)` for both toolboxes, then `run_tests(solve=false)` without the fmincon assert.
+5. `install_matlab.sh` with MATLAB_RELEASE R2025a and CGM_OUTPUT_DIR=/Solutionstorage, log `runs/install_matlab.txt`: mpm installed MATLAB, Optimization_Toolbox and Parallel_Computing_Toolbox to /Solutionstorage/matlab in 40 s, 7.4 GB (13 GB left on the volume).
+6. `runs/dsri_test.sh` again, now putting /Solutionstorage/matlab/bin first on PATH when it exists. Log `runs/dsri_test_run2.txt`; the first run's log is `runs/dsri_test_run1.txt`.
+7. `mpm install --release=R2025a --destination=/opt/matlab/R2025a --products Optimization_Toolbox Parallel_Computing_Toolbox`, log `runs/install_opt.txt`: 20 s. This is the container filesystem, so it is gone on a pod restart.
+8. `runs/dsri_test.sh` a third time, with /opt/matlab/R2025a/bin first on PATH. Log `runs/dsri_test.txt`.
+Results, first run (image MATLAB, /opt/matlab/R2025a):
+- `version`: 25.1.0.2973910 (R2025a) Update 1. `utility.cpu_quota`: 32.
+- `assert(exist("fmincon") > 0)` failed, so `run_tests` did not run in that command. `ver` lists MATLAB only; there is no toolbox/optim or toolbox/parallel.
+- The solve stopped after 2 s: "gcp requires Parallel Computing Toolbox" (`model.run`, line 34). Nothing was saved.
+- Extra: `license('test')` is 1 for Optimization_Toolbox and for Distrib_Computing_Toolbox. `run_tests(solve=false)`: 0 of 10 failed.
+Results, second run (PVC MATLAB):
+- The assert passed. `run_tests(solve=false)`: 0 of 10 failed.
+- Thread pool with 32 workers. Renter solved on 10 x 8 x 6 x 1 nodes, gh_n 3, in 42 s; 10,000 households simulated. Off-grid lookups 0; floor binds in 2.4% of household-years; thin u1 at 67% of ages 40+ (expected on this grid). Saved `runs/dsri_test/results_renter_dsri_test.mat`.
+- Then `figures.dashboard` failed at line 169: "exportgraphics: Input was not a valid graphics object". run_model stopped there, so the owner arm did not run and there is no PNG.
+- The export failure belongs to the PVC install, not to the code: a three-line figure test (`figure('Visible','off'); plot(1:3); exportgraphics`) fails the same way on /Solutionstorage/matlab, also with -softwareopengl and through the real path, and works on /opt/matlab/R2025a in the same container. The PVC install holds every file of the image's install plus the two toolboxes and CUDA/MPI libraries. Cause not found. A guess, not tested: the browser MATLAB that the image keeps running (matlab-proxy) owns the shared MathWorksServiceHost, registered for /opt/matlab/R2025a.
+Results, third run (image MATLAB with the toolboxes added):
+- `run_tests(solve=false)`: 0 of 10 failed.
+- Renter: solved in 42 s, printed table identical to the second run. Owner: 10 x 8 x 6 x 5 nodes, solved in 38 s; off-grid lookups 0; floor binds in 7.5% of household-years; thin u1 at 72% of ages 40+. `run_model` exit 0; tests and solve together took 1 min 52 s.
+- Saved in `runs/dsri_test/`: `results_renter_dsri_test.mat` and `.png`, `results_owner_dsri_test.mat` and `.png`. The owner dashboard has all twelve panels.
+What it means: the whole pipeline works on DSRI: connection, sync, license, `cpu_quota`, toolboxes, the 32-worker pool, both arms, and the dashboards. It works only with the image's MATLAB plus the two toolboxes, which a pod restart removes. After a restart: recreate the /Solutionstorage symlink, rerun the mpm line in step 7 (20 s), then `sh runs/dsri_test.sh`. The PVC install at /Solutionstorage/matlab (7.4 GB) solves but cannot export figures; it can be deleted or kept for solves only.
+Checks run: `run_tests(solve=false)` 0 of 10 failed on the pod, three times. `model.checks` not read; off-grid 0 and the floored shares are from the printed summaries.
+Commit: this entry and `install_matlab.sh` (release R2024b -> R2025a), on branch dsri-test-log from 7b5143d. The logs, .mat and .png files are in runs/ of the local checkout, not committed.
+Open: make the toolbox install survive a restart (an image with the toolboxes, or the mpm line in the pod's startup), or find why the PVC install cannot render.
+
 ### 2026-10-20 Step 16: share at the consumption floor by age, for the summary plots (spec: none, asked by Quinn in Claude Code)
 Quinn: the bankruptcy rates for the summary plots. The model's bankruptcy event is a floored household-year (liquid resources below phi_floor times income; consumption set to the floor, the shortfall forgiven). The dashboards print only the total.
 No new solve. New `diagnostics/nibud/floored_by_age.m`: the floored share by age for every solve behind `summary_step16/`. Output (gitignored): `summary_step16/16_floored_by_age.png`. Also drawn without a script: `summary_step16/income_profile_owner_renter.png`, the owner and renter income cubics of `config.params`.
