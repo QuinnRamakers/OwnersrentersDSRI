@@ -1363,6 +1363,24 @@ Checks run: `run_tests(solve=false)` 0 of 10 failed on the pod, three times. `mo
 Commit: this entry and `install_matlab.sh` (release R2024b -> R2025a), on branch dsri-test-log from 7b5143d. The logs, .mat and .png files are in runs/ of the local checkout, not committed.
 Open: make the toolbox install survive a restart (an image with the toolboxes, or the mpm line in the pod's startup), or find why the PVC install cannot render.
 
+### 2026-10-22 CLAUDE.md: running on the DSRI (spec: none, asked by Quinn in Claude Code)
+Quinn: the how-to works up to its section 3 (oc login, pod running); add the rules to CLAUDE.md and test.
+CLAUDE.md has a new section "Running on the DSRI", the rules of `docs/DSRI_HOWTO.md` section 5.1. Two changes against the guide's first version, made in both files: the sync rule checks `git status -sb --untracked-files=no`, since `demo - Copy/` and `demo - Copy.zip` are always untracked on the PC; and `MSYS_NO_PATHCONV=1` may come from `.claude/settings.json` or an `export` in each command.
+Not done: the `.claude/settings.json` change of the guide's section 5.2 (env line, oc permissions). This cloud session was not allowed to edit Claude Code's own settings; Quinn makes it on the PC.
+Not tested: the first test run (guide, section 5.3) needs Claude Code on the PC; this session has no VPN, `oc` or MATLAB.
+Checks run: none in MATLAB (not installed in this session). No `.m` file changed.
+Commit: this entry with `CLAUDE.md` and `docs/DSRI_HOWTO.md`, pushed to `claude/compassionate-mayer-dsb8m1`.
+Open: the first test run from the PC.
+
+### 2026-10-22 DSRI how-to for this repository (spec: none, asked by Quinn in Claude Code)
+Quinn: adapt the general how-to "Running Code on the DSRI with Claude Code" (a PDF for Python on a JupyterLab pod) to this project.
+New `docs/DSRI_HOWTO.md`, same eight sections as the original, rewritten for MATLAB on the DSRI Matlab template with the volume at `/Solutionstorage` (as in `bootstrap_pod.m`), Claude Code on Quinn's Windows PC in Git Bash, and this repo's rules: runs start from a pushed commit, the commit is the first line of each run log, `CGM_OUTPUT_DIR` is the repo folder on the pod so results land under `ladder/` as on the PC, `model.checks` read and the run logged here. Also: `MSYS_NO_PATHCONV=1` against Git Bash path rewriting, `nohup matlab -sd <repo> -batch`, `CGM_N_WORKERS` for two runs at once, the toolbox reinstall after a restart, the batch-mode licence. It holds a CLAUDE.md section and a `.claude/settings.json` (oc permissions, the env line) to copy in; neither is applied yet.
+Not tested on the DSRI: this session has no VPN, `oc` or MATLAB. The quoting of the run and toolbox-install commands was checked in bash with stand-ins for `oc`, `matlab`, `wget` and `sudo`: MATLAB receives `ladder.run(16, numerics="fine")` intact and starts in the repo folder. Two things only the first test run (section 5.3) can show: whether `matlab -batch` is licensed in the pod, and the pod's label (the guide assumes `app=cgm-matlab`).
+A PDF of the guide, `docs/DSRI_HOWTO.pdf`, is gitignored.
+Checks run: none in MATLAB (not installed in this session). No `.m` file changed.
+Commit: this entry with `docs/DSRI_HOWTO.md`, pushed to `claude/compassionate-mayer-dsb8m1`.
+Open: the pod label and licence (first test run); whether to add the CLAUDE.md section and settings.
+
 ### 2026-10-20 Step 16: share at the consumption floor by age, for the summary plots (spec: none, asked by Quinn in Claude Code)
 Quinn: the bankruptcy rates for the summary plots. The model's bankruptcy event is a floored household-year (liquid resources below phi_floor times income; consumption set to the floor, the shortfall forgiven). The dashboards print only the total.
 No new solve. New `diagnostics/nibud/floored_by_age.m`: the floored share by age for every solve behind `summary_step16/`. Output (gitignored): `summary_step16/16_floored_by_age.png`. Also drawn without a script: `summary_step16/income_profile_owner_renter.png`, the owner and renter income cubics of `config.params`.
