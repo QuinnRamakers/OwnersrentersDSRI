@@ -113,6 +113,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-09 Owners on the purchase price with the floor at 5 nodes and 5 q points: plan and expectations before the run (spec: none, asked by Quinn in Claude Code)
+Quinn: "Yes, run it", to the question whether to run 5 nodes at 5 q points to see whether the nodes cause the change in the liquid equity share (entry below). No code change. Step 19, b = 2.5, owners, purchase price, absorbing floor: `pow3_32x8_lim_u3n40_qn4_as_nc11_gh5_beqb25` (34x10x40x5, 625 joint nodes), so gh changes alone against the 3-node case and q changes alone against the 10-point case. Script `runs/gh_q.m` (the three cases as a list argument, overlay with `legends=true`, the table by age of `runs/pp_gh5.m`) and `runs/gh_q.sh` (not committed), run on the pod in `/Solutionstorage/OwnersrentersDSRI_legends` (main 2ced150 plus the legends change, the code of beb5545).
+Expectations:
+1. Time: between 8,800 s (half the 10-point solve, if time follows q points) and 11,100 s (1,443 s times 625/81, if it follows joint nodes), so 2.4-3.1 hours, done about 15:00-15:45 UTC.
+2. Results: the nodes move the equity share, q does not (the 26 October study, at the floor). So the new case lies close to the 10-point case: the liquid equity share within 0.05 of it at every age (0.43 at 45, 0.30 at 60), liquid saving within 5% of it where above EUR 1,000, ever bankrupt by 95 near 0.35%. Consumption within 1.3% of both. If it lies near the 3-node case instead (0.59 and 0.50), q moves the equity share and the 26 October finding does not hold on this grid. `model.checks` clean.
+Commit: this entry, pushed to main.
+
 ### 2026-11-09 Owners on the purchase price with the floor at 5 quadrature nodes and 10 q points: results (spec: none, asked by Quinn in Claude Code)
 The run planned on 3 November below. No code change. Step 19 (production, REIT on), b = 2.5, owners, purchase price, absorbing floor: `pow3_32x8_lim_u3n40_qn9_as_nc11_gh5_beqb25` (34x10x40x10, 625 joint nodes) against `pow3_32x8_lim_u3n40_qn4_as_nc11_gh3_beqb25` (34x10x40x5, 81 joint nodes).
 Checks run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_floormaint` (2ca114c plus `runs/pp_gh5.m`), 3 November 12:20-17:13 UTC, 32 threads, exit 0. Solve 17,559 s (292.7 minutes) against 1,443 s. `model.checks`: offgrid [0 0 0 0] and c_bound_25_39 0.0000 in both; household-years bankrupt 0.0023 against 0.0035. The overlay was redrawn with `legends=true` on 9 November in `/Solutionstorage/OwnersrentersDSRI_legends` (0.4 minutes). Log, dashboard `owner_pp_floor_gh5_q10.png` and overlays `owner_pp_floor_gh.png` and `owner_pp_floor_gh_legends.png` are in `runs/pp_gh5/` on Quinn's PC (from `/Solutionstorage/results/pp_gh5/`).
