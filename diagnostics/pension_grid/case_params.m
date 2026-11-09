@@ -251,9 +251,10 @@ p = config.derive(p);
 end
 
 function p = reit_tables(p)
-% The calibration tables' REIT moments (Table 1) and gross pooled correlations
-% (Table 3), production's values since step 19
-p.mu_REIT_level = 0.0543; p.sigma_REIT_level = 0.2448;
-p.corr_RL = 0.09; p.corr_RS = 0.76;
-p.corr_RH = 0.17; p.corr_RH_rent = 0.59;                                   % house price for owners, rent for renters
+% Production's REIT moments and correlations (step 19): Table 1 and, since
+% 9 November 2026, the gross whole-sample correlations of Table 6
+q = config.params(false);
+p.mu_REIT_level = q.mu_REIT_level; p.sigma_REIT_level = q.sigma_REIT_level;
+p.corr_RL = q.corr_RL; p.corr_RS = q.corr_RS;
+p.corr_RH = q.corr_RH; p.corr_RH_rent = q.corr_RH_rent;                    % house price for owners, rent for renters
 end

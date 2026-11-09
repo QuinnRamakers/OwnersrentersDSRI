@@ -1,8 +1,8 @@
 function kap = kappa_path(p)
 %KAPPA_PATH  1 x T row vector of effective DC contribution rates by period.
 %
-%   The contribution rate is franchise-based and therefore an age profile
-%   (config.derive builds p.kappa as a T x 1 vector). A scalar p.kappa is
+%   With a franchise the contribution rate is an age profile (config.derive
+%   builds p.kappa as a T x 1 vector); without one it is flat while working. A scalar p.kappa is
 %   expanded, with zeros from retirement on, matching the solver and
 %   simulator convention that contributions stop at t_ret.
 %

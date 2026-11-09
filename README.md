@@ -78,11 +78,11 @@ each checked on the baseline without the other:
 | 3 | `retire67` | 2 | retirement at 67 |
 | 4 | `income` | 3 | DHS income cubic in euros and permanent shock std, pooled: the same for owners and renters |
 | 5 | `market` | 4 | real rate 1.15%, equity premium 4.56%, equity vol 21.6% |
-| 6 | `corr_SL` | 5 | income-stock correlation 0.04 |
+| 6 | `corr_SL` | 5 | income-stock correlation 0.34 (whole sample) |
 | 7 | `housing` | 6 | housing at 4x entry income; house prices 3.73% (vol 8.35%), rents 0.99% (vol 1.79%); the mortgage payment a rate on the current house value |
 | 7b | `annuity` | 7 | the mortgage a real annuity on the purchase price, with q = H0/H as an owner's state; sensitivity: maintenance on the purchase price |
 | 8 | `housing_corr` | 7b | correlations of the house price (owners) or rent (renters) with income and stocks |
-| 9 | `dc_bonds` | 6 | DC contributions of 18.6% above the franchise, fund all in bonds, annuity at 67; first pillar still 68% |
+| 9 | `dc_bonds` | 6 | DC contributions of 10% of all pay (no franchise), fund all in bonds, annuity at 67; first pillar still 68% |
 | 10 | `dc_stocks` | 9 | DC fund all in stocks, in retirement too |
 | 11 | `dc_glide` | 10 | DC fund on the production glide (0.8, to 0 at 67, bonds in retirement) |
 | 12 | `aow` | 11 | first pillar at the AOW's 30.7% of final wage |
@@ -179,7 +179,7 @@ after each solve and shown on the dashboard).
   those years.
 - **The REIT share has no data source.** Production holds half the glide's risky
   share in the REIT since 29 October 2026 (ladder step 19), a choice made from
-  small-grid runs; its moments and correlations are the calibration tables'.
+  small-grid runs; its moments and correlations are the calibration notes' (Tables 1 and 6).
 
 ## The model in brief
 

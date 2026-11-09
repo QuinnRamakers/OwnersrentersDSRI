@@ -63,12 +63,14 @@ function params_derive()
 p = config.params();
 assert(isequaln(config.derive(p), p), 'derive changed an already-derived p');
 q = config.params();
-q.r = 0.02; q.retirement_age = 65; q.kappa_base = 0.1; q.h_rule = 'fixed'; q.h_fixed = 9;
+q.r = 0.02; q.retirement_age = 65; q.kappa_base = 0.2; q.h_rule = 'fixed'; q.h_fixed = 9;
 q = config.derive(q);
 assert(q.h_mult == 9, 'h_mult not rebuilt from h_fixed');
 assert(abs(q.Rf - 1.02) < 1e-15, 'Rf not rebuilt');
 assert(q.t_ret == 41 && numel(q.tau_S) == q.T - 1 && q.tau_S(41) == 0, 'glide not rebuilt');
-assert(all(q.kappa(q.t_ret:end) == 0) && max(q.kappa) < 0.1, 'kappa not rebuilt');
+assert(all(q.kappa(q.t_ret:end) == 0) && all(abs(q.kappa(1:q.t_ret-1) - 0.2) < 1e-15), 'kappa not rebuilt');
+q.franchise = 18475; q = config.derive(q);
+assert(all(q.kappa(q.t_ret:end) == 0) && max(q.kappa) < 0.2, 'kappa not rebuilt for the franchise');
 assert(abs(max(q.u1_grid) - 0.3) < 1e-12, 'u1 axis not rebuilt for h_mult');
 end
 
@@ -127,7 +129,7 @@ assert(strcmp(ladder.params('housing').mortgage, 'proportional') && ...
     strcmp(ladder.params('housing_corr').mortgage, 'annuity'), 'mortgage contract along the ladder');
 for k = ladder.index('dc_bonds') : ladder.index('aow')
     p = ladder.params(S(k).name);
-    assert(p.h_mult == 0 && p.kappa_base == 0.186, '%s: DC pillar without housing', S(k).name);
+    assert(p.h_mult == 0 && p.kappa_base == 0.10, '%s: DC pillar without housing', S(k).name);
 end
 for k = [ladder.index('housing'), ladder.index('annuity'), ladder.index('housing_corr')]
     p = ladder.params(S(k).name);
@@ -276,7 +278,7 @@ for k = [ladder.index('housing'), ladder.index('housing_corr')]
 end
 p = ladder.params('housing_corr'); q = p; q.is_owner = true;
 [a, b] = config.h_corr(p); [c, d] = config.h_corr(q);
-assert(isequal([a b c d], [0.06 0.43 0.09 0.24]), 'tenure selection of the housing correlations');
+assert(isequal([a b c d], [0.05 0.43 0.03 0.24]), 'tenure selection of the housing correlations');
 end
 
 function q_axis_where_live()
@@ -450,10 +452,12 @@ function gross_rate_param()
 % gross_rate is a primitive, off in production. A result saved before it
 % existed is production; one with it on is not. On, working pay is Y plus
 % gross_rate times pay above the franchise, (1 + gross_rate) Y without one,
-% and the AOW follows grossed-up final pay.
+% and the AOW follows grossed-up final pay. Production has no franchise since
+% 9 November 2026, so the rule above one is checked at EUR 18,475.
 p = config.params();
 assert(isfield(config.params(false), 'gross_rate') && p.gross_rate == 0, 'gross_rate is not an off primitive');
 assert(ladder.same_calibration(rmfield(p, 'gross_rate'), p), 'a result without gross_rate is not production');
+p.franchise = 18475; p = config.derive(p);
 Y0 = exp(config.income_profile(p));
 q = p; q.gross_rate = 0.271; q = config.derive(q);
 assert(~ladder.same_calibration(q, p), 'gross_rate on is the same calibration as off');

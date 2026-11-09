@@ -14,7 +14,9 @@ Two inputs carry a price year: the income profile's price factor
 (`dhs_price_factor` for the production DHS profile, `income_price_factor` for
 the BKV table) and `franchise`. They must move together, because the
 contribution rate compares income to the franchise and mixing years silently
-misstates it at every age. Everything else in `params.m` is a real or
+misstates it at every age. Production has no franchise since 9 November 2026
+(`franchise` = 0), so for now only the price factor carries a year; `c_min`
+and the Nibud table are euro amounts too. Everything else in `params.m` is a real or
 unit-free rate and has no price year. `b0`/`b_alt` are a ratio of same-year
 euros and so are price-level-free.
 
@@ -40,8 +42,8 @@ only come from a part-year CPI average that CBS will revise.
 The working-age profile is a cubic in age estimated on gross income (labour
 income and transfers: DHS gross without capital income, student support and
 inheritance) in the DNB Household Survey (DHS), ages 25–65, owners and renters
-pooled (calibration notes, `calibration_notes (2).pdf`, Table 2, gross income,
-column All):
+pooled (calibration notes, `calibration_notes (3).pdf`, Table 2, gross income,
+column All; the same in version 2):
 
 ```
 log y = a0 + a1 age + a2 age^2/10 + a3 age^3/100
@@ -98,20 +100,23 @@ is held flat at the age-64 value.
 
 ## Pension
 
-Contributions are levied on income above a franchise, so the effective rate on
-gross income rises with income and is an age profile rather than a scalar:
+The contribution rate on gross income is
 
 ```
 kappa_t = kappa_base * max(Y_t - F, 0) / Y_t
 ```
 
-giving about 10.0% at 25 rising to 14.0% at 50 on the owners' DHS profile, and
-7.2% rising to 12.0% at 49 on the renters'.
+with F the franchise. Production has no franchise since 9 November 2026 (Quinn:
+"set the contribution rate to 10% without the franchise correction"), so
+kappa_t = 10% of all pay at every working age, for both tenures. With a
+franchise the effective rate rises with income and is an age profile: at
+18.6% above EUR 18,475 (production until 9 November 2026) it was 8.4% at 25
+and 12.9% at 48 on the pooled DHS profile.
 
 | Parameter | Value | Source |
 |---|---|---|
-| `kappa_base` | 0.186 | Placeholder. OECD *Pensions at a Glance*: the 2022 country note gives 18.6% as the rate above the franchise; the 2025 edition (Table 3.4) repeats the number without restating that |
-| `franchise` | EUR 18,475 | Minimum AOW-franchise per 1-1-2025, art. 18a lid 3 Wet LB, Belastingdienst CAP. The 2026 figure is EUR 19,172 and belongs only with a 2026 income factor |
+| `kappa_base` | 0.10 | Quinn, 9 November 2026. No data source. Until then 0.186, from OECD *Pensions at a Glance*: the 2022 country note gives 18.6% as the rate above the franchise; the 2025 edition (Table 3.4) repeats the number without restating that. The OP/NP premium table of 2 November gives 27.1% in all, 18.97% employer and 8.13% employee, above EUR 19,200 |
+| `franchise` | 0 | None (Quinn, 9 November 2026). Until then EUR 18,475, the minimum AOW franchise per 1-1-2025 (art. 18a lid 3 Wet LB, Belastingdienst CAP); the 2026 figure is EUR 19,172 and belongs only with a 2026 income factor. Case suffix `_fr<n>` sets it |
 | `gross_rate` | 0 | Off in production. Pay at every working age becomes `Y + gross_rate * max(Y - franchise, 0)` on the deterministic profile, `(1 + gross_rate) Y` with no franchise: a gross-up for contributions the income data had already deducted (case suffix `_yg`; Quinn, 2 November 2026). The AOW, the contribution, the Nibud house and the floor's share follow the grossed-up profile. A modelling switch, no data source |
 | `glide_rule` | `'span'` | The shape of the glide: `'span'` the rule in the next row; `'age100'` (case suffix `_g100`) the "100 minus age" rule of thumb, a risky share of (100 - age)/100 at every age, retirement included (0.75 at 25, 0.33 at 67), for comparison (Quinn, 29 October 2026); `'reverse'` (case suffix `_grev`) its mirror, age/100 at every age (0.25 at 25, 0.67 at 67), risk rising with age, as a foil to the lifecycle rules (Quinn, 29 October 2026). No data source for any |
 | `glide_cap`, `glide_span` | 0.8, 35 | Fund risky share `min(0.8, years to retirement / 35)`: 0.8 until 39, linear to 0 at 67. A stylised lifecycle fund. Since 29 October 2026 half of it is in the REIT and half in stocks (`reit_risky`, below) |
@@ -122,7 +127,8 @@ giving about 10.0% at 25 rising to 14.0% at 50 on the owners' DHS profile, and
 household's realised income. A rate depending on realised `Y` would break the
 normalised state space, since only `lambda = Y/W` is a state and the euro level
 of `Y` is not. The calibration specifies `kappa_t` as an age profile, which is
-exactly this object.
+exactly this object. Without a franchise the question does not arise: the
+rate is the same for every household.
 
 The DC pot earns the survival credit 1/p_t from age 25, not only in
 retirement, and is converted at 67 into a variable annuity whose price `a_t`
@@ -139,8 +145,9 @@ annuity is still priced off the fund's shares, so the payout rule `A/a_t` does
 not change: a household that holds more risk in retirement gets payouts that
 are riskier and rise in expectation, instead of level ones.
 
-Open: `kappa_base` should be an aggregate participant-weighted rate across
-Dutch funds (DNB or Pensioenfederatie), not a single OECD figure.
+Open: `kappa_base` has no source. It should be an aggregate
+participant-weighted rate across Dutch funds (DNB or Pensioenfederatie), and
+on the same base as the franchise choice.
 
 ## REIT in the DC fund
 
@@ -159,17 +166,17 @@ REIT, so the annuity prices from 67 do not move.
 | `reit_risky` | 0.5 | Quinn, 29 October 2026, from the small-grid runs at 25%, 50% and 100% of the risky share (HANDOFF, 29 October): 50% raised the entry value of both tenures, renters by 0.38% and owners by 0.06%. No data source |
 | `tau_REIT` | 0 | A further REIT share at every age, retirement included; only `_reit<n>` sets it |
 | `reit_decum` | [] | No REIT in retirement |
-| `mu_REIT_level` | 0.0543 | Real return in euros less `r`, 2002–2024. Calibration tables, Table 1 |
+| `mu_REIT_level` | 0.0543 | Real return in euros less `r`, 2002–2024. Calibration notes, Table 1 |
 | `sigma_REIT_level` | 0.2448 | Same series, standard deviation. Table 1 |
-| `corr_RL` | 0.09 | REIT with the gross income shock, pooled, 2002–2023. Table 3 |
-| `corr_RS` | 0.76 | REIT with the stock return. Table 3 |
-| `corr_RH` | 0.17 | Owners: REIT with the house price. Table 3 |
-| `corr_RH_rent` | 0.59 | Renters: REIT with the rent. Table 3 |
+| `corr_RL` | 0.07 | REIT with the gross income shock, whole sample, 2002–2023. Table 6 (Quinn, 9 November 2026; 0.09 pooled, Table 3, before) |
+| `corr_RS` | 0.76 | REIT with the stock return. Table 6 (the same in Table 3) |
+| `corr_RH` | 0.17 | Owners: REIT with the house price. Table 6 |
+| `corr_RH_rent` | 0.59 | Renters: REIT with the rent. Table 6 |
 
 With these values the REIT's Sharpe ratio is 0.22 against 0.21 for stocks, at
 a correlation of 0.76 between the two. Table 5 gives the income correlations
-by tenure (REIT: owners 0.14, renters −0.22); the model uses the pooled values
-for every shock. The REIT shock takes `gh_n_reit` quadrature nodes (Numerics).
+by tenure (REIT: owners 0.14, renters −0.22); the model uses the whole-sample
+values (Table 6) for every shock. The REIT shock takes `gh_n_reit` quadrature nodes (Numerics).
 
 The REIT's moments are production's on every ladder step. With no share and no
 correlations nothing reads them, and the fourth shock is left out of the
@@ -231,22 +238,34 @@ are real, and the correlations come from the same pipeline as the moments.
 
 | Parameter | Value | Source |
 |---|---|---|
-| `r` | 0.0115 | Real NL 3-month interbank rate (FRED IR3TIB01NLM156N, monthly) deflated by the CBS CPI, mean 1982–2024. Calibration notes, Table 2 |
-| `mu_S_level` | 0.0456 | Real stock return less `r`, mean 2000–2024. Calibration notes, Table 2 |
-| `sigma_S_level` | 0.2161 | Standard deviation of real stock returns, 2000–2024. An arithmetic std, as `sigma_S_level` is. Calibration notes, Table 2 |
-| `mu_H_level` | 0.0373 | Real house-price growth, mean, NVM repeat sales of individual houses, 1996–2024. Calibration tables, Table 1 |
+| `r` | 0.0115 | Real NL 3-month interbank rate (FRED IR3TIB01NLM156N, monthly) deflated by the CBS CPI, mean 1982–2024. Calibration notes, Table 1 |
+| `mu_S_level` | 0.0456 | Real stock return less `r`, mean 2000–2024 (WRDS world Netherlands index, Compustat). Calibration notes, Table 1 |
+| `sigma_S_level` | 0.2161 | Standard deviation of real stock returns, 2000–2024. An arithmetic std, as `sigma_S_level` is. Calibration notes, Table 1 |
+| `mu_H_level` | 0.0373 | Real house-price growth, mean, NVM repeat sales of individual houses, 1996–2024. Calibration notes, Table 1 |
 | `sigma_H_level` | 0.0835 | Same series, standard deviation |
-| `mu_R_level` | 0.0099 | Real rent growth, mean, CBS regulated rent increase, 1983–2025. Calibration tables, Table 1 |
+| `mu_R_level` | 0.0099 | Real rent growth, mean, CBS regulated rent increase, 1983–2025. Calibration notes, Table 1 |
 | `sigma_R_level` | 0.0179 | Same series, standard deviation. See the caveat below |
-| `corr_SL` | 0.04 | Correlation of the permanent income shock with the stock return: gross income, pooled over all DHS households, 2002–2023 (T = 22). Calibration notes, Table 4. One value for both tenures |
-| `corr_HL`, `corr_HL_rent` | 0.09, 0.06 | Correlation of the H shock with income: house price for owners, rent for renters. Gross income, annual shocks 2002–2023 (T = 22). Calibration tables, Table 3 |
-| `corr_SH`, `corr_SH_rent` | 0.24, 0.43 | Correlation of the H shock with the stock return: house price for owners, rent for renters. Same source |
+| `corr_SL` | 0.34 | Correlation of the permanent income shock with the stock return: gross income, whole DHS sample, 2002–2023 (T = 22). Calibration notes, Table 6 (Quinn, 9 November 2026). One value for both tenures. Before: 0.04, the pooled owners and renters of the income sample (Table 3) |
+| `corr_HL`, `corr_HL_rent` | 0.03, 0.05 | Correlation of the H shock with income: house price for owners, rent for renters. Gross income, whole sample, annual shocks 2002–2023 (T = 22). Table 6. Before: 0.09 and 0.06 (Table 3) |
+| `corr_SH`, `corr_SH_rent` | 0.24, 0.43 | Correlation of the H shock with the stock return: house price for owners, rent for renters. Table 6 (the same in Table 3) |
 
 Table 1 reports means and standard deviations of annual real arithmetic growth
 rates, which is what the `_level` inputs take; `config.derive` turns them into
-the log-normal parameters. Table 3 also gives the house price–rent correlation
-(0.21) and the REIT's correlations; the first has no place in the model, since
-no household faces both processes; the REIT's are in the REIT section.
+the log-normal parameters. Its note also says the estimation "happened based on
+a log-process"; if the entries are log moments, `config.derive` takes off
+half the variance a second time (open, TODO.md section 2). Table 6 also gives
+the house price–rent correlation (0.21) and the REIT's correlations; the first
+has no place in the model, since no household faces both processes; the
+REIT's are in the REIT section.
+
+The correlations with income are the whole sample's (Table 6), while the
+income process itself is estimated on the owners and renters of Table 2
+(5,487 households, ages 25–65). Table 6 and Table 3 differ only in the income
+column: income with stocks 0.34 against 0.04, house price 0.03 against 0.09,
+REIT 0.07 against 0.09, rent 0.05 against 0.06. With T = 22, a correlation of
+0.34 is not significant at 10% (the notes mark none of the income column). Both
+tenures' joint correlation matrices are positive definite (smallest
+eigenvalue 0.19 owners, 0.18 renters).
 
 The correlations are wired through a Cholesky factor in both `grids.shock_grid`
 and `simulate.paths_lna`, so giving them values costs nothing in runtime or node
@@ -313,11 +332,12 @@ tenure; the rest of the model reads it, and `h_mult = 0` means no housing.
 | `sell_cost` | 0.025 | Seller transaction cost at bequest, Hambel et al. (2026). Inert while `chi = 0` |
 
 For a renter, `alpha` and `h_mult` enter only as the product `alpha * h_mult`:
-under the Nibud rule the rent at entry is 23.3% of gross income, about 25% of
-pay after contributions and 41% after the income tax as well. That committed
+under the Nibud rule the rent at entry is 25.3% of gross income, 28.1% of
+pay after contributions and 45.5% after the income tax as well (10% of all
+pay, 9 November 2026). That committed
 outflow, which the household cannot reduce, is what makes early life
 ill-conditioned at this calibration (README). The owner's equivalent is
-maintenance plus the mortgage payment, 30.8% of gross income at entry.
+maintenance plus the mortgage payment, 31.3% of gross income at entry.
 
 The mortgage is a real annuity on the purchase price: a constant real payment
 of `LTV * H0` times the annuity factor of an `N_mort`-year loan at `r_m`, so its
@@ -530,10 +550,10 @@ entry at 25 rather than 20, a terminal age of 100, Dutch unisex mortality, and
 no transitory income shock.
 
 The rest of the ladder: 4 income (the DHS values above), 5 market (`r`,
-`mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.04. From step 6 it
+`mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.34. From step 6 it
 branches. Housing: 7 housing (`h_fixed` 4 and the housing dynamics above, no
 housing correlations), 8 the housing correlations above. DC pension, without
-housing: 9 `kappa_base` 0.186 with an all-bond fund (`glide_cap` 0), 10 an
+housing: 9 `kappa_base` 0.10 of all pay with an all-bond fund (`glide_cap` 0), 10 an
 all-stock fund (`glide_cap` 1, `glide_span` 1, `tau_decum` 1), 11 the
 production glide above, 12 `replacement` 0.307. Retirement income stays at
 CGM's 68.2% of final income through step 11. Step 13 puts housing (step 8)
@@ -544,7 +564,7 @@ adds the absorbing floor, and 19 puts half the glide's risky share in the REIT
 (REIT section above).
 
 Around step 12, `ladder.sensitivity` moves `replacement` to 0.20 and 0.40 and
-`kappa_base` to 0.10 and 0.30, one at a time. These are illustrative values for
+`kappa_base` to 0.05 and 0.20 (half and twice production), one at a time. These are illustrative values for
 a sensitivity, not calibration.
 
 ## Numerics

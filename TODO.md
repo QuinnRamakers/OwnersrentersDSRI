@@ -12,8 +12,8 @@ things that are still open. The research evidence referred to is on the
 The decision everything else waits on. The calibration ladder stopped here, at
 step 7 (housing).
 
-At the production calibration a 25-year-old renter pays rent of about 41% of
-net income, 25% without the income tax (owners: maintenance and mortgage of a similar order), cannot reduce
+At the production calibration a 25-year-old renter pays rent of about 46% of
+net income, 28% without the income tax (owners: maintenance and mortgage of a similar order), cannot reduce
 it, and is protected by a floor of 1e-6 times income. With gamma = 5 that
 leaves the early-life value function without a limit: refining the grid, the
 quadrature or the node placement moves consumption and the equity share at
@@ -88,14 +88,17 @@ setting the floor also sets the search bound.
 | Input | Status |
 |---|---|
 | `h_mult` | Production uses the Nibud 2026 maximum mortgage at entry income (`h_rule = 'nibud'`, ladder step 16): 4.52 for both tenures, which share one income process since 29 October 2026; `h_fixed` 4.0 at steps 7-15 is a placeholder. To decide: the test rate (`r_m` is real, the norm's rate nominal); box 1 or box 3 (the model has no interest deduction); the 2025 tables for the price year; the EUR 17,000 increase; whether renters follow the rule. Still wanted: an income-contingent assignment fitted on LISS, with the Nibud rule as its ceiling |
-| `kappa_base` | Single OECD figure. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie) |
-| Housing level | `theta` 1.5% is a placeholder; `h_mult`, see above. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.48% (CALIBRATION.md). The housing dynamics and correlations are calibrated (Tables 1 and 3) |
+| `kappa_base` | 10% of all pay, no franchise, since 9 November 2026 (Quinn); no data source. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie), on the base it applies to (all pay or pay above a franchise) |
+| Housing level | `theta` 1.5% is a placeholder; `h_mult`, see above. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.48% (CALIBRATION.md). The housing dynamics and correlations are calibrated (calibration notes, Tables 1 and 6) |
+| Return moments | The notes' Table 1 says its entries are means and standard deviations of arithmetic returns, and also that "the estimation happened based on a log-process". `config.derive` treats them as arithmetic. If they are log moments, it takes half the variance off twice (stocks: a log mean of 3.5% instead of about 5.7%). Ask the author |
+| `r_m` | Table 1 lists 3.48% as the mortgage rate and describes it as the mean spread between the MIR home-purchase rate and the 3-month rate. CALIBRATION.md reads it as the total rate (r plus a spread of 2.33%). If 3.48% is the spread, `r_m` is 4.63% |
+| Income sample | The correlations with income are the whole sample's (Table 6, since 9 November 2026), the income process the owners and renters of Table 2 (5,487 households). Is there a whole-sample income process, or a reason the two samples differ? |
 | `b0`, `b_alt` | Placeholders. The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now the pooled DHS cubic (EUR 33,829 at 25 for both tenures, 2025 euros), so the denominator should follow |
-| REIT share | Production holds half the glide's risky share in the REIT since 29 October 2026 (ladder step 19, `reit_risky` 0.5), chosen from small-grid runs at 25%, 50% and 100%; the moments and correlations are the calibration tables' (CALIBRATION.md). Open: a data source for the share (the REIT weight in Dutch DC lifecycle funds); whether the fund should hold the REIT in retirement too (`_reit<n>`); 3 against 5 REIT quadrature nodes; step 19 has no full-grid solve yet |
+| REIT share | Production holds half the glide's risky share in the REIT since 29 October 2026 (ladder step 19, `reit_risky` 0.5), chosen from small-grid runs at 25%, 50% and 100%; the moments and correlations are the calibration notes' (Tables 1 and 6; CALIBRATION.md). Open: a data source for the share (the REIT weight in Dutch DC lifecycle funds); whether the fund should hold the REIT in retirement too (`_reit<n>`); 3 against 5 REIT quadrature nodes; step 19 has no full-grid solve yet |
 | `beta`, `chi` | Placeholders, no sourced value yet |
 | Box-3 regime | 36% on actual returns with no loss offset is in force; the wealth-tax alternative (`tau_wealth`) is off. Decide which regime the baseline represents |
 | `sex = 3` pooling | Currently a plain mean of the men's and women's series. Participation-weighted? Does a single-earner household want pooled individual wages, or household labour income? |
-| `tau_inc` | Should eventually be an effective average rate computed along the model's own income profile, not a single national statistic. DHS net over gross income at 25 (calibration notes, Table 3: 30,563 / 39,749 owners, 22,474 / 30,094 renters) implies about 23% for owners and 25% for renters, against the 38.2% the income-tax step applies |
+| `tau_inc` | Should eventually be an effective average rate computed along the model's own income profile, not a single national statistic. DHS net over gross income (calibration notes version 3, Table 2, All: 21,155 / 27,022 at 25, 34,218 / 48,366 at the peak) implies about 22% at 25 and 29% at the peak, against the 38.2% the income-tax step applies |
 
 ## 3. Where welfare is read
 
@@ -186,10 +189,11 @@ short list.
 
 - **Taxes.** The DC advantage is EET plus the box-3 shelter; state the
   mechanics, including the missing loss offset on the liquid account.
-- **Franchise.** Never stated, although `kappa_t` depends on it: EUR 18,475
-  (1-1-2025, art. 18a lid 3 Wet LB).
+- **Contributions.** State the rate and its base: 10% of all pay, no
+  franchise, since 9 November 2026 (before: 18.6% above EUR 18,475). The
+  draft's tables 7 and 8 call the old rule "Production".
 - **Price year.** 2025: the DHS income cubic is estimated in 2020 euros and
-  raised to 2025 by CPI (`dhs_price_factor`); the franchise is in 2025 euros.
+  raised to 2025 by CPI (`dhs_price_factor`).
 - **Entry state.** The initial liquid buffer is unstated and drives results.
 - **Off-by-ones.** The DHS sample ends at 65, so the cubic is extrapolated one
   year to 66, the last working year; `tau` has `T-1` transitions.

@@ -258,8 +258,12 @@ if d.has_pension
     glide = sprintf('glide %.2f', p.glide_cap);
     if isfield(p, 'glide_rule') && strcmp(char(p.glide_rule), 'age100'), glide = 'glide 100 - age'; end
     if isfield(p, 'glide_rule') && strcmp(char(p.glide_rule), 'reverse'), glide = 'reverse glide, age/100'; end
-    L{end+1} = sprintf('DC: \\kappa_t=%.1f-%.1f%% of gross (franchise-based), %s', ...
-        100 * min(kapw), 100 * max(kapw), glide);
+    if p.franchise > 0
+        L{end+1} = sprintf('DC: \\kappa_t=%.1f-%.1f%% of gross (franchise EUR %.0f), %s', ...
+            100 * min(kapw), 100 * max(kapw), p.franchise, glide);
+    else
+        L{end+1} = sprintf('DC: \\kappa=%.1f%% of all pay, %s', 100 * max(kapw), glide);
+    end
     if isfield(p, 'dc_choice') && p.dc_choice
         L{end+1} = 'Free DC choice: the household picks the fund''s stock and REIT shares at every age';
     end

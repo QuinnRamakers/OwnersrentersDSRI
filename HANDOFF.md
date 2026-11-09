@@ -10,6 +10,12 @@ Rules:
 
 ## Specs (from chat)
 
+### 2026-11-09 Whole-sample income correlations, 10% of all pay, the branches merged
+Asked by Quinn in Claude Code on 9 November ("Use the full population income and correlation matrix, set the contribution rate to 10% without the franchise correction. merge all the branches. if there are inconsitentcies in the in the calibration let me know"), from `calibration_notes (3).pdf`. Claude Code wrote it here in short.
+Change: production and the ladder together. Income: Table 2, gross, All (owners and renters together) is production already; no change. Correlations: Table 6 (gross income, whole sample): `corr_SL` 0.34 (was 0.04), `corr_HL` 0.03 (0.09), `corr_HL_rent` 0.05 (0.06), `corr_RL` 0.07 (0.09); the others are the same in Tables 3 and 6. Ladder steps 6, 8 and 19. Contributions: `kappa_base` 0.10 (was 0.186) and `franchise` 0 (was EUR 18,475); ladder steps 9 and 13; step 12's sensitivity on `kappa_base` moves from 0.10 and 0.30 to 0.05 and 0.20. Branches: `contrib-rates` and every branch with work not on main merged into main, except `edge-fix` (rejected by Quinn on 25 October) and `solver-active-set` (the September research snapshot, tag `research-2026-09`), which wait for Quinn.
+Why: Quinn's choice of the notes' whole-sample correlations and a flat contribution rate; one branch to read from.
+Checks that must pass: `run_tests(solve=false)` and the full `run_tests` 0 failures; both tenures' joint correlation matrices positive definite and the shock grids built; the last ladder step equal to `config.params`.
+
 ### 2026-11-02 OP/NP contribution rates, with and without the franchise, small grid
 Asked by Quinn in Claude Code on 2 November ("run the current version with the contribution rates of 27.1, 18.97, 8.13 separately, both with and without the franchise correction ... Do not run it on the full grid ... but a smaller sized one"), from an OP/NP premium table (total 27.1%, employer 18.97%, employee 8.13%, franchise EUR 19,200). Claude Code wrote it here in short.
 Change: case suffixes `_kb<n>` (`kappa_base` n/10000) and `_fr<n>` (`franchise` in euros, 0 for none) in `diagnostics/pension_grid/case_params.m`. Production unchanged. Six arms, step 19 at b = 2.5, both tenures, against production and `_nodc`: 27.1%, 18.97% and 8.13%, each above EUR 19,200 and on all of pay. The mechanics stay production's: the contribution comes out of take-home pay before tax and goes into the pot; income is not scaled. Scripts `runs/contrib.m` and `runs/contrib.sh`.

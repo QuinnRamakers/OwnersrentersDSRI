@@ -101,9 +101,9 @@ switch p.income_source
         % euros. Shifts the whole relative growth series to pass through
         % it; p.income_price_factor then rescales to 2025 prices.
         %
-        % The euro level matters only because the contribution rate is
-        % franchise-based -- the model is otherwise homothetic in W. See
-        % CALIBRATION.md.
+        % The euro level matters only because the franchise, the Nibud
+        % rule and c_min are in euros -- the model is otherwise homothetic
+        % in W. See CALIBRATION.md.
         switch p.sex
             case 1
                 anchor_age = 25; anchor_level = 33000;
