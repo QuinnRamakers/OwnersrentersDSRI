@@ -146,7 +146,7 @@ These are the commands Claude Code runs on your behalf, in Git Bash from the rep
 
 ```bash
 export MSYS_NO_PATHCONV=1          # Git Bash: leave /Solutionstorage paths alone
-POD=$(oc get pods -l app=matlab -o name | head -1 | cut -d/ -f2)
+POD=$(oc get pods -l app=cgm-matlab -o name | head -1 | cut -d/ -f2)
 REPO=/Solutionstorage/OwnersrentersDSRI
 
 # 0. the run starts from a pushed commit
@@ -203,7 +203,7 @@ The how-to is `docs/DSRI_HOWTO.md`.
   cannot reach the DSRI.
 - Before any DSRI work, run `oc whoami`. If it fails, stop and ask Quinn to log in
   again and to check the VPN. Do not retry.
-- Pod: `oc get pods -l app=matlab -o name`. Never hard-code the pod name; it
+- Pod: `oc get pods -l app=cgm-matlab -o name`. Never hard-code the pod name; it
   changes on every restart.
 - Remote folder: `/Solutionstorage/OwnersrentersDSRI`, the only persistent place.
   Run there with `CGM_OUTPUT_DIR` set to it, so results land under `ladder/` as on
@@ -337,7 +337,7 @@ A licence error at the first step means section 2.5. A missing `fmincon` means s
 export MSYS_NO_PATHCONV=1                                             # Git Bash
 oc login https://api.dsri.unimaas.nl:6443 --token=<TOKEN>             # log in
 oc whoami                                                             # check login
-POD=$(oc get pods -l app=matlab -o name | head -1 | cut -d/ -f2)  # find pod
+POD=$(oc get pods -l app=cgm-matlab -o name | head -1 | cut -d/ -f2)  # find pod
 REPO=/Solutionstorage/OwnersrentersDSRI
 oc rsync ./ $POD:$REPO/ --exclude=.git ... (section 4)                # push code
 oc exec $POD -- bash -c "cd $REPO && CGM_OUTPUT_DIR=$REPO \
