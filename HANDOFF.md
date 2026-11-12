@@ -36,6 +36,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-12 DSRI how-to without GitHub (spec: none, asked by Quinn in Claude Code)
+Quinn: the guide for a person with no git or GitHub account, so that the code is not in a repository on the internet; Claude Code's own traffic to Anthropic stays as it is.
+`docs/DSRI_HOWTO.md` rewritten for that setup: git only on the laptop, no remote; code sent to the pod with `oc rsync` from a committed tree; results on the pod and the laptop. New: "What you need" (UM account with DSRI access, VPN, a Claude account, the UM MATLAB licence; no GitHub account), Git for Windows in 2.2, section 2.6 "The project folder" (`git init`, check and remove a remote, local name and email, first commit), the lines of CLAUDE.md and the session-end skill that assume GitHub with their replacements (5.1), two troubleshooting rows, and a backup of the history as a `git bundle` on the volume. `bootstrap_pod.m` and `setup_cluster.sh` are marked as not used, since they download from GitHub. Section numbers 2.4 (toolboxes) and 2.5 (licence) are unchanged, so the reference in CLAUDE.md still holds. The quoted CLAUDE.md and session-end lines were checked against the current files.
+Not changed: this repository's own CLAUDE.md section "Running on the DSRI" (on this branch only), which still describes Quinn's setup with GitHub.
+PDF rebuilt, `docs/DSRI_HOWTO.pdf` (gitignored), 11 pages.
+Checks run: none in MATLAB (not installed in this session). No `.m` file changed.
+Commit: this entry with `docs/DSRI_HOWTO.md`, pushed to `claude/compassionate-mayer-dsb8m1`.
+Open: none from this change.
+
 ### 2026-10-22 CLAUDE.md: running on the DSRI (spec: none, asked by Quinn in Claude Code)
 Quinn: the how-to works up to its section 3 (oc login, pod running); add the rules to CLAUDE.md and test.
 CLAUDE.md has a new section "Running on the DSRI", the rules of `docs/DSRI_HOWTO.md` section 5.1. Two changes against the guide's first version, made in both files: the sync rule checks `git status -sb --untracked-files=no`, since `demo - Copy/` and `demo - Copy.zip` are always untracked on the PC; and `MSYS_NO_PATHCONV=1` may come from `.claude/settings.json` or an `export` in each command.
