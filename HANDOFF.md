@@ -119,6 +119,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-13 fast_power off and on, a quick timing on the production calibration (spec: none, asked by Quinn in Claude Code)
+Changed: nothing in the code. Timing run only.
+Checks run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_fptime` (0e24d68 plus `runs/fp_timing.m`, not committed), 13 November, 32 threads, no other solve on the pod. Production `config.params` with grid 16x8x20x4, gh_n 3; `model.run` with `fast_power` off then on, one MATLAB. Owner: solve 370.2 s off, 258.2 s on, 1.43 times faster; `ce_entry` 0.35862265 and 0.35862266, c_bound_25_39 0.000007 both, offgrid [0 0 0 0] both. Renter: 58.6 s off, 39.4 s on, 1.49 times faster; `ce_entry` 0.33589557 both, c_bound_25_39 0, offgrid [0 0 0 0]. The gain is smaller than on 34x10x40x5 (1.75 at 3 nodes, 2.01 at 5) because on a coarse grid a smaller share of the time is in the powers. Locally `run_tests(solve=false)`: 0 of 16 failed.
+Commit: this entry, pushed to main.
+Open: none from this run.
+
 ### 2026-11-13 Runtime work summarised; prompt for the order of the correlated draws saved, not started (spec: none, asked by Quinn in Claude Code)
 Changed: added `docs/RUNTIME_2026-11-13.md` (what was measured on 12-13 November, what `fast_power` changes, what was measured and not changed, what is open) and `docs/prompts/cholesky_order.md` (the order of the Cholesky draws and retired ages without the income draw: the problem, what is known, the decisions for Quinn, a measuring part and a code part, the checks). No code change.
 Checks run: none; no code or parameter changed.
