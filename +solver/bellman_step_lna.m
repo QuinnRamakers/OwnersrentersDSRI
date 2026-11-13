@@ -69,6 +69,13 @@ function [V_t, c_pol, pi_pol, tau_pol, reit_pol] = bellman_step_lna(t, V_next, p
 %   one (p.chi > 0) the last period is solved as any other, without a
 %   continuation (p_surv(T) = 0): the household chooses c and pi, and the
 %   bequest earns a year's returns and is discounted by beta, as before.
+%
+%   The objective takes x.^(1-gamma) of the continuation and of the bequest
+%   at every quadrature node of every candidate, which was more than half of
+%   the solve time. With p.fast_power, and 1 - gamma a negative integer, the
+%   power is taken by repeated multiplication (upow): the same number to
+%   within two units in the last digit, about 80 times faster. With it off,
+%   or with any other gamma, it is MATLAB's power, as before 13 November 2026.
 
 if nargin < 7, pol_next = []; end              % the last period has no next policy
 [g1, g2] = utility.grid_at(p, t);              % this period's points (they can follow age)
@@ -280,6 +287,13 @@ if absorbing && p.abs_node_test && ~last
     nx = struct('on', true, 'y1', y1, 'a1', a1, 'm1', m1, 'h1', 0, ...
                 'phi1', p.phi_path(t1), 'Dfac', p.D_beq(t1) ^ inv_omg);
 end
+% nx also carries the rule for the powers over the quadrature nodes (upow):
+% pw = gamma - 1 when p.fast_power is on and that is an integer from 1 to 32,
+% else 0, MATLAB's power. A p-struct saved before fast_power existed has none.
+nx.pw = 0;
+if isfield(p, 'fast_power') && p.fast_power && one_m_g == round(one_m_g) && one_m_g <= -1 && one_m_g >= -32
+    nx.pw = -one_m_g;
+end
 
 n_states = numel(Lam_all);
 lam_pts = Lam_all(:);
@@ -392,11 +406,11 @@ for iq = slices
                 u2_0   = max(min(denAH0 ./ max(denAH0, 1e-12), 1), 0);
                 u3_0   = max(min(A_next_W ./ max(denAH0, 1e-12), 1), 0);
                 z_0    = z_at(pp_z, u1_0, u2_0, u3_0, q_n);
-                val    = val + beta_eff * sum(w_join .* ((W_g0 .* z_0) .^ one_m_g / one_m_g));
+                val    = val + beta_eff * sum(w_join .* (upow(W_g0 .* z_0, one_m_g, nx.pw) / one_m_g));
             end
             if beq_eff > 0
                 beq_base = max(h_beq_fac * H_next_W, FLOOR_EPS);
-                val = val + beq_eff * sum(w_join .* (beq_base .^ one_m_g / one_m_g));
+                val = val + beq_eff * sum(w_join .* (upow(beq_base, one_m_g, nx.pw) / one_m_g));
             end
             if free_dc && A_next_pre_return > 0
                 % Nothing saved, but the pot is still invested: the shares alone.
@@ -667,12 +681,32 @@ if beta_eff > 0
     if nx.on
         CE_n = bankrupt_nodes(CE_n, X_next, A_next, H_next_W, Y_next_W, nx);
     end
-    rhs = rhs + beta_eff * (w.' * (CE_n .^ one_m_g / one_m_g)).';
+    rhs = rhs + beta_eff * (w.' * (upow(CE_n, one_m_g, nx.pw) / one_m_g)).';
 end
 if beq_eff > 0
     beq_base = max(X_next + h_beq_fac * H_next_W, beq_lo);
-    rhs = rhs + beq_eff * (w.' * (beq_base .^ one_m_g / one_m_g)).';
+    rhs = rhs + beq_eff * (w.' * (upow(beq_base, one_m_g, nx.pw) / one_m_g)).';
 end
+end
+
+% ------------------------------------------------------------------------
+function y = upow(x, e, k)
+%UPOW  x.^e over the quadrature nodes. k = 0: MATLAB's power. k > 0, with
+%   e = -k an integer: 1 ./ x^k by repeated squaring and multiplication,
+%   which differs from x.^e by at most a few units in the last digit.
+if k == 0
+    y = x .^ e;
+    return
+end
+b = x; y = 1; first = true;
+while k > 0
+    if mod(k, 2) == 1
+        if first, y = b; first = false; else, y = y .* b; end
+    end
+    k = floor(k / 2);
+    if k > 0, b = b .* b; end
+end
+y = 1 ./ y;
 end
 
 % ------------------------------------------------------------------------
@@ -767,13 +801,13 @@ if beta_eff > 0
     if nx.on
         CE_n = bankrupt_nodes(CE_n, X_next_W, A_next_W, H_next_W, Y_next_W, nx);
     end
-    V_n      = CE_n .^ one_m_g / one_m_g;
+    V_n      = upow(CE_n, one_m_g, nx.pw) / one_m_g;
     EV       = sum(w .* V_n);
     rhs_val  = rhs_val + beta_eff * EV;
 end
 if beq_eff > 0
     beq_base = X_next_W + h_beq_fac * H_next_W;
-    beq_n    = beq_base .^ one_m_g / one_m_g;
+    beq_n    = upow(beq_base, one_m_g, nx.pw) / one_m_g;
     E_beq    = sum(w .* beq_n);
     rhs_val  = rhs_val + beq_eff * E_beq;
 end
@@ -823,12 +857,12 @@ for r = 1:4
         if nx.on
             CE_n = bankrupt_nodes(CE_n, X_next, A_next_W, H_next_W, Y_next_W, nx);
         end
-        V_n    = CE_n .^ one_m_g / one_m_g;
+        V_n    = upow(CE_n, one_m_g, nx.pw) / one_m_g;
         rhs    = rhs + beta_eff * (w.' * V_n).';
     end
     if beq_eff > 0
         beq_base = X_next + h_beq_fac * H_next_W;
-        rhs = rhs + beq_eff * (w.' * (beq_base .^ one_m_g / one_m_g)).';
+        rhs = rhs + beq_eff * (w.' * (upow(beq_base, one_m_g, nx.pw) / one_m_g)).';
     end
     [mv, im] = max(rhs);
     if mv > v_b

@@ -120,6 +120,7 @@ p.fmincon_algorithm = 'active-set';   % local solve: 'active-set', 'interior-poi
 p.fmincon_objective = 'ce';   % what fmincon minimises: 'ce' (certainty-equivalent units) or 'utility'
 p.interp_method = 'linear';   % continuation interpolant: 'linear', 'makima' or 'spline'
 p.pi_nothing_saved = 'limit'; % equity share stored where nothing is saved: 'limit' (the first euro's share) or 'one'
+p.fast_power    = true;       % x.^(1-gamma) over the quadrature nodes by repeated multiplication when 1-gamma is a negative integer; false: MATLAB's power
 p.lambda_lo     = [];         % bottom of the u1 axis; [] = 0.0008, or 0.0002 with housing
 p.lambda_hi     = [];         % top of the u1 axis; [] = min(0.9, 3/(1+h_mult)), or 1 without housing
 p.grid_pow      = 3;          % > 1 bunches u1 nodes toward the bottom

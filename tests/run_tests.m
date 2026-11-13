@@ -21,13 +21,13 @@ end
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
           @reit_production, @reit_off_untouched, ...
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
-          @nibud_rule, @floor_derive, @dc_choice_param, @glide_age100};
+          @nibud_rule, @floor_derive, @dc_choice_param, @glide_age100, @fast_power_param};
 if opts.solve
     checks = [checks, {@dc_choice_dominates, @dc_choice_smoke, ...
                        @collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
                        @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test, ...
-                       @bequest_off_identical, @bequest_last_year, @bequest_bankrupt}];
+                       @bequest_off_identical, @bequest_last_year, @bequest_bankrupt, @fast_power_step}];
     % Some checks call the solver without model.run, so parfor would open
     % MATLAB's default pool: processes, which run out of memory on the DSRI
     % pod. Open the thread pool model.run uses instead.
@@ -494,6 +494,53 @@ for owner = [false true]
 end
 end
 
+function fast_power_param()
+% fast_power is a numerics primitive, on in production. A result saved before
+% it existed took the powers with MATLAB's power: it is the same calibration
+% as production with fast_power off, and not as production. derive refuses
+% anything but true or false.
+p = config.params();
+assert(isfield(config.params(false), 'fast_power') && p.fast_power, 'fast_power is not an on primitive');
+old = rmfield(p, 'fast_power');
+assert(~ladder.same_calibration(old, p), 'a result without fast_power is production');
+q = p; q.fast_power = false;
+assert(ladder.same_calibration(old, q), 'a result without fast_power is not production with it off');
+q.fast_power = 2;
+assert(threw_id(@() config.derive(q), 'derive:fast_power'), 'derive took fast_power = 2');
+end
+
+function fast_power_step()
+% The powers of the objective by multiplication. Owner with a bequest motive
+% on a small grid; the ages 99 and 98 are solved with fast_power off and on
+% from the same continuation. With gamma = 5 the two differ (the rule is in
+% use), the value agrees to rounding at the median node, and it differs by
+% more than 1e-6 at under 2% of the nodes: the search can settle on another
+% point where two choices tie. With gamma = 5.5 the rule does not apply and
+% the two are identical in every bit.
+for g = [5 5.5]
+    p = config.params(false); p.is_owner = true; p.gamma = g; p.chi = 2.5 ^ g;
+    p.grid_dims = [6 5 4 3]; p.gh_n = 3; p.fast_power = false; p = config.derive(p);
+    q = p; q.fast_power = true;
+    [pf, sk, an] = config.model_inputs(p);
+    [V, c, pi_] = solver.bellman_step_lna(p.T, [], p, pf, sk, an);
+    for t = p.T - 1 : -1 : p.T - 2
+        pol = struct('c', c, 'pi', pi_);
+        [Va, ca, pa] = solver.bellman_step_lna(t, V, p, pf, sk, an, pol);
+        [Vb, cb, pb] = solver.bellman_step_lna(t, V, q, pf, sk, an, pol);
+        same = isequaln(Va, Vb) && isequaln(ca, cb) && isequaln(pa, pb);
+        if g == 5
+            d = abs(Vb(:) ./ Va(:) - 1);
+            assert(~same, 't = %d: fast_power changed nothing at gamma = 5', t);
+            assert(all(isfinite(Vb(:))) && median(d) < 1e-12 && mean(d > 1e-6) < 0.02, ...
+                't = %d: median gap %.2g, share over 1e-6 %.3f', t, median(d), mean(d > 1e-6));
+        else
+            assert(same, 't = %d: fast_power changed the step at gamma = 5.5', t);
+        end
+        V = Va; c = ca; pi_ = pa;
+    end
+end
+end
+
 function tf = threw_id(f, id)
 tf = false;
 try
@@ -657,7 +704,8 @@ function floor_off_identical()
 % are bit-identical to the solve saved at 7b5143d (CGM_FLOOR_BASELINE), with
 % that solve's search routine (interior-point, N_c 41, the default until 24
 % October 2026) and grid placement (even u1 and u2, pi = 1 where nothing is
-% saved, the default until 26 October 2026).
+% saved, the default until 26 October 2026) and MATLAB's power (fast_power
+% off, the only rule until 13 November 2026).
 file = getenv('CGM_FLOOR_BASELINE');
 if isempty(file) || ~isfile(file)
     error('run_tests:skip', 'CGM_FLOOR_BASELINE does not name the solve saved at 7b5143d');
@@ -667,7 +715,7 @@ for owner = [false true]
     p = ladder.params(16); p.is_owner = owner;
     p.grid_dims = [8 6 6 4]; p.gh_n = 3;
     p.fmincon_algorithm = 'interior-point'; p.N_c = 41;
-    p.grid_pow = 1; p.grid_pow_u2 = 1; p.pi_nothing_saved = 'one';
+    p.grid_pow = 1; p.grid_pow_u2 = 1; p.pi_nothing_saved = 'one'; p.fast_power = false;
     p = config.derive(p);
     r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
     b = B.(model.tenure(p));
@@ -684,7 +732,8 @@ function bequest_off_identical()
 % With chi = 0, production (step 18) for both tenures and the CGM core (step 1)
 % on the small grid: the value, the policies and every panel field are
 % bit-identical to the solve saved at 3433323 (CGM_BEQUEST_BASELINE), before
-% the last period took the bequest as any other period.
+% the last period took the bequest as any other period, with MATLAB's power
+% (fast_power off, the only rule until 13 November 2026).
 file = getenv('CGM_BEQUEST_BASELINE');
 if isempty(file) || ~isfile(file)
     error('run_tests:skip', 'CGM_BEQUEST_BASELINE does not name the solve saved at 3433323');
@@ -693,7 +742,7 @@ B = load(file);
 cases = {18, false; 18, true; 1, false};
 for k = 1:size(cases, 1)
     p = ladder.params(cases{k, 1}); p.is_owner = cases{k, 2};
-    p.grid_dims = [8 6 6 4]; p.gh_n = 3; p = config.derive(p);
+    p.grid_dims = [8 6 6 4]; p.gh_n = 3; p.fast_power = false; p = config.derive(p);
     r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
     name = matlab.lang.makeValidName(sprintf('s%d_%s', cases{k, 1}, model.tenure(p)));
     b = B.(name);
