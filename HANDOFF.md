@@ -119,6 +119,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-13 Runtime work summarised; prompt for the order of the correlated draws saved, not started (spec: none, asked by Quinn in Claude Code)
+Changed: added `docs/RUNTIME_2026-11-13.md` (what was measured on 12-13 November, what `fast_power` changes, what was measured and not changed, what is open) and `docs/prompts/cholesky_order.md` (the order of the Cholesky draws and retired ages without the income draw: the problem, what is known, the decisions for Quinn, a measuring part and a code part, the checks). No code change.
+Checks run: none; no code or parameter changed.
+Commit: this entry and the two files, pushed to main.
+Open: the prompt is not started.
+
 ### 2026-11-13 The powers of the objective by multiplication: the 5-node owner solve (spec: The powers of the objective by multiplication)
 The run left open in the entry below. No code change. Owners, step 19, b = 2.5, `pow3_32x8_lim_u3n40_qn4_as_nc11_gh5_beqb25` (34x10x40x5, 625 joint nodes), `fast_power` on, set against the saved solve of 9 November.
 Checks run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_fastpow` (f41867c plus `runs/pow_check.m`), 13 November 11:47-13:00 UTC, 32 threads, exit 0. Solve 4,379 s against the saved 8,803 s, 2.01 times faster (by age band 1.93 to 2.13; 48.6-63.4 s an age against 106-128 s). `model.checks`: offgrid [0 0 0 0], c_bound_25_39 0.000013, household-years at the floor 0.003472, all as saved; entry value +0.000000%. Simulated means against the saved solve, largest gap at any age: consumption 0.0007%, liquid saving 0.0017%, DC pot and home equity 0.0000%, liquid equity share 0.0037, share at the floor 0, mean bequest -0.0000%. Node by node, 5.1 million node-ages, gap in the certainty equivalent per unit of wealth: median 4.3e-9, 99th percentile 5.7e-5, 99.9th 5.7e-4, largest 0.23; above 1e-6 at 11.6%, above 1e-4 at 0.60%, above 1e-2 at 0.003%. The result is in `/Solutionstorage/results/pow_check/`; the saved solve is untouched.
