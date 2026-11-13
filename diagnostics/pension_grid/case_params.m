@@ -105,6 +105,9 @@ function p = case_params(step, arm, name)
 %               stocks, _fix100_rr100 all REIT, _fix0 all bonds, _fix60 60%
 %               risky (half REIT at production's split). The annuity is priced
 %               off it. It changes the model
+%     _mpow     the powers of the objective with MATLAB's power (fast_power =
+%               false), the only rule until 13 November 2026: the setting
+%               of every solve saved before then
 %     _nodc     no DC pillar (kappa_base = 0): the contribution stays in
 %               take-home pay, taxed as income, and the pot is empty. It
 %               changes the model
@@ -133,7 +136,7 @@ function p = case_params(step, arm, name)
 %   Apart from _mop, _mcv, _cmin, _beqb, _reit, _rr, _rh, _dcfree, _g100, _grev, _fix, _nodc, _kb, _fr, _ys and _yg nothing here changes the model: only grid_dims,
 %   grid_pow, grid_pow_u2, grid_pow_u3, lambda_hi, q_hi, grid_nodes, gh_n,
 %   gh_n_reit, interp_method, use_refine, fmincon_algorithm, fmincon_objective, N_c,
-%   pi_nothing_saved and abs_node_test are set.
+%   pi_nothing_saved, abs_node_test and fast_power are set.
 
 tok = regexp(char(name), '^(\w+?)_(\d+)x(\d+)((?:_\w+)*)$', 'tokens', 'once');
 assert(~isempty(tok), 'case_params:name', 'case name %s is not <rule>_<N1>x<N2>[_gh<n>][_makima]', name);
@@ -229,6 +232,7 @@ if ~isempty(g)                                                             % a c
     p.glide_cap = risky; p.glide_span = 1;
     p.tau_decum = (1 - p.reit_risky) * risky; p.reit_decum = p.reit_risky * risky;
 end
+if contains(extra, '_mpow'), p.fast_power = false; end                     % MATLAB's power in the objective
 if contains(extra, '_nodc'), p.kappa_base = 0; end                         % no DC pillar
 g = regexp(extra, '_kb(\d+)', 'tokens', 'once');
 if ~isempty(g)                                                             % contribution rate above the franchise

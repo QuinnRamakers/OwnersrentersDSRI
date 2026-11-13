@@ -9,7 +9,10 @@ function tf = same_calibration(p1, p2)
 %   A result saved before dc_choice or glide_rule existed (29 October 2026)
 %   had the fund's own shares and the span glide, so a missing dc_choice
 %   reads as false and a missing glide_rule as 'span'. One saved before
-%   gross_rate existed (2 November 2026) had no gross-up: it reads as 0.
+%   gross_rate existed (2 November 2026) had no gross-up: it reads as 0. One
+%   saved before fast_power existed (13 November 2026) took the powers with
+%   MATLAB's power, so a missing fast_power reads as false: such a result is
+%   not the same calibration as production, which has it on.
 f  = [fieldnames(config.params(false)); {'is_owner'}];
 if ~config.reit_active(p1) && ~config.reit_active(p2)
     f = f(cellfun(@isempty, regexp(f, 'reit|REIT|^corr_R[LSH]', 'once')));
@@ -22,7 +25,7 @@ end
 end
 
 function v = getf(p, f)
-before = struct('dc_choice', false, 'glide_rule', 'span', 'gross_rate', 0);   % primitives added later, as they were
+before = struct('dc_choice', false, 'glide_rule', 'span', 'gross_rate', 0, 'fast_power', false);   % primitives added later, as they were
 if isfield(p, f), v = p.(f); elseif isfield(before, f), v = before.(f); else, v = []; end
 if isstring(v), v = char(v); end
 end
