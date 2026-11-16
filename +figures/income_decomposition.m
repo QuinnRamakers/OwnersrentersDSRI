@@ -7,7 +7,8 @@ function income_decomposition(ax, d, p, lfs)
 %   size. Stacked above zero: income received after tax and contributions
 %   (wages, then the state pension) and the private pension payment after tax.
 %   Stacked below zero: the owner's maintenance and mortgage payment, or the
-%   renter's rent. Lines: net disposable income and gross income.
+%   renter's rent. Lines: net disposable income, gross income and, with the
+%   absorbing floor, the floor phi_path(t) * Y.
 
 a = d.ages; sc = d.scale;
 hold(ax, 'on');
@@ -28,6 +29,12 @@ end
 plot(ax, a, mean(d.disp_inc, 1, 'omitnan') * sc, 'k-', 'LineWidth', 2.0, 'DisplayName', 'Net disposable income');
 plot(ax, a, mean(d.Y, 1, 'omitnan') * sc, '--', 'Color', [0.45 0.45 0.45], 'LineWidth', 1.2, ...
     'DisplayName', 'Gross income (before deductions, for reference)');
+if model.floor_kind(p) && isfield(p, 'phi_path')
+    % The absorbing floor, phi_path(t) * Y: a household whose liquid resources
+    % (savings plus net disposable income) fall below it goes bankrupt.
+    plot(ax, a, mean(p.phi_path(:).' .* d.Y, 1, 'omitnan') * sc, ':', 'Color', [0.85 0.10 0.10], ...
+        'LineWidth', 2.2, 'DisplayName', 'Consumption floor (bankrupt below it)');
+end
 yline(ax, 0, 'k-', 'HandleVisibility', 'off', 'LineWidth', 0.5);
 ylabel(ax, d.unit);
 legend(ax, 'Location', 'best', 'FontSize', lfs);
