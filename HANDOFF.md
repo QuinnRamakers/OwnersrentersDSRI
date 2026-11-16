@@ -147,6 +147,31 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-16 Production to the paper of 16 November; model.strategies; the overnight strategy run started (spec: 2026-11-16, not marked done)
+Review first (no files changed): `Owners_vs_renters (17).pdf`, sections 1-2 and Table 1, against 6e7d3c8. Quinn then asked for the changes of the spec, for `r_m` 0.0338, to run the tests on the cluster, and for "a function that runs a set of strategies ... overnight run on the pod the strategy comparison, also time the runtime".
+Changed (c4b74ff, eee6bef, on `contrib-rates` and main):
+1. Ladder steps 20-24 and `config.params`: `r_m` 0.0338; `nibud_year` 2025 and `nibud_extra` false (`config.nibud_lti` holds the 2025 and the 2026 tables); `cg_loss_offset` true; `chi` 32; `default_choice` true. Step 1 sets the old values. `h_mult` is 4.2385 for both tenures (4.521 at step 19): a house of EUR 143,383, yearly mortgage payment 7,679, rent 8,029.
+2. Default as a choice: `solver.bellman_step_lna` (sixth output, the value of continuing), `solver.solve_lifecycle_lna` (`sol.V_cont`), `simulate.paths_lna` (default where the value of continuing at the household's state is no more than the default value, or without resources).
+3. `glide_rule` 'knots' with `glide_knots`: any fund strategy by age.
+4. `model.strategies(S, ...)` and `model.strategy_list()` (twelve strategies): solves each strategy for each tenure, saves and reuses, prints and writes the gains in certainty-equivalent consumption at entry against a reference, the max-min pick, and the solve time of every arm.
+5. CALIBRATION.md, CLAUDE.md, README.md, TODO.md.
+Checks:
+1. Local `run_tests(solve=false)`: 0 of 22 failed (eee6bef).
+2. DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (c4b74ff), 32 threads, 16 November 17:31-17:50 UTC, `runs/paper_tests.sh` (not committed), with `CGM_BEQUEST_BASELINE`: fast tests 0 of 21 failed; full `run_tests` 3 of 39 failed, 1 skipped (`floor_off_identical`, no baseline), 19.0 min.
+   - `default_choice_step` (new): owners at t = 10, the choice worth 0.18% less than the forced rule at one node. Diagnosed on the pod (`runs/dchoice_gap.m`, not committed), owners, step 23, 8x6x6x4, c_min 10,000, 2,400 nodes: at t = 10, 25 and 48 the lowest gain is -0.18%, -0.06% and -0.34%, with 18, 16 and 10 nodes more than 1e-4 below, almost all at q = 2.5, where the two searches end on different peaks of (c, pi) (equity shares such as 0.05 against 1.00); 98, 72 and 517 nodes gain more than 1e-4. Renters: lowest -1.2e-5. The check now bounds this (none below -1%, fewer than 2% of nodes below -1e-4) in eee6bef; it was not run again on the pod after that edit, because the overnight run has the pod.
+   - `floor_node_test`: owner solve out of range, as on 13 November (pi slightly below 0).
+   - `bequest_off_identical`: s18_renter differs from the baseline of 3433323. It was skipped on 13 November; step 18's calibration changed on 9 November (10% of all pay, whole-sample correlations), so this is expected and the baseline is out of date.
+   - The other new checks passed: `paper_steps`, `glide_knots_rule`, `annuity_variable` (expected payout level to 1e-8 for six funds and both tenures; variable where the fund holds risk, fixed for all bonds), `return_moments` (all four processes reproduce their arithmetic mean and standard deviation to 1e-12), `default_choice_panel` (54.9 s).
+3. Steps 1-19 untouched: step 19, 8x6x6x4, 3 nodes, both tenures, solved with 0a5ca73 and with c4b74ff on the pod (`runs/eq19.m`, not committed): V, c, pi and the panel's C, X, A and bankruptcies identical in every bit.
+4. Smoke run of `model.strategies` on the pod (eee6bef, 6x5x4x3): lifecycle and all bonds, both tenures, 1.3 min; all bonds -1.754% for renters and -0.371% for owners; `c_bound_25_39` 0, off-grid 0, `ce_entry` 0.385 (renter) and 0.402 (owner).
+Running, read in the next entry: `runs/strategy_night.sh` (not committed) in `/Solutionstorage/OwnersrentersDSRI_paper` (eee6bef), started 16 November 17:58 UTC, log `runs/strategy_night.txt`. (a) All twelve strategies, both tenures, on 24x12x20x4 base nodes with 3 nodes a shock: `/Solutionstorage/results/strategies/night_medium/comparison.md`. (b) Then the production grid (32x16x40x4, 5 nodes) for as many strategies as end before 17 November 06:30 UTC, in the list's order: `.../night_prod/comparison.md`. Each table has the solve minutes by strategy and tenure. Read `model.checks` there and log the numbers.
+Open:
+1. The spec asks for 0 failures in the full tests; two failures are older than this change (`floor_node_test`, `bequest_off_identical`). Decide on the pi bound slip and on a new bequest baseline.
+2. The search under default as a choice can end on a lower peak than the forced rule's at a few owner nodes. Not fixed: a second sweep over the forced range would repair it at about 1.6 times the sweep's cost.
+3. Not the paper's yet, not asked: `tau_inc` 0.382 (12.3%), `theta` 0.015 (1.26%), `sell_cost` 0.025 and no purchase cost (6%), `c_min` 5000 (4,732), `corr_HL` 0.03 and `corr_HL_rent` 0.05 (0.09, 0.06), CBS mortality (AG). With the purchase cost at 6% the owner starts at about EUR -5,900 of liquid wealth.
+4. The owner's bequest is the gross house, the mortgage not netted (as the paper's eq. 19; its text says home equity). Live now that `chi` is 32.
+5. The paper's own errors found in the review (eqs. 11, 17, 25, 26, 27, the Table 1 rows for `r_m`, the correlations and the Nibud year) are Quinn's to correct.
+
 
 ### 2026-11-16 Renters with the bequest on (b = 2.5): results (spec: none, asked by Quinn in Claude Code)
 Run on the DSRI pod, `/Solutionstorage/OwnersrentersDSRI_prod` (0a5ca73 plus `runs/renter_beq.m`, not committed), 32 threads, 16 November 13:48-14:08 UTC, 20.2 min, exit 0. Production renter, chi = 2.5^5 = 97.66, same seed and 10,000 households as the chi = 0 solve. Saved `/Solutionstorage/results/ladder/fine_32x16x40x4_gh5/19_reit_renter_beqb25.mat` and `.png`.
