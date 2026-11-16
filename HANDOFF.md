@@ -134,6 +134,13 @@ Done: 2026-10-12
 ## Log (from Claude Code)
 
 
+### 2026-11-16 Production solved, both tenures, with corr_SL 0.03 (spec: none, asked by Quinn in Claude Code)
+Quinn: "Run production anyway" (the full tests fail on small grids, entry of 13 November), then "there was a mistake with the correlation of income and stock being 0.34 but it should be 0.028 (make the rounding consistent with the otherone). afterwards run it". `corr_SL` 0.03 in `config.params` and ladder step 6 (4fdda1d); Table 6 of the calibration notes prints 0.34. The other correlations match Table 6. `run_tests(solve=false)` 0 of 17 failed; the full tests were not run again.
+Run on the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_prod` (4fdda1d, fast_power on), 32 threads, 16 November 10:26-12:36 UTC, 129.1 min, exit 0, `runs/prod_run.sh` (not committed). `ladder.run(19, numerics="fine")`, grid 34 x 18 x 40 x 5 with anchors, gh_n 5, 10,000 households. Saved `/Solutionstorage/results/ladder/fine_32x16x40x4_gh5/19_reit_<tenure>.mat`.
+1. Renters: solve 1,038 s. `c_bound_25_39` 0, `ce_entry` 0.290, `offgrid` 0. Bankrupt 0.0% at 40, 0.4% at 67, 21.7% at 100. pi in [-1.2e-6, 1]: 1 of 1,860,480 below -1e-6. corr_SL nodes 0.0300, panel 0.0315.
+2. Owners: solve 6,679 s (about 89 s an age). `c_bound_25_39` 6.7e-6, `ce_entry` 0.355, `offgrid` 0. Bankrupt 0.0% / 0.4% / 0.4%. pi in [-1.17e-4, 1]: 14 of 9,302,400 below -1e-6, 10 above 1 + 1e-6 (the same bound slip as the small-grid tests).
+3. Median consumption (EUR 2025), renters / owners: 25: 10,606 / 9,454; 40: 16,405 / 19,782; 66: 22,558 / 29,142; 90: 16,020 / 26,857. Liquid equity share at 40: renters 0.03, owners 0.72. Main is not updated (contrib-rates only).
+
 ### 2026-11-13 Production solve not run: the full tests fail on the 9 November calibration (spec: none, asked by Quinn in Claude Code)
 Quinn: "can you run the current production for renters and owners and show me the results". `contrib-rates` (the 9 November calibration, never merged into main) and `main` (fast_power, 12 commits) had split; merged main into `contrib-rates` as a92f315 (conflicts only where both added one later primitive: `ladder.same_calibration`, `run_tests`, HANDOFF). Not pushed to main.
 Checks run: local `run_tests(solve=false)` 0 of 17 failed. On the DSRI pod, folder `/Solutionstorage/OwnersrentersDSRI_prod` (a92f315), 32 threads, 13 November 19:34-19:45 UTC: fast tests 0 of 17 failed; full `run_tests` 3 of 33 failed, 2 skipped (baselines), 10.1 minutes: `smoke_both_tenures` and `bequest_last_year` "pi out of range", `floor_node_test` "owner 1: solve out of range". So `ladder.run(19, numerics="fine")` did not start. The 9 November change has no log entry, so its full tests were probably never run.
