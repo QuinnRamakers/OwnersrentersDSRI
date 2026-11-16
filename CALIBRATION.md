@@ -245,7 +245,7 @@ are real, and the correlations come from the same pipeline as the moments.
 | `sigma_H_level` | 0.0835 | Same series, standard deviation |
 | `mu_R_level` | 0.0099 | Real rent growth, mean, CBS regulated rent increase, 1983–2025. Calibration notes, Table 1 |
 | `sigma_R_level` | 0.0179 | Same series, standard deviation. See the caveat below |
-| `corr_SL` | 0.34 | Correlation of the permanent income shock with the stock return: gross income, whole DHS sample, 2002–2023 (T = 22). Calibration notes, Table 6 (Quinn, 9 November 2026). One value for both tenures. Before: 0.04, the pooled owners and renters of the income sample (Table 3) |
+| `corr_SL` | 0.03 | Correlation of the permanent income shock with the stock return: gross income, whole DHS sample, 2002–2023 (T = 22). 0.028 rounded to two decimals like the other correlations (Quinn, 16 November 2026: Table 6 of the calibration notes prints 0.34, which is a mistake). From 9 to 16 November 2026 production had 0.34. One value for both tenures. Before: 0.04, the pooled owners and renters of the income sample (Table 3) |
 | `corr_HL`, `corr_HL_rent` | 0.03, 0.05 | Correlation of the H shock with income: house price for owners, rent for renters. Gross income, whole sample, annual shocks 2002–2023 (T = 22). Table 6. Before: 0.09 and 0.06 (Table 3) |
 | `corr_SH`, `corr_SH_rent` | 0.24, 0.43 | Correlation of the H shock with the stock return: house price for owners, rent for renters. Table 6 (the same in Table 3) |
 
@@ -261,7 +261,7 @@ REIT's are in the REIT section.
 The correlations with income are the whole sample's (Table 6), while the
 income process itself is estimated on the owners and renters of Table 2
 (5,487 households, ages 25–65). Table 6 and Table 3 differ only in the income
-column: income with stocks 0.34 against 0.04, house price 0.03 against 0.09,
+column: income with stocks 0.34 (0.028 corrected, Quinn 16 November 2026) against 0.04, house price 0.03 against 0.09,
 REIT 0.07 against 0.09, rent 0.05 against 0.06. With T = 22, a correlation of
 0.34 is not significant at 10% (the notes mark none of the income column). Both
 tenures' joint correlation matrices are positive definite (smallest
@@ -550,7 +550,7 @@ entry at 25 rather than 20, a terminal age of 100, Dutch unisex mortality, and
 no transitory income shock.
 
 The rest of the ladder: 4 income (the DHS values above), 5 market (`r`,
-`mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.34. From step 6 it
+`mu_S_level`, `sigma_S_level` above), 6 `corr_SL` = 0.03. From step 6 it
 branches. Housing: 7 housing (`h_fixed` 4 and the housing dynamics above, no
 housing correlations), 8 the housing correlations above. DC pension, without
 housing: 9 `kappa_base` 0.10 of all pay with an all-bond fund (`glide_cap` 0), 10 an

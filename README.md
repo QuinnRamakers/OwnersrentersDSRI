@@ -78,7 +78,7 @@ each checked on the baseline without the other:
 | 3 | `retire67` | 2 | retirement at 67 |
 | 4 | `income` | 3 | DHS income cubic in euros and permanent shock std, pooled: the same for owners and renters |
 | 5 | `market` | 4 | real rate 1.15%, equity premium 4.56%, equity vol 21.6% |
-| 6 | `corr_SL` | 5 | income-stock correlation 0.34 (whole sample) |
+| 6 | `corr_SL` | 5 | income-stock correlation 0.03 (whole sample, 0.028) |
 | 7 | `housing` | 6 | housing at 4x entry income; house prices 3.73% (vol 8.35%), rents 0.99% (vol 1.79%); the mortgage payment a rate on the current house value |
 | 7b | `annuity` | 7 | the mortgage a real annuity on the purchase price, with q = H0/H as an owner's state; sensitivity: maintenance on the purchase price |
 | 8 | `housing_corr` | 7b | correlations of the house price (owners) or rent (renters) with income and stocks |
