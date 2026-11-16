@@ -8,7 +8,9 @@ function sol = solve_lifecycle_lna(p, profile, shocks, ann_price, verbose)
 %   plus timing. With N_q = 1, sol.V(:,:,:,t) is still period t. Each period's
 %   search is warm-started from the next period's policy on the same q slice.
 %   With p.dc_choice also sol.tau_pol and sol.reit_pol, the fund's stock and
-%   REIT shares the household picks, of the same size.
+%   REIT shares the household picks, of the same size. With p.default_choice
+%   (and the absorbing floor) also sol.V_cont, the value of continuing, -Inf
+%   where the household has no resources to continue with.
 
 if nargin < 5 || isempty(verbose), verbose = true; end
 
@@ -24,13 +26,19 @@ pi_pol = zeros(N1, N2, N3, Nq, T);
 dc_on  = isfield(p, 'dc_choice') && p.dc_choice;
 tau_pol = []; reit_pol = [];
 if dc_on, tau_pol = zeros(N1, N2, N3, Nq, T); reit_pol = zeros(N1, N2, N3, Nq, T); end
+% Default as a choice: the value of continuing, which the simulator compares
+% with the default value at each household's state.
+choice = p.floor_absorbing && isfield(p, 'default_choice') && p.default_choice;
+V_cont = [];
+if choice, V_cont = -inf(N1, N2, N3, Nq, T); end
 period_sec = zeros(T, 1);
 t0 = tic;
 
 t_step = tic;
-[V(:,:,:,:,T), c_pol(:,:,:,:,T), pi_pol(:,:,:,:,T), tau_T, reit_T] = ...
+[V(:,:,:,:,T), c_pol(:,:,:,:,T), pi_pol(:,:,:,:,T), tau_T, reit_T, Vc_T] = ...
     solver.bellman_step_lna(T, [], p, profile, shocks, ann_price);
 if dc_on, tau_pol(:,:,:,:,T) = tau_T; reit_pol(:,:,:,:,T) = reit_T; end
+if choice, V_cont(:,:,:,:,T) = Vc_T; end
 period_sec(T) = toc(t_step);
 
 % A fixed interior state whose policy is printed as the solve progresses, at
@@ -41,9 +49,10 @@ for t = T-1 : -1 : 1
     t_step = tic;
     pol_next = struct('c', c_pol(:,:,:,:,t+1), 'pi', pi_pol(:,:,:,:,t+1));
     if dc_on, pol_next.tau = tau_pol(:,:,:,:,t+1); pol_next.reit = reit_pol(:,:,:,:,t+1); end
-    [V(:,:,:,:,t), c_pol(:,:,:,:,t), pi_pol(:,:,:,:,t), tau_t, reit_t] = ...
+    [V(:,:,:,:,t), c_pol(:,:,:,:,t), pi_pol(:,:,:,:,t), tau_t, reit_t, Vc_t] = ...
         solver.bellman_step_lna(t, V(:,:,:,:,t+1), p, profile, shocks, ann_price, pol_next);
     if dc_on, tau_pol(:,:,:,:,t) = tau_t; reit_pol(:,:,:,:,t) = reit_t; end
+    if choice, V_cont(:,:,:,:,t) = Vc_t; end
     period_sec(t) = toc(t_step);
     if verbose && (mod(t, 10) == 0 || t == T-1 || t == 1)
         [g1, g2] = utility.grid_at(p, t);
@@ -62,6 +71,7 @@ end
 
 sol.V = V; sol.c_pol = c_pol; sol.pi_pol = pi_pol;
 if dc_on, sol.tau_pol = tau_pol; sol.reit_pol = reit_pol; end
+if choice, sol.V_cont = V_cont; end
 sol.grid_type = 'lna';
 sol.elapsed = toc(t0);
 sol.timing  = struct('period_sec', period_sec, 'total_sec', sol.elapsed, ...

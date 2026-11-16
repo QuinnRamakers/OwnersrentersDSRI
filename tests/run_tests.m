@@ -21,9 +21,10 @@ end
 checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_branches, ...
           @reit_production, @reit_off_untouched, ...
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
-          @nibud_rule, @floor_derive, @dc_choice_param, @glide_age100, @gross_rate_param, @fast_power_param};
+          @nibud_rule, @floor_derive, @dc_choice_param, @glide_age100, @gross_rate_param, @fast_power_param, ...
+          @paper_steps, @glide_knots_rule, @annuity_variable, @return_moments};
 if opts.solve
-    checks = [checks, {@dc_choice_dominates, @dc_choice_smoke, ...
+    checks = [checks, {@default_choice_step, @default_choice_panel, @dc_choice_dominates, @dc_choice_smoke, ...
                        @collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
                        @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test, ...
@@ -112,9 +113,9 @@ assert(ladder.parent('housing') == ladder.index('corr_SL'), 'housing parent');
 assert(ladder.parent('annuity') == ladder.index('housing'), 'annuity parent');
 assert(ladder.parent('housing_corr') == ladder.index('annuity'), 'housing_corr parent');
 assert(ladder.index('7b') == ladder.index('annuity') && ladder.index(8) == ladder.index('housing_corr') ...
-    && ladder.index(18) == ladder.index('floor') && ladder.index(19) == numel(S) ...
-    && strcmp(S(end).name, 'reit'), 'step numbers');
-for k = 1:numel(S) - 1
+    && ladder.index(18) == ladder.index('floor') && ladder.index(19) == ladder.index('reit') ...
+    && ladder.index(24) == numel(S) && strcmp(S(end).name, 'default_choice'), 'step numbers');
+for k = 1:ladder.index('reit') - 1
     for owner = [false true]
         p = ladder.params(S(k).name); p.is_owner = owner;
         assert(~config.reit_active(p), '%s: a REIT before step 19', S(k).name);
@@ -317,13 +318,28 @@ assert(config.nibud_lti(30000, 0.0348, true) == config.nibud_lti(30000, 0.0348, 
     'the increase applied at the first income row');
 assert(abs((config.nibud_lti(39763, 0.0348, true) - config.nibud_lti(39763, 0.0348, false)) * 39763 - 17000) < 1e-8, ...
     'the increase is not EUR 17,000');
-expect = struct('owner', 4.521, 'renter', 4.521);
+% The 2025 norms (production): cells of that workbook's maximum-mortgage table
+% and its calculator's example (income 73,010 at 4.25%: share 0.255, EUR
+% 315,376.44); the table starts at 28,000; the increase is refused.
+cells = [28000 0.0325 96505.95168; 122000 0.0125 671164.4005; 125000 0.0675 521959.0814; ...
+         124000 0.0175 679741.8822; 73010 0.0425 315376.4369];
+for k = 1:size(cells, 1)
+    M = config.nibud_lti(cells(k, 1), cells(k, 2), false, 2025) * cells(k, 1);
+    assert(abs(M / cells(k, 3) - 1) < 1e-9, '2025 workbook cell %d: %.2f against %.2f', k, M, cells(k, 3));
+end
+assert(config.nibud_lti(20000, 0.0325, false, 2025) * 20000 / (0.18 * 20000 / 12) == ...
+       config.nibud_lti(28000, 0.0325, false, 2025) * 28000 / (0.18 * 28000 / 12), 'incomes below 28,000 are not on the first row');
+assert(threw_id(@() config.nibud_lti(40000, 0.0338, true, 2025), 'nibud_lti:extra_2025'), 'the increase accepted with the 2025 norms');
+assert(config.nibud_lti(40000, 0.0338, false) == config.nibud_lti(40000, 0.0338, false, 2026), 'the default year is not 2026');
+% Step 19 keeps the 2026 norms with the increase at 3.48%: 4.521 for both tenures.
 for owner = [true false]
     p = config.params(false); p.is_owner = owner; p = config.derive(p);
     Y0 = exp(config.income_profile(p)); Y0 = Y0(1);
-    assert(p.h_mult == config.nibud_lti(Y0, p.r_m, p.nibud_extra), 'owner %d: h_mult is not the lookup', owner);
-    if owner, e = expect.owner; else, e = expect.renter; end
-    assert(abs(p.h_mult - e) < 5e-4, 'owner %d: h_mult %.4f against %.3f', owner, p.h_mult, e);
+    assert(p.nibud_year == 2025 && ~p.nibud_extra && p.r_m == 0.0338, 'production is not the 2025 norms without the increase at 3.38%%');
+    assert(p.h_mult == config.nibud_lti(Y0, p.r_m, false, 2025), 'owner %d: h_mult is not the lookup', owner);
+    q = ladder.params('reit'); q.is_owner = owner; q = config.derive(q);
+    assert(q.h_mult == config.nibud_lti(Y0, 0.0348, true, 2026) && abs(q.h_mult - 4.521) < 5e-4, ...
+        'owner %d: step 19 h_mult %.4f against 4.521', owner, q.h_mult);
     for name = {'housing', 'box3'}
         q = ladder.params(name{1}); q.is_owner = owner; q = config.derive(q);
         assert(q.h_mult == 4, '%s, owner %d: house not at 4 times income', name{1}, owner);
@@ -382,7 +398,10 @@ for t = 1:p.T
     assert(abs(p.D_abs(t) / D - 1) < 1e-12, 'D_abs(%d) = %.15g against %.15g', t, p.D_abs(t), D);
     assert(abs(p.G_abs(t) / G - 1) < 1e-12, 'G_abs(%d) = %.15g against %.15g', t, p.G_abs(t), G);
 end
-assert(p.chi == 0 && isequal(p.D_beq, p.D_abs), 'D_beq is not D_abs without a bequest motive');
+assert(p.chi == 32 && max(abs(p.D_beq ./ (p.D_abs + p.chi * p.beq_bankrupt ^ (1 - p.gamma) * p.G_abs) - 1)) < 1e-14, ...
+    'D_beq is not D_abs + chi beq_bankrupt^(1-gamma) G_abs');
+q = ladder.params('reit');
+assert(q.chi == 0 && isequal(q.D_beq, q.D_abs), 'D_beq is not D_abs without a bequest motive');
 q = config.params(false); q.beq_bankrupt = 0;
 assert(threw_id(@() config.derive(q), 'derive:beq_bankrupt'), 'a zero bankrupt bequest accepted');
 o = config.params(false); o.is_owner = true;  o.c_min = 8000; o = config.derive(o);
@@ -467,6 +486,212 @@ assert(max(abs(Y(w) ./ (Y0(w) + 0.271 * max(Y0(w) - p.franchise, 0)) - 1)) < 1e-
 assert(abs(Y(q.t_ret) / Y(q.t_ret - 1) - p.replacement) < 1e-12, 'the AOW does not follow grossed-up final pay');
 q.franchise = 0;
 assert(max(abs(exp(config.income_profile(q)) ./ Y0 - 1.271)) < 1e-12, 'without a franchise the gross-up is not (1 + rate)');
+end
+
+function paper_steps()
+% Steps 20-24 bring the ladder to the paper of 16 November 2026, one change
+% each, and step 19 keeps what it had. The tax on the liquid stock return is
+% on the return whatever its sign in production and on gains only at step 21.
+% default_choice and nibud_year are primitives; a result saved before they
+% existed is the forced rule and the 2026 norms, so it is step 19's
+% calibration and not production's. derive refuses bad values.
+old = ladder.params(19);
+assert(old.r_m == 0.0348 && old.nibud_year == 2026 && old.nibud_extra && ~old.cg_loss_offset && ...
+    old.chi == 0 && ~old.default_choice, 'step 19 does not keep its values');
+assert(ladder.same_calibration(rmfield(old, {'default_choice', 'nibud_year', 'glide_knots'}), old), ...
+    'a result saved before the new primitives is not step 19');
+names = {'mortgage_rate', 'nibud2025', 'tax_symmetric', 'bequest', 'default_choice'};
+vals  = [0.0338 2026 0 0 0; 0.0338 2025 0 0 0; 0.0338 2025 1 0 0; 0.0338 2025 1 32 0; 0.0338 2025 1 32 1];
+for k = 1:numel(names)
+    q = ladder.params(names{k});
+    assert(ladder.index(names{k}) == ladder.index(19 + k), '%s is not step %d', names{k}, 19 + k);
+    got = [q.r_m, q.nibud_year, q.cg_loss_offset, q.chi, q.default_choice];
+    assert(isequal(got, vals(k, :)) && q.nibud_extra == (k == 1), '%s: %s', names{k}, mat2str(got));
+end
+p = config.params();
+assert(p.chi == 2 ^ p.gamma, 'chi is not b^gamma at b = 2');
+assert(~ladder.same_calibration(rmfield(p, 'default_choice'), p) && ~ladder.same_calibration(rmfield(p, 'nibud_year'), p), ...
+    'a result without default_choice or nibud_year is production');
+R = [0.7; 1; 1.3];
+assert(max(abs(config.after_tax_stock(p, R) - (1 + (1 - p.tau_cg_stock) * (R - 1)))) < 1e-15, ...
+    'production: the tax is not on the return whatever its sign');
+q = ladder.params('nibud2025');
+assert(isequal(config.after_tax_stock(q, R), R - q.tau_cg_stock * max(R - 1, 0)), 'step 21: the tax is not on gains only');
+q = config.params(false); q.default_choice = 2;
+assert(threw_id(@() config.derive(q), 'derive:default_choice'), 'derive took default_choice = 2');
+q = config.params(false); q.nibud_year = 2024;
+assert(threw_id(@() config.derive(q), 'derive:nibud_year'), 'derive took nibud_year = 2024');
+q = config.params(false); q.nibud_extra = true;
+assert(threw_id(@() config.derive(q), 'derive:nibud_extra'), 'derive took the increase with the 2025 norms');
+end
+
+function glide_knots_rule()
+% Any fund strategy by age: with 'knots' the stock and the REIT share are each
+% a monotone cubic through glide_knots, flat outside, at every age. Two knots
+% on a line give the line, so [0 .5 .5; 100 0 0] is the 100-minus-age glide at
+% reit_risky 0.5 to 1e-12; one knot is a constant fund, retirement included;
+% a hump stays within its knots' range (no overshoot). It is another
+% calibration than production, and derive refuses knots that are not shares.
+p = config.params();
+ages = (p.age0 : p.age0 + p.T - 2).';
+q = p; q.glide_rule = 'knots'; q.glide_knots = [0 0.5 0.5; 100 0 0]; q = config.derive(q);
+a = p; a.glide_rule = 'age100'; a.reit_risky = 0.5; a = config.derive(a);
+assert(max(abs(config.tau_effective(q) - config.tau_effective(a))) < 1e-12 && ...
+       max(abs(config.reit_effective(q) - config.reit_effective(a))) < 1e-12, 'two knots on a line are not the line');
+assert(~ladder.same_calibration(q, p), 'knots is the same calibration as production');
+q.glide_knots = [50 0.6 0.1]; q = config.derive(q);
+assert(all(config.tau_effective(q) == 0.6) && all(config.reit_effective(q) == 0.1), 'one knot is not a constant fund');
+q.glide_knots = [25 0.2 0; 45 0.9 0.1; 67 0.3 0.2; 100 0.3 0]; q = config.derive(q);
+tS = config.tau_effective(q); tR = config.reit_effective(q);
+assert(all(tS >= 0.2 - 1e-12 & tS <= 0.9 + 1e-12) && all(tR >= 0 & tR <= 0.2 + 1e-12) && all(tS + tR <= 1), 'the path leaves its knots'' range');
+assert(abs(tS(ages == 45) - 0.9) < 1e-12 && abs(tR(ages == 67) - 0.2) < 1e-12 && abs(tS(ages == 80) - 0.3) < 1e-12, 'the path misses a knot');
+[profile, shocks] = config.model_inputs(q);
+a_k = pension.annuity_price(q, profile, shocks);
+a_b = pension.annuity_price(p, profile, shocks);
+assert(all(a_k(q.t_ret : q.T - 1) < a_b(q.t_ret : q.T - 1)), 'the annuity is not priced off the knots'' fund');
+for bad = {[], [25 0.5], [25 0.7 0.5], [25 -0.1 0], [40 0.5 0; 30 0.5 0]}
+    q.glide_knots = bad{1};
+    assert(threw_id(@() config.derive(q), 'derive:glide_knots'), 'derive took glide_knots = %s', mat2str(bad{1}));
+end
+end
+
+function annuity_variable()
+% The annuity with a fund that holds risk in retirement, for several
+% strategies and both tenures. The pot pays A/a_t, and what is left earns the
+% fund's return with the survival credit. (1) The last payout is the whole pot
+% (a_T = 1). (2) The expected payout is level: the mean over the joint
+% quadrature nodes of next year's payout per euro of pot,
+% R_A (1 - 1/a_t) / a_{t+1}, is this year's, 1/a_t, to 1e-8 at every retired
+% age. (3) The payout moves with the fund's return when the fund holds risk
+% (the variable annuity) and not at all when it is all bonds (production).
+arms = {'production', 'age100', 'reverse', 'knots', 'stocks', 'reit'};
+for owner = [false true]
+    for k = 1:numel(arms)
+        p = config.params(false); p.is_owner = owner;
+        switch arms{k}
+            case 'age100',  p.glide_rule = 'age100';
+            case 'reverse', p.glide_rule = 'reverse';
+            case 'knots',   p.glide_rule = 'knots'; p.glide_knots = [25 0.5 0.3; 67 0.3 0.2; 90 0.1 0];
+            case 'stocks',  p.tau_decum = 1; p.reit_decum = 0;
+            case 'reit',    p.tau_decum = 0.2; p.reit_decum = 0.8;
+        end
+        p = config.derive(p);
+        [profile, shocks, a] = config.model_inputs(p);
+        tS = config.tau_effective(p); tR = config.reit_effective(p);
+        w = shocks.joint.w(:);
+        assert(a(p.T) == 1, '%s: the last payout is not the whole pot', arms{k});
+        risky = false;
+        for t = p.t_ret : p.T - 1
+            R_A  = ((1 - tS(t) - tR(t)) * p.Rf + tS(t) * shocks.joint.R_S(:) + tR(t) * shocks.joint.R_REIT(:)) / profile.p_surv(t);
+            next = R_A * (1 - 1 / a(t)) / a(t + 1);
+            assert(abs(sum(w .* next) * a(t) - 1) < 1e-8, '%s, owner %d, t = %d: the expected payout moves by %.2g', ...
+                arms{k}, owner, t, sum(w .* next) * a(t) - 1);
+            sd = sqrt(sum(w .* (next - sum(w .* next)) .^ 2));
+            if tS(t) + tR(t) > 0
+                risky = true;
+                assert(sd > 0, '%s, t = %d: a risky fund pays a fixed annuity', arms{k}, t);
+            else
+                assert(sd < 1e-12 / a(t), '%s, t = %d: an all-bond fund pays a variable annuity', arms{k}, t);
+            end
+        end
+        assert(risky == ~strcmp(arms{k}, 'production'), '%s: risk in retirement', arms{k});
+    end
+end
+end
+
+function return_moments()
+% The four lognormal processes take the same inputs, the arithmetic mean and
+% standard deviation of the yearly return (Table 1 of the paper), and are
+% converted to log moments the same way: the mean of the gross return is
+% 1 + r + premium for the stock and the REIT and 1 + growth for the house
+% price and the rent, and its standard deviation is the input, to 1e-12.
+p = config.params();
+[mR, sR] = config.reit_process(p);
+o = p; o.is_owner = true; o = config.derive(o);
+[mH, sH] = config.h_process(o);
+[mN, sN] = config.h_process(p);
+rows = {'stock', p.mu_S, p.sigma_S, 1 + p.r + p.mu_S_level,    p.sigma_S_level; ...
+        'REIT',  mR,     sR,        1 + p.r + p.mu_REIT_level, p.sigma_REIT_level; ...
+        'house', mH,     sH,        1 + p.mu_H_level,          p.sigma_H_level; ...
+        'rent',  mN,     sN,        1 + p.mu_R_level,          p.sigma_R_level};
+for k = 1:size(rows, 1)
+    [mu, sg, m, s] = rows{k, 2:5};
+    E  = exp(mu + sg ^ 2 / 2);
+    sd = E * sqrt(exp(sg ^ 2) - 1);
+    assert(abs(E - m) < 1e-12 && abs(sd - s) < 1e-12, '%s: mean %.12f against %.12f, sd %.12f against %.12f', rows{k, 1}, E, m, sd, s);
+end
+end
+
+function default_choice_step()
+% Default as a choice against the forced rule, from one continuation (the
+% forced solve of step 23 on a small grid, c_min = 10,000 so that default is
+% near), at a working and a retired age, both tenures. With the choice: the
+% value is the larger of continuing and defaulting at every node, exactly; it
+% is at least the forced rule's value (the forced rule is one of the things the
+% household can do), to the search's precision (1e-4 in consumption
+% units; the two searches run over different ranges of c); default is taken at some
+% node and refused at some; and continuing is closed only where resources do
+% not exceed phi_floor * Y. With the floor off the choice changes nothing.
+for owner = [false true]
+    p = ladder.params('bequest'); p.is_owner = owner; p.c_min = 10000;
+    p.grid_dims = [8 6 6 4]; p.gh_n = 3; p = config.derive(p);
+    q = p; q.default_choice = true; q = config.derive(q);
+    [pf, sk, an] = config.model_inputs(p);
+    B = solver.solve(p, pf, sk, an, false);
+    for t = [10, p.t_ret + 5]
+        pol = struct('c', B.c_pol(:,:,:,:,t+1), 'pi', B.pi_pol(:,:,:,:,t+1));
+        [Vf, ~, ~, ~, ~, none] = solver.bellman_step_lna(t, B.V(:,:,:,:,t+1), p, pf, sk, an, pol);
+        [Vc, c, pi_, ~, ~, Vcont] = solver.bellman_step_lna(t, B.V(:,:,:,:,t+1), q, pf, sk, an, pol);
+        assert(isempty(none), 'the forced rule returned a value of continuing');
+        g1 = utility.grid_at(q, t);
+        Vd = (q.phi_path(t) * g1(:)) .^ (1 - q.gamma) / (1 - q.gamma) * q.D_beq(t) + zeros(size(Vc));
+        assert(isequal(Vc, max(Vcont, Vd)), 'owner %d, t = %d: V is not max(V_continue, V_default)', owner, t);
+        ce = @(V) ((1 - q.gamma) * V) .^ (1 / (1 - q.gamma));
+        gap = min(ce(Vc(:)) ./ ce(Vf(:)) - 1);
+        fprintf('      default_choice_step: owner %d, t = %d: lowest gain over the forced rule %.2g, nodes below it %d of %d\n', ...
+            owner, t, gap, sum(ce(Vc(:)) < ce(Vf(:))), numel(Vc));
+        assert(gap > -1e-4, 'owner %d, t = %d: the choice is worth %.2g less than the forced rule', owner, t, gap);
+        assert(any(Vc(:) == Vd(:)) && any(Vc(:) > Vd(:)), 'owner %d, t = %d: default never or always taken', owner, t);
+        assert(all(isfinite(c(:)) & c(:) > 0 & c(:) <= 1 + 1e-6) && all(pi_(:) >= -1e-3 & pi_(:) <= 1 + 1e-3), 'policy out of range');
+    end
+end
+p = ladder.params('maint_purchase'); p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
+q = p; q.default_choice = true; q = config.derive(q);
+[pf, sk, an] = config.model_inputs(p);
+A = solver.solve(p, pf, sk, an, false);
+B = solver.solve(q, pf, sk, an, false);
+assert(isequaln(A.V, B.V) && isequaln(A.c_pol, B.c_pol) && ~isfield(B, 'V_cont'), 'default_choice changed a solve without the absorbing floor');
+end
+
+function default_choice_panel()
+% Production with default as a choice, small grid, c_min = 10,000, both
+% tenures: the solve is finite and in range and keeps the value of continuing;
+% in the panel a household that defaults stays bankrupt, consumes phi_t Y of
+% its year of entry every year after, holds nothing and leaves nothing; a
+% solvent household consumes its policy's share of its resources, with no
+% floor under it; and floored marks the bankrupt.
+for owner = [false true]
+    p = config.params(false); p.is_owner = owner; p.c_min = 10000;
+    p.grid_dims = [8 6 6 4]; p.gh_n = 3; p = config.derive(p);
+    assert(p.default_choice, 'production does not have default as a choice');
+    r = model.run(p, N_sim = 2000, keep_sim = true, verbose = false);
+    assert(all(isfinite(r.sol.V(:))) && isequal(size(r.sol.V_cont), size(r.sol.V)) && all(r.sol.V_cont(:) <= r.sol.V(:)), ...
+        'owner %d: the value of continuing', owner);
+    assert(all(r.sol.c_pol(:) > 0 & r.sol.c_pol(:) <= 1 + 1e-6) && ...
+        all(r.sol.pi_pol(:) >= -1e-3 & r.sol.pi_pol(:) <= 1 + 1e-3), 'owner %d: policy out of range', owner);
+    s = r.sim; ab = s.absorbed;
+    assert(all(isfinite(s.C(:))) && all(s.C(:) > 0), 'owner %d: consumption', owner);
+    assert(all(diff(ab, 1, 2) >= 0, 'all') && isequal(s.floored, ab), 'owner %d: bankrupt households', owner);
+    for i = find(any(ab, 2)).'
+        t0 = find(ab(i, :), 1);
+        F0 = p.phi_path(t0) * s.Y(i, t0);
+        assert(abs(s.C(i, t0) / F0 - 1) < 1e-12 && all(s.C(i, t0:end) == s.C(i, t0)), 'household %d: consumption after default', i);
+        assert(all(s.X(i, t0+1:end) == 0 & s.A(i, t0+1:end) == 0 & s.H(i, t0+1:end) == 0) && s.bequest(i) == 0, ...
+            'household %d holds wealth after default', i);
+    end
+    ok = ~ab;
+    assert(max(abs(s.C(ok) - s.c_frac(ok) .* s.LW(ok))) < 1e-9 * max(s.C(ok)), 'owner %d: a solvent household does not consume its policy', owner);
+end
 end
 
 function dc_choice_dominates()
@@ -629,7 +854,7 @@ for owner = [false true]
     p = config.derive(p);
     r = model.run(p, N_sim = 500, keep_sim = true, verbose = false);
     Y0 = exp(config.income_profile(p)); Y0 = Y0(1);
-    assert(p.h_mult == config.nibud_lti(Y0, p.r_m, p.nibud_extra), 'not the Nibud multiple');
+    assert(p.h_mult == config.nibud_lti(Y0, p.r_m, p.nibud_extra, p.nibud_year), 'not the Nibud multiple');
     s = r.sim;
     assert(max(abs(s.H(:, 1) ./ (p.h_mult * s.Y(:, 1)) - 1)) < 1e-12, 'H0 is not h_mult * Y0');
     assert(any(abs(p.u1_grid - 1 / (1 + p.h_mult + p.b0)) < 1e-14) && ...

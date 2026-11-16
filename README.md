@@ -89,12 +89,17 @@ each checked on the baseline without the other:
 | 13 | `pension` | 8 | housing with the AOW and the DC pension (glide) |
 | 14 | `inctax` | 13 | EET income tax at 38.2% |
 | 15 | `box3` | 14 | box-3 tax at 36% on the liquid account, no loss offset |
-| 16 | `nibud` | 15 | the house at entry is the Nibud 2026 maximum mortgage at the tenure's income at 25 (4.52x for both tenures) |
+| 16 | `nibud` | 15 | the house at entry is the Nibud 2026 maximum mortgage at the tenure's income at 25 (4.52x for both tenures; 4.24x from step 21) |
 | 17 | `maint_purchase` | 16 | owners' maintenance on the purchase price instead of the current house value (steps 7-16 keep the current value) |
 | 18 | `floor` | 17 | the absorbing consumption floor at c_min = EUR 5,000 (steps 1-17 keep the yearly top-up at 1e-6 of income) |
 | 19 | `reit` | 18 | half the DC glide's risky share in a listed real estate fund (REIT), half in stocks, none in retirement; steps 1-18 hold no REIT |
+| 20 | `mortgage_rate` | 19 | the mortgage rate at 3.38% (steps 1-19 keep 3.48%) |
+| 21 | `nibud2025` | 20 | the Nibud 2025 norms, without the EUR 17,000 increase |
+| 22 | `tax_symmetric` | 21 | the box-3 tax on the liquid return whatever its sign (a loss is rebated) |
+| 23 | `bequest` | 22 | the bequest motive at b = 2 (chi = 32) |
+| 24 | `default_choice` | 23 | default as a choice, V = max(V_default, V_continue) |
 
-Step 19 is `config.params()` exactly; `run_tests` checks this. To change the
+Step 24 is `config.params()` exactly; `run_tests` checks this. To change the
 calibration, edit a value in a step or append a step after the last one (a
 floor level, a housing multiple from LISS). A step inserted between
 two others takes a letter (7b), so the steps after it keep their numbers.
@@ -210,7 +215,10 @@ gone, and its value is u(F_t) D_t with D_t the discounted survival-weighted
 horizon (`p.D_abs`). With it off the floor is phi_floor * Y, and the household
 consumes it for that year only, saves nothing, and is back in the ordinary
 problem the next year. Either way the floor is also the lowest consumption a
-solvent household can choose. The liquid account earns the risk-free rate and equity, after box-3
+solvent household can choose, except in production since 16 November 2026
+(`default_choice`): there bankruptcy is a choice, V = max(V_default,
+V_continue), and a solvent household may consume less than the floor amount
+(CALIBRATION.md, "The absorbing floor"). The liquid account earns the risk-free rate and equity, after box-3
 tax; the DC fund holds the glide path's equity share pre-tax and earns the
 survival credit 1/p_t. The annuity price a_t is set so that expected payouts
 are level.

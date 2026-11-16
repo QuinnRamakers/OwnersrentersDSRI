@@ -31,7 +31,7 @@ p.sex            = 1;         % 'table' income only: 1 men, 2 women, 3 pooled (m
 % Preferences
 p.gamma = 5;                  % relative risk aversion
 p.beta  = 0.96;               % time discount factor (placeholder)
-p.chi   = 0;                  % bequest intensity (placeholder)
+p.chi   = 32;                 % bequest intensity: b^gamma with b = 2 years of consumption (paper, 16 November 2026); 0 = none
 p.beq_bankrupt = 1;           % a bankrupt household is valued as leaving this many years of its floor consumption (placeholder)
 
 % Labour income. Owners use income_coef and sigma_l_log; renters the _rent fields.
@@ -58,7 +58,8 @@ p.corr_SH_rent  = 0.43;       % renter: corr(stock return, rent growth)
 p.kappa_base = 0.10;          % contribution rate on income above the franchise (Quinn, 9 November 2026); 0 removes the DC pillar
 p.franchise  = 0;             % AOW franchise, euros; 0: the rate applies to all pay
 p.gross_rate = 0;             % pay grossed up by gross_rate times pay above the franchise ((1 + gross_rate) without one); 0 off
-p.glide_rule = 'span';        % 'span': min(glide_cap, years to retirement / glide_span), 0 from retirement; 'age100': (100 - age)/100 at every age; 'reverse': age/100 at every age
+p.glide_rule = 'span';        % 'span': min(glide_cap, years to retirement / glide_span), 0 from retirement; 'age100': (100 - age)/100 at every age; 'reverse': age/100 at every age; 'knots': glide_knots
+p.glide_knots = [];           % 'knots' only: rows of [age, stock share, REIT share]; a monotone cubic through them, flat outside, at every age
 p.glide_cap  = 0.8;           % fund risky share far from retirement
 p.glide_span = 35;            % fund risky share = min(glide_cap, years to retirement / glide_span)
 p.tau_decum  = [];            % fund equity share in retirement; [] keeps the glide's zero
@@ -77,16 +78,17 @@ p.corr_RH_rent     = 0.59;    % renter: corr(REIT return, rent growth)
 
 % Housing. Renters pay alpha*H on a rent index H; owners pay maintenance and the mortgage.
 p.is_owner      = false;      % tenure; also selects the income fields without housing
-p.h_rule        = 'nibud';    % H at entry: 'nibud' the Nibud 2026 maximum mortgage at entry income and r_m; 'fixed' h_fixed times income; 'none' no housing
+p.h_rule        = 'nibud';    % H at entry: 'nibud' the Nibud maximum mortgage (nibud_year) at entry income and r_m; 'fixed' h_fixed times income; 'none' no housing
 p.h_fixed       = 4.0;        % 'fixed' only: H at entry as a multiple of income (placeholder)
-p.nibud_extra   = true;       % 'nibud' only: include the EUR 17,000 increase for a single earner
+p.nibud_year    = 2025;       % 'nibud' only: the norms' year, 2025 or 2026 (ladder steps 16-20)
+p.nibud_extra   = false;      % 'nibud' only: include the EUR 17,000 increase for a single earner (2026 norms; ladder steps 16-20)
 p.alpha         = 0.056;      % rent as a share of the rent index
 p.theta         = 0.015;      % owner maintenance, share of H (placeholder)
 p.mu_H_level    = 0.0373;     % real house-price growth
 p.sigma_H_level = 0.0835;     % house-price volatility
 p.mu_R_level    = 0.0099;     % real rent growth (the renter's H)
 p.sigma_R_level = 0.0179;     % rent growth volatility
-p.r_m           = 0.0348;     % real mortgage rate, the total rate (r plus the mortgage spread)
+p.r_m           = 0.0338;     % real mortgage rate, the total rate: r plus the mean mortgage spread of 2.23% (0.0348 at ladder steps 1-19)
 p.N_mort        = 30;         % mortgage term, years
 p.LTV           = 1.00;       % only 1.00 is implemented
 p.mortgage      = 'annuity';  % 'annuity': fixed real payment on the purchase price; 'proportional': rate times current value (step 7)
@@ -97,13 +99,14 @@ p.sell_cost     = 0.025;      % sale cost when the house is bequeathed
 p.tau_inc        = 0.382;     % income tax on wages, AOW and annuity payouts
 p.tau_cg_bond    = 0.36;      % tax on the liquid account's bond return
 p.tau_cg_stock   = 0.36;      % tax on the liquid account's stock gains
-p.cg_loss_offset = false;     % true rebates stock losses at the same rate
+p.cg_loss_offset = true;      % true: the tax is on the return whatever its sign, so a loss is rebated (the paper's eq. 17); false: gains only (ladder steps 1-21)
 p.tau_wealth     = 0;         % alternative box-3 levy on the liquid balance
 
 % Consumption floor and search guard
 p.phi_floor    = 1e-6;        % resources guaranteed each period, share of current gross income; a numerical bound, not calibrated
 p.c_min        = 5000;        % absorbing floor, euros a year at median labour income; 0 = off (ladder steps 1-17)
 p.phi_abs      = 0;           % absorbing floor as one share of permanent labour income; 0 = off
+p.default_choice = true;      % absorbing floor: true, default is a choice, V = max(V_default, V_continue) (the paper's eq. 24); false, forced when resources fall below the floor (ladder steps 18-23)
 p.abs_node_test = true;       % absorbing floor: test bankruptcy at each quadrature node instead of interpolating across it
 
 % Entry state: liquid wealth at 25 in years of income

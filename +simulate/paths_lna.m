@@ -32,6 +32,11 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %   year, its LW and disp_inc are 0 after the year of entry, it leaves no
 %   bequest, and it is not counted in the off-grid lookups. A solvent
 %   household consumes at least the floor. Y follows its process throughout.
+%   With p.default_choice bankruptcy is a choice: the household defaults when
+%   the value of continuing at its state (sol.V_cont) is no more than the
+%   default value, or when it has no resources; a solvent household consumes
+%   what its policy says, which can be less than the floor amount, and floored
+%   marks the bankrupt.
 
 if nargin < 5 || isempty(N), N = 5000; end
 if nargin < 6 || isempty(seed), seed = 20260511; end
@@ -82,6 +87,16 @@ if isfield(p, 'phi_path'), phi_path = p.phi_path; end
 ab_path   = false(N, T);
 abs_age   = nan(N, 1);
 C_bar     = zeros(N, 1);
+% Default as a choice: a household defaults when the value of continuing at
+% its state, read off sol.V_cont in certainty-equivalent units per unit of W,
+% is no more than the default value phi_t Y D_t^(1/(1-gamma)), or when its
+% resources do not exceed the search's lower bound, phi_floor * Y.
+choice = absorbing && isfield(p, 'default_choice') && p.default_choice;
+assert(~choice || isfield(sol, 'V_cont'), 'paths_lna:no_V_cont', ...
+    'default_choice is set but sol has no V_cont.');
+pp_zc = cell(T, 1);
+Dfac  = ones(T, 1);
+if choice, Dfac = p.D_beq(:) .^ (1 / (1 - p.gamma)); end
 
 % Policies on the 4D grid where they depend on q (it enters this year or a
 % later one), and on the q = 1 slice elsewhere, where every slice is the same.
@@ -102,6 +117,7 @@ for t = 1:T
         ax = {g1, g2, p.u3_grid, q_grid};
         pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,:,t), 'linear', 'nearest');
         pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,:,t), 'linear', 'nearest');
+        if choice, pp_zc{t} = griddedInterpolant(ax, ce_units(sol.V_cont(:,:,:,:,t), p.gamma), 'linear', 'nearest'); end
         if dc_on
             pp_tS{t} = griddedInterpolant(ax, sol.tau_pol(:,:,:,:,t), 'linear', 'nearest');
             pp_tR{t} = griddedInterpolant(ax, sol.reit_pol(:,:,:,:,t), 'linear', 'nearest');
@@ -110,6 +126,7 @@ for t = 1:T
         ax = {g1, g2, p.u3_grid};
         pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,iq1,t), 'linear', 'nearest');
         pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,iq1,t), 'linear', 'nearest');
+        if choice, pp_zc{t} = griddedInterpolant(ax, ce_units(sol.V_cont(:,:,:,iq1,t), p.gamma), 'linear', 'nearest'); end
         if dc_on
             pp_tS{t} = griddedInterpolant(ax, sol.tau_pol(:,:,:,iq1,t), 'linear', 'nearest');
             pp_tR{t} = griddedInterpolant(ax, sol.reit_pol(:,:,:,iq1,t), 'linear', 'nearest');
@@ -196,6 +213,18 @@ for t = 1:T
     end
     disp_t = contrib_factor .* Y_path(:,t) + ann_pay_net - h_cost_rate .* H_path(:,t);
 
+    % Cube coordinates, clamped to the grid for the lookups.
+    sAH    = sA_path(:,t) + sH_path(:,t);
+    u1_raw = lam_path(:,t);
+    u2_raw = sAH ./ max(1 - lam_path(:,t), 1e-12);
+    u3_raw = min(max(sA_path(:,t) ./ max(sAH, 1e-12), 0), 1);
+    [g1, g2] = utility.grid_at(p, t);
+    u1q = min(max(u1_raw, g1(1)), g1(end));
+    u2q = min(max(u2_raw, g2(1)), g2(end));
+    u3q = u3_raw;
+    q_raw = q_path(:,t);
+    qq = min(max(q_raw, q_grid(1)), q_grid(end));
+
     % The absorbing floor. A household bankrupt in an earlier year has no
     % resources of its own; one whose resources fall below the floor this
     % year goes bankrupt now. Neither looks up a policy.
@@ -203,7 +232,13 @@ for t = 1:T
     if absorbing
         gone = ab_path(:,t);
         LW(gone) = 0; disp_t(gone) = 0;
-        enter = ~gone & LW < F_t;
+        if choice
+            if q_dep(t), zc = pp_zc{t}(u1q, u2q, u3q, qq); else, zc = pp_zc{t}(u1q, u2q, u3q); end
+            F_lo  = max(p.phi_floor * Y_path(:,t), 1e-12 * W_path(:,t));
+            enter = ~gone & (LW <= F_lo | W_path(:,t) .* zc <= F_t * Dfac(t));
+        else
+            enter = ~gone & LW < F_t;
+        end
         ab_path(enter, t:T) = true;
         abs_age(enter) = p.age0 + t - 1;
         C_bar(enter)   = F_t(enter);
@@ -217,26 +252,15 @@ for t = 1:T
     ann_pay_path(:,t) = ann_pay;
     disp_inc(:,t) = disp_t;
 
-    % Cube coordinates. Off-grid lookups are counted on the raw coordinates:
-    % past the last node the policy is extrapolated flat, so such a household
-    % gets the policy of a different state.
-    sAH    = sA_path(:,t) + sH_path(:,t);
-    u1_raw = lam_path(:,t);
-    u2_raw = sAH ./ max(1 - lam_path(:,t), 1e-12);
-    u3_raw = min(max(sA_path(:,t) ./ max(sAH, 1e-12), 0), 1);
-    [g1, g2] = utility.grid_at(p, t);
+    % Off-grid lookups are counted on the raw coordinates: past the last node
+    % the policy is extrapolated flat, so such a household gets the policy of
+    % a different state.
     n_off(1) = n_off(1) + sum(look & (u1_raw < g1(1) - 1e-12 | u1_raw > g1(end) + 1e-12));
     n_off(2) = n_off(2) + sum(look & (u2_raw < g2(1) - 1e-12 | u2_raw > g2(end) + 1e-12));
     n_off(3) = n_off(3) + sum(look & (u3_raw < p.u3_grid(1) - 1e-12 | u3_raw > p.u3_grid(end) + 1e-12));
 
-    u1q = min(max(u1_raw, g1(1)), g1(end));
-    u2q = min(max(u2_raw, g2(1)), g2(end));
-    u3q = u3_raw;
-
     if q_dep(t)
-        q_raw = q_path(:,t);
         n_off(4) = n_off(4) + sum(look & (q_raw < q_grid(1) - 1e-12 | q_raw > q_grid(end) + 1e-12));
-        qq = min(max(q_raw, q_grid(1)), q_grid(end));
         cf_raw = pp_c{t}(u1q, u2q, u3q, qq);
         pi_raw = pp_pi{t}(u1q, u2q, u3q, qq);
         if dc_on, tS_raw = pp_tS{t}(u1q, u2q, u3q, qq); tR_raw = pp_tR{t}(u1q, u2q, u3q, qq); end
@@ -253,15 +277,17 @@ for t = 1:T
     pi_path(:,t) = pi_;
     C_path(:,t)  = cf .* max(LW, 0);
     short        = LW < F_t;
+    if choice, short = ~look; end                % a solvent household may have less than the floor amount
     C_path(short, t) = F_t(short);
     fl_path(:,t) = short;
     n_floored    = n_floored + sum(short);
     cb_path(:,t) = min(F_t ./ max(LW, realmin), 1);   % the floor as a share of resources
+    if choice, cb_path(:,t) = min(p.phi_floor * Y_path(:,t) ./ max(LW, realmin), 1); end   % the search's bound
     if absorbing
         % A solvent household consumes at least the floor; a bankrupt one the
         % floor of its year of entry, and it chooses nothing. Here short is
         % the bankrupt households.
-        C_path(look, t) = max(C_path(look, t), F_t(look));
+        if ~choice, C_path(look, t) = max(C_path(look, t), F_t(look)); end
         C_path(~look, t) = C_bar(~look);
         c_path(~look, t) = NaN; pi_path(~look, t) = NaN;
         pi_(~look) = 0;
@@ -377,4 +403,12 @@ if any(n_off > 0)
          '(u1: %d, u2: %d, u3: %d, q: %d) and were extrapolated flat from the edge. ' ...
          'Widen the affected axis; see GRIDS.md.'], sum(n_off), N * T, n_off(1), n_off(2), n_off(3), n_off(4));
 end
+end
+
+function z = ce_units(V, gamma)
+%CE_UNITS  A value per unit of W^(1-gamma) as a certainty equivalent per unit
+%   of W; 0 where the value is -Inf (continuing is not open).
+z = zeros(size(V));
+m = isfinite(V);
+z(m) = ((1 - gamma) * V(m)) .^ (1 / (1 - gamma));
 end

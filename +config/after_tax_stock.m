@@ -9,13 +9,14 @@ function R_S_at = after_tax_stock(p, R_S)
 %
 %   p.cg_loss_offset selects the treatment of a losing year:
 %
-%     false (default)  Tax is levied on positive gains only. A loss earns no
+%     false            Tax is levied on positive gains only. A loss earns no
 %                      rebate, so the household keeps (1 - tau_s) of the upside
 %                      and carries all of the downside. This is the calibrated
-%                      box-3 treatment and what every solve before the flag
+%                      rule of ladder steps 15-21 and what every solve before the flag
 %                      existed used.
 %
-%     true             Tax is levied on the gain whatever its sign, so a loss is
+%     true             Production since 16 November 2026 (the paper's eq. 17).
+%                      Tax is levied on the gain whatever its sign, so a loss is
 %                      rebated at the same rate. Symmetric, and it leaves a
 %                      larger after-tax equity premium.
 %

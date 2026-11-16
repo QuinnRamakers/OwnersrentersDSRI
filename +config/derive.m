@@ -37,8 +37,8 @@ p.t_ret = p.retirement_age - p.age0 + 1;
 % rest, so the bond leg does not depend on reit_risky.
 assert(isscalar(p.reit_risky) && p.reit_risky >= 0 && p.reit_risky <= 1, 'derive:reit_risky', ...
     'reit_risky must lie in [0, 1] (got %s).', mat2str(p.reit_risky));
-assert((ischar(p.glide_rule) || isstring(p.glide_rule)) && any(strcmp(char(p.glide_rule), {'span', 'age100', 'reverse'})), ...
-    'derive:glide_rule', 'glide_rule must be ''span'', ''age100'' or ''reverse'' (got %s).', mat2str(p.glide_rule));
+assert((ischar(p.glide_rule) || isstring(p.glide_rule)) && any(strcmp(char(p.glide_rule), {'span', 'age100', 'reverse', 'knots'})), ...
+    'derive:glide_rule', 'glide_rule must be ''span'', ''age100'', ''reverse'' or ''knots'' (got %s).', mat2str(p.glide_rule));
 ages    = (p.age0 : p.age0 + p.T - 2).';
 if strcmp(char(p.glide_rule), 'age100')
     glide = max(0.0, (100 - ages) / 100);
@@ -50,6 +50,24 @@ else
 end
 p.tau_S      = (1 - p.reit_risky) * glide;
 p.reit_glide = p.reit_risky * glide;
+if strcmp(char(p.glide_rule), 'knots')
+    % Any strategy by age: the stock and the REIT share are each a monotone
+    % cubic (pchip) through the knots, flat before the first and after the
+    % last, at every age, retirement included. glide_cap, glide_span and
+    % reit_risky play no part.
+    K = p.glide_knots;
+    assert(isnumeric(K) && ismatrix(K) && size(K, 2) == 3 && size(K, 1) >= 1 && all(isfinite(K(:))) ...
+        && all(diff(K(:, 1)) > 0) && all(K(:, 2) >= 0) && all(K(:, 3) >= 0) && all(K(:, 2) + K(:, 3) <= 1 + 1e-12), ...
+        'derive:glide_knots', ['glide_rule ''knots'' needs glide_knots: rows of [age, stock share, REIT share], ' ...
+        'ages increasing, shares non-negative and summing to at most 1.']);
+    p.tau_S      = knot_path(K(:, 1), K(:, 2), ages);
+    p.reit_glide = knot_path(K(:, 1), K(:, 3), ages);
+    % Between two knots the two curves can add up to a hair above 1; both are
+    % then scaled so that they add up to 1.
+    over = max(p.tau_S + p.reit_glide, 1);
+    p.tau_S      = p.tau_S ./ over;
+    p.reit_glide = p.reit_glide ./ over;
+end
 assert(isscalar(p.dc_choice) && any(p.dc_choice == [0 1]), 'derive:dc_choice', ...
     'dc_choice must be true or false.');
 assert(isscalar(p.fast_power) && any(p.fast_power == [0 1]), 'derive:fast_power', ...
@@ -82,7 +100,9 @@ p.kappa(work_t) = p.kappa_base .* max(Y_det(work_t) - p.franchise, 0) ./ Y_det(w
 % The consumption floor as a share of current gross income, phi_path. With
 % c_min or phi_abs positive it is absorbing: a household whose liquid
 % resources fall below phi_path(t) * Y goes bankrupt and consumes that amount
-% for the rest of its life. c_min: the floor is c_min euros on the owners'
+% for the rest of its life. With default_choice bankruptcy is a choice instead:
+% the household takes it when it is worth more than continuing
+% (solver.bellman_step_lna), and phi_path(t) * Y is what it then consumes. c_min: the floor is c_min euros on the owners'
 % deterministic profile, for both tenures, so the share is the same for
 % owners and renters; it is tied to final labour income in retirement.
 % phi_abs: phi_abs times permanent labour income, which is Y to 66 and
@@ -97,6 +117,8 @@ assert(~(p.c_min > 0 && strcmp(p.income_source, 'poly')), 'derive:poly_cmin', ..
     'c_min is in euros and needs income in euros: use income_source = ''dhs'' or ''table''.');
 assert(isscalar(p.abs_node_test) && any(p.abs_node_test == [0 1]), 'derive:abs_node_test', ...
     'abs_node_test must be true or false.');
+assert(isscalar(p.default_choice) && any(p.default_choice == [0 1]), 'derive:default_choice', ...
+    'default_choice must be true or false.');
 p.floor_absorbing = p.c_min > 0 || p.phi_abs > 0;
 if p.c_min > 0
     own = p; own.is_owner = true;
@@ -147,7 +169,11 @@ switch char(p.h_rule)
     case 'nibud'
         assert(~strcmp(p.income_source, 'poly'), 'derive:poly_nibud', ...
             'The Nibud rule needs income in euros: use income_source = ''dhs'' or ''table''.');
-        p.h_mult = config.nibud_lti(Y_det(1), p.r_m, p.nibud_extra);
+        assert(isscalar(p.nibud_year) && any(p.nibud_year == [2025 2026]), 'derive:nibud_year', ...
+            'nibud_year must be 2025 or 2026 (got %s).', mat2str(p.nibud_year));
+        assert(~(p.nibud_year == 2025 && p.nibud_extra), 'derive:nibud_extra', ...
+            'The EUR 17,000 increase (nibud_extra) is coded for the 2026 norms only.');
+        p.h_mult = config.nibud_lti(Y_det(1), p.r_m, logical(p.nibud_extra), p.nibud_year);
 end
 
 % Mortgage payment per euro of purchase price for N_mort years: LTV times the
@@ -170,4 +196,15 @@ annuity  = strcmp(char(p.mortgage), 'annuity');
 p.q_live = (p.is_owner && p.h_mult > 0) & ((annuity & pays) | logical(p.maint_on_purchase));
 
 p = utility.build_state_grids(p, p.grid_dims, p.gh_n);
+end
+
+function y = knot_path(a, v, ages)
+%KNOT_PATH  A share by age through the knots (a, v): pchip between them, the
+%   end values outside, kept in [0, 1]. One knot is a constant share.
+if isscalar(a)
+    y = v * ones(size(ages));
+else
+    y = interp1(a, v, min(max(ages, a(1)), a(end)), 'pchip');
+end
+y = min(max(y, 0), 1);
 end

@@ -1,4 +1,4 @@
-function [V_t, c_pol, pi_pol, tau_pol, reit_pol] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
+function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
 %BELLMAN_STEP_LNA  One backward-induction step on the (u1, u2, u3, q) grid.
 %
 %   [V_t, c_pol, pi_pol] = solver.bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
@@ -63,6 +63,15 @@ function [V_t, c_pol, pi_pol, tau_pol, reit_pol] = bellman_step_lna(t, V_next, p
 %   interpolated. Wherever nothing is saved (c = 1), the equity share is stored as
 %   1, or with p.pi_nothing_saved = 'limit' as the share of a vanishing saving
 %   (limit_share).
+%
+%   With p.default_choice (and the absorbing floor) bankruptcy is a choice,
+%   V = max(V_default, V_continue), the paper's eq. 24: V_default is the
+%   bankrupt value above, and continuing is open to any household with
+%   resources above p.phi_floor * Y, which may then consume less than F. The
+%   sixth output Vc_t is the value of continuing (-Inf where it is not open;
+%   empty without default_choice); the policies stored are those of
+%   continuing, also where default is worth more. At the quadrature nodes
+%   (abs_node_test) the continuation is at least next year's default value.
 %
 %   The household dies at the end of the last period (t = p.T) for certain.
 %   Without a bequest motive it consumes all its liquid resources then. With
@@ -135,6 +144,14 @@ kappa_t   = p.kappa(min(t, numel(p.kappa)));
 h_beq_fac = is_owner * (p.h_mult > 0) * (1 - p.sell_cost);   % renters bequeath no housing
 phi_t     = p.phi_path(t);                    % the floor, share of gross income
 absorbing = p.floor_absorbing;
+% Default as a choice (the paper's eq. 24): the household defaults when that
+% is worth more than continuing. Continuing then needs only positive
+% resources, so the search's lower bound is phi_floor, not the floor. Vc_t
+% keeps the value of continuing, -Inf where it cannot.
+choice    = absorbing && isfield(p, 'default_choice') && p.default_choice;
+phi_lo    = phi_t;
+Vc_t      = [];
+if choice, phi_lo = p.phi_floor; Vc_t = -inf(N1, N2, N3, Nq); end
 D_t       = p.D_beq(t);                       % D_abs(t) when chi = 0
 FLOOR_EPS = 1e-12;
 
@@ -153,6 +170,7 @@ if last && p.chi <= 0
     for iq = slices
         h_cost_rate = h_cost_q(iq);
         V_s = nan(N1, N2, N3); c_s = nan(N1, N2, N3); pi_s = nan(N1, N2, N3);
+        Vc_s = -inf(N1, N2, N3);
         for k = 1:numel(Lam_all)
             lam = Lam_all(k); sA = SA_all(k); sH = SH_all(k);
             sX  = 1 - lam - sA - sH;
@@ -163,6 +181,9 @@ if last && p.chi <= 0
                 LW_W = sX + contrib_factor * lam - h_cost_rate * sH;
             end
             F_W = max(phi_t * lam, FLOOR_EPS);
+            % Continuing is consuming everything; with D_T = 1 the choice
+            % between that and the floor is the forced rule.
+            if LW_W > max(phi_lo * lam, FLOOR_EPS), Vc_s(k) = LW_W ^ one_m_g / one_m_g; end
             if absorbing && LW_W <= F_W
                 % Bankrupt: the floor, no bequest
                 V_s(k) = F_W ^ one_m_g / one_m_g * D_t; c_s(k) = 1; pi_s(k) = 0;
@@ -174,8 +195,9 @@ if last && p.chi <= 0
             pi_s(k) = 0;
         end
         V_t(:, :, :, iq) = V_s; c_pol(:, :, :, iq) = c_s; pi_pol(:, :, :, iq) = pi_s;
+        if choice, Vc_t(:, :, :, iq) = Vc_s; end
     end
-    [V_t, c_pol, pi_pol, tau_pol, reit_pol] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol);
+    [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t);
     return
 end
 
@@ -275,7 +297,7 @@ opts_opt = optimoptions('fmincon', ...
 % year's take-home share of income, net annuity rate, floor share and the
 % bankrupt value's factor D^(1/(1-gamma)); the housing cost rate is set per
 % q slice below.
-nx = struct('on', false);
+nx = struct('on', false, 'choice', false);
 if absorbing && p.abs_node_test && ~last
     t1 = t + 1;
     if t1 >= p.t_ret
@@ -285,7 +307,8 @@ if absorbing && p.abs_node_test && ~last
     end
     if t1 <= numel(p.m_rate_path), m1 = p.m_rate_path(t1); else, m1 = 0; end
     nx = struct('on', true, 'y1', y1, 'a1', a1, 'm1', m1, 'h1', 0, ...
-                'phi1', p.phi_path(t1), 'Dfac', p.D_beq(t1) ^ inv_omg);
+                'phi1', p.phi_path(t1), 'Dfac', p.D_beq(t1) ^ inv_omg, ...
+                'choice', choice, 'philo', p.phi_floor);
 end
 % nx also carries the rule for the powers over the quadrature nodes (upow):
 % pw = gamma - 1 when p.fast_power is on and that is an integer from 1 to 32,
@@ -368,6 +391,7 @@ for iq = slices
     pi_sub = zeros(n_solve, 1);
     tS_sub = zeros(n_solve, 1);
     tR_sub = zeros(n_solve, 1);
+    Vc_sub = -inf(n_solve, 1);                   % the value of continuing (default as a choice)
 
     parfor j = 1:n_solve
         k = solve_k(j);
@@ -389,13 +413,14 @@ for iq = slices
         Y_next_W = G_next * lam;
         A_next_W = R_A * A_next_pre_return;
         F_W      = max(phi_t * lam, FLOOR_EPS);
+        F_lo     = max(phi_lo * lam, FLOOR_EPS);     % F_W unless default is a choice
 
-        if LW_W <= F_W && absorbing
+        if LW_W <= F_lo && absorbing
             % Bankrupt: the floor for the rest of life, no choices, no bequest.
             V_sub(j) = F_W ^ one_m_g / one_m_g * D_t; c_sub(j) = 1; pi_sub(j) = 1;
             continue
         end
-        if LW_W <= F_W
+        if LW_W <= F_lo
             % Resources below the floor: consume the floor, save nothing.
             u_f = F_W ^ one_m_g / one_m_g;
             val = u_f;
@@ -427,7 +452,8 @@ for iq = slices
 
         % Lower bound of the consumption search: the consumption floor,
         % C >= phi_t * Y, i.e. c >= F_W / LW_W. Here LW_W > F_W, so c_floor < 1.
-        c_floor = F_W / LW_W;
+        % With default as a choice the bound is phi_floor * Y instead.
+        c_floor = F_lo / LW_W;
         c_grid  = linspace(c_floor, 1, NC).';
         dc0     = c_grid(2) - c_grid(1);
 
@@ -506,6 +532,14 @@ for iq = slices
                 p_j = 1;
             end
         end
+        % Default as a choice: the value is the larger of continuing and
+        % defaulting. The policy stored is the one of continuing either way,
+        % so a solvent household next to the edge reads a policy of its own.
+        Vc_sub(j) = v_j;
+        if choice
+            v_def = F_W ^ one_m_g / one_m_g * D_t;
+            if v_def > v_j, v_j = v_def; end
+        end
         V_sub(j) = v_j; c_sub(j) = c_j; pi_sub(j) = p_j;
     end
 
@@ -520,6 +554,11 @@ for iq = slices
     V_t(:, :, :, iq)    = reshape(V_flat, N1, N2, N3);
     c_pol(:, :, :, iq)  = reshape(c_flat, N1, N2, N3);
     pi_pol(:, :, :, iq) = reshape(pi_flat, N1, N2, N3);
+    if choice
+        Vc_flat = -inf(n_states, 1); Vc_flat(solve_k) = Vc_sub;
+        if u3_keep > 0, Vc_flat = copy_u3_slice(Vc_flat, N1, N2, g2, u3_keep); end
+        Vc_t(:, :, :, iq) = reshape(Vc_flat, N1, N2, N3);
+    end
     if dc_on
         tS_flat = zeros(n_states, 1); tS_flat(solve_k) = tS_sub;
         tR_flat = zeros(n_states, 1); tR_flat(solve_k) = tR_sub;
@@ -531,7 +570,7 @@ for iq = slices
         reit_pol(:, :, :, iq) = reshape(tR_flat, N1, N2, N3);
     end
 end
-[V_t, c_pol, pi_pol, tau_pol, reit_pol] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol);
+[V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t);
 end
 
 % ------------------------------------------------------------------------
@@ -775,7 +814,14 @@ function CE = bankrupt_nodes(CE, X_next_W, A_next_W, H_next_W, Y_next_W, nx)
 %   per unit of this year's W. Columns of X_next_W are candidate choices.
 LW_n = X_next_W + nx.y1 * Y_next_W + nx.a1 * A_next_W - nx.h1 .* H_next_W;
 F_n  = max(nx.phi1 * Y_next_W, 1e-12) .* ones(1, size(X_next_W, 2));
-bk   = LW_n <= F_n;
+if nx.choice
+    % Default as a choice: never worth less than defaulting, and the default
+    % value exactly where next year's resources allow nothing else.
+    CE = max(CE, F_n * nx.Dfac);
+    bk = LW_n <= max(nx.philo * Y_next_W, 1e-12) .* ones(1, size(X_next_W, 2));
+else
+    bk = LW_n <= F_n;
+end
 CE(bk) = F_n(bk) * nx.Dfac;
 end
 

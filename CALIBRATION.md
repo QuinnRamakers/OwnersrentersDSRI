@@ -34,7 +34,7 @@ only come from a part-year CPI average that CBS will revise.
 | `sex` | 1 (men) | Selects the BKV income table (`'table'`) only; unused by the DHS profile. The life table is unisex |
 | `gamma` | 5 | Production choice. CGM (2005) use 10; the ladder starts there |
 | `beta` | 0.96 | Placeholder. Larsen et al. (2023) is a candidate source, not checked |
-| `chi` | 0 | Placeholder. Bequest motive off in the baseline. Form (Quinn, 26 October 2026): chi B^(1-gamma)/(1-gamma), B liquid wealth after the year's returns plus, for owners, the house net of `sell_cost`. In the last period the household dies for certain and chooses c and pi against the bequest alone. Tests across the ladder hold b = chi^(1/gamma), about the bequest over the last year's consumption, fixed: chi = b^gamma at each step's gamma (`case_params` suffix `_beqb`) |
+| `chi` | 32 | b^gamma with b = 2 (Quinn, 16 November 2026; ladder step 23, steps 1-22 have 0, no bequest motive): the bequest is valued as about two years of consumption, as in Larsen and Munk (2023); the paper's text says consumption and its Table 1 income, and the code follows the text until Quinn corrects the paper. Form (Quinn, 26 October 2026): chi B^(1-gamma)/(1-gamma), B liquid wealth after the year's returns plus, for owners, the house net of `sell_cost`. In the last period the household dies for certain and chooses c and pi against the bequest alone. Tests across the ladder hold b = chi^(1/gamma), about the bequest over the last year's consumption, fixed: chi = b^gamma at each step's gamma (`case_params` suffix `_beqb`) |
 | `beq_bankrupt` | 1 | Placeholder (Quinn, 27 October 2026). A bankrupt household (absorbing floor) is valued as leaving this many years of its floor consumption at its death, so under the paper's form bankruptcy carries a large but finite bequest penalty instead of none: its value is u(F) [D_t + chi beq_bankrupt^(1-gamma) G_t], G_t the discounted chance of dying (`config.derive`). Inert while `chi = 0` or without the absorbing floor |
 
 ## Labour income
@@ -118,7 +118,8 @@ and 12.9% at 48 on the pooled DHS profile.
 | `kappa_base` | 0.10 | Quinn, 9 November 2026. No data source. Until then 0.186, from OECD *Pensions at a Glance*: the 2022 country note gives 18.6% as the rate above the franchise; the 2025 edition (Table 3.4) repeats the number without restating that. The OP/NP premium table of 2 November gives 27.1% in all, 18.97% employer and 8.13% employee, above EUR 19,200 |
 | `franchise` | 0 | None (Quinn, 9 November 2026). Until then EUR 18,475, the minimum AOW franchise per 1-1-2025 (art. 18a lid 3 Wet LB, Belastingdienst CAP); the 2026 figure is EUR 19,172 and belongs only with a 2026 income factor. Case suffix `_fr<n>` sets it |
 | `gross_rate` | 0 | Off in production. Pay at every working age becomes `Y + gross_rate * max(Y - franchise, 0)` on the deterministic profile, `(1 + gross_rate) Y` with no franchise: a gross-up for contributions the income data had already deducted (case suffix `_yg`; Quinn, 2 November 2026). The AOW, the contribution, the Nibud house and the floor's share follow the grossed-up profile. A modelling switch, no data source |
-| `glide_rule` | `'span'` | The shape of the glide: `'span'` the rule in the next row; `'age100'` (case suffix `_g100`) the "100 minus age" rule of thumb, a risky share of (100 - age)/100 at every age, retirement included (0.75 at 25, 0.33 at 67), for comparison (Quinn, 29 October 2026); `'reverse'` (case suffix `_grev`) its mirror, age/100 at every age (0.25 at 25, 0.67 at 67), risk rising with age, as a foil to the lifecycle rules (Quinn, 29 October 2026). No data source for any |
+| `glide_rule` | `'span'` | The shape of the glide: `'span'` the rule in the next row; `'age100'` (case suffix `_g100`) the "100 minus age" rule of thumb, a risky share of (100 - age)/100 at every age, retirement included (0.75 at 25, 0.33 at 67), for comparison (Quinn, 29 October 2026); `'reverse'` (case suffix `_grev`) its mirror, age/100 at every age (0.25 at 25, 0.67 at 67), risk rising with age, as a foil to the lifecycle rules (Quinn, 29 October 2026); `'knots'` any strategy by age, from `glide_knots` (next row; Quinn, 16 November 2026). No data source for any |
+| `glide_knots` | `[]` | With `glide_rule = 'knots'` only: rows of [age, stock share, REIT share], ages increasing, shares non-negative and at most 1 together. Each share is a monotone cubic (pchip) through its knots, flat before the first and after the last, at every age, retirement included, so the annuity is priced off it and is variable where the fund holds risk; where the two curves add up to more than 1 between knots both are scaled to add up to 1. `glide_cap`, `glide_span` and `reit_risky` play no part. One row is a constant fund |
 | `glide_cap`, `glide_span` | 0.8, 35 | Fund risky share `min(0.8, years to retirement / 35)`: 0.8 until 39, linear to 0 at 67. A stylised lifecycle fund. Since 29 October 2026 half of it is in the REIT and half in stocks (`reit_risky`, below) |
 | `tau_decum` | `[]` | Fund equity share in retirement; empty keeps the glide's 0 (an all-bond fund) |
 | `dc_choice` | false | Off in production: the fund runs its own shares. True (case suffix `_dcfree`) lets the household pick the fund's stock and REIT shares at every age, retirement included (Quinn, 29 October 2026). A modelling switch, no data source |
@@ -207,10 +208,14 @@ Working take-home is therefore `(1 - kappa)(1 - tau_inc) Y`.
 |---|---|---|
 | `tau_inc` | 0.382 | CBS, average tax burden on income, 2019. This is the paper's `delta` |
 | `tau_cg_bond`, `tau_cg_stock` | 0.36 | Box-3 rate (2025), applied to the liquid account's actual return each year |
-| `cg_loss_offset` | false | Stock losses are not rebated |
+| `cg_loss_offset` | true | The tax is on the liquid account's return whatever its sign, the paper's eq. 17, R^X - 1 = (1 - tau^W) times the pre-tax net return, so a stock loss is rebated (Quinn, 16 November 2026; ladder step 22). false, at steps 15-21: gains only |
 | `tau_wealth` | 0 | Box-3-style levy on the liquid balance. Calibrated value 0.0197 (Hambel et al. 2026), switched off |
 
 The DC fund is sheltered from both, which is its tax advantage.
+
+Until 16 November 2026 production had no loss offset; the next paragraph
+describes steps 15-21. With the offset (production) the after-tax equity
+premium on the liquid account is 0.64 of the pre-tax one, 2.9%.
 
 The missing loss offset matters more than the rate. With it, the tax keeps
 0.64 of every gain and none of any loss, which cuts the after-tax equity
@@ -317,14 +322,15 @@ because tenure is fixed at t = 1 and no household ever faces both processes.
 |---|---|---|
 | `alpha` | 0.056 | Rent-to-price ratio. Government report (reference to add) |
 | `theta` | 0.015 | Placeholder. Maintenance, Yao & Zhang (2005); Nibud's 1% plus local taxes |
-| `h_rule` | `'nibud'` | How `H_0 = h_mult * Y_0` is set: `'nibud'` the Nibud 2026 maximum mortgage at entry income (below), `'fixed'` `h_fixed`, `'none'` no housing |
+| `h_rule` | `'nibud'` | How `H_0 = h_mult * Y_0` is set: `'nibud'` the Nibud maximum mortgage at entry income (below), `'fixed'` `h_fixed`, `'none'` no housing |
+| `nibud_year` | 2025 | The year of the Nibud norms: 2025, the price year of income (Quinn, 16 November 2026; ladder step 21), or 2026 (steps 16-20) |
 | `h_fixed` | 4.0 | `h_mult` under `h_rule = 'fixed'` (ladder steps 7–15). Placeholder |
-| `nibud_extra` | true | The Nibud EUR 17,000 increase is included, see below |
+| `nibud_extra` | false | The EUR 17,000 increase for a single earner is left out (Quinn, 16 November 2026; ladder step 21). true at steps 16-20, with the 2026 norms, the only year it is coded for |
 
 `h_mult`, the house (owner) or rent index (renter) at entry as a multiple of
 income, is derived from these three by `config.derive`, separately for each
 tenure; the rest of the model reads it, and `h_mult = 0` means no housing.
-| `r_m` | 0.0348 | The total real mortgage rate, not a spread: `r` plus the mean spread between the MIR home-purchase lending rate and the 3-month interbank rate, 2000–2024 |
+| `r_m` | 0.0338 | The total real mortgage rate, not a spread: `r` 1.15% plus the mean spread of 2.23% between the MFI rate on new house-purchase loans and the 3-month interbank rate (paper of 16 November 2026, section 2.2; Quinn, 16 November 2026; ladder step 20). 0.0348 at steps 1-19, the value the paper's Table 1 still prints |
 | `N_mort` | 30 | Standard Dutch annuity mortgage term |
 | `LTV` | 1.00 | Asserted — see below |
 | `mortgage` | `'annuity'` | The contract, see below. `'proportional'` at ladder step 7 |
@@ -376,7 +382,10 @@ rather than half-running.
 ### House at entry: the Nibud rule
 
 With `h_rule = 'nibud'` the house at entry is the largest mortgage a lender
-may grant under the Nibud financing-cost norms for 2026 (Nibud,
+may grant under the Nibud financing-cost norms of `nibud_year`: 2025 in
+production since 16 November 2026 (Nibud, *Financieringslastnormen 2025*,
+bijlage, Nibud 2024; ladder step 21), the price year of income, and 2026 at
+steps 16-20 (Nibud,
 *Financieringslastnormen 2026*, bijlage, version 251110; `config.nibud_lti`).
 With `LTV` = 1 the loan is the house, so `config.derive` sets `h_mult` to that
 loan over the tenure's deterministic gross income at 25.
@@ -389,8 +398,9 @@ rate `i`:
 M = flp(Y, i) * Y / 12 / a,   a = (i/12) (1 + i/12)^360 / ((1 + i/12)^360 - 1)
 ```
 
-The row is the last income at or below `Y` (EUR 30,000 to 125,000 in steps of
-1,000; lower incomes use the first row) and the column the rate bracket. This
+The row is the last income at or below `Y` (EUR 28,000 to 125,000 in steps of
+1,000 in the 2025 table, from 30,000 in the 2026 table; lower incomes use the
+first row) and the column the rate bracket. This
 is the workbook's own calculator: run in Excel, the calculator agrees with the
 code to rounding, including incomes off the table and rates on bracket
 boundaries, and the code reproduces the workbook's maximum-mortgage table. One
@@ -402,10 +412,12 @@ used.
 | Table | below AOW age, box 1 | The household buys at 25 with an annuity mortgage, whose interest is deductible |
 | Test rate | `r_m`, bracket 3.001–3.5% | The model's own mortgage rate, so the payment at entry is the norm's share of income apart from the increase |
 | Income | gross income at 25, single earner | DHS, owners and renters pooled: EUR 33,829 (2025 euros) |
-| Increase | EUR 17,000 (`nibud_extra`) | The Tijdelijke regeling hypothecair krediet allows it for groups without personal unavoidable expenses; the workbook's calculator adds it by default for a single earner above the first income row |
+| Increase | none (`nibud_extra` false) | Left out since 16 November 2026 (Quinn). Steps 16-20 add the EUR 17,000 that the Tijdelijke regeling hypothecair krediet allows groups without personal unavoidable expenses, which the 2026 workbook's calculator adds by default for a single earner above the first income row; the 2025 workbook's calculator has it off, and it is coded for 2026 only |
 | Energy-label amounts | none | The model has no energy label |
 
-At production this gives `h_mult` = 4.521 for both tenures (4.018 without the
+At production (the 2025 norms, `r_m` 3.38%, no increase) the share is 0.225
+and `h_mult` = 4.2385 for both tenures, a house of EUR 143,383; at step 19 (the
+2026 norms, 3.48%, with the increase) it was 4.521 (4.018 without the
 increase), since owners and renters share one income process. The renter
 follows the same rule, so its rent is `alpha` times the house it could have
 bought. With the separate income cubics used until 29 October 2026 it was
@@ -413,8 +425,8 @@ bought. With the separate income cubics used until 29 October 2026 it was
 
 What to keep in mind:
 
-- The table is in 2026 euros and income in 2025 euros. The 2025 tables would
-  match the price year. (At the separate cubics, raising both entry incomes by
+- Production's 2025 table matches the price year of income. The 2026 table
+  of steps 16-20 is in 2026 euros. (At the separate cubics, raising both entry incomes by
   3% moved the multiples to 4.434 and 4.306.)
 - The box-1 shares assume the interest is deducted, which the model does not
   do. At the separate cubics the box-3 table (no deduction) gave 3.57 for
@@ -432,6 +444,7 @@ What to keep in mind:
 | `phi_floor` | 1e-6 | A numerical bound, not a calibration target. 1e-4 is an admissible alternative |
 | `c_min` | 5,000 | The absorbing floor, euros a year (2025) at median labour income (Quinn, 26 October 2026; ladder step 18, steps 1-17 have 0, the yearly top-up). The level the grid and search-routine studies of 24-26 October were run at (`docs/HANDOFF_2026-10-26.md`). Source still open (Nibud minimum example budgets, spending after housing at the bijstand level); 12,000 was too high (most owners bankrupt by 30) |
 | `phi_abs` | 0 (off) | The absorbing floor as one share of permanent labour income, the alternative to `c_min` |
+| `default_choice` | true | With the absorbing floor: bankruptcy is a choice, V = max(V_default, V_continue), the paper's eq. 24 (Quinn, 16 November 2026; ladder step 24). false, at steps 18-23: forced when resources fall below the floor. See below |
 
 ### The absorbing floor (`c_min`, `phi_abs`)
 
@@ -445,6 +458,21 @@ value is u(F_{t*}) D_t, with D_t = 1 + beta p_t D_{t+1} and D_T = 1
 (`p.D_abs`). F_t is also the lowest consumption a solvent household can
 choose. No state is added: the floor is proportional to income, so the value
 stays homothetic.
+
+Default as a choice (`default_choice`, production since 16 November 2026,
+ladder step 24). The paragraph above is the forced rule of steps 18-23. With
+the choice the bankrupt state and its value are the same, but the household
+enters it when that is worth more than continuing: V = max(V_default,
+V_continue) at every state, the paper's eq. 24. Continuing is open to any
+household with resources above `phi_floor` times income, and such a household
+may consume less than F_t, so F_t is no longer the lowest consumption of a
+solvent household. A household without resources must default. The solver
+keeps the value of continuing (`sol.V_cont`, -Inf where it is not open) and
+stores the policies of continuing at every node where it is open. At the
+quadrature nodes (`abs_node_test`) the continuation is at least next year's
+default value. The simulator defaults a household when the value of
+continuing, interpolated at its state, is no more than the default value. The
+value is now continuous at the edge of default (a kink, not a jump).
 
 `config.derive` builds `p.phi_path`:
 
@@ -561,7 +589,12 @@ together with the AOW and the DC pension; 14 and 15 add the taxes. Steps
 7–15 keep the house at 4 times entry income (`h_rule = 'fixed'`); 16 sets it
 by the Nibud rule, 17 charges owners' maintenance on the purchase price, 18
 adds the absorbing floor, and 19 puts half the glide's risky share in the REIT
-(REIT section above).
+(REIT section above). Steps 20-24 bring the model to the paper of 16 November
+2026, one change each: 20 `r_m` 0.0338, 21 the Nibud 2025 norms without the
+EUR 17,000 increase, 22 the tax on the liquid return whatever its sign
+(`cg_loss_offset`), 23 the bequest motive at b = 2 (`chi` 32), 24 default as
+a choice (`default_choice`). Step 1 sets the old value of each, so steps 1-19
+solve what they solved before.
 
 Around step 12, `ladder.sensitivity` moves `replacement` to 0.20 and 0.40 and
 `kappa_base` to 0.05 and 0.20 (half and twice production), one at a time. These are illustrative values for

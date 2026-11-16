@@ -87,16 +87,16 @@ setting the floor also sets the search bound.
 
 | Input | Status |
 |---|---|
-| `h_mult` | Production uses the Nibud 2026 maximum mortgage at entry income (`h_rule = 'nibud'`, ladder step 16): 4.52 for both tenures, which share one income process since 29 October 2026; `h_fixed` 4.0 at steps 7-15 is a placeholder. To decide: the test rate (`r_m` is real, the norm's rate nominal); box 1 or box 3 (the model has no interest deduction); the 2025 tables for the price year; the EUR 17,000 increase; whether renters follow the rule. Still wanted: an income-contingent assignment fitted on LISS, with the Nibud rule as its ceiling |
+| `h_mult` | Production uses the Nibud 2025 maximum mortgage at entry income without the EUR 17,000 increase (`h_rule = 'nibud'`, ladder steps 16 and 21): 4.24 for both tenures (4.52 at steps 16-20, the 2026 norms with the increase), which share one income process since 29 October 2026; `h_fixed` 4.0 at steps 7-15 is a placeholder. To decide: the test rate (`r_m` is real, the norm's rate nominal); box 1 or box 3 (the model has no interest deduction); the 2025 tables for the price year; the EUR 17,000 increase; whether renters follow the rule. Still wanted: an income-contingent assignment fitted on LISS, with the Nibud rule as its ceiling |
 | `kappa_base` | 10% of all pay, no franchise, since 9 November 2026 (Quinn); no data source. Want a participant-weighted aggregate across Dutch funds (DNB or Pensioenfederatie), on the base it applies to (all pay or pay above a franchise) |
-| Housing level | `theta` 1.5% is a placeholder; `h_mult`, see above. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.48% (CALIBRATION.md). The housing dynamics and correlations are calibrated (calibration notes, Tables 1 and 6) |
+| Housing level | `theta` 1.5% is a placeholder; `h_mult`, see above. `alpha` is 5.6% from a government report whose reference is still to be added; the mortgage rate is 3.38% (CALIBRATION.md). The housing dynamics and correlations are calibrated (calibration notes, Tables 1 and 6) |
 | Return moments | The notes' Table 1 says its entries are means and standard deviations of arithmetic returns, and also that "the estimation happened based on a log-process". `config.derive` treats them as arithmetic. If they are log moments, it takes half the variance off twice (stocks: a log mean of 3.5% instead of about 5.7%). Ask the author |
-| `r_m` | Table 1 lists 3.48% as the mortgage rate and describes it as the mean spread between the MIR home-purchase rate and the 3-month rate. CALIBRATION.md reads it as the total rate (r plus a spread of 2.33%). If 3.48% is the spread, `r_m` is 4.63% |
+| `r_m` | 0.0338 since 16 November 2026 (Quinn): r 1.15% plus the mean spread of 2.23%, the paper's section 2.2. The paper's Table 1 still prints 3.48% |
 | Income sample | The correlations with income are the whole sample's (Table 6, since 9 November 2026), the income process the owners and renters of Table 2 (5,487 households). Is there a whole-sample income process, or a reason the two samples differ? |
 | `b0`, `b_alt` | Placeholders. The entry buffer divides deposits by the BKV men's wage at 25. The income profile is now the pooled DHS cubic (EUR 33,829 at 25 for both tenures, 2025 euros), so the denominator should follow |
 | REIT share | Production holds half the glide's risky share in the REIT since 29 October 2026 (ladder step 19, `reit_risky` 0.5), chosen from small-grid runs at 25%, 50% and 100%; the moments and correlations are the calibration notes' (Tables 1 and 6; CALIBRATION.md). Open: a data source for the share (the REIT weight in Dutch DC lifecycle funds); whether the fund should hold the REIT in retirement too (`_reit<n>`); 3 against 5 REIT quadrature nodes; step 19 has no full-grid solve yet |
 | `beta`, `chi` | Placeholders, no sourced value yet |
-| Box-3 regime | 36% on actual returns with no loss offset is in force; the wealth-tax alternative (`tau_wealth`) is off. Decide which regime the baseline represents |
+| Box-3 regime | 36% on actual returns, a loss rebated (the paper's eq. 17, since 16 November 2026; no loss offset before); the wealth-tax alternative (`tau_wealth`) is off. Decide which regime the baseline represents |
 | `sex = 3` pooling | Currently a plain mean of the men's and women's series. Participation-weighted? Does a single-earner household want pooled individual wages, or household labour income? |
 | `tau_inc` | Should eventually be an effective average rate computed along the model's own income profile, not a single national statistic. DHS net over gross income (calibration notes version 3, Table 2, All: 21,155 / 27,022 at 25, 34,218 / 48,366 at the peak) implies about 22% at 25 and 29% at the peak, against the 38.2% the income-tax step applies |
 
@@ -111,12 +111,13 @@ differences rather than levels.
 
 ## 4. Bequest
 
-- The baseline sets `chi = 0`, which contradicts the paper's stated rationale
-  for housing wealth. With no bequest, no equity access and no sale, the
-  owner's house is purely a cost-saving device. Pick one: give `chi` a value,
-  or change the rationale.
-- When `chi > 0` the bequest base is liquid wealth plus gross housing, with no
-  mortgage netting. Cocco and Yao–Zhang net out the debt. With the annuity the
+- Since 16 November 2026 the baseline has `chi` = 32 (b = 2, ladder step 23).
+  Open: the paper's text says two years of consumption, its Table 1 two years
+  of income (Quinn corrects the paper).
+- The bequest base is liquid wealth plus gross housing, with no mortgage
+  netting, as the paper's eq. 19, while its text says "built-up home equity".
+  This matters now that `chi > 0`: an owner who dies at 40 leaves the whole
+  house. Cocco and Yao–Zhang net out the debt. With the annuity the
   balance is known from q, so the netting can be added with `chi > 0`.
 - The terminal-period bequest is inconsistent with the recursion's: the
   recursion discounts by `beta` and applies one period of returns, the terminal
