@@ -265,7 +265,7 @@ column: income with stocks 0.34 (0.028 corrected, Quinn 16 November 2026) agains
 REIT 0.07 against 0.09, rent 0.05 against 0.06. With T = 22, a correlation of
 0.34 is not significant at 10% (the notes mark none of the income column). Both
 tenures' joint correlation matrices are positive definite (smallest
-eigenvalue 0.19 owners, 0.18 renters).
+eigenvalue 0.19 owners, 0.18 renters, computed with `corr_SL` 0.34).
 
 The correlations are wired through a Cholesky factor in both `grids.shock_grid`
 and `simulate.paths_lna`, so giving them values costs nothing in runtime or node
