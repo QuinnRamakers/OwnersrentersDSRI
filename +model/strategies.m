@@ -33,7 +33,11 @@ function R = strategies(S, opts)
 %     solve      false: no solving, only the ranking of what is saved
 %     deadline   a datetime; no solve starts that is expected to end after
 %                it, by the longest solve of that tenure so far in this call
-%     keep_sol   true saves the value function and policies too (large)
+%     keep_sol   true (default) also saves sol (V, c_pol, pi_pol, V_cont; with
+%                free choice tau_pol, reit_pol) and ann_price. Measured on the
+%                pod, 17 November 2026, medium grid: renter 13 MB, owner 63
+%                MB, free choice 18 and 93 MB; the production grid is about
+%                3.4 times that. false saves only the summary (0.15 MB)
 %
 %   Returns the ranking (model.rank_strategies: table, arms, reference,
 %   maxmin, ...; empty fields when the folder holds no solve) plus runs, one

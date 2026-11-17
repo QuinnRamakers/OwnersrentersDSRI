@@ -147,6 +147,21 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-17 Strategy solves keep the solution; model.resimulate (spec: none, asked by Quinn in Claude Code)
+Quinn asked why the mean pension payout is not flat in `figures.strategies`, then: "do not rerun it, but can you make it that we solve the solutions too, how much storage space would that need?", then "also test it on the cluster". Commit 73be24c (code), this entry after it.
+1. Why the mean payout moves: `pension.annuity_price` makes each household's payout grow by R/E[R] a year, so its expected payout is flat. The panel mean moves by (a) sampling noise with risky funds (a Monte Carlo of the 10,000-household mean, payouts at 67 fitted to the saved percentiles: 90% band at 100 of -3.9% to +4.3% for all stocks, -5.2% to +6.2% for all REIT; with 100,000 households -1.2% to +1.2% and -1.7% to +1.9%; night_medium owners +7.3% and +1.4%), (b) bankrupt renters dropping out of the solvent mean (all bonds +4% by 100, all stocks +23%), (c) free choice holding 25-34% risky in retirement while the annuity is priced off the fund's riskless retirement shares (owners +65% from 67 to 100). Nothing re-run.
+2. `model.strategies` keeps `sol` and `ann_price` by default (`keep_sol` true). A reused file keeps what it holds, so last night's files still have no solution.
+3. `model.resimulate(file, N_sim=, seed=)` simulates a saved solve again without solving; with the saved seed it reproduces the saved summary exactly (`strategies_smoke`).
+Checks: local `run_tests(solve=false)` 0 of 22 failed. DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (73be24c), 32 threads, 17 November 12:56-13:15 UTC: fast tests 0 of 22 failed; full `run_tests` 2 of 41 failed, 1 skipped, 16.4 min, the two old failures (`floor_node_test`, `bequest_off_identical`); `strategies_smoke` passes with the resimulation checks.
+Sizes, measured on the pod 13:15-14:12 UTC (`runs/keepsol_size.m`, not committed; `/Solutionstorage/results/strategies/keepsol_size`), medium grid 24x12x20x4 (stored 26x14x20x5 owners, 26x14x20x1 renters, 76 ages), about 5.7 bytes an element after compression:
+| File | MB |
+|---|---:|
+| lifecycle renter | 13.4 |
+| lifecycle owner | 63.2 |
+| free renter | 18.4 |
+| free owner | 93.0 |
+The twelve strategies of `model.strategy_list` take about 0.95 GB on the medium grid and about 3.2-3.4 GB on the production grid (34x18x40x5 stored, about 3.5 times the medium). The pod's persistent volume has 6.1 GB free of 25 GB. Solve times: lifecycle 1.7 and 7.8 min, free 6.0 and 40.4 min. Resimulating 100,000 households takes 3.3 s; the production fund's owner mean payout is then 31,582 at 67 and 31,582 at 100.
+
 ### 2026-11-17 Strategies: solving and ranking apart, and a figure (spec: none, asked by Quinn in Claude Code)
 Quinn: "Is it not easier to have a function that runs the strategies and ex post in a folder we can rank everything inside?", then "show me an informative plot that shows the differences between the strategies besides the welfare". Commit 37c820e.
 1. `model.strategies(S, tag=...)` solves and saves only (one file a strategy and tenure, carrying the strategy), reuses saved solves of the same calibration, and ranks its folder at the end.
