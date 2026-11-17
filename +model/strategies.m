@@ -10,9 +10,12 @@ function R = strategies(S, opts)
 %   calibration (opts.base, production by default) with the strategy's
 %   overrides, and saved to <out>/<name>_<tenure>.mat: the strategy, the
 %   tenure, p, summary, checks, timing (with the solve time by age) and the
-%   value at entry; with keep_sol also the solution. A saved solve of the
-%   same calibration and numerics is reused, not solved again, so a list can
-%   grow and a stopped run can be started again.
+%   value at entry, and (unless keep_sol is false) the solution and the
+%   annuity prices, so the panel can be simulated again later with another
+%   seed or more households (model.resimulate). A saved solve of the same
+%   calibration and numerics is reused, not solved again, so a list can grow
+%   and a stopped run can be started again. A reused file keeps what it
+%   holds: one saved without the solution still has none.
 %
 %   Solving and ranking are separate: at the end this calls
 %   model.rank_strategies on the folder, which ranks every solve saved there,
@@ -51,7 +54,7 @@ arguments
     opts.reference (1,:) char = ''
     opts.solve (1,1) logical = true
     opts.deadline = []
-    opts.keep_sol (1,1) logical = false
+    opts.keep_sol (1,1) logical = true
 end
 
 assert(all(isfield(S, {'name', 'label', 'set'})), 'strategies:fields', ...

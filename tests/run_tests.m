@@ -735,7 +735,7 @@ function strategies_smoke()
 % strategy (V/V_ref)^(1/(1-gamma)) - 1 to 1e-10 and a lowest gain that is the
 % smaller of its two; a second call reuses the saved solves; a solve in
 % another calibration (another grid) is refused in the same ranking; two
-% folders rank together; the figure draws.
+% folders rank together; the figure draws; a saved solve resimulates.
 S = model.strategy_list(); S = S(ismember({S.name}, {'lifecycle', 'bonds'}));
 d = tempname; cleanup = onCleanup(@() rmdir(d, 's'));
 R = model.strategies(S, out = d, grid_dims = [6 5 4 3], gh_n = 3, N_sim = 300);
@@ -763,6 +763,16 @@ assert(isequaln(Q.table, T), 'two folders do not rank as one');
 assert(threw_id(@() model.rank_strategies({d, d}, write = false), 'rank_strategies:duplicate'), 'a solve counted twice');
 files = figures.strategies({d, f}, out = d);
 assert(numel(files) == 2 && all(isfile(files)), 'the figures were not written');
+% The solution is kept by default: the saved seed reproduces the summary
+% exactly, another seed and panel size give another one.
+sfile = fullfile(f, 'bonds_owner.mat'); L = load(sfile, 'summary');
+r1 = model.resimulate(sfile);
+assert(isequaln(r1.summary, L.summary), 'resimulating with the saved seed does not reproduce the summary');
+r2 = model.resimulate(sfile, N_sim = 500, seed = 7);
+assert(r2.summary.N == 500 && ~isequaln(r2.summary.C, L.summary.C), 'another seed gave the same panel');
+g = tempname; c4 = onCleanup(@() rmdir(g, 's'));
+model.strategies(S(2), out = g, grid_dims = [6 5 4 3], gh_n = 3, N_sim = 300, tenures = "renter", keep_sol = false);
+assert(threw_id(@() model.resimulate(fullfile(g, 'bonds_renter.mat')), 'resimulate:no_sol'), 'resimulated a file without a solution');
 end
 
 function dc_choice_dominates()
