@@ -725,26 +725,44 @@ end
 bad = struct('name', 'x', 'label', 'x', 'set', struct('glide_kap', 1));
 d = tempname; cleanup = onCleanup(@() rmdir(d, 's'));
 R = model.strategies(bad, out = d, solve = false, tenures = "renter");
-assert(startsWith(R.arms(1).status, 'FAILED') && contains(R.arms(1).status, 'not a primitive'), 'a misspelt override was accepted');
+assert(startsWith(R.runs(1).status, 'FAILED') && contains(R.runs(1).status, 'not a primitive'), 'a misspelt override was accepted');
 end
 
 function strategies_smoke()
 % model.strategies on a small grid: the production fund and all bonds, both
-% tenures. The reference's gain is 0, the other's is finite, the lowest gain
-% is the smaller of the two tenures', the solve times are recorded, the table
-% is written, and a second call reads the saved solves instead of solving.
+% tenures, solved and saved with their timing; the ranking of the folder
+% (model.rank_strategies) gives the reference a gain of 0, the other
+% strategy (V/V_ref)^(1/(1-gamma)) - 1 to 1e-10 and a lowest gain that is the
+% smaller of its two; a second call reuses the saved solves; a solve in
+% another calibration (another grid) is refused in the same ranking; two
+% folders rank together; the figure draws.
 S = model.strategy_list(); S = S(ismember({S.name}, {'lifecycle', 'bonds'}));
 d = tempname; cleanup = onCleanup(@() rmdir(d, 's'));
 R = model.strategies(S, out = d, grid_dims = [6 5 4 3], gh_n = 3, N_sim = 300);
-T = R.table;
-assert(height(T) == 2 && all(T.gain_renter(1) == 0 & T.gain_owner(1) == 0), 'the reference gain is not 0');
-assert(all(isfinite([T.gain_renter(2), T.gain_owner(2)])) && T.lowest_gain(2) == min(T.gain_renter(2), T.gain_owner(2)), 'gains');
-assert(all([R.arms.solve_sec] > 0) && all(strcmp({R.arms.status}, 'solved')) && isfile(fullfile(d, 'comparison.md')), 'timing or table');
-assert(any(strcmp(R.maxmin, {S.name})), 'max-min');
+assert(all(strcmp({R.runs.status}, 'solved')) && all([R.runs.solve_sec] > 0) && isfile(fullfile(d, 'ranking.md')), 'solved, timed, written');
+T = R.table; i0 = strcmp(T.strategy, 'lifecycle'); i1 = strcmp(T.strategy, 'bonds');
+assert(height(T) == 2 && T.gain_renter(i0) == 0 && T.gain_owner(i0) == 0, 'the reference gain is not 0');
+for ten = ["renter", "owner"]
+    A = load(fullfile(d, "lifecycle_" + ten + ".mat"), 'V_entry', 'p'); B = load(fullfile(d, "bonds_" + ten + ".mat"), 'V_entry');
+    g = 100 * ((B.V_entry / A.V_entry) ^ (1 / (1 - A.p.gamma)) - 1);
+    assert(abs(T.("gain_" + ten)(i1) - g) < 1e-10, '%s: the gain is not the value ratio', ten);
+end
+assert(T.lowest_gain(i1) == min(T.gain_renter(i1), T.gain_owner(i1)) && any(strcmp(R.maxmin, {S.name})), 'lowest gain, max-min');
 R2 = model.strategies(S, out = d, grid_dims = [6 5 4 3], gh_n = 3, N_sim = 300);
-assert(all([R2.arms.reused]) && isequaln(R2.table.gain_owner, T.gain_owner), 'the saved solves were not reused');
+assert(all(strcmp({R2.runs.status}, 'saved')) && isequaln(R2.table, T), 'the saved solves were not reused');
 R3 = model.strategies(S, out = d, grid_dims = [7 5 4 3], gh_n = 3, N_sim = 300, solve = false);
-assert(all(strcmp({R3.arms.status}, 'not solved')), 'a solve on another grid was taken for this one');
+assert(all(strcmp({R3.runs.status}, 'not solved')), 'a solve on another grid was taken for this one');
+e = tempname; c2 = onCleanup(@() rmdir(e, 's'));
+model.strategies(S(2), out = e, grid_dims = [7 5 4 3], gh_n = 3, N_sim = 300, tenures = "renter");
+copyfile(fullfile(d, 'lifecycle_renter.mat'), e);
+assert(threw_id(@() model.rank_strategies(e, write = false), 'rank_strategies:calibration'), 'solves on two grids ranked together');
+f = tempname; c3 = onCleanup(@() rmdir(f, 's')); mkdir(f);
+movefile(fullfile(d, 'bonds_*.mat'), f);
+Q = model.rank_strategies({d, f}, write = false);
+assert(isequaln(Q.table, T), 'two folders do not rank as one');
+assert(threw_id(@() model.rank_strategies({d, d}, write = false), 'rank_strategies:duplicate'), 'a solve counted twice');
+files = figures.strategies({d, f}, out = d);
+assert(numel(files) == 2 && all(isfile(files)), 'the figures were not written');
 end
 
 function dc_choice_dominates()
