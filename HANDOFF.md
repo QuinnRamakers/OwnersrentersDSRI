@@ -147,6 +147,36 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-17 The overnight strategy comparison: results (spec: 2026-11-16, run asked by Quinn in Claude Code)
+Ran on the DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (eee6bef), 32 threads, `runs/strategy_night.sh` (not committed), 16 November 17:58 UTC to 17 November 06:08 UTC, exit 0 at every stage. Production (ladder step 24), 10,000 households, `model.strategy_list` (twelve strategies), both tenures. Gains are in certainty-equivalent consumption at entry against the production fund (`lifecycle`). Tables and solves pulled to `results/strategies/night_medium` and `night_prod` (not committed; `comparison.md` in each).
+1. Smoke, 6x5x4x3, 3 nodes: 1.3 min, passed.
+2. Medium grid, 24x12x20x4, 3 nodes: all 24 solves, 134.7 min. Solve time a strategy: renters 1.1-1.7 min, owners 7.3-7.8 min; no pension 0.1 and 0.7; free choice 5.8 and 40.2.
+3. Production grid, 32x16x40x4, 5 nodes: 11 of 24 solves before the 06:30 UTC deadline, 592.9 min. Renters 18.5-23.9 min, owners 112.8-132.5 min; no pension 0.6 and 4.1. Skipped: `mix60` owner and every strategy after it. The production grid is about 14 times the medium grid's cost for owners and 16 times for renters.
+Gains, renter / owner, in percent (medium; production where solved):
+| Strategy | Medium | Production |
+|---|---|---|
+| no pension account | +3.16 / +9.90 | +4.33 / +10.06 |
+| all bonds | -2.69 / -0.90 | -2.52 / -0.94 |
+| all stocks | -3.85 / -0.91 | -3.83 / -0.89 |
+| all REIT | -2.96 / -1.06 | -2.91 / -1.04 |
+| 60% risky | -1.20 / +0.04 | -1.27 / - |
+| 100 - age, half REIT | +0.19 / +0.21 | |
+| 100 - age, stocks only | -0.88 / +0.07 | |
+| 100 - age, REIT only | +0.31 / +0.17 | |
+| age%, half REIT | -2.09 / -0.27 | |
+| lifecycle to 20% at 67, kept after | +0.29 / +0.22 | |
+| free choice | +1.76 / +0.43 | |
+Where both grids solved a strategy the fund gains move by at most 0.17 points; the no-pension gain moves by 1.2 points for renters.
+Checks: `c_bound_25_39` 0 in all 35 solves; `ce_entry` 0.30-0.43; off-grid lookups 0 except all stocks (14 renter, 14-15 owner) and all REIT (23 renter, 16 owner), all on u1, out of 760,000 household-years. Renters bankrupt at 100: 4.1% with the production fund (production grid), 8-10% with the all-bond, all-stock and all-REIT funds, 34.9% without a pension account; owners 0.03-0.06%.
+What it says (behaviour, not settled levels: CLAUDE.md, Known limits):
+1. Without a pension account both tenures are better off, owners by 10%. In the production-grid panels, owners without it consume 21% more at 25 (EUR 12,665 against 10,496) and 14% more at 30, while their liquid wealth is 0 at 30 with the pension; with it they consume more from 50 on (31,406 against 26,041 at 67). With a flat 38.2% income tax on wages and on payouts the pension's only tax gain is the untaxed fund return, and it does not outweigh the illiquidity while the mortgage is paid. Renters without it run their savings down and 35% are bankrupt by 100.
+2. Among funds, keeping some risk after 67 helps both tenures: 100 - age with half or all REIT, and the lifecycle kept at 20% risky after 67, beat production by 0.2-0.3%. The best strategy that a fund can run for everyone, by the paper's max-min rule, is `lifecycle_keep20` (+0.22% the lower of the two); free choice beats every fund (+1.76% renters, +0.43% owners).
+3. Renters care far more about the fund than owners: the spread across funds is 4.1 points for renters against 1.3 for owners, and renters prefer the REIT over stocks (100 - age with all REIT +0.31 against -0.88 with stocks only); owners barely do.
+Open:
+1. Production-grid solves for the seven strategies skipped (about 18 h on the pod at today's speed). The medium grid ranks the strategies the same where both exist.
+2. The no-pension result rests on the flat 38.2% income tax and on 10% contributions from 25; with the paper's 12.3% (TODO) the pension's return advantage shrinks further. Worth checking before writing anything on it.
+3. All-stock and all-REIT funds push a few households past the top of u1.
+
 ### 2026-11-16 Production to the paper of 16 November; model.strategies; the overnight strategy run started (spec: 2026-11-16, not marked done)
 Review first (no files changed): `Owners_vs_renters (17).pdf`, sections 1-2 and Table 1, against 6e7d3c8. Quinn then asked for the changes of the spec, for `r_m` 0.0338, to run the tests on the cluster, and for "a function that runs a set of strategies ... overnight run on the pod the strategy comparison, also time the runtime".
 Changed (c4b74ff, eee6bef, on `contrib-rates` and main):
