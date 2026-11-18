@@ -147,6 +147,9 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-18 figures.spline_menu (spec: none, asked by Quinn in Claude Code)
+Quinn: "could you show me the dashboard and a better visualisation". `figures.spline_menu(folders)` writes `spline_heatmaps.png` (gain against the reference, rows renter, owner and the lower of the two; columns by REIT fraction; cells risky share to 39 by share at 67 and tail; max-min choice outlined) and `spline_scatter.png` (renter against owner gain, colour the REIT fraction, marker the share at 67, filled held and open falling to 0; the max-min corner; the top five named). Drawn for `results/strategies/spline_night` with `figures.strategies(..., only=` the top six`)` (not committed). Checks: local `run_tests(solve=false)` 0 of 22 failed.
+
 ### 2026-11-18 The spline menu: results (spec: none, run of 2026-11-17)
 Ran on the DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (d12d738), 32 threads, 17 November 17:02 UTC to 18 November 05:57 UTC (773.2 min), exit 0: 168 solves, 2 reused (production from `night_medium`), none skipped or failed. Medium grid 24x12x20x4, 3 nodes, 10,000 households. Pulled to `results/strategies/spline_night` (`ranking.md`; not committed) and `runs/spline_night.txt`.
 Checks, all 170 solves: `c_bound_25_39` 0, off-grid lookups 0, `ce_entry` 0.321-0.391. `s80_20h_r50` is the same fund as `lifecycle_keep20` of `night_medium` and gives the same gains to the last digit (+0.294 renter, +0.219 owner).
