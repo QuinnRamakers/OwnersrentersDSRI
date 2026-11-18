@@ -147,6 +147,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-18 The spline menu: results (spec: none, run of 2026-11-17)
+Ran on the DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (d12d738), 32 threads, 17 November 17:02 UTC to 18 November 05:57 UTC (773.2 min), exit 0: 168 solves, 2 reused (production from `night_medium`), none skipped or failed. Medium grid 24x12x20x4, 3 nodes, 10,000 households. Pulled to `results/strategies/spline_night` (`ranking.md`; not committed) and `runs/spline_night.txt`.
+Checks, all 170 solves: `c_bound_25_39` 0, off-grid lookups 0, `ce_entry` 0.321-0.391. `s80_20h_r50` is the same fund as `lifecycle_keep20` of `night_medium` and gives the same gains to the last digit (+0.294 renter, +0.219 owner).
+1. Max-min: `s100_20h_r50` (100% risky to 39, 20% at 67 held to 100, half REIT): +0.353 renter, +0.241 owner. The top ten lie within 0.07 points of it (lowest gains +0.17 to +0.24): 20% risky at 67 (once 40% falling to 0), 80-100% young, half or three quarters of the risky share in the REIT. 19 of 84 beat production.
+2. Mean gains along each dimension (renter, owner, %): at 67 0%: -0.39, -0.08; 20%: -0.06, +0.15; 40%: -0.45, +0.17; 60%: -1.34, +0.02. REIT 0: -1.34, -0.02; 25%: -0.64, +0.10; 50%: -0.23, +0.14; 75%: -0.13, +0.11. Young 60%: -0.73, +0.05; 80%: -0.52, +0.10; 100%: -0.50, +0.10. Tail held: -0.71, +0.10; to 0: -0.52, +0.12.
+3. Renters drive the max-min: they want more REIT (best renter gain +0.514, `s80_20z_r75`) and little risk at 67; owners gain most at 20-40% risky at 67 with half REIT (best owner +0.249, `s80_40z_r50`). Free choice (`night_medium`) gains +1.76 and +0.43, so the best spline closes about a fifth of the renter's gap and half of the owner's.
+Grid caution: differences of a few hundredths of a point among the top ten are below what the medium grid can settle (CLAUDE.md, known limits).
+
 ### 2026-11-17 Overnight: a menu of 84 spline funds (spec: none, asked by Quinn in Claude Code)
 Quinn: "over night run a menu of splines with different stock and reit allocations, you have until 11 tomorrow". Commit d12d738.
 1. `model.spline_menu(young=, at67=, tail=, reit=)`: knots at 25, 39, 67 and 100; the risky share `young` to 39, `at67` at 67, at 100 held or 0; a fixed fraction `reit` of it in the REIT. Default: young 0.6, 0.8, 1.0; at67 0, 0.2, 0.4, 0.6; both tails (one when at67 is 0); REIT 0.5, 0, 0.25, 0.75 (blocks in that order). 84 strategies, names like `s80_20h_r50`.
