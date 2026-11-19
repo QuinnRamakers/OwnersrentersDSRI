@@ -32,6 +32,8 @@ function R = rank_strategies(folders, opts)
 %                most 0 (R.reference then names them)
 %     write      true (default) writes ranking.md in the first folder
 %     title      the heading of ranking.md (default: the folder names)
+%     exclude    names of strategies to leave out (e.g. ["free", "no_dc"]), so
+%                that "best" is the best of the rest
 %
 %   R.table   one row per strategy, best first: rank, strategy, label, the
 %             gain by tenure (%), the lowest gain (%), solve minutes by tenure
@@ -44,6 +46,7 @@ arguments
     opts.reference (1,:) char = ''
     opts.write (1,1) logical = true
     opts.title (1,:) char = ''
+    opts.exclude string = strings(1, 0)
 end
 
 folders = cellstr(string(folders));
@@ -84,6 +87,7 @@ for i = 1:numel(folders)
         arms(end+1) = a; %#ok<AGROW>
     end
 end
+arms = arms(~ismember({arms.name}, cellstr(opts.exclude)));
 assert(~isempty(arms), 'rank_strategies:empty', 'No strategy solves in %s.', strjoin(folders, ', '));
 
 % The reference. "best" measures each tenure against its best strategy; the

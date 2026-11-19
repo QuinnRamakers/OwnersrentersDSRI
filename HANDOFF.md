@@ -147,6 +147,11 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-19 Spline figures against the best fund per tenure, free choice and no pension left out (spec: none, asked by Quinn in Claude Code)
+Quinn: "give me the plots where the reference is the best strategy for that type (excluding free dc and no dc) and show the losses of all the other ones compared to the best". No new solves. `model.rank_strategies(..., exclude=)` leaves named strategies out (so "best" is the best of the rest); `figures.spline_menu(..., exclude=, others="all")` passes it on and draws every non-spline strategy as a cross; files `_vs_best_without_free_no_dc`.
+Results (`spline_night` with `night_medium`, 94 strategies): the best renter fund is `s80_20z_r75`, the best owner fund `s80_40z_r50`. Closest to both: `s100_20h_r75` (renter -0.03%, owner -0.02%), `s80_20h_r75` (-0.04, -0.03), `s100_20z_r75` (-0.01, -0.05). Production `lifecycle` -0.51 and -0.25; `lifecycle_keep20` -0.22 and -0.03; `age100_reit` -0.20 and -0.08; constant funds lose most (all stocks -4.35 and -1.16, all REIT -3.46 and -1.30, all bonds -3.19 and -1.14).
+Checks: local `run_tests(solve=false)` 0 of 22 failed. The full `run_tests` was not run (Quinn: "do not run"); still open, now at this commit.
+
 ### 2026-11-19 Spline figures against free choice, no pension and the best (spec: none, asked by Quinn in Claude Code)
 Quinn: "can you also do the heatmap and spline fund with the free dc as a reference, no pension account and the best of all simulated as the reference. first do not run new model solves", then "a copy of the scatter one as is with the scales and one with equal grid scaling". Commit fa9e395. No new solves: free choice and no pension come from `night_medium`, same grid and calibration as `spline_night`.
 1. `model.rank_strategies`: a copy of the same solve in a second folder (same calibration, same value at entry) counts once, so `spline_night` and `night_medium` rank together (96 strategies, 192 solves); the same file twice is still an error. `reference="best"` measures each tenure against its own best strategy.

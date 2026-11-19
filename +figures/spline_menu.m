@@ -32,8 +32,10 @@ function files = spline_menu(folders, opts)
 %   otherwise.
 %
 %   Options: out (folder for the files; default the first folder), top
-%   (splines named in the scatter, default 5), reference, others (default
-%   production and free choice).
+%   (splines named in the scatter, default 5), reference, exclude (names left
+%   out of the ranking, passed to model.rank_strategies), others (the other
+%   strategies drawn as crosses; default production and free choice, "all"
+%   for every one in the folders).
 
 arguments
     folders {mustBeText}
@@ -41,11 +43,13 @@ arguments
     opts.top (1,1) double = 5
     opts.reference (1,:) char = ''
     opts.others string = ["lifecycle", "free"]
+    opts.exclude string = strings(1, 0)
 end
 
-R = model.rank_strategies(folders, reference = opts.reference, write = false);
+R = model.rank_strategies(folders, reference = opts.reference, exclude = opts.exclude, write = false);
 out = opts.out; if isempty(out), out = R.folders{1}; end
 suffix = ''; if ~isempty(opts.reference), suffix = ['_vs_' opts.reference]; end
+if ~isempty(opts.exclude), suffix = [suffix '_without_' char(strjoin(opts.exclude, '_'))]; end
 T = R.table;
 tok = regexp(T.strategy, '^s(\d+)_(\d+)([hz])_r(\d+)$', 'tokens', 'once');
 is = ~cellfun(@isempty, tok);
@@ -54,7 +58,8 @@ tok = vertcat(tok{is});
 M = table(T.strategy(is), str2double(tok(:, 1)), str2double(tok(:, 2)), string(tok(:, 3)), str2double(tok(:, 4)), ...
           T.gain_renter(is), T.gain_owner(is), T.lowest_gain(is), ...
           'VariableNames', {'name', 'young', 'at67', 'tail', 'reit', 'renter', 'owner', 'lowest'});
-O = T(ismember(T.strategy, cellstr(opts.others)) & ~is, {'strategy', 'gain_renter', 'gain_owner'});
+show = ismember(T.strategy, cellstr(opts.others)); if isequal(opts.others, "all"), show = true(height(T), 1); end
+O = T(show & ~is, {'strategy', 'gain_renter', 'gain_owner'});
 best = M.name{find(M.lowest == max(M.lowest), 1)};
 st = figures.style();
 files = {heatmaps(M, best, R.reference, st, out, suffix), ...
@@ -148,7 +153,9 @@ for i = 1:height(M)
         'MarkerEdgeColor', c, 'MarkerFaceColor', face);
 end
 plot(ax, 0, 0, 'kx', 'MarkerSize', 13, 'LineWidth', 2.4);
-text(ax, 0, 0, sprintf('  %s (reference)', ref), 'FontSize', st.font, 'Color', st.ink, ...
+ha = 'left'; lab0 = sprintf('  %s (reference)', ref);
+if 0 > xl(1) + 0.8 * diff(xl), ha = 'right'; lab0 = sprintf('%s (reference)  ', ref); end   % origin at the right edge
+text(ax, 0, 0, lab0, 'FontSize', st.font, 'Color', st.ink, 'HorizontalAlignment', ha, ...
     'VerticalAlignment', 'bottom', 'Interpreter', 'none');
 for i = 1:height(O)
     if O.gain_renter(i) == 0 && O.gain_owner(i) == 0, continue, end   % the reference itself
