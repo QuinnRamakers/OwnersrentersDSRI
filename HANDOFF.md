@@ -147,6 +147,10 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-19 Full tests on the pod at 0f67a50; the knot solves started (spec: none)
+DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (0f67a50), 32 threads, inside `runs/knot_night.sh`, 19 November 21:51-22:07 UTC: fast tests 0 of 22 failed; full `run_tests` 2 of 41 failed, 1 skipped, 15.6 min. The two failures are the old ones (`floor_node_test` "owner 1: solve out of range"; `bequest_off_identical` "s18_renter: the solution differs from the baseline"); `floor_off_identical` skipped (no baseline). `strategies_smoke` passes with the checks added since fa9e395 (a copy in a second folder counts once; the best reference). This closes the open full tests of the entries since fa9e395.
+The knot solves started at 22:07 UTC: 109 strategies (production reused) x 2 tenures, expected to end about 14:00 UTC on 20 November. `figures.strategies(..., colors="rank")` (f8bbd8b): green best by max-min, through yellow, to red worst, numbered in the legend.
+
 ### 2026-11-19 The knot run started; clearer dashboard legends (spec: none, asked by Quinn in Claude Code)
 Quinn: "please plot the dashboards again with a clearer description of the strategies", then "VPN up, start it" and "i have a stable connection now, consider the past hours an artefact". Commit 0f67a50.
 1. `figures.strategies(..., roles=)`: each legend entry gives a role, what the fund holds (for a knots fund the risky share at each knot and the REIT part of it) and the welfare for both tenures. Redrawn `strategies_<tenure>_best_maxmin.png` and `strategies_<tenure>_top3_free.png` in `results/strategies/spline_night` (not committed).
