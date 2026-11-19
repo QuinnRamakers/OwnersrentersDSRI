@@ -147,6 +147,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-19 Top three per tenure against free choice; both tenures' welfare in the figures; model.knot_menu; the knot run not started (spec: none, asked by Quinn in Claude Code)
+Quinn: "schedule a larger array of strategies also have strategies that fit a spline to 25, middle working life retirement. but before run the top3 strategies for owners and renters and the free choice to show how the behaviour changes between them. also add the welfare of the other type per graph". Commit 90ee2de.
+1. No new solves for the top three: their summaries are saved. Top renters `s80_20z_r75`, `s100_20z_r75`, `s100_20h_r75` (+0.51, +0.50, +0.49% against production); top owners `s80_40z_r50`, `s100_40h_r50`, `s80_40h_r50` (+0.25% each). `figures.strategies(..., only=` the six and `free`, `suffix="_top3_free")` and `figures.fund_mix(..., file="fund_mix_top3.png")` in `results/strategies/spline_night` (not committed).
+2. `figures.strategies` legend and `figures.fund_mix` titles give both tenures' welfare.
+3. `model.knot_menu(at25=, mid=, at67=, mid_age=46, tail=, reit=)`: knots at 25, 46, 67 and 100, free shares at each (not flat to 39); default at25 0.8, 1.0; mid 0.5, 0.7, 0.9; at67 0.1, 0.2, 0.3; held or to 0; REIT 0.75, 0.5, 1.0: 108 strategies, names `k<25>_<46>_<67><h|z>_r<reit>`.
+4. `runs/knot_night.sh` (not committed): full `run_tests`, then production plus `model.knot_menu()`, both tenures, medium grid, summaries only, about 16 h. Not started: the VPN dropped during `oc rsync` (TLS handshake timeout, then "no such host" for api.dsri.unimaas.nl). The pod's `/Solutionstorage/OwnersrentersDSRI_paper` may hold a partial copy of 90ee2de; the next sync overwrites it.
+Checks: local `run_tests(solve=false)` 0 of 22 failed (the knot menu derives, 108 unique names, knots as asked). Full `run_tests` not yet run.
+
 ### 2026-11-19 Fund mix: 100 - age in place of production, clearer titles (spec: none, asked by Quinn in Claude Code)
 Quinn: "replace the bottom left with 100-age with some reit fraction such as 50 if you have it, and label the graphs in a clearer way". `fund_mix_best.png` redrawn with `age100` (100 - age, half REIT; `night_medium`) for renters: -1.54% vs free choice, -0.32% vs the best renter fund. `figures.fund_mix` titles: a bold heading (tenure and role), then what the fund holds with its name, then the welfare changes; the main title names what "best" leaves out in words. Checks: local `run_tests(solve=false)` 0 of 22 failed. Full `run_tests` not run (Quinn); open.
 
