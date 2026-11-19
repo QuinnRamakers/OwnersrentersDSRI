@@ -147,6 +147,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-19 The knot run started; clearer dashboard legends (spec: none, asked by Quinn in Claude Code)
+Quinn: "please plot the dashboards again with a clearer description of the strategies", then "VPN up, start it" and "i have a stable connection now, consider the past hours an artefact". Commit 0f67a50.
+1. `figures.strategies(..., roles=)`: each legend entry gives a role, what the fund holds (for a knots fund the risky share at each knot and the REIT part of it) and the welfare for both tenures. Redrawn `strategies_<tenure>_best_maxmin.png` and `strategies_<tenure>_top3_free.png` in `results/strategies/spline_night` (not committed).
+2. The pod copy by `oc rsync` (tar fallback) dropped the VPN twice; the committed tree went over in seconds as `git archive HEAD | oc exec -i <pod> -c matlab -- tar -x -C /Solutionstorage/OwnersrentersDSRI_paper`, plus `runs/COMMIT` and `runs/knot_night.sh` by tar.
+3. Started on the DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (0f67a50), 32 threads, 19 November 21:51 UTC, `runs/knot_night.sh`: fast and full `run_tests`, then production plus `model.knot_menu()` (108 funds), both tenures, medium grid 24x12x20x4, 3 nodes, 10,000 households, summaries only. Expected about 16 min of tests and about 16 h of solves. Output `/Solutionstorage/results/strategies/knot_night`, log `runs/knot_night.txt`. Results and checks to follow.
+Checks: local `run_tests(solve=false)` 0 of 22 failed.
+
 ### 2026-11-19 Max-min and best-per-type funds; the knot run still not started (spec: none, asked by Quinn in Claude Code)
 Quinn: "Reconnected, start it", then "also plot me the minmax best" and "the dashboard with the renter owner behaviour in the best per type and the maxmin". `oc whoami` failed ("lookup api.dsri.unimaas.nl: no such host"), so the knot run (`runs/knot_night.sh`) was not started; not retried.
 Max-min fund: against each type's best (free choice and no pension left out) `s100_20h_r75` (lowest loss -0.025%: renters -0.03%, owners -0.02%); against production `s100_20h_r50` (+0.35%, +0.24%). Drawn without new solves in `results/strategies/spline_night` (not committed): `fund_mix_best_maxmin.png` (best renter fund, best owner fund, both max-min funds; `figures.fund_mix` takes `columns=` and a three-line title) and `strategies_<tenure>_best_maxmin.png` (`figures.strategies`, behaviour by age).
