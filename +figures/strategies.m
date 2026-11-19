@@ -17,17 +17,20 @@ function files = strategies(folders, opts)
 %     (e) mean pension payout before tax, thousands of euros a year
 %     (f) the share bankrupt, percent
 %   The reference (model.rank_strategies) is black and thick. The legend
-%   lists the strategies best first, with each one's welfare gain for both
+%   lists the strategies best first: role, what the fund holds (for a knots
+%   fund the risky share at each knot and the REIT part), and the welfare gain for both
 %   tenures. Writes strategies_<tenure><suffix>.png in the first folder (or opts.out)
 %   and returns the file names.
 %
-%   Options: only (names to draw, the reference always included), reference,
+%   Options: only (names to draw, the reference always included), roles (one
+%   short name per entry of only, shown in the legend), reference,
 %   out (folder for the files), ages (default 25-100), suffix (added to the
 %   file names).
 
 arguments
     folders {mustBeText}
     opts.only string = strings(1, 0)
+    opts.roles string = strings(1, 0)
     opts.reference (1,:) char = ''
     opts.out (1,:) char = ''
     opts.ages (1,2) double = [25 100]
@@ -87,7 +90,11 @@ for ten = R.tenures
         plot(ax(6), a, 100 * s.floored, args{:});
         h(end+1) = hh; %#ok<AGROW>
         gg = arrayfun(@(t) R.table.("gain_" + t)(strcmp(R.table.strategy, n{1})), R.tenures);
-        lab{end+1} = sprintf('%s  (%s)', label_of(R, n{1}), strjoin(compose('%ss %+.2f%%', R.tenures(:), gg(:)), ', ')); %#ok<AGROW>
+        role = n{1}; j = find(opts.only == n{1}, 1);
+        if ~isempty(opts.roles) && ~isempty(j), role = sprintf('%s  [%s]', opts.roles(j), n{1}); end
+        if isref, role = sprintf('Reference: production  [%s]', n{1}); end
+        lab{end+1} = sprintf('%s\n   %s\n   welfare vs %s: %s', role, describe(R, n{1}), R.reference, ...
+            strjoin(compose('%ss %+.2f%%', R.tenures(:), gg(:)), ', ')); %#ok<AGROW>
     end
     yline(ax(2), 0, 'Color', st.muted);
     ylim(ax(1), [0 1]);
@@ -112,4 +119,26 @@ end
 
 function l = label_of(R, name)
 l = R.table.label{strcmp(R.table.strategy, name)};
+end
+
+function d = describe(R, name)
+% What a strategy's fund holds, in words: for a knots fund the risky share at
+% each knot and the REIT part of it; otherwise its label.
+i = find(strcmp({R.arms.name}, name), 1);
+L = load(R.arms(i).file, 'strategy');
+s = L.strategy.set;
+d = label_of(R, name);
+if isempty(s) || ~isfield(s, 'glide_knots') || isempty(s.glide_knots), return, end
+K = s.glide_knots; risky = K(:, 2) + K(:, 3);
+pts = strjoin(compose('%.0f%% at %d', 100 * risky, K(:, 1)), ' -> ');
+f = K(:, 3) ./ max(risky, eps); f = f(risky > 0);
+mix = 'no risky part';
+if ~isempty(f)
+    if max(f) - min(f) < 1e-9
+        mix = sprintf('risky part %.0f%% REIT, %.0f%% stocks', 100 * f(1), 100 * (1 - f(1)));
+    else
+        mix = 'REIT part of risky varies by age';
+    end
+end
+d = sprintf('risky share %s; %s', pts, mix);
 end
