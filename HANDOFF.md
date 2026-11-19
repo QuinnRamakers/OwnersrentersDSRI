@@ -147,6 +147,9 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-19 Fund mix: 100 - age in place of production, clearer titles (spec: none, asked by Quinn in Claude Code)
+Quinn: "replace the bottom left with 100-age with some reit fraction such as 50 if you have it, and label the graphs in a clearer way". `fund_mix_best.png` redrawn with `age100` (100 - age, half REIT; `night_medium`) for renters: -1.54% vs free choice, -0.32% vs the best renter fund. `figures.fund_mix` titles: a bold heading (tenure and role), then what the fund holds with its name, then the welfare changes; the main title names what "best" leaves out in words. Checks: local `run_tests(solve=false)` 0 of 22 failed. Full `run_tests` not run (Quinn); open.
+
 ### 2026-11-19 Fund mix with losses against free choice and the best fund of the tenure (spec: none, asked by Quinn in Claude Code)
 Quinn: "report the first one with the welfare losses both vs free choice and the best within their own category". `figures.fund_mix(..., versus=["free", "best"], best_without=["free", "no_dc"])` (the defaults) puts both changes in each panel's title. Redrawn `fund_mix_best.png`, no new solves:
 | Panel | vs free choice | vs best fund of the tenure |

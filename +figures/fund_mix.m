@@ -44,7 +44,8 @@ fig = figure('Visible', 'off', 'Color', 'w', 'Position', [40 40 560 * nc + 60, 4
 tl = tiledlayout(fig, nr, nc, 'TileSpacing', 'compact', 'Padding', 'compact');
 ttl = sprintf('DC fund mix by age (gains against `%s`)', R.reference);
 if ~isempty(opts.versus), ttl = sprintf(['DC fund mix by age. Welfare change (certainty-equivalent consumption at entry) against ' ...
-    'free choice and against the best fund for the same tenure (leaving out %s)'], strjoin(opts.best_without, ' and ')); end
+    'free choice and against the best fund for the same tenure (leaving out %s)'], ...
+    strjoin(replace(opts.best_without, ["free", "no_dc"], ["free choice", "no pension account"]), ' and ')); end
 title(tl, ttl, 'FontSize', st.font + 4, ...
     'Interpreter', 'none', 'Color', st.ink);
 for k = 1:n
@@ -77,8 +78,14 @@ for k = 1:n
         end
         parts{end+1} = sprintf('%+.2f%% vs %s', 100 * ((1 + g / 100) / (1 + gv / 100) - 1), vname); %#ok<AGROW>
     end
-    title(ax, {sprintf('%s: %s', capitalize(tenures(k)), names(k)), lab, strjoin(parts, ',  ')}, ...
-        'FontWeight', 'normal', 'FontSize', st.font, 'Interpreter', 'none', 'Color', st.ink);
+    % Heading: the tenure and the panel's title; then what the fund holds
+    % (the strategy's label and name) and the welfare changes.
+    head = sprintf('%ss: %s', capitalize(tenures(k)), lab);
+    what = sprintf('%s  [%s]', L.strategy.label, names(k));
+    if strcmp(lab, L.strategy.label), head = sprintf('%ss', capitalize(tenures(k))); end
+    title(ax, head, 'FontWeight', 'bold', 'FontSize', st.font + 1, 'Interpreter', 'none', 'Color', st.ink);
+    subtitle(ax, {what, ['Welfare: ' strjoin(parts, ',  ')]}, 'FontSize', st.font - 1, 'Interpreter', 'none', ...
+        'Color', st.ink2);
     % Shares at 25, 67 and 99, written on the boundary line.
     for t = [25 67 99]
         j = find(a == t, 1); if isempty(j), continue, end
