@@ -35,7 +35,9 @@ function files = spline_menu(folders, opts)
 %   (splines named in the scatter, default 5), reference, exclude (names left
 %   out of the ranking, passed to model.rank_strategies), others (the other
 %   strategies drawn as crosses; default production and free choice, "all"
-%   for every one in the folders).
+%   for every one in the folders), window ([lowest renter gain, lowest owner
+%   gain]: also writes the scatter zoomed to that window, as _zoom and
+%   _zoom_equal; the funds below it are counted, not drawn).
 
 arguments
     folders {mustBeText}
@@ -44,6 +46,7 @@ arguments
     opts.reference (1,:) char = ''
     opts.others string = ["lifecycle", "free"]
     opts.exclude string = strings(1, 0)
+    opts.window double = []
 end
 
 R = model.rank_strategies(folders, reference = opts.reference, exclude = opts.exclude, write = false);
@@ -63,8 +66,12 @@ O = T(show & ~is, {'strategy', 'gain_renter', 'gain_owner'});
 best = M.name{find(M.lowest == max(M.lowest), 1)};
 st = figures.style();
 files = {heatmaps(M, best, R.reference, st, out, suffix), ...
-         scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, false), ...
-         scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, true)};
+         scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, false, []), ...
+         scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, true, [])};
+if ~isempty(opts.window)
+    files = [files, {scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, false, opts.window), ...
+                     scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, true, opts.window)}];
+end
 end
 
 % ------------------------------------------------------------------------
@@ -129,7 +136,7 @@ close(fig);
 end
 
 % ------------------------------------------------------------------------
-function f = scatter_gains(M, O, best, ref, st, out, top, suffix, equal)
+function f = scatter_gains(M, O, best, ref, st, out, top, suffix, equal, window)
 hex = @(h) sscanf(h(2:end), '%2x%2x%2x', [1 3]) / 255;
 ramp = [hex('#86b6ef'); hex('#3987e5'); hex('#1c5cab'); hex('#0d366b')];   % ordinal, light to dark
 reit = sort(unique(M.reit)).';
@@ -141,9 +148,19 @@ fig = figure('Visible', 'off', 'Color', 'w', 'Position', [40 40 1500 950]);
 ax = axes(fig); hold(ax, 'on'); grid(ax, 'on');
 set(ax, 'FontSize', st.font + 1, 'GridColor', st.grid, 'GridAlpha', 1, 'XColor', st.ink2, 'YColor', st.ink2);
 m = M.lowest(strcmp(M.name, best));
+isbest = startsWith(ref, 'best');                  % each tenure against its own best: no fund sits at (0, 0)
 xs = [M.renter; O.gain_renter; 0]; ys = [M.owner; O.gain_owner; 0];
+if ~isempty(window)
+    % Only the window is drawn; the funds below it are counted in the subtitle.
+    keep = xs >= window(1) & ys >= window(2);
+    n_out = sum(~(M.renter >= window(1) & M.owner >= window(2))) + ...
+            sum(~(O.gain_renter >= window(1) & O.gain_owner >= window(2)));
+    xs = xs(keep); ys = ys(keep);
+end
 span = max(xs) - min(xs); yspan = max(ys) - min(ys);
 xl = [min(xs) - 0.05 * span, max(xs) + 0.08 * span]; yl = [min(ys) - 0.06 * yspan, max(ys) + 0.08 * yspan];
+if ~isempty(window), xl(1) = window(1); yl(1) = window(2); end
+set(ax, 'XTick', nice_ticks(xl), 'YTick', nice_ticks(yl));
 xline(ax, 0, 'Color', st.muted); yline(ax, 0, 'Color', st.muted);
 plot(ax, [m m xl(2)], [yl(2) m m], '--', 'Color', st.ink2, 'LineWidth', 1.2);
 for i = 1:height(M)
@@ -152,16 +169,28 @@ for i = 1:height(M)
     plot(ax, M.renter(i), M.owner(i), mk{a67 == M.at67(i)}, 'MarkerSize', 9, 'LineWidth', 1.6, ...
         'MarkerEdgeColor', c, 'MarkerFaceColor', face);
 end
-plot(ax, 0, 0, 'kx', 'MarkerSize', 13, 'LineWidth', 2.4);
-ha = 'left'; lab0 = sprintf('  %s (reference)', ref);
-if 0 > xl(1) + 0.8 * diff(xl), ha = 'right'; lab0 = sprintf('%s (reference)  ', ref); end   % origin at the right edge
-text(ax, 0, 0, lab0, 'FontSize', st.font, 'Color', st.ink, 'HorizontalAlignment', ha, ...
-    'VerticalAlignment', 'bottom', 'Interpreter', 'none');
+if isbest
+    % The best fund of each tenure, where it lies: 0 on its own axis.
+    for w = ["renter", "owner"]
+        g = [M.(w); O.("gain_" + w)]; nm = [M.name; O.strategy]; gx = [M.renter; O.gain_renter]; gy = [M.owner; O.gain_owner];
+        i = find(g == 0, 1);
+        plot(ax, gx(i), gy(i), 'o', 'MarkerSize', 20, 'LineWidth', 1.8, 'Color', st.ink);
+        va = 'bottom'; if w == "owner", va = 'top'; end
+        text(ax, gx(i), gy(i), sprintf('best for %ss: %s   ', w, nm{i}), 'FontSize', st.font, 'Color', st.ink, ...
+            'HorizontalAlignment', 'right', 'VerticalAlignment', va, 'Interpreter', 'none', 'FontWeight', 'bold');
+    end
+else
+    plot(ax, 0, 0, 'kx', 'MarkerSize', 13, 'LineWidth', 2.4);
+    ha = 'left'; lab0 = sprintf('  %s (reference)', ref);
+    if 0 > xl(1) + 0.8 * diff(xl), ha = 'right'; lab0 = sprintf('%s (reference)  ', ref); end   % origin at the right edge
+    text(ax, 0, 0, lab0, 'FontSize', st.font, 'Color', st.ink, 'HorizontalAlignment', ha, ...
+        'VerticalAlignment', 'bottom', 'Interpreter', 'none');
+end
 for i = 1:height(O)
     if O.gain_renter(i) == 0 && O.gain_owner(i) == 0, continue, end   % the reference itself
     plot(ax, O.gain_renter(i), O.gain_owner(i), 'kx', 'MarkerSize', 11, 'LineWidth', 2);
     text(ax, O.gain_renter(i), O.gain_owner(i), sprintf('  %s', O.strategy{i}), 'FontSize', st.font, ...
-        'Color', st.ink, 'VerticalAlignment', 'top', 'Interpreter', 'none');
+        'Color', st.ink, 'VerticalAlignment', 'top', 'Interpreter', 'none', 'Clipping', 'on');
 end
 % The top splines get a number at their point; the legend names them.
 [~, o] = sort(M.lowest, 'descend');
@@ -169,7 +198,7 @@ o = o(1:min(top, height(M)));
 for k = 1:numel(o)
     i = o(k);
     text(ax, M.renter(i), M.owner(i), sprintf('%d ', k), 'FontSize', st.font, 'FontWeight', 'bold', ...
-        'Color', st.ink, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
+        'Color', st.ink, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', 'Clipping', 'on');
 end
 xlim(ax, xl); ylim(ax, yl);
 if equal
@@ -179,9 +208,10 @@ xlabel(ax, 'Renter gain (%)', 'Color', st.ink); ylabel(ax, 'Owner gain (%)', 'Co
 scale = 'each axis on its own scale'; if equal, scale = 'equal scales'; end
 title(ax, sprintf('Spline funds: renter against owner gain, against `%s` (%s)', ref, scale), 'Interpreter', 'none', ...
     'FontWeight', 'normal', 'FontSize', st.font + 4, 'Color', st.ink);
-subtitle(ax, sprintf(['Dashed corner: the best spline''s lowest gain, %+.2f%%; a fund up and to the ' ...
-    'right of it would beat it. Numbered: the top %d splines by lowest gain.'], m, numel(o)), ...
-    'Color', st.ink2, 'FontSize', st.font + 1);
+txt = sprintf(['Dashed corner: the best spline''s lowest gain, %+.2f%%; a fund up and to the ' ...
+    'right of it would beat it. Numbered: the top %d splines by lowest gain.'], m, numel(o));
+if ~isempty(window), txt = sprintf('%s %d funds lie below the window and are not drawn.', txt, n_out); end
+subtitle(ax, txt, 'Color', st.ink2, 'FontSize', st.font + 1);
 % Legend, outside the box: the top splines, then one entry per REIT fraction
 % (colour), share at 67 (marker), tail (fill).
 h = gobjects(0); lab = {};
@@ -206,7 +236,8 @@ lab{end+1} = 'open: falling to 0 at 100';
 lg = legend(ax, h, lab, 'Location', 'eastoutside', 'Box', 'off', 'FontSize', st.font, 'TextColor', st.ink, ...
     'Interpreter', 'none');
 title(lg, 'Top splines (renter, owner gain %)', 'FontWeight', 'normal');
-tail = ''; if equal, tail = '_equal'; end
+tail = ''; if ~isempty(window), tail = '_zoom'; end
+if equal, tail = [tail '_equal']; end
 f = fullfile(out, ['spline_scatter' suffix tail '.png']);
 exportgraphics(fig, f, 'Resolution', 130);
 close(fig);
@@ -227,4 +258,12 @@ end
 
 function v = ternary(c, a, b)
 if c, v = a; else, v = b; end
+end
+
+function t = nice_ticks(lim)
+% About six to ten ticks on a 1-2-2.5-5 step.
+steps = [0.01 0.02 0.025 0.05 0.1 0.2 0.25 0.5 1 2 2.5 5 10];
+s = steps(find(diff(lim) ./ steps <= 10, 1));
+t = ceil(lim(1) / s) * s : s : lim(2);
+t = round(t / s) * s;
 end

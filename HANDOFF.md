@@ -147,6 +147,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-19 Best funds drawn where they are, a zoomed scatter, and the fund mix of the best funds (spec: none, asked by Quinn in Claude Code)
+Quinn: "the same strategy doesnt need to be zero, plot that one as is and trim grid spacing at some point to make it look interpretable", then "also give me a plot of the optimal owner and renter strategy". No new solves.
+1. `figures.spline_menu`: with `reference="best"` no cross at (0, 0); the best fund of each tenure is circled where it lies (0 on its own axis). Ticks on a 1-2-2.5-5 step. `window=[lowest renter gain, lowest owner gain]` also writes `_zoom` and `_zoom_equal`, counting the funds below the window. Drawn with window [-1 -0.3] (52 funds below it).
+2. `figures.fund_mix(folders, names, tenures)`: stocks, REIT and bonds by age as stacked areas, one panel a strategy and tenure, the gain in the title; `fund_mix_best.png` for the best renter fund `s80_20z_r75` (80% risky to 39, 20% at 67, 0 at 100, three quarters REIT; +0.51% against production), the best owner fund `s80_40z_r50` (80%, 40% at 67, 0 at 100, half REIT; +0.25%), `s100_20h_r75`, production, and free choice (mean shares; renters about 27% risky at 67, mostly REIT; owners 34%).
+Checks: local `run_tests(solve=false)` 0 of 22 failed. Full `run_tests` not run (Quinn); open.
+
 ### 2026-11-19 Spline figures against the best fund per tenure, free choice and no pension left out (spec: none, asked by Quinn in Claude Code)
 Quinn: "give me the plots where the reference is the best strategy for that type (excluding free dc and no dc) and show the losses of all the other ones compared to the best". No new solves. `model.rank_strategies(..., exclude=)` leaves named strategies out (so "best" is the best of the rest); `figures.spline_menu(..., exclude=, others="all")` passes it on and draws every non-spline strategy as a cross; files `_vs_best_without_free_no_dc`.
 Results (`spline_night` with `night_medium`, 94 strategies): the best renter fund is `s80_20z_r75`, the best owner fund `s80_40z_r50`. Closest to both: `s100_20h_r75` (renter -0.03%, owner -0.02%), `s80_20h_r75` (-0.04, -0.03), `s100_20z_r75` (-0.01, -0.05). Production `lifecycle` -0.51 and -0.25; `lifecycle_keep20` -0.22 and -0.03; `age100_reit` -0.20 and -0.08; constant funds lose most (all stocks -4.35 and -1.16, all REIT -3.46 and -1.30, all bonds -3.19 and -1.14).
