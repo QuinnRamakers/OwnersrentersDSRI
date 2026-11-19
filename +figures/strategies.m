@@ -27,7 +27,9 @@ function files = strategies(folders, opts)
 %   out (folder for the files), ages (default 25-100), suffix (added to the
 %   file names), colors ("series", the default, or "rank": the drawn
 %   strategies from green, the best by the max-min rule, through yellow to red,
-%   numbered in the legend).
+%   numbered in the legend), legend ("full": role, holdings and welfare;
+%   "short": one line each; "colorbar": the reference and the five best named,
+%   a colour bar for the rank, for long lists with colors="rank").
 
 arguments
     folders {mustBeText}
@@ -38,6 +40,7 @@ arguments
     opts.ages (1,2) double = [25 100]
     opts.suffix (1,:) char = ''
     opts.colors (1,1) string {mustBeMember(opts.colors, ["series", "rank"])} = "series"
+    opts.legend (1,1) string {mustBeMember(opts.legend, ["full", "short", "colorbar"])} = "full"
 end
 
 R = model.rank_strategies(folders, reference = opts.reference, write = false);
@@ -70,7 +73,7 @@ for ten = R.tenures
     xlabel(ax(4:6), 'Age');
 
     ref = load_summary(R, R.reference, ten);
-    h = gobjects(0); lab = {};
+    h = gobjects(0); lab = {}; isr = false(1, 0); rk = zeros(1, 0);
     c = 0;
     for n = names
         s = load_summary(R, n{1}, ten);
@@ -101,12 +104,31 @@ for ten = R.tenures
         if ~isempty(opts.roles) && ~isempty(j), role = sprintf('%s  [%s]', opts.roles(j), n{1}); end
         if opts.colors == "rank" && ~isref, role = sprintf('%d. %s', c, role); end
         if isref, role = sprintf('Reference: production  [%s]', n{1}); end
-        lab{end+1} = sprintf('%s\n   %s\n   welfare vs %s: %s', role, describe(R, n{1}), R.reference, ...
-            strjoin(compose('%ss %+.2f%%', R.tenures(:), gg(:)), ', ')); %#ok<AGROW>
+        if opts.legend == "full"
+            lab{end+1} = sprintf('%s\n   %s\n   welfare vs %s: %s', role, describe(R, n{1}), R.reference, ...
+                strjoin(compose('%ss %+.2f%%', R.tenures(:), gg(:)), ', ')); %#ok<AGROW>
+        else
+            short = n{1}; if opts.colors == "rank" && ~isref, short = sprintf('%d. %s', c, n{1}); end
+            if isref, short = sprintf('%s (production, reference)', n{1}); end
+            lab{end+1} = sprintf('%s  (%s)', short, strjoin(compose('%s %+.2f%%', extractBefore(R.tenures(:), 2), gg(:)), ', ')); %#ok<AGROW>
+        end
+        isr(end+1) = isref; rk(end+1) = c; %#ok<AGROW>
+    end
+    if opts.colors == "rank"
+        for k = 1:6, ax(k).Children = flipud(ax(k).Children); end   % the best drawn on top
     end
     yline(ax(2), 0, 'Color', st.muted);
     ylim(ax(1), [0 1]);
-    lg = legend(ax(1), h, lab, 'Interpreter', 'none', 'FontSize', st.font - 1, 'Box', 'off');
+    keep = true(size(h));
+    if opts.legend == "colorbar"
+        % Only the reference and the five best are named; the colour bar gives the rank.
+        keep = isr | (rk >= 1 & rk <= 5);
+        colormap(ax(1), interp1([0 0.5 1], [0.10 0.60 0.25; 0.93 0.72 0.10; 0.80 0.15 0.15], linspace(0, 1, 256)));
+        cb = colorbar(ax(1)); cb.Layout.Tile = 'south'; cb.Orientation = 'horizontal';
+        clim(ax(1), [1 max(c, 2)]); cb.Label.String = sprintf('Rank by max-min against %s (1 = best, %d drawn)', R.reference, c);
+        cb.Label.Interpreter = 'none';
+    end
+    lg = legend(ax(1), h(keep), lab(keep), 'Interpreter', 'none', 'FontSize', st.font - 1, 'Box', 'off');
     lg.Layout.Tile = 'east';
     title(lg, sprintf('Best first (max-min); welfare gain against %s, both tenures', R.reference), ...
         'FontWeight', 'normal', 'Interpreter', 'none');
