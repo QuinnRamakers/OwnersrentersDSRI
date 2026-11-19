@@ -10,7 +10,8 @@ function f = fund_mix(folders, names, tenures, opts)
 %   each strategy and tenure pair, the fund's shares from 25 to 99 as stacked
 %   areas: stocks, REIT and bonds (the rest). With free choice the shares are
 %   the means across the households not bankrupt at that age. Each panel's
-%   title gives the strategy's label and its welfare change for that tenure
+%   title gives the strategy's label and its welfare change for each tenure
+%   (the panel's own first)
 %   against each of opts.versus (default free choice and "best": the best
 %   strategy of the same tenure, leaving out opts.best_without, by default
 %   free choice and no pension account); with versus empty, against the
@@ -62,30 +63,36 @@ for k = 1:n
     xline(ax, 67, ':', 'Color', st.ink2);
     set(ax, 'FontSize', st.font, 'XLim', [a(1) a(end)], 'YLim', [0 1], 'YTick', 0:0.2:1, ...
         'YTickLabel', compose('%d%%', 0:20:100), 'Layer', 'top', 'XColor', st.ink2, 'YColor', st.ink2, 'Box', 'off');
-    g = R.table.("gain_" + tenures(k))(strcmp(R.table.strategy, names(k)));
     lab = L.strategy.label; if ~isempty(opts.titles), lab = char(opts.titles(k)); end
-    parts = {sprintf('gain %+.2f%% vs %s', g, R.reference)};
-    if ~isempty(opts.versus), parts = {}; end
-    for v = opts.versus
-        col_g = R.table.("gain_" + tenures(k));
-        if v == "best"
-            % The best of the same tenure, leaving out opts.best_without.
-            ok = ~ismember(R.table.strategy, cellstr(opts.best_without));
-            [gv, ib] = max(col_g(ok)); nm = R.table.strategy(ok); vname = sprintf('best %s fund (%s)', tenures(k), nm{ib});
-        else
-            gv = col_g(strcmp(R.table.strategy, v)); vname = char(v);
-            if v == "free", vname = 'free choice'; end
+    % Welfare for both tenures, the panel's own first: the same fund (for free
+    % choice the same rule) held by renters and by owners.
+    tens = [tenures(k), setdiff(R.tenures, tenures(k), 'stable')];
+    wl = {};
+    for tt = tens
+        col_g = R.table.("gain_" + tt);
+        g = col_g(strcmp(R.table.strategy, names(k)));
+        parts = {sprintf('%+.2f%% vs %s', g, R.reference)};
+        if ~isempty(opts.versus), parts = {}; end
+        for v = opts.versus
+            if v == "best"
+                % The best of that tenure, leaving out opts.best_without.
+                ok = ~ismember(R.table.strategy, cellstr(opts.best_without));
+                [gv, ib] = max(col_g(ok)); nm = R.table.strategy(ok); vname = sprintf('best %s fund (%s)', tt, nm{ib});
+            else
+                gv = col_g(strcmp(R.table.strategy, v)); vname = char(v);
+                if v == "free", vname = 'free choice'; end
+            end
+            parts{end+1} = sprintf('%+.2f%% vs %s', 100 * ((1 + g / 100) / (1 + gv / 100) - 1), vname); %#ok<AGROW>
         end
-        parts{end+1} = sprintf('%+.2f%% vs %s', 100 * ((1 + g / 100) / (1 + gv / 100) - 1), vname); %#ok<AGROW>
+        wl{end+1} = sprintf('%ss: %s', capitalize(tt), strjoin(parts, ',  ')); %#ok<AGROW>
     end
     % Heading: the tenure and the panel's title; then what the fund holds
-    % (the strategy's label and name) and the welfare changes.
+    % (the strategy's label and name) and the welfare changes, own tenure first.
     head = sprintf('%ss: %s', capitalize(tenures(k)), lab);
     what = sprintf('%s  [%s]', L.strategy.label, names(k));
     if strcmp(lab, L.strategy.label), head = sprintf('%ss', capitalize(tenures(k))); end
     title(ax, head, 'FontWeight', 'bold', 'FontSize', st.font + 1, 'Interpreter', 'none', 'Color', st.ink);
-    subtitle(ax, {what, ['Welfare: ' strjoin(parts, ',  ')]}, 'FontSize', st.font - 1, 'Interpreter', 'none', ...
-        'Color', st.ink2);
+    subtitle(ax, [{what}, wl], 'FontSize', st.font - 1, 'Interpreter', 'none', 'Color', st.ink2);
     % Shares at 25, 67 and 99, written on the boundary line.
     for t = [25 67 99]
         j = find(a == t, 1); if isempty(j), continue, end

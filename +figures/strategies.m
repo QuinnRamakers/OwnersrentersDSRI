@@ -17,12 +17,13 @@ function files = strategies(folders, opts)
 %     (e) mean pension payout before tax, thousands of euros a year
 %     (f) the share bankrupt, percent
 %   The reference (model.rank_strategies) is black and thick. The legend
-%   lists the strategies best first, with each one's welfare gain for that
-%   tenure. Writes strategies_<tenure>.png in the first folder (or opts.out)
+%   lists the strategies best first, with each one's welfare gain for both
+%   tenures. Writes strategies_<tenure><suffix>.png in the first folder (or opts.out)
 %   and returns the file names.
 %
 %   Options: only (names to draw, the reference always included), reference,
-%   out (folder for the files), ages (default 25-100).
+%   out (folder for the files), ages (default 25-100), suffix (added to the
+%   file names).
 
 arguments
     folders {mustBeText}
@@ -30,6 +31,7 @@ arguments
     opts.reference (1,:) char = ''
     opts.out (1,:) char = ''
     opts.ages (1,2) double = [25 100]
+    opts.suffix (1,:) char = ''
 end
 
 R = model.rank_strategies(folders, reference = opts.reference, write = false);
@@ -83,16 +85,17 @@ for ten = R.tenures
         plot(ax(4), a, s.A.mean / 1e3, args{:});
         plot(ax(5), a, s.ann_pay.mean / 1e3, args{:});
         plot(ax(6), a, 100 * s.floored, args{:});
-        g = R.table.("gain_" + ten)(strcmp(R.table.strategy, n{1}));
         h(end+1) = hh; %#ok<AGROW>
-        lab{end+1} = sprintf('%s  (%+.2f%%)', label_of(R, n{1}), g); %#ok<AGROW>
+        gg = arrayfun(@(t) R.table.("gain_" + t)(strcmp(R.table.strategy, n{1})), R.tenures);
+        lab{end+1} = sprintf('%s  (%s)', label_of(R, n{1}), strjoin(compose('%ss %+.2f%%', R.tenures(:), gg(:)), ', ')); %#ok<AGROW>
     end
     yline(ax(2), 0, 'Color', st.muted);
     ylim(ax(1), [0 1]);
     lg = legend(ax(1), h, lab, 'Interpreter', 'none', 'FontSize', st.font - 1, 'Box', 'off');
     lg.Layout.Tile = 'east';
-    title(lg, sprintf('Best first, welfare gain for %ss', ten), 'FontWeight', 'normal');
-    f = fullfile(out, sprintf('strategies_%s.png', ten));
+    title(lg, sprintf('Best first (max-min); welfare gain against %s, both tenures', R.reference), ...
+        'FontWeight', 'normal', 'Interpreter', 'none');
+    f = fullfile(out, sprintf('strategies_%s%s.png', ten, opts.suffix));
     exportgraphics(fig, f, 'Resolution', 120);
     close(fig);
     files{end+1} = f; %#ok<AGROW>

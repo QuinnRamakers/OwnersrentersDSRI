@@ -704,7 +704,7 @@ end
 
 function strategy_list_derives()
 % Every strategy of model.strategy_list derives for both tenures from
-% production, names are unique, the first is production itself, the fund's (and of model.spline_menu)
+% production, names are unique, the first is production itself, the fund's (and of model.spline_menu and model.knot_menu)
 % shares lie in the simplex at every age, and an override that is not a
 % primitive is refused by model.strategies.
 S = model.strategy_list();
@@ -716,7 +716,12 @@ assert(numel(M) == 84 && numel(unique({M.name})) == 84 && ~any(ismember({M.name}
 K = M(strcmp({M.name}, 's80_20h_r25')).set.glide_knots;
 assert(max(abs(K - [25 0.6 0.2; 39 0.6 0.2; 67 0.15 0.05; 100 0.15 0.05]), [], "all") < 1e-12, 'spline menu knots');
 assert(numel(model.spline_menu(young = 1, at67 = 0, reit = 0)) == 1, 'at67 = 0 has one tail');
-S = [S, M];
+% The knot menu: 108 strategies, names of their own, knots at 25, 46, 67, 100.
+Kn = model.knot_menu();
+assert(numel(Kn) == 108 && numel(unique({Kn.name})) == 108 && ~any(ismember({Kn.name}, [{S.name}, {M.name}])), 'knot menu names');
+K = Kn(strcmp({Kn.name}, 'k100_70_20z_r75')).set.glide_knots;
+assert(max(abs(K - [25 0.25 0.75; 46 0.175 0.525; 67 0.05 0.15; 100 0 0]), [], "all") < 1e-12, 'knot menu knots');
+S = [S, M, Kn];
 for k = 1:numel(S)
     for owner = [false true]
         p = config.params(false); p.is_owner = owner;
