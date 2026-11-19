@@ -19,7 +19,8 @@ function f = fund_mix(folders, names, tenures, opts)
 %   the first folder (or opts.out).
 %
 %   Options: reference and exclude (passed to model.rank_strategies), out,
-%   file, titles (one per panel, instead of the labels), versus, best_without.
+%   file, titles (one per panel, instead of the labels), versus, best_without,
+%   columns (panels a row; default up to 3).
 
 arguments
     folders {mustBeText}
@@ -32,6 +33,7 @@ arguments
     opts.titles string = strings(1, 0)
     opts.versus string = ["free", "best"]
     opts.best_without string = ["free", "no_dc"]
+    opts.columns double = []
 end
 assert(numel(names) == numel(tenures), 'figures:fund_mix', 'names and tenures must pair up.');
 
@@ -40,13 +42,14 @@ out = opts.out; if isempty(out), out = R.folders{1}; end
 st = figures.style();
 col = [st.series(1, :); st.series(2, :); 0.86 0.85 0.82];    % stocks, REIT, bonds
 n = numel(names);
-nc = min(n, 3); nr = ceil(n / nc);
+nc = min(n, 3); if ~isempty(opts.columns), nc = opts.columns; end
+nr = ceil(n / nc);
 fig = figure('Visible', 'off', 'Color', 'w', 'Position', [40 40 560 * nc + 60, 430 * nr + 90]);
 tl = tiledlayout(fig, nr, nc, 'TileSpacing', 'compact', 'Padding', 'compact');
 ttl = sprintf('DC fund mix by age (gains against `%s`)', R.reference);
-if ~isempty(opts.versus), ttl = sprintf(['DC fund mix by age. Welfare change (certainty-equivalent consumption at entry) against ' ...
-    'free choice and against the best fund for the same tenure (leaving out %s)'], ...
-    strjoin(replace(opts.best_without, ["free", "no_dc"], ["free choice", "no pension account"]), ' and ')); end
+if ~isempty(opts.versus), ttl = {'DC fund mix by age', 'Welfare change against free choice and against the best fund for the same tenure', sprintf(['(certainty-equivalent consumption at entry; ' ...
+    'the best leaves out %s)'], ...
+    strjoin(replace(opts.best_without, ["free", "no_dc"], ["free choice", "no pension account"]), ' and '))}; end
 title(tl, ttl, 'FontSize', st.font + 4, ...
     'Interpreter', 'none', 'Color', st.ink);
 for k = 1:n

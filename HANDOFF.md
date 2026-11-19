@@ -147,6 +147,11 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-19 Max-min and best-per-type funds; the knot run still not started (spec: none, asked by Quinn in Claude Code)
+Quinn: "Reconnected, start it", then "also plot me the minmax best" and "the dashboard with the renter owner behaviour in the best per type and the maxmin". `oc whoami` failed ("lookup api.dsri.unimaas.nl: no such host"), so the knot run (`runs/knot_night.sh`) was not started; not retried.
+Max-min fund: against each type's best (free choice and no pension left out) `s100_20h_r75` (lowest loss -0.025%: renters -0.03%, owners -0.02%); against production `s100_20h_r50` (+0.35%, +0.24%). Drawn without new solves in `results/strategies/spline_night` (not committed): `fund_mix_best_maxmin.png` (best renter fund, best owner fund, both max-min funds; `figures.fund_mix` takes `columns=` and a three-line title) and `strategies_<tenure>_best_maxmin.png` (`figures.strategies`, behaviour by age).
+Checks: local `run_tests(solve=false)` 0 of 22 failed. Full `run_tests` not yet run.
+
 ### 2026-11-19 Top three per tenure against free choice; both tenures' welfare in the figures; model.knot_menu; the knot run not started (spec: none, asked by Quinn in Claude Code)
 Quinn: "schedule a larger array of strategies also have strategies that fit a spline to 25, middle working life retirement. but before run the top3 strategies for owners and renters and the free choice to show how the behaviour changes between them. also add the welfare of the other type per graph". Commit 90ee2de.
 1. No new solves for the top three: their summaries are saved. Top renters `s80_20z_r75`, `s100_20z_r75`, `s100_20h_r75` (+0.51, +0.50, +0.49% against production); top owners `s80_40z_r50`, `s100_40h_r50`, `s80_40h_r50` (+0.25% each). `figures.strategies(..., only=` the six and `free`, `suffix="_top3_free")` and `figures.fund_mix(..., file="fund_mix_top3.png")` in `results/strategies/spline_night` (not committed).
