@@ -147,6 +147,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-19 Spline figures against free choice, no pension and the best (spec: none, asked by Quinn in Claude Code)
+Quinn: "can you also do the heatmap and spline fund with the free dc as a reference, no pension account and the best of all simulated as the reference. first do not run new model solves", then "a copy of the scatter one as is with the scales and one with equal grid scaling". Commit fa9e395. No new solves: free choice and no pension come from `night_medium`, same grid and calibration as `spline_night`.
+1. `model.rank_strategies`: a copy of the same solve in a second folder (same calibration, same value at entry) counts once, so `spline_night` and `night_medium` rank together (96 strategies, 192 solves); the same file twice is still an error. `reference="best"` measures each tenure against its own best strategy.
+2. `figures.spline_menu(folders, reference=, others=)`: files `_vs_<reference>`; production and free choice drawn as crosses; the top five numbered at their points and named in a legend outside the box; every scatter also as `_equal` (one point of gain as long on both axes).
+3. Drawn for production, `free`, `no_dc` and `best` in `results/strategies/spline_night` (not committed). Best is `no_dc` for both tenures, so its figures equal `no_dc`'s.
+Results: against free choice every spline loses for both tenures; the best spline by max-min is `s80_20z_r75` (renter -1.23%, owner -0.24%), not `s100_20h_r50` as against production, since the max-min rule depends on the reference. Production loses -1.73% and -0.43%. Against no pension every spline loses -2.6 to -5.5% (renters) and -8.8 to -9.2% (owners); free choice -1.36% and -8.62%.
+Checks: local `run_tests(solve=false)` 0 of 22 failed (with the new copy and best checks in `strategies_smoke`, which needs the full tests). The full `run_tests` was not run: `oc whoami` returned Unauthorized, so the pod was not used. Open: run the full tests at fa9e395.
+
 ### 2026-11-18 figures.spline_menu (spec: none, asked by Quinn in Claude Code)
 Quinn: "could you show me the dashboard and a better visualisation". `figures.spline_menu(folders)` writes `spline_heatmaps.png` (gain against the reference, rows renter, owner and the lower of the two; columns by REIT fraction; cells risky share to 39 by share at 67 and tail; max-min choice outlined) and `spline_scatter.png` (renter against owner gain, colour the REIT fraction, marker the share at 67, filled held and open falling to 0; the max-min corner; the top five named). Drawn for `results/strategies/spline_night` with `figures.strategies(..., only=` the top six`)` (not committed). Checks: local `run_tests(solve=false)` 0 of 22 failed.
 
