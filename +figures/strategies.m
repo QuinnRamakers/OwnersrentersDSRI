@@ -25,7 +25,9 @@ function files = strategies(folders, opts)
 %   Options: only (names to draw, the reference always included), roles (one
 %   short name per entry of only, shown in the legend), reference,
 %   out (folder for the files), ages (default 25-100), suffix (added to the
-%   file names).
+%   file names), colors ("series", the default, or "rank": the drawn
+%   strategies from green, the best by the max-min rule, through yellow to red,
+%   numbered in the legend).
 
 arguments
     folders {mustBeText}
@@ -35,6 +37,7 @@ arguments
     opts.out (1,:) char = ''
     opts.ages (1,2) double = [25 100]
     opts.suffix (1,:) char = ''
+    opts.colors (1,1) string {mustBeMember(opts.colors, ["series", "rank"])} = "series"
 end
 
 R = model.rank_strategies(folders, reference = opts.reference, write = false);
@@ -79,6 +82,10 @@ for ten = R.tenures
             c = c + 1;
             col = cols(mod(c - 1, size(cols, 1)) + 1, :); ls = dash{mod(floor((c - 1) / 4), 4) + 1}; lw = st.lw;
             if c > size(cols, 1), ls = ':'; end
+            if opts.colors == "rank"                  % green best, through yellow, to red worst
+                nn = max(numel(names) - 1, 1); x = (c - 1) / max(nn - 1, 1);
+                col = interp1([0 0.5 1], [0.10 0.60 0.25; 0.93 0.72 0.10; 0.80 0.15 0.15], x); ls = '-';
+            end
         end
         a = s.ages;
         args = {'Color', col, 'LineStyle', ls, 'LineWidth', lw};
@@ -92,6 +99,7 @@ for ten = R.tenures
         gg = arrayfun(@(t) R.table.("gain_" + t)(strcmp(R.table.strategy, n{1})), R.tenures);
         role = n{1}; j = find(opts.only == n{1}, 1);
         if ~isempty(opts.roles) && ~isempty(j), role = sprintf('%s  [%s]', opts.roles(j), n{1}); end
+        if opts.colors == "rank" && ~isref, role = sprintf('%d. %s', c, role); end
         if isref, role = sprintf('Reference: production  [%s]', n{1}); end
         lab{end+1} = sprintf('%s\n   %s\n   welfare vs %s: %s', role, describe(R, n{1}), R.reference, ...
             strjoin(compose('%ss %+.2f%%', R.tenures(:), gg(:)), ', ')); %#ok<AGROW>
