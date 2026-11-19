@@ -147,6 +147,18 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-19 Fund mix with losses against free choice and the best fund of the tenure (spec: none, asked by Quinn in Claude Code)
+Quinn: "report the first one with the welfare losses both vs free choice and the best within their own category". `figures.fund_mix(..., versus=["free", "best"], best_without=["free", "no_dc"])` (the defaults) puts both changes in each panel's title. Redrawn `fund_mix_best.png`, no new solves:
+| Panel | vs free choice | vs best fund of the tenure |
+|---|---:|---:|
+| Renter `s80_20z_r75` (best renter fund) | -1.23% | 0 |
+| Owner `s80_40z_r50` (best owner fund) | -0.18% | 0 |
+| Renter `s100_20h_r75` | -1.25% | -0.03% |
+| Renter `lifecycle` (production) | -1.73% | -0.51% |
+| Renter `free` | 0 | +1.24% |
+| Owner `free` | 0 | +0.18% |
+Checks: local `run_tests(solve=false)` 0 of 22 failed. Full `run_tests` not run (Quinn); open.
+
 ### 2026-11-19 Best funds drawn where they are, a zoomed scatter, and the fund mix of the best funds (spec: none, asked by Quinn in Claude Code)
 Quinn: "the same strategy doesnt need to be zero, plot that one as is and trim grid spacing at some point to make it look interpretable", then "also give me a plot of the optimal owner and renter strategy". No new solves.
 1. `figures.spline_menu`: with `reference="best"` no cross at (0, 0); the best fund of each tenure is circled where it lies (0 on its own axis). Ticks on a 1-2-2.5-5 step. `window=[lowest renter gain, lowest owner gain]` also writes `_zoom` and `_zoom_equal`, counting the funds below the window. Drawn with window [-1 -0.3] (52 funds below it).

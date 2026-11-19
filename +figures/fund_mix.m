@@ -10,12 +10,15 @@ function f = fund_mix(folders, names, tenures, opts)
 %   each strategy and tenure pair, the fund's shares from 25 to 99 as stacked
 %   areas: stocks, REIT and bonds (the rest). With free choice the shares are
 %   the means across the households not bankrupt at that age. Each panel's
-%   title gives the strategy's label and its welfare gain for that tenure
-%   against the ranking's reference. Writes fund_mix.png (or opts.file) in
+%   title gives the strategy's label and its welfare change for that tenure
+%   against each of opts.versus (default free choice and "best": the best
+%   strategy of the same tenure, leaving out opts.best_without, by default
+%   free choice and no pension account); with versus empty, against the
+%   ranking's reference. Writes fund_mix.png (or opts.file) in
 %   the first folder (or opts.out).
 %
 %   Options: reference and exclude (passed to model.rank_strategies), out,
-%   file, titles (one per panel, instead of the labels).
+%   file, titles (one per panel, instead of the labels), versus, best_without.
 
 arguments
     folders {mustBeText}
@@ -26,6 +29,8 @@ arguments
     opts.out (1,:) char = ''
     opts.file (1,:) char = 'fund_mix.png'
     opts.titles string = strings(1, 0)
+    opts.versus string = ["free", "best"]
+    opts.best_without string = ["free", "no_dc"]
 end
 assert(numel(names) == numel(tenures), 'figures:fund_mix', 'names and tenures must pair up.');
 
@@ -37,7 +42,10 @@ n = numel(names);
 nc = min(n, 3); nr = ceil(n / nc);
 fig = figure('Visible', 'off', 'Color', 'w', 'Position', [40 40 560 * nc + 60, 430 * nr + 90]);
 tl = tiledlayout(fig, nr, nc, 'TileSpacing', 'compact', 'Padding', 'compact');
-title(tl, sprintf('DC fund mix by age (gains against `%s`)', R.reference), 'FontSize', st.font + 4, ...
+ttl = sprintf('DC fund mix by age (gains against `%s`)', R.reference);
+if ~isempty(opts.versus), ttl = sprintf(['DC fund mix by age. Welfare change (certainty-equivalent consumption at entry) against ' ...
+    'free choice and against the best fund for the same tenure (leaving out %s)'], strjoin(opts.best_without, ' and ')); end
+title(tl, ttl, 'FontSize', st.font + 4, ...
     'Interpreter', 'none', 'Color', st.ink);
 for k = 1:n
     i = find(strcmp({R.arms.name}, names(k)) & strcmp({R.arms.tenure}, tenures(k)), 1);
@@ -55,7 +63,21 @@ for k = 1:n
         'YTickLabel', compose('%d%%', 0:20:100), 'Layer', 'top', 'XColor', st.ink2, 'YColor', st.ink2, 'Box', 'off');
     g = R.table.("gain_" + tenures(k))(strcmp(R.table.strategy, names(k)));
     lab = L.strategy.label; if ~isempty(opts.titles), lab = char(opts.titles(k)); end
-    title(ax, {sprintf('%s: %s', capitalize(tenures(k)), names(k)), sprintf('%s (gain %+.2f%%)', lab, g)}, ...
+    parts = {sprintf('gain %+.2f%% vs %s', g, R.reference)};
+    if ~isempty(opts.versus), parts = {}; end
+    for v = opts.versus
+        col_g = R.table.("gain_" + tenures(k));
+        if v == "best"
+            % The best of the same tenure, leaving out opts.best_without.
+            ok = ~ismember(R.table.strategy, cellstr(opts.best_without));
+            [gv, ib] = max(col_g(ok)); nm = R.table.strategy(ok); vname = sprintf('best %s fund (%s)', tenures(k), nm{ib});
+        else
+            gv = col_g(strcmp(R.table.strategy, v)); vname = char(v);
+            if v == "free", vname = 'free choice'; end
+        end
+        parts{end+1} = sprintf('%+.2f%% vs %s', 100 * ((1 + g / 100) / (1 + gv / 100) - 1), vname); %#ok<AGROW>
+    end
+    title(ax, {sprintf('%s: %s', capitalize(tenures(k)), names(k)), lab, strjoin(parts, ',  ')}, ...
         'FontWeight', 'normal', 'FontSize', st.font, 'Interpreter', 'none', 'Color', st.ink);
     % Shares at 25, 67 and 99, written on the boundary line.
     for t = [25 67 99]
