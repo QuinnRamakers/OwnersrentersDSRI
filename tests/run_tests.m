@@ -768,6 +768,12 @@ f = tempname; c3 = onCleanup(@() rmdir(f, 's')); mkdir(f);
 movefile(fullfile(d, 'bonds_*.mat'), f);
 Q = model.rank_strategies({d, f}, write = false);
 assert(isequaln(Q.table, T), 'two folders do not rank as one');
+copyfile(fullfile(d, 'lifecycle_owner.mat'), f);            % the same solve in both folders counts once
+Q = model.rank_strategies({d, f}, write = false);
+assert(isequaln(Q.table, T), 'a copy of a solve in a second folder was not counted once');
+B = model.rank_strategies({d, f}, reference = 'best', write = false);
+assert(all(max([B.table.gain_renter, B.table.gain_owner], [], 1) == 0) && all(B.table.lowest_gain <= 0) ...
+    && startsWith(B.reference, 'best'), 'the best reference');
 assert(threw_id(@() model.rank_strategies({d, d}, write = false), 'rank_strategies:duplicate'), 'a solve counted twice');
 files = figures.strategies({d, f}, out = d);
 assert(numel(files) == 2 && all(isfile(files)), 'the figures were not written');

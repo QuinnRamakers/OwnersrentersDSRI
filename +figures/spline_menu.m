@@ -2,36 +2,50 @@ function files = spline_menu(folders, opts)
 %SPLINE_MENU  The welfare gains of a model.spline_menu run, in two figures.
 %
 %   figures.spline_menu("spline_night")
+%   figures.spline_menu(["spline_night", "night_medium"], reference="free")
+%   figures.spline_menu(["spline_night", "night_medium"], reference="best")
 %   files = figures.spline_menu("spline_night", out=folder, top=5)
 %
 %   Reads the ranking (model.rank_strategies) of the folders and draws the
-%   strategies named by model.spline_menu (s<young>_<at67><h|z>_r<reit>):
+%   strategies named by model.spline_menu (s<young>_<at67><h|z>_r<reit>).
+%   Other strategies in the folders (production, free choice, no pension
+%   account, ...) can serve as the reference, or "best": each tenure against
+%   its own best strategy.
 %
-%   spline_heatmaps.png  the gain against the reference in percent, one row
-%     of panels each for renters, owners and the lower of the two (max-min),
-%     one column per REIT fraction. In a panel the rows are the risky share
-%     to 39, the columns the share at 67 and the tail (h held to 100, z to 0
-%     at 100). Blue above the reference, red below, grey at 0, one colour
-%     scale per row; every cell is labelled. The max-min choice is outlined.
-%   spline_scatter.png   renter gain against owner gain, one point a
-%     strategy: colour the REIT fraction (light to dark), marker the share at
+%   spline_heatmaps<suffix>.png  the gain against the reference in percent,
+%     one row of panels each for renters, owners and the lower of the two
+%     (max-min), one column per REIT fraction. In a panel the rows are the
+%     risky share to 39, the columns the share at 67 and the tail (h held to
+%     100, z to 0 at 100). Blue above the reference, red below, grey at 0, one
+%     colour scale per row; every cell is labelled. The best spline by the
+%     max-min rule is outlined.
+%   spline_scatter<suffix>.png   renter gain against owner gain, one point a
+%     spline: colour the REIT fraction (light to dark), marker the share at
 %     67, filled when held to 100 and open when it falls to 0. The reference
-%     sits at the origin. The dashed corner marks the max-min choice's lowest
-%     gain: strategies up and to the right of it would beat it. The top
-%     strategies are named.
+%     sits at the origin; the strategies named in `others` that are in the
+%     folders are black crosses. The dashed corner marks the best spline's
+%     lowest gain: a fund up and to the right of it would beat it. The top
+%     splines are numbered at their points and named in the legend.
+%   The scatter is written twice: as is, each axis scaled to its own range,
+%   and with _equal, one point of gain as long on both axes. The suffix is
+%   empty for the default reference and _vs_<reference>
+%   otherwise.
 %
 %   Options: out (folder for the files; default the first folder), top
-%   (strategies named in the scatter, default 5), reference.
+%   (splines named in the scatter, default 5), reference, others (default
+%   production and free choice).
 
 arguments
     folders {mustBeText}
     opts.out (1,:) char = ''
     opts.top (1,1) double = 5
     opts.reference (1,:) char = ''
+    opts.others string = ["lifecycle", "free"]
 end
 
 R = model.rank_strategies(folders, reference = opts.reference, write = false);
 out = opts.out; if isempty(out), out = R.folders{1}; end
+suffix = ''; if ~isempty(opts.reference), suffix = ['_vs_' opts.reference]; end
 T = R.table;
 tok = regexp(T.strategy, '^s(\d+)_(\d+)([hz])_r(\d+)$', 'tokens', 'once');
 is = ~cellfun(@isempty, tok);
@@ -40,13 +54,16 @@ tok = vertcat(tok{is});
 M = table(T.strategy(is), str2double(tok(:, 1)), str2double(tok(:, 2)), string(tok(:, 3)), str2double(tok(:, 4)), ...
           T.gain_renter(is), T.gain_owner(is), T.lowest_gain(is), ...
           'VariableNames', {'name', 'young', 'at67', 'tail', 'reit', 'renter', 'owner', 'lowest'});
+O = T(ismember(T.strategy, cellstr(opts.others)) & ~is, {'strategy', 'gain_renter', 'gain_owner'});
 best = M.name{find(M.lowest == max(M.lowest), 1)};
 st = figures.style();
-files = {heatmaps(M, best, R.reference, st, out), scatter_gains(M, best, R.reference, st, out, opts.top)};
+files = {heatmaps(M, best, R.reference, st, out, suffix), ...
+         scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, false), ...
+         scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, true)};
 end
 
 % ------------------------------------------------------------------------
-function f = heatmaps(M, best, ref, st, out)
+function f = heatmaps(M, best, ref, st, out, suffix)
 young = sort(unique(M.young), 'descend');
 reit  = sort(unique(M.reit)).';
 % Columns: at67 ascending, held before falling; at67 = 0 has one column.
@@ -101,13 +118,13 @@ for w = 1:3
         end
     end
 end
-f = fullfile(out, 'spline_heatmaps.png');
+f = fullfile(out, ['spline_heatmaps' suffix '.png']);
 exportgraphics(fig, f, 'Resolution', 130);
 close(fig);
 end
 
 % ------------------------------------------------------------------------
-function f = scatter_gains(M, best, ref, st, out, top)
+function f = scatter_gains(M, O, best, ref, st, out, top, suffix, equal)
 hex = @(h) sscanf(h(2:end), '%2x%2x%2x', [1 3]) / 255;
 ramp = [hex('#86b6ef'); hex('#3987e5'); hex('#1c5cab'); hex('#0d366b')];   % ordinal, light to dark
 reit = sort(unique(M.reit)).';
@@ -115,15 +132,15 @@ if numel(reit) > size(ramp, 1), ramp = interp1(linspace(0, 1, 4), ramp, linspace
 a67 = sort(unique(M.at67)).';
 mk = {'o', 's', '^', 'd', 'v', 'p'};
 
-fig = figure('Visible', 'off', 'Color', 'w', 'Position', [40 40 1300 950]);
+fig = figure('Visible', 'off', 'Color', 'w', 'Position', [40 40 1500 950]);
 ax = axes(fig); hold(ax, 'on'); grid(ax, 'on');
 set(ax, 'FontSize', st.font + 1, 'GridColor', st.grid, 'GridAlpha', 1, 'XColor', st.ink2, 'YColor', st.ink2);
 m = M.lowest(strcmp(M.name, best));
-span = max(M.renter) - min(M.renter);
-xlab = max(M.renter) + 0.08 * span;                  % the column of names, right of every point
-xl = [min(M.renter) - 0.05 * span, xlab + 0.32 * span]; yl = [min(M.owner) - 0.05, max(M.owner) + 0.06];
+xs = [M.renter; O.gain_renter; 0]; ys = [M.owner; O.gain_owner; 0];
+span = max(xs) - min(xs); yspan = max(ys) - min(ys);
+xl = [min(xs) - 0.05 * span, max(xs) + 0.08 * span]; yl = [min(ys) - 0.06 * yspan, max(ys) + 0.08 * yspan];
 xline(ax, 0, 'Color', st.muted); yline(ax, 0, 'Color', st.muted);
-plot(ax, [m m xlab], [yl(2) m m], '--', 'Color', st.ink2, 'LineWidth', 1.2);
+plot(ax, [m m xl(2)], [yl(2) m m], '--', 'Color', st.ink2, 'LineWidth', 1.2);
 for i = 1:height(M)
     c = ramp(reit == M.reit(i), :);
     face = c; if M.tail(i) == "z", face = [1 1 1]; end
@@ -132,28 +149,41 @@ for i = 1:height(M)
 end
 plot(ax, 0, 0, 'kx', 'MarkerSize', 13, 'LineWidth', 2.4);
 text(ax, 0, 0, sprintf('  %s (reference)', ref), 'FontSize', st.font, 'Color', st.ink, ...
-    'VerticalAlignment', 'top', 'Interpreter', 'none');
-% The top strategies named in a column right of the points, best at the top,
-% each joined to its point by a thin leader.
+    'VerticalAlignment', 'bottom', 'Interpreter', 'none');
+for i = 1:height(O)
+    if O.gain_renter(i) == 0 && O.gain_owner(i) == 0, continue, end   % the reference itself
+    plot(ax, O.gain_renter(i), O.gain_owner(i), 'kx', 'MarkerSize', 11, 'LineWidth', 2);
+    text(ax, O.gain_renter(i), O.gain_owner(i), sprintf('  %s', O.strategy{i}), 'FontSize', st.font, ...
+        'Color', st.ink, 'VerticalAlignment', 'top', 'Interpreter', 'none');
+end
+% The top splines get a number at their point; the legend names them.
 [~, o] = sort(M.lowest, 'descend');
 o = o(1:min(top, height(M)));
-ylab = yl(2) - 0.03 - (0:numel(o) - 1) * 0.045 * diff(yl) / 0.5;
 for k = 1:numel(o)
     i = o(k);
-    plot(ax, [M.renter(i), xlab], [M.owner(i), ylab(k)], '-', 'Color', st.muted, 'LineWidth', 0.6);
-    text(ax, xlab, ylab(k), sprintf(' %d. %s  (%+.2f, %+.2f)', k, M.name{i}, M.renter(i), M.owner(i)), ...
-        'FontSize', st.font, 'Color', st.ink, 'Interpreter', 'none', ...
-        'FontWeight', ternary(strcmp(M.name{i}, best), 'bold', 'normal'));
+    text(ax, M.renter(i), M.owner(i), sprintf('%d ', k), 'FontSize', st.font, 'FontWeight', 'bold', ...
+        'Color', st.ink, 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
 end
 xlim(ax, xl); ylim(ax, yl);
+if equal
+    daspect(ax, [1 1 1]);                            % a point of gain is as long on both axes
+end
 xlabel(ax, 'Renter gain (%)', 'Color', st.ink); ylabel(ax, 'Owner gain (%)', 'Color', st.ink);
-title(ax, sprintf('Spline funds: renter against owner gain, against `%s`', ref), 'Interpreter', 'none', ...
+scale = 'each axis on its own scale'; if equal, scale = 'equal scales'; end
+title(ax, sprintf('Spline funds: renter against owner gain, against `%s` (%s)', ref, scale), 'Interpreter', 'none', ...
     'FontWeight', 'normal', 'FontSize', st.font + 4, 'Color', st.ink);
-subtitle(ax, sprintf(['Dashed corner: the max-min choice''s lowest gain, %+.2f%%; a fund up and to the ' ...
-    'right of it would beat it. Named: the top %d by lowest gain (renter, owner).'], m, numel(o)), ...
+subtitle(ax, sprintf(['Dashed corner: the best spline''s lowest gain, %+.2f%%; a fund up and to the ' ...
+    'right of it would beat it. Numbered: the top %d splines by lowest gain.'], m, numel(o)), ...
     'Color', st.ink2, 'FontSize', st.font + 1);
-% Legend: one entry per REIT fraction (colour), share at 67 (marker), tail (fill).
+% Legend, outside the box: the top splines, then one entry per REIT fraction
+% (colour), share at 67 (marker), tail (fill).
 h = gobjects(0); lab = {};
+for k = 1:numel(o)
+    i = o(k);
+    h(end+1) = plot(ax, nan, nan, 'LineStyle', 'none', 'Marker', 'none'); %#ok<AGROW>
+    lab{end+1} = sprintf('%d. %s  (%+.2f, %+.2f)', k, M.name{i}, M.renter(i), M.owner(i)); %#ok<AGROW>
+end
+h(end+1) = plot(ax, nan, nan, 'LineStyle', 'none', 'Marker', 'none'); lab{end+1} = ' ';
 for k = 1:numel(reit)
     h(end+1) = plot(ax, nan, nan, 's', 'MarkerSize', 10, 'MarkerEdgeColor', ramp(k, :), 'MarkerFaceColor', ramp(k, :)); %#ok<AGROW>
     lab{end+1} = sprintf('%d%% of risky in REIT', reit(k)); %#ok<AGROW>
@@ -166,8 +196,11 @@ h(end+1) = plot(ax, nan, nan, 'o', 'MarkerSize', 9, 'Color', st.ink2, 'MarkerFac
 lab{end+1} = 'filled: held to 100';
 h(end+1) = plot(ax, nan, nan, 'o', 'MarkerSize', 9, 'Color', st.ink2, 'MarkerFaceColor', [1 1 1]);
 lab{end+1} = 'open: falling to 0 at 100';
-legend(ax, h, lab, 'Location', 'southeast', 'Box', 'off', 'FontSize', st.font, 'TextColor', st.ink);
-f = fullfile(out, 'spline_scatter.png');
+lg = legend(ax, h, lab, 'Location', 'eastoutside', 'Box', 'off', 'FontSize', st.font, 'TextColor', st.ink, ...
+    'Interpreter', 'none');
+title(lg, 'Top splines (renter, owner gain %)', 'FontWeight', 'normal');
+tail = ''; if equal, tail = '_equal'; end
+f = fullfile(out, ['spline_scatter' suffix tail '.png']);
 exportgraphics(fig, f, 'Resolution', 130);
 close(fig);
 end

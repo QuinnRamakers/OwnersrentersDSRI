@@ -14,8 +14,9 @@ function R = rank_strategies(folders, opts)
 %   The files must be comparable: every file must have the reference's
 %   calibration apart from the fields its own strategy and the reference's
 %   set (the numerics included, so solves on different grids are refused). A
-%   strategy name may appear once per tenure. Anything else is an error that
-%   names the file.
+%   strategy name may appear once per tenure; a copy of the same solve in
+%   another folder (same calibration and value at entry) counts once.
+%   Anything else is an error that names the file.
 %
 %   Welfare is certainty-equivalent consumption at entry (checks.ce_entry, in
 %   multiples of entry income), and a strategy's gain is ce / ce_ref - 1 for
@@ -26,7 +27,9 @@ function R = rank_strategies(folders, opts)
 %
 %   Options
 %     reference  the strategy the gains are measured against; by default the
-%                one whose set is empty (production)
+%                one whose set is empty (production). "best" measures each
+%                tenure against its own best strategy, so every gain is at
+%                most 0 (R.reference then names them)
 %     write      true (default) writes ranking.md in the first folder
 %     title      the heading of ranking.md (default: the folder names)
 %
@@ -68,17 +71,27 @@ for i = 1:numel(folders)
                    'solve_sec', L.timing.solve_sec, 'sim_sec', L.timing.sim_sec, ...
                    'N_sim', L.timing.N_sim, 'checks', L.checks);
         if isempty(a.set), a.set = struct(); end
-        dup = strcmp({arms.name}, a.name) & strcmp({arms.tenure}, a.tenure);
-        assert(~any(dup), 'rank_strategies:duplicate', '%s %s is saved twice: %s and %s.', ...
-            a.name, a.tenure, arms(find(dup, 1)).file, file);
+        dup = find(strcmp({arms.name}, a.name) & strcmp({arms.tenure}, a.tenure), 1);
+        if ~isempty(dup)
+            % A copy of the same solve in another folder (same calibration,
+            % same value at entry) counts once; anything else is an error.
+            same = ~strcmp(arms(dup).file, file) && arms(dup).ce_entry == a.ce_entry && ...
+                   ladder.same_calibration(arms(dup).p, a.p);
+            assert(same, 'rank_strategies:duplicate', '%s %s is saved twice: %s and %s.', ...
+                a.name, a.tenure, arms(dup).file, file);
+            continue
+        end
         arms(end+1) = a; %#ok<AGROW>
     end
 end
 assert(~isempty(arms), 'rank_strategies:empty', 'No strategy solves in %s.', strjoin(folders, ', '));
 
-% The reference.
+% The reference. "best" measures each tenure against its best strategy; the
+% calibration is then checked against the strategy with an empty set.
 names = unique({arms.name}, 'stable');
 ref = opts.reference;
+best = strcmp(ref, 'best');
+if best, ref = ''; end
 if isempty(ref)
     plain = unique({arms(arrayfun(@(a) isempty(fieldnames(a.set)), arms)).name});
     assert(numel(plain) == 1, 'rank_strategies:reference', ...
@@ -109,7 +122,13 @@ for i = 1:numel(arms)
     s = strcmp(names, arms(i).name); t = tenures == arms(i).tenure;
     ce(s, t) = arms(i).ce_entry; sec(s, t) = arms(i).solve_sec;
 end
-gain = 100 * (ce ./ ce(strcmp(names, ref), :) - 1);
+if best
+    [ce_ref, ib] = max(ce, [], 1, 'omitnan');
+    ref = sprintf('best (%s)', strjoin(compose('%s %s', string(names(ib)).', tenures.'), ', '));
+else
+    ce_ref = ce(strcmp(names, ref), :);
+end
+gain = 100 * (ce ./ ce_ref - 1);
 low = min(gain, [], 2);
 low(any(isnan(gain), 2)) = NaN;
 labels = cellfun(@(n) arms(find(strcmp({arms.name}, n), 1)).label, names, 'UniformOutput', false);
