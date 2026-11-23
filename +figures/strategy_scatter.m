@@ -16,7 +16,8 @@ function files = strategy_scatter(folders, opts)
 %   vs_<reference>:
 %     scatter_<tag>.png          all strategies, each axis on its own scale
 %     scatter_<tag>_zoom.png     only the window [lowest renter gain, lowest
-%                                owner gain] (with opts.window)
+%                                owner gain] (with opts.window); _zoom_equal
+%                                the same on equal scales
 %     scatter_<tag>_equal.png    all strategies, equal scales
 %     scatter_<tag>_appendix.md  the numbered list
 %     scatter_<tag>.pdf          the scatters and the list, A4 landscape, to print
@@ -53,7 +54,10 @@ end
 
 st = figures.style();
 files = {draw(T, fam, R, st, out, tag, false, []), draw(T, fam, R, st, out, tag, true, [])};
-if ~isempty(opts.window), files{end+1} = draw(T, fam, R, st, out, [tag '_zoom'], false, opts.window); end
+if ~isempty(opts.window)
+    files{end+1} = draw(T, fam, R, st, out, [tag '_zoom'], false, opts.window);
+    files{end+1} = draw(T, fam, R, st, out, [tag '_zoom'], true, opts.window);
+end
 
 % The appendix: markdown, then pages of the PDF.
 head = sprintf('Strategies numbered by the max-min rule against %s (1 = best); gains in %% of certainty-equivalent consumption at entry', ...
