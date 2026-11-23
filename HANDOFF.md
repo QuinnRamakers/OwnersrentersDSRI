@@ -147,6 +147,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-23 strategy_panel: Quinn's wording (spec: none, asked by Quinn in Claude Code)
+Quinn reviewed every label of `figures.strategy_panel` and set the wording; done as asked, no new solves:
+1. Title "Optimal unconditional investment strategies", with a note that welfare is certainty-equivalent consumption (the constant yearly consumption over the life cycle with the same expected lifetime utility), what the lines and bands are, the retirement line and the number of households.
+2. A heading above each row: "Optimal strategy for owners", "Optimal strategy for renters", "Max-min compromise between owners and renters" (default row order now owners, renters, compromise). Each box is headed by its tenure, with its welfare compared with the optimal strategy for renters and for owners, or "This is the optimal strategy for ...". The fund description and all internal names are gone.
+3. Panels "Savings", "Equity share of liquid savings", "Consumption", "Pension fund investment allocation" (share), "Pension fund assets" (level), "Total portfolio assets" (pyramid), "Asset shares of the total portfolio" (total). Axes "Thousands of 2025 euros", "fraction", "share of pension and private savings". Legends "stocks", "REIT", "bonds" (share, level) and "stocks: pension fund", "stocks: liquid savings" and so on; the allocation panels end at 1 with the legend below the box.
+Redrawn for `knot_night`, `spline_night`, `night_medium` (not committed). Checks: local `run_tests(solve=false)` 0 of 23 failed.
+
 ### 2026-11-23 strategy_panel: grouped by asset class, higher resolution (spec: none, asked by Quinn in Claude Code)
 Quinn: "pension and liquid should not be kept apart, it should be stock, reit, bonds and then within the asset class it is decomposed", then "could you also increase the resolution?".
 1. "pyramid" and "total" bars: stocks at the bottom (pension dark blue, liquid light blue), REIT (orange, pension only), bonds on top (pension dark grey, liquid light grey); thin black lines between the asset classes. Legend labels "stocks: pension" and so on.
