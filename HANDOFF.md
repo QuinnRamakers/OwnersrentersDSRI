@@ -147,6 +147,17 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-23 The knot menu: results (spec: none, run of 2026-11-19)
+Ran on the DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (0f67a50), 32 threads, 19 November 22:07 UTC to 20 November 15:26 UTC (1038.6 min), exit 0: 216 solves, 2 reused (production from `night_medium`), none skipped or failed. Medium grid 24x12x20x4, 3 nodes, 10,000 households. Pulled to `results/strategies/knot_night` (by `oc exec ... tar -c`; not committed) and `runs/knot_night.txt`.
+Checks, all 218 solves: `c_bound_25_39` 0, off-grid lookups 0, `ce_entry` 0.329-0.391.
+Ranked with `spline_night` and `night_medium` (202 strategies without free choice and no pension):
+1. Against production, max-min: `k100_70_30h_r50` (100% risky at 25, 70% at 46, 30% at 67 held, half REIT): renters +0.31%, owners +0.27%; then `k100_70_30h_r75` (+0.44, +0.26), `k100_70_30z_r50` (+0.47, +0.25), `k100_70_30z_r75` (+0.60, +0.25). The best spline `s100_20h_r50` (+0.35, +0.24) is now 6th; 5 knots beat it, 105 of 108 knots beat production for both tenures.
+2. Best per tenure: renters `k100_50_20z_r100` (+0.64%: 100% risky at 25, 50% at 46, 20% at 67 to 0 at 100, all REIT); owners `k100_70_30h_r50` (+0.27%). Max-min against each type's best: `k100_70_30z_r75` (renters -0.03%, owners -0.02%).
+3. Against free choice the best knots still lose about 1.1% (renters) and 0.16-0.3% (owners).
+4. Mean gains along each knot (renter, owner, %): at 25 80%: +0.25, +0.15; 100%: +0.38, +0.16. At 46 50%: +0.33, +0.13; 70%: +0.41, +0.18; 90%: +0.22, +0.16. At 67 10%: +0.29, +0.09; 20%: +0.38, +0.17; 30%: +0.28, +0.20. Tail held +0.29, +0.17; to 0 +0.35, +0.15. REIT 50%: +0.23, +0.18; 75%: +0.39, +0.17; 100%: +0.34, +0.12.
+Edges: the best renter fund sits at the grid's edge in two knots (100% at 25 is the ceiling; 100% REIT is the top of the REIT list) and the best owner fund at the top of the share at 67 (30%). A next menu should go past 30% at 67 for owners. Differences of a few hundredths of a point are below what the medium grid settles.
+Figures (not committed): `knot_night/fund_mix_knots_best.png`, `strategies_<tenure>_knots_top20_rank.png`, `strategies_<tenure>_knots_best_rank.png`.
+
 ### 2026-11-19 Full tests on the pod at 0f67a50; the knot solves started (spec: none)
 DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (0f67a50), 32 threads, inside `runs/knot_night.sh`, 19 November 21:51-22:07 UTC: fast tests 0 of 22 failed; full `run_tests` 2 of 41 failed, 1 skipped, 15.6 min. The two failures are the old ones (`floor_node_test` "owner 1: solve out of range"; `bequest_off_identical` "s18_renter: the solution differs from the baseline"); `floor_off_identical` skipped (no baseline). `strategies_smoke` passes with the checks added since fa9e395 (a copy in a second folder counts once; the best reference). This closes the open full tests of the entries since fa9e395.
 The knot solves started at 22:07 UTC: 109 strategies (production reused) x 2 tenures, expected to end about 14:00 UTC on 20 November. `figures.strategies(..., colors="rank")` (f8bbd8b): green best by max-min, through yellow, to red worst, numbered in the legend.
