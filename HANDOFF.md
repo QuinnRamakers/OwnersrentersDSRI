@@ -147,6 +147,14 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-23 figures.strategy_panel (spec: none, asked by Quinn in Claude Code)
+Quinn pasted a spec: `figures.strategy_panel(folders, rows, opts)`, a grid with one row per strategy (a name or a role) and one column per tenure. Done as asked, no new solves:
+1. Roles from `model.rank_strategies` (`opts.exclude`, default free choice and no pension): `best_renter`, `best_owner`, `maxmin` (`maxmin_against` "best", the default, or "reference"), `reference`; any other string is a name, refused (`strategy_panel:name`) when not in the folders after exclude. A row that resolves to an earlier row's strategy is drawn and titled "same as row k"; a missing tenure gets an empty box with a note.
+2. Each box: savings (X.mean and A.mean stacked, EUR 1,000), the liquid equity share (mean, 10th-90th band), consumption (median, band), and the pension fund by age as bars (`pension` "share", "level" or "total"; "total" splits X + A into liquid stocks and bonds and pension stocks, REIT and bonds, the liquid split being the mean equity share times mean liquid wealth). One y-scale per panel type across the grid; titles give the role, the fund in words and the welfare against the reference and the tenure's best; the figure title gives the grid and the households.
+3. Writes `strategy_panel_<pension>.png` and `strategy_panel.pdf`; returns the files and the resolved rows. `draw=false` only resolves.
+Default call on `knot_night`, `spline_night`, `night_medium` (all three versions also drawn, in `results/strategies/knot_night`, not committed): row 1 `best_renter` -> `k100_50_20z_r100`, row 2 `best_owner` -> `k100_70_30h_r50`, row 3 `maxmin` -> `k100_70_30z_r75`, no duplicates.
+Checks: local `run_tests(solve=false)` 0 of 23 failed; new `strategy_panel_roles` (made-up solves in a temp folder: the four roles, max-min against the reference, the same-as note, an unknown and an excluded name refused) PASS 2.0 s.
+
 ### 2026-11-23 figures.strategy_scatter: numbered points and an appendix (spec: none, asked by Quinn in Claude Code)
 Quinn: "give me the scatter plot", then "lets give every point a number and make an appendix list what every strategy is as the labeling is getting too complicated", and "please also use the results from the last plots". No new solves.
 1. `figures.strategy_scatter(folders, reference=, exclude=, window=)`: every strategy one point numbered by its max-min rank (1 = best, bold to 5), colour by family only (knot, spline, other); writes the scatter (own scales, equal scales, zoom), `scatter_<tag>_appendix.md` and `scatter_<tag>.pdf` (scatters, then the numbered list: name, what the fund holds, both gains; A4 landscape). `figures.describe_strategy` gives a fund's holdings in words.

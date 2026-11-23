@@ -22,7 +22,8 @@ checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_br
           @reit_production, @reit_off_untouched, ...
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
           @nibud_rule, @floor_derive, @dc_choice_param, @glide_age100, @gross_rate_param, @fast_power_param, ...
-          @paper_steps, @glide_knots_rule, @annuity_variable, @return_moments, @strategy_list_derives};
+          @paper_steps, @glide_knots_rule, @annuity_variable, @return_moments, @strategy_list_derives, ...
+          @strategy_panel_roles};
 if opts.solve
     checks = [checks, {@default_choice_step, @default_choice_panel, @strategies_smoke, @dc_choice_dominates, @dc_choice_smoke, ...
                        @collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
@@ -1295,4 +1296,35 @@ assert(numel(h) == p.T && all(h >= 0 & h <= 1) && any(h > 0), 'abs_hazard');
 dd = tempname; mkdir(dd); cleanup = onCleanup(@() rmdir(dd, 's'));
 figures.dashboard(r, fullfile(dd, 'a.png'));
 assert(isfile(fullfile(dd, 'a.png')), 'the dashboard was not written');
+end
+
+function strategy_panel_roles()
+% figures.strategy_panel resolves its roles from the ranking without drawing.
+% Three made-up solves (no solving): production and two knot funds, A and B,
+% with values at entry chosen so that A is best for renters, B for owners,
+% A the max-min fund against each type's best and B against production;
+% a role and a name that give the same fund are noted; an unknown name and
+% an excluded one are refused.
+d = tempname; mkdir(d); cleanup = onCleanup(@() rmdir(d, 's'));
+ce = struct('lifecycle', [0.330 0.390], 'kA', [0.340 0.391], 'kB', [0.332 0.395]);
+K = struct('lifecycle', [], 'kA', [25 0.5 0.5; 67 0.1 0.1], 'kB', [25 0.4 0.4; 67 0.2 0.2]);
+names = fieldnames(ce); ten = ["renter", "owner"];
+for i = 1:numel(names)
+    set = struct(); if ~isempty(K.(names{i})), set = struct('glide_rule', 'knots', 'glide_knots', K.(names{i})); end
+    for t = 1:2
+        p = config.params(false); p.is_owner = t == 2; f = fieldnames(set);
+        for j = 1:numel(f), p.(f{j}) = set.(f{j}); end
+        s = struct('strategy', struct('name', names{i}, 'label', names{i}, 'set', set), 'tenure', char(ten(t)), ...
+            'p', config.derive(p), 'checks', struct('ce_entry', ce.(names{i})(t), 'c_bound_25_39', 0, 'offgrid', [0 0 0 0], ...
+            'floored_share', 0, 'abs_share', [0 0 0]), 'timing', struct('solve_sec', 1, 'sim_sec', 1, 'N_sim', 10));
+        save(fullfile(d, sprintf('%s_%s.mat', names{i}, ten(t))), '-struct', 's');
+    end
+end
+[~, r] = figures.strategy_panel(d, ["best_renter", "best_owner", "maxmin", "reference", "kA"], draw = false, exclude = strings(1, 0));
+assert(isequal([r.strategy], ["kA", "kB", "kA", "lifecycle", "kA"]), 'roles resolved to %s', strjoin([r.strategy], ', '));
+assert(isequal([r.same_as], [0 0 1 0 1]) && r(5).role == "" && r(3).role == "maxmin", 'same-as notes or roles');
+[~, r] = figures.strategy_panel(d, "maxmin", draw = false, exclude = strings(1, 0), maxmin_against = "reference");
+assert(r.strategy == "kB", 'max-min against the reference resolved to %s', r.strategy);
+assert(threw_id(@() figures.strategy_panel(d, "nofund", draw = false, exclude = strings(1, 0)), 'strategy_panel:name'), 'an unknown name was taken');
+assert(threw_id(@() figures.strategy_panel(d, "kB", draw = false, exclude = "kB"), 'strategy_panel:name'), 'an excluded name was taken');
 end
