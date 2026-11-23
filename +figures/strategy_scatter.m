@@ -7,8 +7,8 @@ function files = strategy_scatter(folders, opts)
 %   Ranks the strategies saved in the folders (model.rank_strategies, with
 %   reference and exclude) and numbers them by that ranking: 1 is the best
 %   by the max-min rule. Each strategy is one point, renter gain across and
-%   owner gain up, with its number beside it; the colour gives only the
-%   family (knot funds, spline funds, other strategies). What every number
+%   owner gain up, with its number beside it; the colour gives the REIT part of the risky share and the
+%   marker the risky share in retirement (constant, changing, none, chosen by the household). What every number
 %   is goes in the appendix: the name, what the fund holds
 %   (figures.describe_strategy) and the two gains.
 %
@@ -42,29 +42,41 @@ if isempty(tag)
     if ~isempty(opts.exclude), tag = [tag '_without_' char(strjoin(opts.exclude, '_'))]; end
 end
 T = R.table; n = height(T);
-fam = repmat("other", n, 1);
-fam(startsWith(T.strategy, 'k') & ~cellfun(@isempty, regexp(T.strategy, '^k\d+_\d+_\d+[hz]_r\d+$', 'once'))) = "knot";
-fam(~cellfun(@isempty, regexp(T.strategy, '^s\d+_\d+[hz]_r\d+$', 'once'))) = "spline";
-desc = strings(n, 1);
+% What each fund does, from its own age path (config.derive): the risky share
+% in retirement (constant, changing, none, or chosen by the household) and
+% the REIT part of the risky share (one value when it is fixed; the mean
+% over the ages with risk otherwise; NaN with free choice).
+ret = strings(n, 1); reitf = nan(n, 1); desc = strings(n, 1);
 for i = 1:n
     a = find(strcmp({R.arms.name}, T.strategy{i}), 1);
-    L = load(R.arms(a).file, 'strategy');
+    L = load(R.arms(a).file, 'strategy', 'p');
     desc(i) = figures.describe_strategy(L.strategy);
+    p = L.p;
+    if isfield(p, 'dc_choice') && p.dc_choice, ret(i) = "chosen"; continue, end
+    Sx = config.tau_effective(p); Ex = config.reit_effective(p); risky = Sx(:) + Ex(:);
+    ages = p.age0 + (0:numel(risky) - 1).';
+    rr = risky(ages >= p.retirement_age);
+    if max(rr) < 1e-9, ret(i) = "none";
+    elseif max(rr) - min(rr) < 1e-6, ret(i) = "constant";
+    else, ret(i) = "changing";
+    end
+    k = risky > 1e-9;
+    if any(k), reitf(i) = round(100 * mean(Ex(k) ./ risky(k))) / 100; end
 end
 
 st = figures.style();
-files = {draw(T, fam, R, st, out, tag, false, []), draw(T, fam, R, st, out, tag, true, [])};
+files = {draw(T, ret, reitf, R, st, out, tag, false, []), draw(T, ret, reitf, R, st, out, tag, true, [])};
 if ~isempty(opts.window)
-    files{end+1} = draw(T, fam, R, st, out, [tag '_zoom'], false, opts.window);
-    files{end+1} = draw(T, fam, R, st, out, [tag '_zoom'], true, opts.window);
+    files{end+1} = draw(T, ret, reitf, R, st, out, [tag '_zoom'], false, opts.window);
+    files{end+1} = draw(T, ret, reitf, R, st, out, [tag '_zoom'], true, opts.window);
 end
 
 % The appendix: markdown, then pages of the PDF.
-head = sprintf('Strategies numbered by the max-min rule against %s (1 = best); gains in %% of certainty-equivalent consumption at entry', ...
-    R.reference);
-md = {['# ' head], '', '| No. | Strategy | What the fund holds | Renters (%) | Owners (%) | Lower (%) |', '|---:|---|---|---:|---:|---:|'};
+head = sprintf('Strategies numbered by the max-min rule against %s (1 = best); welfare change in %% of certainty-equivalent consumption', ...
+    refword(R.reference));
+md = {['# ' head], '', '| No. | What the fund holds | Renters (%) | Owners (%) | Lower (%) |', '|---:|---|---:|---:|---:|'};
 for i = 1:n
-    md{end+1} = sprintf('| %d | `%s` | %s | %+.2f | %+.2f | %+.2f |', i, T.strategy{i}, desc(i), ...
+    md{end+1} = sprintf('| %d | %s | %+.2f | %+.2f | %+.2f |', i, desc(i), ...
         T.gain_renter(i), T.gain_owner(i), T.lowest_gain(i)); %#ok<AGROW>
 end
 fmd = fullfile(out, ['scatter_' tag '_appendix.md']);
@@ -87,9 +99,9 @@ for p = 1:ceil(n / rows)
     ax = axes(fig, 'Units', 'normalized', 'Position', [0.03 0.03 0.94 0.94]); axis(ax, 'off');
     ax.XLim = [0 1]; ax.YLim = [0 1];
     txt = {sprintf('Appendix (page %d of %d). %s.', p, ceil(n / rows), head), '', ...
-           sprintf('%4s  %-17s %8s %8s %8s  %s', 'No.', 'Strategy', 'Renters', 'Owners', 'Lower', 'What the fund holds')};
+           sprintf('%4s %8s %8s %8s  %s', 'No.', 'Renters', 'Owners', 'Lower', 'What the fund holds')};
     for i = (p - 1) * rows + 1 : min(p * rows, n)
-        txt{end+1} = sprintf('%4d  %-17s %+8.2f %+8.2f %+8.2f  %s', i, T.strategy{i}, T.gain_renter(i), ...
+        txt{end+1} = sprintf('%4d %+8.2f %+8.2f %+8.2f  %s', i, T.gain_renter(i), ...
             T.gain_owner(i), T.lowest_gain(i), desc(i)); %#ok<AGROW>
     end
     text(ax, 0, 1, txt, 'FontName', 'Courier New', 'FontSize', 8.5, 'VerticalAlignment', 'top', 'Interpreter', 'none');
@@ -100,8 +112,7 @@ files{end+1} = pdf;
 end
 
 % ------------------------------------------------------------------------
-function f = draw(T, fam, R, st, out, tag, equal, window)
-col = struct('knot', st.series(1, :), 'spline', st.series(2, :), 'other', st.ink);
+function f = draw(T, ret, reitf, R, st, out, tag, equal, window)
 x = T.gain_renter; y = T.gain_owner; n = numel(x);
 show = true(n, 1); n_out = 0;
 if ~isempty(window)
@@ -118,15 +129,31 @@ xline(ax, 0, 'Color', st.muted); yline(ax, 0, 'Color', st.muted);
 m = T.lowest_gain(1);                                % the max-min choice's lowest gain
 plot(ax, [m m xl(2)], [yl(2) m m], '--', 'Color', st.ink2, 'LineWidth', 1.1);
 h = gobjects(0); lab = {};
-names = ["knot", "spline", "other"]; words = ["knot funds (model.knot_menu)", "spline funds (model.spline_menu)", "other strategies"];
-mk = struct('knot', 'o', 'spline', 's', 'other', 'd');
-for k = 1:3
-    j = fam == names(k) & show;
-    if ~any(j), continue, end
-    c = col.(names(k));
-    h(end+1) = plot(ax, x(j), y(j), mk.(names(k)), 'MarkerSize', 6, 'LineWidth', 1.2, 'MarkerEdgeColor', c, ...
-        'MarkerFaceColor', 'w'); %#ok<AGROW>
-    lab{end+1} = words(k); %#ok<AGROW>
+% Colour: the REIT part of the risky share (light to dark); grey where the
+% household chooses. Marker: the risky share in retirement.
+hex = @(s) sscanf(s(2:end), '%2x%2x%2x', [1 3]) / 255;
+ramp = [hex('#b7d3f6'); hex('#6da7ec'); hex('#2a78d6'); hex('#1c5cab'); hex('#0d366b')];
+lev = unique(reitf(~isnan(reitf))).';
+if numel(lev) ~= size(ramp, 1), ramp = interp1(linspace(0, 1, 5), ramp, linspace(0, 1, max(numel(lev), 2))); end
+mk = struct('constant', 'o', 'changing', 'o', 'none', 's', 'chosen', 'd');
+for i = find(show).'
+    if isnan(reitf(i)), c = st.muted; else, c = ramp(find(lev == reitf(i), 1), :); end
+    face = c; if ret(i) == "changing", face = 'w'; end
+    plot(ax, x(i), y(i), mk.(ret(i)), 'MarkerSize', 7, 'LineWidth', 1.3, 'MarkerEdgeColor', c, 'MarkerFaceColor', face);
+end
+for k = 1:numel(lev)
+    h(end+1) = plot(ax, nan, nan, 's', 'MarkerSize', 9, 'MarkerEdgeColor', ramp(k, :), 'MarkerFaceColor', ramp(k, :)); %#ok<AGROW>
+    lab{end+1} = sprintf('%.0f%% of the risky share in REIT', 100 * lev(k)); %#ok<AGROW>
+end
+kinds = ["constant", "changing", "none", "chosen"];
+kw = ["filled circle: constant risky share in retirement", "open circle: risky share changes in retirement", ...
+      "square: no risky assets in retirement", "grey diamond: the household chooses its own shares"];
+for k = 1:4
+    if ~any(ret(show) == kinds(k)), continue, end
+    face = st.ink2; if kinds(k) == "changing", face = 'w'; end
+    cc = st.ink2; if kinds(k) == "chosen", cc = st.muted; face = st.muted; end
+    h(end+1) = plot(ax, nan, nan, mk.(kinds(k)), 'MarkerSize', 7, 'LineWidth', 1.3, 'MarkerEdgeColor', cc, 'MarkerFaceColor', face); %#ok<AGROW>
+    lab{end+1} = kw(k); %#ok<AGROW>
 end
 for i = find(show).'
     text(ax, x(i), y(i), sprintf(' %d', i), 'FontSize', 7, 'Color', st.ink, 'VerticalAlignment', 'bottom', ...
@@ -134,19 +161,19 @@ for i = find(show).'
 end
 if ~startsWith(R.reference, 'best')
     plot(ax, 0, 0, 'kx', 'MarkerSize', 12, 'LineWidth', 2.2);
-    h(end+1) = plot(ax, nan, nan, 'kx', 'MarkerSize', 12, 'LineWidth', 2.2); lab{end+1} = sprintf('%s (reference)', R.reference);
+    h(end+1) = plot(ax, nan, nan, 'kx', 'MarkerSize', 12, 'LineWidth', 2.2); lab{end+1} = sprintf('%s (reference)', refword(R.reference));
 end
 xlim(ax, xl); ylim(ax, yl);
 if equal, daspect(ax, [1 1 1]); end
 xlabel(ax, 'Renter gain (%)', 'Color', st.ink); ylabel(ax, 'Owner gain (%)', 'Color', st.ink);
 scale = 'each axis on its own scale'; if equal, scale = 'equal scales'; end
-title(ax, sprintf('Renter against owner gain, against %s (%s)', R.reference, scale), 'Interpreter', 'none', ...
+title(ax, sprintf('Welfare change for renters and owners, against %s (%s)', refword(R.reference), scale), 'Interpreter', 'none', ...
     'FontWeight', 'normal', 'FontSize', st.font + 4, 'Color', st.ink);
 sub = sprintf(['Numbers: rank by the max-min rule (1 = best, bold to 5); the appendix lists every number. ' ...
     'Dashed corner: the lowest gain of no. 1, %+.2f%%.'], m);
 if n_out > 0, sub = sprintf('%s %d strategies lie below the window.', sub, n_out); end
 subtitle(ax, sub, 'Color', st.ink2, 'FontSize', st.font);
-legend(ax, h, lab, 'Location', 'southeast', 'Box', 'off', 'FontSize', st.font, 'Interpreter', 'none');
+legend(ax, h, lab, 'Location', 'eastoutside', 'Box', 'off', 'FontSize', st.font, 'Interpreter', 'none');
 f = fullfile(out, ['scatter_' tag ternary(equal, '_equal', '') '.png']);
 exportgraphics(fig, f, 'Resolution', 130);
 close(fig);
@@ -154,4 +181,13 @@ end
 
 function v = ternary(c, a, b)
 if c, v = a; else, v = b; end
+end
+
+function w = refword(ref)
+% The reference in words, without internal names.
+w = char(ref);
+if startsWith(w, 'best'), w = 'each type''s optimal strategy';
+elseif strcmp(w, 'lifecycle'), w = 'the current default fund';
+elseif strcmp(w, 'free'), w = 'free choice';
+end
 end

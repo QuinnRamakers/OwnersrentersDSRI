@@ -147,6 +147,9 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-23 strategy_scatter: retirement allocation and REIT share instead of the family (spec: none, asked by Quinn in Claude Code)
+Quinn: "remove the distinction of knots and splines in the labelling but have constant asset allocation in retirement and the reit share in there". `figures.strategy_scatter` reads each fund's age path (`config.tau_effective`, `config.reit_effective`) and draws: colour = the REIT part of the risky share (0, 25, 50, 75, 100%, light to dark; grey with free choice); marker = the risky share in retirement (filled circle constant, open circle changing, square none, diamond chosen by the household). Title and appendix without internal names ("the current default fund", "each type's optimal strategy"; the appendix lists number, holdings and gains). Legend outside the plot. Redrawn against production and against each type's best for the three runs (not committed). Checks: local `run_tests(solve=false)` 0 of 23 failed.
+
 ### 2026-11-23 strategy_panel: one vocabulary (spec: none, asked by Quinn in Claude Code)
 Quinn: "fix the mixed vocabulary chose private savings and pension account". All labels now say "private savings" (was liquid savings) and "pension account" (was pension fund): "Equity share of private savings", "Pension account investment allocation", "Pension account assets", legends "private savings", "pension account", "stocks: pension account", "stocks: private savings" and so on; the total version's axis "share of pension account and private savings" on two lines. Checks: local `run_tests(solve=false)` 0 of 23 failed.
 
