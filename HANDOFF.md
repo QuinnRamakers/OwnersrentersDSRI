@@ -147,6 +147,9 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-23 Scatter and panel wording (spec: none, asked by Quinn in Claude Code)
+Quinn set the texts: `figures.strategy_scatter` title "Welfare changes for owners and renters, with respect to the per-type optimal unconditional strategy" (or "the current default fund"), grey line "Numbered by ranking according to max-min (1 being the optimal compromise); dashed lines are at the optimal compromise", and the dashed lines now pass through no. 1 itself. `figures.strategy_panel` first grey line "Welfare is measured as a certainty equivalent ratio giving the change in lifetime consumption." Redrawn for the three runs (not committed). Checks: local `run_tests(solve=false)` 0 of 23 failed.
+
 ### 2026-11-23 strategy_scatter: retirement allocation and REIT share instead of the family (spec: none, asked by Quinn in Claude Code)
 Quinn: "remove the distinction of knots and splines in the labelling but have constant asset allocation in retirement and the reit share in there". `figures.strategy_scatter` reads each fund's age path (`config.tau_effective`, `config.reit_effective`) and draws: colour = the REIT part of the risky share (0, 25, 50, 75, 100%, light to dark; grey with free choice); marker = the risky share in retirement (filled circle constant, open circle changing, square none, diamond chosen by the household). Title and appendix without internal names ("the current default fund", "each type's optimal strategy"; the appendix lists number, holdings and gains). Legend outside the plot. Redrawn against production and against each type's best for the three runs (not committed). Checks: local `run_tests(solve=false)` 0 of 23 failed.
 

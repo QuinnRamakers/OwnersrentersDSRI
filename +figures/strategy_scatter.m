@@ -126,8 +126,8 @@ sx = max(max(xs) - min(xs), 1e-6); sy = max(max(ys) - min(ys), 1e-6);
 xl = [min(xs) - 0.04 * sx, max(xs) + 0.06 * sx]; yl = [min(ys) - 0.05 * sy, max(ys) + 0.07 * sy];
 if ~isempty(window), xl(1) = window(1); yl(1) = window(2); end
 xline(ax, 0, 'Color', st.muted); yline(ax, 0, 'Color', st.muted);
-m = T.lowest_gain(1);                                % the max-min choice's lowest gain
-plot(ax, [m m xl(2)], [yl(2) m m], '--', 'Color', st.ink2, 'LineWidth', 1.1);
+% Dashed lines through no. 1, the max-min (optimal) compromise.
+plot(ax, [x(1) x(1) xl(2)], [yl(2) y(1) y(1)], '--', 'Color', st.ink2, 'LineWidth', 1.1);   % through the optimal compromise (no. 1)
 h = gobjects(0); lab = {};
 % Colour: the REIT part of the risky share (light to dark); grey where the
 % household chooses. Marker: the risky share in retirement.
@@ -166,11 +166,10 @@ end
 xlim(ax, xl); ylim(ax, yl);
 if equal, daspect(ax, [1 1 1]); end
 xlabel(ax, 'Renter gain (%)', 'Color', st.ink); ylabel(ax, 'Owner gain (%)', 'Color', st.ink);
-scale = 'each axis on its own scale'; if equal, scale = 'equal scales'; end
-title(ax, sprintf('Welfare change for renters and owners, against %s (%s)', refword(R.reference), scale), 'Interpreter', 'none', ...
+scale = ''; if equal, scale = ' (equal scales)'; end
+title(ax, sprintf('Welfare changes for owners and renters, with respect to %s%s', refword(R.reference), scale), 'Interpreter', 'none', ...
     'FontWeight', 'normal', 'FontSize', st.font + 4, 'Color', st.ink);
-sub = sprintf(['Numbers: rank by the max-min rule (1 = best, bold to 5); the appendix lists every number. ' ...
-    'Dashed corner: the lowest gain of no. 1, %+.2f%%.'], m);
+sub = 'Numbered by ranking according to max-min (1 being the optimal compromise); dashed lines are at the optimal compromise.';
 if n_out > 0, sub = sprintf('%s %d strategies lie below the window.', sub, n_out); end
 subtitle(ax, sub, 'Color', st.ink2, 'FontSize', st.font);
 legend(ax, h, lab, 'Location', 'eastoutside', 'Box', 'off', 'FontSize', st.font, 'Interpreter', 'none');
@@ -186,7 +185,7 @@ end
 function w = refword(ref)
 % The reference in words, without internal names.
 w = char(ref);
-if startsWith(w, 'best'), w = 'each type''s optimal strategy';
+if startsWith(w, 'best'), w = 'the per-type optimal unconditional strategy';
 elseif strcmp(w, 'lifecycle'), w = 'the current default fund';
 elseif strcmp(w, 'free'), w = 'free choice';
 end

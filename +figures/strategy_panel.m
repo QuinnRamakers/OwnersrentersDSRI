@@ -43,8 +43,9 @@ function [files, resolved] = strategy_panel(folders, rows, opts)
 %   strategy without a solve for a column's tenure gets an empty box.
 %
 %   Wording (Quinn, 23 November 2026). The figure is titled "Optimal
-%   unconditional investment strategies", with a note on what welfare is
-%   (certainty-equivalent consumption), what the lines and bands are and the
+%   unconditional investment strategies", with the note "Welfare is measured as a
+%   certainty equivalent ratio giving the change in lifetime consumption",
+%   what the lines and bands are and the
 %   number of households. Each row has a heading: "Optimal strategy for
 %   owners", "Optimal strategy for renters", "Max-min compromise between
 %   owners and renters", "Current default fund", or the strategy's label
@@ -153,8 +154,7 @@ for pv = opts.pension
     fig = figure('Visible', 'off', 'Color', 'w', 'Position', [20 20 760 * nc + 80, 880 * nr + 170]);
     tl = tiledlayout(fig, nr, 1, 'TileSpacing', 'loose', 'Padding', 'compact');
     title(tl, 'Optimal unconditional investment strategies', 'FontSize', st.font + 6, 'FontWeight', 'bold', 'Color', st.ink);
-    subtitle(tl, {['Welfare is certainty-equivalent consumption: the constant yearly consumption over the life cycle that gives ' ...
-                   'the same expected lifetime utility, compared for the same household type.'], ...
+    subtitle(tl, {'Welfare is measured as a certainty equivalent ratio giving the change in lifetime consumption.', ...
                   sprintf(['Lines: means (savings, equity share) and medians (consumption); bands: 10th to 90th percentile ' ...
                    'across households; dotted line: retirement at %d. %s simulated households.'], p0.retirement_age, ...
                    thousands(N))}, 'FontSize', st.font + 1, 'Color', st.ink2);
