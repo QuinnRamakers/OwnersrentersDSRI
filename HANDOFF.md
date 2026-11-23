@@ -147,6 +147,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-23 figures.strategy_scatter: numbered points and an appendix (spec: none, asked by Quinn in Claude Code)
+Quinn: "give me the scatter plot", then "lets give every point a number and make an appendix list what every strategy is as the labeling is getting too complicated", and "please also use the results from the last plots". No new solves.
+1. `figures.strategy_scatter(folders, reference=, exclude=, window=)`: every strategy one point numbered by its max-min rank (1 = best, bold to 5), colour by family only (knot, spline, other); writes the scatter (own scales, equal scales, zoom), `scatter_<tag>_appendix.md` and `scatter_<tag>.pdf` (scatters, then the numbered list: name, what the fund holds, both gains; A4 landscape). `figures.describe_strategy` gives a fund's holdings in words.
+2. `figures.spline_menu` reads knot funds too (knots in colour, splines in grey; heatmaps for splines only).
+3. Drawn for `knot_night`, `spline_night` and `night_medium` together (200 strategies without free choice and no pension), against production and against each type's best, in `results/strategies/knot_night` (not committed).
+Checks: local `run_tests(solve=false)` 0 of 22 failed.
+
 ### 2026-11-23 The knot menu: results (spec: none, run of 2026-11-19)
 Ran on the DSRI pod, `/Solutionstorage/OwnersrentersDSRI_paper` (0f67a50), 32 threads, 19 November 22:07 UTC to 20 November 15:26 UTC (1038.6 min), exit 0: 216 solves, 2 reused (production from `night_medium`), none skipped or failed. Medium grid 24x12x20x4, 3 nodes, 10,000 households. Pulled to `results/strategies/knot_night` (by `oc exec ... tar -c`; not committed) and `runs/knot_night.txt`.
 Checks, all 218 solves: `c_bound_25_39` 0, off-grid lookups 0, `ce_entry` 0.329-0.391.

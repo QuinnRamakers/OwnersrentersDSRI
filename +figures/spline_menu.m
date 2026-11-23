@@ -54,20 +54,40 @@ out = opts.out; if isempty(out), out = R.folders{1}; end
 suffix = ''; if ~isempty(opts.reference), suffix = ['_vs_' opts.reference]; end
 if ~isempty(opts.exclude), suffix = [suffix '_without_' char(strjoin(opts.exclude, '_'))]; end
 T = R.table;
-tok = regexp(T.strategy, '^s(\d+)_(\d+)([hz])_r(\d+)$', 'tokens', 'once');
-is = ~cellfun(@isempty, tok);
-assert(any(is), 'figures:spline_menu', 'No strategies of model.spline_menu in %s.', strjoin(R.folders, ', '));
-tok = vertcat(tok{is});
-M = table(T.strategy(is), str2double(tok(:, 1)), str2double(tok(:, 2)), string(tok(:, 3)), str2double(tok(:, 4)), ...
-          T.gain_renter(is), T.gain_owner(is), T.lowest_gain(is), ...
-          'VariableNames', {'name', 'young', 'at67', 'tail', 'reit', 'renter', 'owner', 'lowest'});
+% Splines (model.spline_menu, s...) and knot funds (model.knot_menu, k...);
+% for a knot fund `young` is the share at 25 and `mid` the share at 46.
+ts = regexp(T.strategy, '^s(\d+)_(\d+)([hz])_r(\d+)$', 'tokens', 'once');
+tk = regexp(T.strategy, '^k(\d+)_(\d+)_(\d+)([hz])_r(\d+)$', 'tokens', 'once');
+iss = ~cellfun(@isempty, ts); isk = ~cellfun(@isempty, tk);
+is = iss | isk;
+assert(any(is), 'figures:spline_menu', 'No strategies of model.spline_menu or model.knot_menu in %s.', strjoin(R.folders, ', '));
+rows = find(is); n = numel(rows);
+M = table(T.strategy(rows), nan(n, 1), nan(n, 1), nan(n, 1), strings(n, 1), nan(n, 1), strings(n, 1), ...
+          T.gain_renter(rows), T.gain_owner(rows), T.lowest_gain(rows), ...
+          'VariableNames', {'name', 'young', 'mid', 'at67', 'tail', 'reit', 'fam', 'renter', 'owner', 'lowest'});
+for i = 1:n
+    r = rows(i);
+    if iss(r)
+        t = ts{r}; M.young(i) = str2double(t{1}); M.at67(i) = str2double(t{2}); M.tail(i) = t{3}; M.reit(i) = str2double(t{4}); M.fam(i) = "s";
+    else
+        t = tk{r}; M.young(i) = str2double(t{1}); M.mid(i) = str2double(t{2}); M.at67(i) = str2double(t{3});
+        M.tail(i) = t{4}; M.reit(i) = str2double(t{5}); M.fam(i) = "k";
+    end
+end
 show = ismember(T.strategy, cellstr(opts.others)); if isequal(opts.others, "all"), show = true(height(T), 1); end
 O = T(show & ~is, {'strategy', 'gain_renter', 'gain_owner'});
 best = M.name{find(M.lowest == max(M.lowest), 1)};
 st = figures.style();
-files = {heatmaps(M, best, R.reference, st, out, suffix), ...
-         scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, false, []), ...
-         scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, true, [])};
+% The heatmaps lay out the spline menu only; with knot funds in the folders
+% the scatter draws the knots in colour and the splines in grey.
+files = {};
+Ms = M(M.fam == "s", :);
+if ~isempty(Ms)
+    bs = Ms.name{find(Ms.lowest == max(Ms.lowest), 1)};
+    files = {heatmaps(Ms, bs, R.reference, st, out, suffix)};
+end
+files = [files, {scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, false, []), ...
+         scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, true, [])}];
 if ~isempty(opts.window)
     files = [files, {scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, false, opts.window), ...
                      scatter_gains(M, O, best, R.reference, st, out, opts.top, suffix, true, opts.window)}];
@@ -139,9 +159,10 @@ end
 function f = scatter_gains(M, O, best, ref, st, out, top, suffix, equal, window)
 hex = @(h) sscanf(h(2:end), '%2x%2x%2x', [1 3]) / 255;
 ramp = [hex('#86b6ef'); hex('#3987e5'); hex('#1c5cab'); hex('#0d366b')];   % ordinal, light to dark
-reit = sort(unique(M.reit)).';
+enc = true(height(M), 1); if any(M.fam == "k"), enc = M.fam == "k"; end   % the family drawn in colour
+reit = sort(unique(M.reit(enc))).';
 if numel(reit) > size(ramp, 1), ramp = interp1(linspace(0, 1, 4), ramp, linspace(0, 1, numel(reit))); end
-a67 = sort(unique(M.at67)).';
+a67 = sort(unique(M.at67(enc))).';
 mk = {'o', 's', '^', 'd', 'v', 'p'};
 
 fig = figure('Visible', 'off', 'Color', 'w', 'Position', [40 40 1500 950]);
@@ -163,7 +184,11 @@ if ~isempty(window), xl(1) = window(1); yl(1) = window(2); end
 set(ax, 'XTick', nice_ticks(xl), 'YTick', nice_ticks(yl));
 xline(ax, 0, 'Color', st.muted); yline(ax, 0, 'Color', st.muted);
 plot(ax, [m m xl(2)], [yl(2) m m], '--', 'Color', st.ink2, 'LineWidth', 1.2);
-for i = 1:height(M)
+grey = [0.80 0.80 0.78];
+for i = find(~enc).'                              % the other family, behind, in grey
+    plot(ax, M.renter(i), M.owner(i), 'o', 'MarkerSize', 6, 'MarkerEdgeColor', grey, 'MarkerFaceColor', grey);
+end
+for i = find(enc).'
     c = ramp(reit == M.reit(i), :);
     face = c; if M.tail(i) == "z", face = [1 1 1]; end
     plot(ax, M.renter(i), M.owner(i), mk{a67 == M.at67(i)}, 'MarkerSize', 9, 'LineWidth', 1.6, ...
@@ -206,7 +231,8 @@ if equal
 end
 xlabel(ax, 'Renter gain (%)', 'Color', st.ink); ylabel(ax, 'Owner gain (%)', 'Color', st.ink);
 scale = 'each axis on its own scale'; if equal, scale = 'equal scales'; end
-title(ax, sprintf('Spline funds: renter against owner gain, against `%s` (%s)', ref, scale), 'Interpreter', 'none', ...
+fam = 'Spline funds'; if any(M.fam == "k"), fam = 'Knot funds (spline funds in grey)'; end
+title(ax, sprintf('%s: renter against owner gain, against `%s` (%s)', fam, ref, scale), 'Interpreter', 'none', ...
     'FontWeight', 'normal', 'FontSize', st.font + 4, 'Color', st.ink);
 txt = sprintf(['Dashed corner: the best spline''s lowest gain, %+.2f%%; a fund up and to the ' ...
     'right of it would beat it. Numbered: the top %d splines by lowest gain.'], m, numel(o));
@@ -233,6 +259,10 @@ h(end+1) = plot(ax, nan, nan, 'o', 'MarkerSize', 9, 'Color', st.ink2, 'MarkerFac
 lab{end+1} = 'filled: held to 100';
 h(end+1) = plot(ax, nan, nan, 'o', 'MarkerSize', 9, 'Color', st.ink2, 'MarkerFaceColor', [1 1 1]);
 lab{end+1} = 'open: falling to 0 at 100';
+if any(~enc)
+    h(end+1) = plot(ax, nan, nan, 'o', 'MarkerSize', 6, 'MarkerEdgeColor', grey, 'MarkerFaceColor', grey);
+    lab{end+1} = 'grey: spline funds (flat to 39)';
+end
 lg = legend(ax, h, lab, 'Location', 'eastoutside', 'Box', 'off', 'FontSize', st.font, 'TextColor', st.ink, ...
     'Interpreter', 'none');
 title(lg, 'Top splines (renter, owner gain %)', 'FontWeight', 'normal');
