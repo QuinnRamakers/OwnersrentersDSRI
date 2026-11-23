@@ -147,6 +147,12 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-23 strategy_panel: grouped by asset class, higher resolution (spec: none, asked by Quinn in Claude Code)
+Quinn: "pension and liquid should not be kept apart, it should be stock, reit, bonds and then within the asset class it is decomposed", then "could you also increase the resolution?".
+1. "pyramid" and "total" bars: stocks at the bottom (pension dark blue, liquid light blue), REIT (orange, pension only), bonds on top (pension dark grey, liquid light grey); thin black lines between the asset classes. Legend labels "stocks: pension" and so on.
+2. PNGs at 220 dpi (was 110); the PDF is written as vector pages straight from the figures.
+Redrawn all four versions for `knot_night`, `spline_night`, `night_medium` (not committed). Checks: local `run_tests(solve=false)` 0 of 23 failed.
+
 ### 2026-11-23 strategy_panel: the pyramid version, labels in every box; why the best owner fund's bands are wide (spec: none, asked by Quinn in Claude Code)
 Quinn: "add the pyramid shaped decomposition, add the labeling of reit stock etc to every panel. Also figure out why the confidence intervals of owners is so large in the best owner strategy", then "make sure that you decompose the private liquid ... liquid and pension bonds are not in the same part".
 1. `figures.strategy_panel(..., pension="pyramid")`: panel 4 shows the savings of panel 1 in euros split into liquid stocks, liquid bonds, pension stocks, REIT and bonds. Liquid parts are greens below a thin black line, pension parts blue, orange and grey above it (also in "total"). Legends in every box. Two-line figure title.

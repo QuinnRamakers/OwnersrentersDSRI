@@ -25,9 +25,10 @@ function [files, resolved] = strategy_panel(folders, rows, opts)
 %          "pyramid" the same five parts in thousands of euros: the savings
 %                   of panel 1 split by asset
 %   Means and bands are over the households not bankrupt at that age, as in
-%   model.summarize. Each panel type has one y-scale across the grid. In
-%   "pyramid" and "total" the liquid parts are greens and sit below a thin
-%   black line, the pension parts (blue stocks, orange REIT, grey bonds) above.
+%   model.summarize. Each panel type has one y-scale across the grid. The
+%   bars of "pyramid" and "total" are grouped by asset class, stocks at the bottom,
+%   then REIT, then bonds, thin lines between the classes; within a class the
+%   pension part is dark and the liquid part light (no liquid REIT).
 %
 %   rows: a strategy name or a role for each row, in order. Roles, from the
 %   ranking (opts.exclude, by default free choice and no pension account):
@@ -47,7 +48,7 @@ function [files, resolved] = strategy_panel(folders, rows, opts)
 %   the grid and the number of households.
 %
 %   Writes <file>_<pension>.png for each version of opts.pension and
-%   <file>.pdf with all of them, in the first folder (or opts.out); file is
+%   <file>.pdf with all of them (vector), in the first folder (or opts.out); file is
 %   "strategy_panel" by default. Returns the file names and resolved, one
 %   per row: row, input, role ("" for a name), strategy, same_as (0 or the
 %   earlier row).
@@ -167,17 +168,10 @@ for pv = opts.pension
         end
     end
     f = fullfile(out, sprintf('%s_%s.png', opts.file, pv));
-    exportgraphics(fig, f, 'Resolution', 110);
+    exportgraphics(fig, f, 'Resolution', 220);
+    exportgraphics(fig, pdf, 'ContentType', 'vector', 'Append', ~isempty(files));   % the PDF: one vector page a version
     close(fig);
     files{end+1} = f; %#ok<AGROW>
-end
-for k = 1:numel(files)                              % the PDF: one page a version
-    im = imread(files{k});
-    fig = figure('Visible', 'off', 'Color', 'w', 'Units', 'centimeters', 'Position', [0 0 21 29.7]);
-    ax = axes(fig, 'Units', 'normalized', 'Position', [0.02 0.02 0.96 0.96]);
-    image(ax, im); axis(ax, 'image', 'off');
-    exportgraphics(fig, pdf, 'ContentType', 'image', 'Resolution', 300, 'Append', k > 1);
-    close(fig);
 end
 files{end+1} = pdf;
 end
@@ -186,8 +180,8 @@ end
 function draw_box(tb, s, p, pv, ymax, ages, st, legends, bottom)
 hex = @(h) sscanf(h(2:end), '%2x%2x%2x', [1 3]) / 255;
 c_liq = hex('#1baf7a'); c_pot = st.series(1, :);
-c_stk = st.series(1, :); c_reit = st.series(2, :); c_bond = hex('#dcdad3');
-c_lstk = hex('#0f7a52'); c_lbond = hex('#a8e3cc');      % liquid in greens (as liquid wealth in panel 1), pension in blue, orange, grey
+c_stk = st.series(1, :); c_reit = st.series(2, :); c_bond = hex('#b9b6ad');
+c_lstk = hex('#9ec5f4'); c_lbond = hex('#e4e2da');      % within each asset class: pension dark, liquid light
 a = s.ages(:); ret = p.retirement_age;
 ax = gobjects(1, 4);
 for k = 1:4
@@ -223,22 +217,23 @@ switch pv
         yl = [0 ymax(4)]; yt = 'EUR 1,000'; nm = 'Pension fund';
     case "pyramid"
         X = s.X.mean(j).' / 1e3; A = s.A.mean(j).' / 1e3; pi_ = s.pi(j).'; pi_(isnan(pi_)) = 0;
-        M = [pi_ .* X, (1 - pi_) .* X, S .* A, E .* A, Bd .* A];
-        cols = [c_lstk; c_lbond; c_stk; c_reit; c_bond];
-        lab = {'liquid stocks', 'liquid bonds', 'pension stocks', 'pension REIT', 'pension bonds'};
+        M = [S .* A, pi_ .* X, E .* A, Bd .* A, (1 - pi_) .* X];        % stocks (pension, liquid), REIT, bonds (pension, liquid)
+        cols = [c_stk; c_lstk; c_reit; c_bond; c_lbond];
+        lab = {'stocks: pension', 'stocks: liquid', 'REIT: pension', 'bonds: pension', 'bonds: liquid'};
         yl = [0 ymax(1)]; yt = 'EUR 1,000'; nm = 'Savings by asset';
     case "total"
         X = s.X.mean(j).'; A = s.A.mean(j).'; W = max(X + A, realmin); pi_ = s.pi(j).'; pi_(isnan(pi_)) = 0;
-        M = [pi_ .* X, (1 - pi_) .* X, S .* A, E .* A, Bd .* A] ./ W;
-        cols = [c_lstk; c_lbond; c_stk; c_reit; c_bond];
-        lab = {'liquid stocks', 'liquid bonds', 'pension stocks', 'pension REIT', 'pension bonds'};
+        M = [S .* A, pi_ .* X, E .* A, Bd .* A, (1 - pi_) .* X] ./ W;
+        cols = [c_stk; c_lstk; c_reit; c_bond; c_lbond];
+        lab = {'stocks: pension', 'stocks: liquid', 'REIT: pension', 'bonds: pension', 'bonds: liquid'};
         yl = [0 1]; yt = 'share of X + A'; nm = 'Liquid and pension portfolio';
 end
 hb = bar(ax(4), a(j), M, 1, 'stacked', 'EdgeColor', 'none');
 for k = 1:numel(hb), hb(k).FaceColor = cols(k, :); end
 if any(pv == ["pyramid", "total"])
-    % The boundary between the liquid part (below) and the pension part (above).
-    stairs(ax(4), [a(j) - 0.5; a(j(end)) + 0.5], [sum(M(:, 1:2), 2); sum(M(end, 1:2), 2)], 'Color', st.ink, 'LineWidth', 0.8);
+    % Thin lines between the asset classes: above the stocks and above the REIT.
+    xs = [a(j) - 0.5; a(j(end)) + 0.5];
+    for cb = [2 3], v = sum(M(:, 1:cb), 2); stairs(ax(4), xs, [v; v(end)], 'Color', st.ink, 'LineWidth', 0.7); end
 end
 yl(2) = 1.32 * yl(2);                              % room for the label and the legend, the same in every box
 ylim(ax(4), yl); ylabel(ax(4), yt);
