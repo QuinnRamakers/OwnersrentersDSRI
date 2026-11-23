@@ -147,6 +147,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-23 strategy_panel: the pyramid version, labels in every box; why the best owner fund's bands are wide (spec: none, asked by Quinn in Claude Code)
+Quinn: "add the pyramid shaped decomposition, add the labeling of reit stock etc to every panel. Also figure out why the confidence intervals of owners is so large in the best owner strategy", then "make sure that you decompose the private liquid ... liquid and pension bonds are not in the same part".
+1. `figures.strategy_panel(..., pension="pyramid")`: panel 4 shows the savings of panel 1 in euros split into liquid stocks, liquid bonds, pension stocks, REIT and bonds. Liquid parts are greens below a thin black line, pension parts blue, orange and grey above it (also in "total"). Legends in every box. Two-line figure title.
+2. Why the owner bands of `k100_70_30h_r50` are wide (saved summaries, medium grid), against `k100_70_30z_r75` and production:
+   - Liquid equity share, 10th-90th from 0 to 1 after 66: owners hold almost no liquid wealth (median X EUR 8,600 at 67, 4,600 at 70, 0 from 80; 10th percentile 0 from 67). For a household with next to nothing in the liquid account the share is nearly indifferent, and the panel still averages it; the share is only meaningful for the minority with savings. The fund keeps 30% risky to 100, so the payout is risky and owners who do hold liquid wealth lower its equity share (median 0.70-0.77 after 67); the max-min fund runs its risk down to 0 by 100 and the share returns to 1 by about 75; production holds no fund risk and the share stays 1.
+   - Consumption, 10th-90th EUR 20,000-63,000 at 67-99 (production 16,000-53,000): the variable annuity. Payout 10th/50th/90th EUR 19,000/37,000/76,000 at 67, 16,000/35,000/82,000 at 99 (production flat at 16,000/28,000/51,000), so consumption fans out with the fund's returns.
+3. Redrawn share, level, total and pyramid versions for `knot_night`, `spline_night`, `night_medium` (not committed).
+Checks: local `run_tests(solve=false)` 0 of 23 failed (`strategy_panel_roles` PASS).
+
 ### 2026-11-23 figures.strategy_panel (spec: none, asked by Quinn in Claude Code)
 Quinn pasted a spec: `figures.strategy_panel(folders, rows, opts)`, a grid with one row per strategy (a name or a role) and one column per tenure. Done as asked, no new solves:
 1. Roles from `model.rank_strategies` (`opts.exclude`, default free choice and no pension): `best_renter`, `best_owner`, `maxmin` (`maxmin_against` "best", the default, or "reference"), `reference`; any other string is a name, refused (`strategy_panel:name`) when not in the folders after exclude. A row that resolves to an earlier row's strategy is drawn and titled "same as row k"; a missing tenure gets an empty box with a note.

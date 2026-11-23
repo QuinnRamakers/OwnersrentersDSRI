@@ -22,8 +22,12 @@ function [files, resolved] = strategy_panel(folders, rows, opts)
 %                   Liquid stocks are the mean equity share times mean
 %                   liquid wealth (the summary keeps no household split),
 %                   and pension parts the fund's mean shares times A.mean.
+%          "pyramid" the same five parts in thousands of euros: the savings
+%                   of panel 1 split by asset
 %   Means and bands are over the households not bankrupt at that age, as in
-%   model.summarize. Each panel type has one y-scale across the grid.
+%   model.summarize. Each panel type has one y-scale across the grid. In
+%   "pyramid" and "total" the liquid parts are greens and sit below a thin
+%   black line, the pension parts (blue stocks, orange REIT, grey bonds) above.
 %
 %   rows: a strategy name or a role for each row, in order. Roles, from the
 %   ranking (opts.exclude, by default free choice and no pension account):
@@ -58,7 +62,7 @@ arguments
     opts.tenures (1,:) string {mustBeMember(opts.tenures, ["renter", "owner"])} = ["renter", "owner"]
     opts.exclude string = ["free", "no_dc"]
     opts.maxmin_against (1,1) string {mustBeMember(opts.maxmin_against, ["best", "reference"])} = "best"
-    opts.pension (1,:) string {mustBeMember(opts.pension, ["share", "level", "total"])} = "share"
+    opts.pension (1,:) string {mustBeMember(opts.pension, ["share", "level", "total", "pyramid"])} = "share"
     opts.reference (1,:) char = ''
     opts.ages (1,2) double = [25 100]
     opts.out (1,:) char = ''
@@ -132,8 +136,8 @@ if isfile(pdf), delete(pdf); end
 for pv = opts.pension
     fig = figure('Visible', 'off', 'Color', 'w', 'Position', [20 20 760 * nc + 80, 820 * nr + 120]);
     tl = tiledlayout(fig, nr, nc, 'TileSpacing', 'loose', 'Padding', 'compact');
-    title(tl, sprintf(['DC fund strategies by tenure: savings, liquid equity share, consumption and the pension fund (%s). ' ...
-        'Solved on base grid %s (u1, u2, u3, q), %d quadrature nodes a shock; %d simulated households'], pv, mat2str(p0.grid_dims), p0.gh_n, N), ...
+    title(tl, {sprintf('DC fund strategies by tenure: savings, liquid equity share, consumption and the pension fund (%s)', pv), ...
+        sprintf('Solved on base grid %s (u1, u2, u3, q), %d quadrature nodes a shock; %d simulated households', mat2str(p0.grid_dims), p0.gh_n, N)}, ...
         'FontSize', st.font + 3, 'Color', st.ink, 'Interpreter', 'none');
     first = true;
     for r = 1:nr
@@ -158,7 +162,7 @@ for pv = opts.pension
             title(tb, {head, sprintf('%s  [%s]', figures.describe_strategy(L.strategy), resolved(r).strategy), ...
                 sprintf('Welfare: %+.2f%% vs %s, %+.2f%% vs best %s fund (%s)', gs, R.reference, vs_best, ten, T.strategy{ib})}, ...
                 'FontSize', st.font - 1, 'Color', st.ink, 'Interpreter', 'none');
-            draw_box(tb, L.summary, L.p, pv, ymax, opts.ages, st, first, r == nr);
+            draw_box(tb, L.summary, L.p, pv, ymax, opts.ages, st, true, r == nr);   % labels in every box
             first = false;
         end
     end
@@ -183,7 +187,7 @@ function draw_box(tb, s, p, pv, ymax, ages, st, legends, bottom)
 hex = @(h) sscanf(h(2:end), '%2x%2x%2x', [1 3]) / 255;
 c_liq = hex('#1baf7a'); c_pot = st.series(1, :);
 c_stk = st.series(1, :); c_reit = st.series(2, :); c_bond = hex('#dcdad3');
-c_lstk = hex('#9ec5f4'); c_lbond = hex('#f1f0ec');
+c_lstk = hex('#0f7a52'); c_lbond = hex('#a8e3cc');      % liquid in greens (as liquid wealth in panel 1), pension in blue, orange, grey
 a = s.ages(:); ret = p.retirement_age;
 ax = gobjects(1, 4);
 for k = 1:4
@@ -217,6 +221,12 @@ switch pv
         A = s.A.mean(j).' / 1e3;
         M = [S, E, Bd] .* A; cols = [c_stk; c_reit; c_bond]; lab = {'pension stocks', 'pension REIT', 'pension bonds'};
         yl = [0 ymax(4)]; yt = 'EUR 1,000'; nm = 'Pension fund';
+    case "pyramid"
+        X = s.X.mean(j).' / 1e3; A = s.A.mean(j).' / 1e3; pi_ = s.pi(j).'; pi_(isnan(pi_)) = 0;
+        M = [pi_ .* X, (1 - pi_) .* X, S .* A, E .* A, Bd .* A];
+        cols = [c_lstk; c_lbond; c_stk; c_reit; c_bond];
+        lab = {'liquid stocks', 'liquid bonds', 'pension stocks', 'pension REIT', 'pension bonds'};
+        yl = [0 ymax(1)]; yt = 'EUR 1,000'; nm = 'Savings by asset';
     case "total"
         X = s.X.mean(j).'; A = s.A.mean(j).'; W = max(X + A, realmin); pi_ = s.pi(j).'; pi_(isnan(pi_)) = 0;
         M = [pi_ .* X, (1 - pi_) .* X, S .* A, E .* A, Bd .* A] ./ W;
@@ -226,6 +236,10 @@ switch pv
 end
 hb = bar(ax(4), a(j), M, 1, 'stacked', 'EdgeColor', 'none');
 for k = 1:numel(hb), hb(k).FaceColor = cols(k, :); end
+if any(pv == ["pyramid", "total"])
+    % The boundary between the liquid part (below) and the pension part (above).
+    stairs(ax(4), [a(j) - 0.5; a(j(end)) + 0.5], [sum(M(:, 1:2), 2); sum(M(end, 1:2), 2)], 'Color', st.ink, 'LineWidth', 0.8);
+end
 yl(2) = 1.32 * yl(2);                              % room for the label and the legend, the same in every box
 ylim(ax(4), yl); ylabel(ax(4), yt);
 text(ax(4), ages(1) + 1, 0.9 * yl(2), nm, 'FontSize', st.font - 2, 'FontWeight', 'bold', 'Color', st.ink);
