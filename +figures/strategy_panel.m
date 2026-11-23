@@ -51,9 +51,9 @@ function [files, resolved] = strategy_panel(folders, rows, opts)
 %   for a name. Each box is headed by its tenure, with its welfare compared
 %   with the optimal strategy for renters and for owners (for that box's
 %   households), or "This is the optimal strategy for ...". No internal
-%   names. Panels: "Savings", "Equity share of liquid savings",
-%   "Consumption", and "Pension fund investment allocation" (share),
-%   "Pension fund assets" (level), "Total portfolio assets" (pyramid),
+%   names. Panels: "Savings", "Equity share of private savings",
+%   "Consumption", and "Pension account investment allocation" (share),
+%   "Pension account assets" (level), "Total portfolio assets" (pyramid),
 %   "Asset shares of the total portfolio" (total); amounts in thousands of
 %   2025 euros, shares as fractions; the allocation panels end at 1 and their
 %   legend sits below the box.
@@ -220,12 +220,12 @@ h1 = area(ax(1), a, [s.X.mean(:), s.A.mean(:)] / 1e3, 'LineStyle', 'none');
 h1(1).FaceColor = c_liq; h1(2).FaceColor = c_pot;
 ylim(ax(1), [0 ymax(1)]); ylabel(ax(1), eur);
 ptitle(ax(1), 'Savings', st);
-legend(ax(1), h1, {'liquid savings', 'pension fund'}, 'Location', 'northeast', 'Box', 'off', 'FontSize', st.font - 3);
-% 2. Equity share of liquid savings.
+legend(ax(1), h1, {'private savings', 'pension account'}, 'Location', 'northeast', 'Box', 'off', 'FontSize', st.font - 3);
+% 2. Equity share of private savings.
 band(ax(2), a, s.pi_p10(:), s.pi_p90(:), st.series(3, :));
 plot(ax(2), a, s.pi(:), 'Color', st.series(3, :), 'LineWidth', 1.4);
 ylim(ax(2), [0 1]); ylabel(ax(2), 'fraction');
-ptitle(ax(2), 'Equity share of liquid savings', st);
+ptitle(ax(2), 'Equity share of private savings', st);
 % 3. Consumption.
 band(ax(3), a, s.C.p10(:) / 1e3, s.C.p90(:) / 1e3, st.series(7, :));
 plot(ax(3), a, s.C.p50(:) / 1e3, 'Color', st.series(7, :), 'LineWidth', 1.4);
@@ -236,23 +236,23 @@ j = 1:numel(a) - 1; S = s.dc_share(j).'; E = s.dc_reit(j).'; Bd = max(1 - S - E,
 switch pv
     case "share"
         M = [S, E, Bd]; cols = [c_stk; c_reit; c_bond]; lab = {'stocks', 'REIT', 'bonds'};
-        yl = [0 1]; yt = 'fraction'; nm = 'Pension fund investment allocation';
+        yl = [0 1]; yt = 'fraction'; nm = 'Pension account investment allocation';
     case "level"
         A = s.A.mean(j).' / 1e3;
         M = [S, E, Bd] .* A; cols = [c_stk; c_reit; c_bond]; lab = {'stocks', 'REIT', 'bonds'};
-        yl = [0 ymax(4)]; yt = eur; nm = 'Pension fund assets';
+        yl = [0 ymax(4)]; yt = eur; nm = 'Pension account assets';
     case "pyramid"
         X = s.X.mean(j).' / 1e3; A = s.A.mean(j).' / 1e3; pi_ = s.pi(j).'; pi_(isnan(pi_)) = 0;
         M = [S .* A, pi_ .* X, E .* A, Bd .* A, (1 - pi_) .* X];        % stocks (pension, liquid), REIT, bonds (pension, liquid)
         cols = [c_stk; c_lstk; c_reit; c_bond; c_lbond];
-        lab = {'stocks: pension fund', 'stocks: liquid savings', 'REIT: pension fund', 'bonds: pension fund', 'bonds: liquid savings'};
+        lab = {'stocks: pension account', 'stocks: private savings', 'REIT: pension account', 'bonds: pension account', 'bonds: private savings'};
         yl = [0 ymax(1)]; yt = eur; nm = 'Total portfolio assets';
     case "total"
         X = s.X.mean(j).'; A = s.A.mean(j).'; W = max(X + A, realmin); pi_ = s.pi(j).'; pi_(isnan(pi_)) = 0;
         M = [S .* A, pi_ .* X, E .* A, Bd .* A, (1 - pi_) .* X] ./ W;
         cols = [c_stk; c_lstk; c_reit; c_bond; c_lbond];
-        lab = {'stocks: pension fund', 'stocks: liquid savings', 'REIT: pension fund', 'bonds: pension fund', 'bonds: liquid savings'};
-        yl = [0 1]; yt = 'share of pension and private savings'; nm = 'Asset shares of the total portfolio';
+        lab = {'stocks: pension account', 'stocks: private savings', 'REIT: pension account', 'bonds: pension account', 'bonds: private savings'};
+        yl = [0 1]; yt = {'share of pension account', 'and private savings'}; nm = 'Asset shares of the total portfolio';
 end
 hb = bar(ax(4), a(j), M, 1, 'stacked', 'EdgeColor', 'none');
 for k = 1:numel(hb), hb(k).FaceColor = cols(k, :); end

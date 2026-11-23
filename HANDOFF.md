@@ -147,6 +147,9 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-23 strategy_panel: one vocabulary (spec: none, asked by Quinn in Claude Code)
+Quinn: "fix the mixed vocabulary chose private savings and pension account". All labels now say "private savings" (was liquid savings) and "pension account" (was pension fund): "Equity share of private savings", "Pension account investment allocation", "Pension account assets", legends "private savings", "pension account", "stocks: pension account", "stocks: private savings" and so on; the total version's axis "share of pension account and private savings" on two lines. Checks: local `run_tests(solve=false)` 0 of 23 failed.
+
 ### 2026-11-23 strategy_panel: Quinn's wording (spec: none, asked by Quinn in Claude Code)
 Quinn reviewed every label of `figures.strategy_panel` and set the wording; done as asked, no new solves:
 1. Title "Optimal unconditional investment strategies", with a note that welfare is certainty-equivalent consumption (the constant yearly consumption over the life cycle with the same expected lifetime utility), what the lines and bands are, the retirement line and the number of households.
