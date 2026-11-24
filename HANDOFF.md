@@ -147,6 +147,15 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-24 Grid check done: the knot leaders on the production grid (spec: none, asked by Quinn in Claude Code)
+The run of the entry below ran on the DSRI (commit 4a63cd9, 32 thread workers) from 17:24 to 09:09 UTC, 944.7 min. It solved 12, reused 2 (`lifecycle` from `night_prod`) and skipped 4 at the deadline; none failed. Owner solves took 117-182 min and renter solves 19-38 min. Five strategies are done for both tenures, and `k80_90_30h_r100` and `k80_70_10z_r50` for renters only; `s100_20h_r50` was not reached. Checks on all 14: `c_bound_25_39` 0, off-grid 0, `ce_entry` 0.307-0.309 for renters and 0.389 for owners. Results: `/Solutionstorage/results/strategies/grid_night/` (1.4 GB with the solutions; 4.8 GB free on the volume). On this PC (untracked): `ranking.md` and `grid_comparison.md`.
+Findings, production grid against medium:
+1. Owners hardly move: every gain is 0.005 to 0.017 points higher, and the owner order of the five is unchanged.
+2. Renters lose most where the fund keeps 30% risky to 100: `k100_70_30h_r50` +0.311 to +0.068, `k100_70_30h_r75` +0.438 to +0.228. Funds that glide to 0 at 100 lose less (-0.15 and -0.12), the all-REIT `k100_50_20z_r100` almost nothing (+0.635 to +0.625), and the worst knot falls from -0.093 to -0.287.
+3. Max-min against production: `k100_70_30h_r50` (medium rank 1) drops to 5th of 6; `k100_70_30z_r50` (medium rank 3) wins, +0.319 renters, +0.267 owners. Max-min against each type's best stays `k100_70_30z_r75`, but only just ahead of `k100_50_20z_r100` (-0.142 against -0.146).
+4. The production fund's renter welfare level falls 6.6% (ce_entry 0.3292 to 0.3075) and the owner level 0.4%.
+This run cannot separate the state grid from the quadrature nodes (3 to 5); both changed together.
+
 ### 2026-11-23 Started on the DSRI: the knot leaders on the production grid (spec: none, asked by Quinn in Claude Code)
 Quinn: "run overnight the best compromise owner renter strategies and how many others there is time for at a larger grid size to see how the grid size impacts the results in terms of welfare size and the ranking". `runs/grid_night.sh` (not committed), commit 4a63cd9 in `/Solutionstorage/OwnersrentersDSRI_paper`, 32 thread workers, started 17:24 UTC. It runs `model.strategies` with tag `grid_night` on the production grid (32 x 16 x 40 x 4, 5 nodes), 10,000 households, solutions kept, deadline 09:30 UTC on 24 November. The production fund's solves are reused from `night_prod`. Order: `k100_70_30h_r50` (max-min against production, best for owners), `k100_70_30z_r75` (max-min against each type's best), `k100_50_20z_r100` (best for renters), `k100_70_30h_r75`, `k100_70_30z_r50` (medium ranks 2 and 3), `k80_90_30h_r100` (medium rank 109, the worst), `k80_70_10z_r50` (medium rank 80), `s100_20h_r50` (best spline). From `night_prod`, a pair takes about 20 min for the renter and 2 h for the owner, so about six strategies should finish. Checks so far: fast tests on the pod 0 of 23 failed; the production fund's solves were reused. Results and the grid comparison follow in the next entry.
 
