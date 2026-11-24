@@ -147,6 +147,18 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-24 Quadrature check done: the state grid moves the renter gains, the nodes hardly do (spec: none, asked by Quinn in Claude Code)
+The run started in the entry "Life cycles on both grids" ran on the DSRI (commit cb78b39, 32 thread workers) from 09:35 to 17:40 UTC, 484.5 min. It solved 18, reused 0, skipped 0; none failed. Renter solves 6.0-9.3 min, owner solves 33.8-60.2 min. Checks on all 18: `c_bound_25_39` 0, off-grid 0, `ce_entry` 0.329-0.332 for renters and 0.390-0.391 for owners; pod fast tests 0 of 23 failed. Results: `/Solutionstorage/results/strategies/grid_medium_gh5/` (with the solutions); stripped copies in `grid_medium_gh5_lite8` and `grid_medium_gh5_lite9` there, and all 18 in `results/strategies/grid_medium_gh5_lite/` on this PC. Tables and figures (not committed): `results/strategies/grid_night/quadrature_check.md`, `quad_gains.png`, `quad_compare*` (3 against 5 nodes, medium grid) and `grid_only_compare*` (medium against production grid, 5 nodes).
+Findings, gains against the reference strategy in percent (medium 3 nodes / medium 5 nodes / production 5 nodes):
+1. The nodes move renter gains by -0.01 to -0.06, except the worst knot (`k80_90_30h_r100`, -0.093 / -0.190 / -0.287). The state grid moves them by -0.21 to +0.03: `k100_70_30h_r50` +0.311 / +0.282 / +0.068, `k100_70_30h_r75` +0.438 / +0.382 / +0.228, `k100_70_30z_r75` +0.603 / +0.550 / +0.483, `k100_50_20z_r100` +0.635 / +0.598 / +0.625.
+2. Owners: the nodes move gains by at most 0.008, the grid by +0.009 to +0.014. The owner order is the same on all three settings.
+3. The renter order is the same at 3 and 5 nodes. The one swap (`k100_70_30h_r50` and `k80_70_10z_r50`) comes from the state grid.
+4. The reference strategy's renter `ce_entry` is 0.3292 / 0.3296 / 0.3075, so the 6.6% fall in the level is the state grid's.
+5. Max-min against each type's best is `k100_70_30z_r75` on all three settings (lower loss -0.048 at 5 nodes on the medium grid), with `k100_50_20z_r100` second. Best for renters `k100_50_20z_r100`, for owners `k100_70_30h_r50`, on all three.
+6. `s100_20h_r50` (medium, 5 nodes only): renters +0.329 (5th of 9), owners +0.246 (4th of 9).
+7. Life cycles, 5 against 3 nodes: private savings differ by at most 0.4 thousand euros, equity shares by at most 0.02 (renters) and 0.07 (owners, one age), median consumption by under 0.1 thousand.
+Next, if wanted: a medium grid with u3 at 40 only, to find which axis of the state grid moves the renters.
+
 ### 2026-11-24 Figure texts: "the reference strategy" instead of "the current default fund" (spec: none, asked by Quinn in Claude Code)
 Following the placeholder note below, Quinn: "Yes, reword them". `figures.strategy_scatter` (title and appendix: "with respect to the reference strategy"), `figures.strategy_panel` (row "Reference strategy"; with `maxmin_against="reference"` "Max-min improvement over the reference strategy"), `figures.grid_compare` ("Welfare gain over the reference strategy", legend "Reference strategy: 80% risky to 39, 0% at 67, half REIT") and the `figures.strategies` legend ("Reference strategy", was "production"). The strategy's own label in `model.strategy_list` keeps "(production)", because it names the calibration. Redrawn (not committed): the scatter against `lifecycle` for knot_night, spline_night and night_medium, and the three grid comparisons in `results/strategies/grid_night/`. The older `strategies_*_rank.png` keep the old legend until they are drawn again. Checks: local `run_tests(solve=false)` 0 of 23 failed; `codeIssues` on the four files shows one warning, an unused value at `+figures/strategy_panel.m:88`, which predates this change.
 
