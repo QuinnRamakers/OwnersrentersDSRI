@@ -186,7 +186,7 @@ function w = refword(ref)
 % The reference in words, without internal names.
 w = char(ref);
 if startsWith(w, 'best'), w = 'the per-type optimal unconditional strategy';
-elseif strcmp(w, 'lifecycle'), w = 'the current default fund';
+elseif strcmp(w, 'lifecycle'), w = 'the reference strategy';
 elseif strcmp(w, 'free'), w = 'free choice';
 end
 end

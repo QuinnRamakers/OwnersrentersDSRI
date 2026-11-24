@@ -48,7 +48,7 @@ function [files, resolved] = strategy_panel(folders, rows, opts)
 %   what the lines and bands are and the
 %   number of households. Each row has a heading: "Optimal strategy for
 %   owners", "Optimal strategy for renters", "Max-min compromise between
-%   owners and renters", "Current default fund", or the strategy's label
+%   owners and renters", "Reference strategy", or the strategy's label
 %   for a name. Each box is headed by its tenure, with its welfare compared
 %   with the optimal strategy for renters and for owners (for that box's
 %   households), or "This is the optimal strategy for ...". No internal
@@ -118,8 +118,8 @@ st = figures.style();
 nr = numel(resolved); nc = numel(opts.tenures);
 heads = struct('best_renter', 'Optimal strategy for renters', 'best_owner', 'Optimal strategy for owners', ...
     'maxmin', char(ternary(opts.maxmin_against == "best", "Max-min compromise between owners and renters", ...
-                            "Max-min improvement over the current default fund")), ...
-    'reference', 'Current default fund');
+                            "Max-min improvement over the reference strategy")), ...
+    'reference', 'Reference strategy');
 % The optimal strategy of each tenure (after exclude), for the welfare lines.
 [~, i] = max(T.gain_renter); opt.renter = T.strategy{i};
 [~, i] = max(T.gain_owner);  opt.owner  = T.strategy{i};

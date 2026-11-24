@@ -6,7 +6,7 @@ function files = grid_compare(folders, opts)
 %
 %   folders: two strategy folders (names under <output_dir>/strategies or full
 %   paths), the coarser first. Each folder is read with model.rank_strategies,
-%   so its gains are against the production fund on its own grid.
+%   so its gains are against the reference strategy (`lifecycle`) on its own grid.
 %
 %   Page 1 shows, for every strategy saved in both folders, the second grid's
 %   life cycle minus the first's, by tenure. One page per strategy then
@@ -163,12 +163,12 @@ for i = 1:2
     if isempty(g{i}) || isnan(g{i}), w(i) = lower(labels(i)) + " not solved";
     else, w(i) = sprintf('%s %+.3f%%', lower(labels(i)), g{i}); end
 end
-t = "Welfare gain over the current default fund: " + strjoin(w, ', ');
+t = "Welfare gain over the reference strategy: " + strjoin(w, ', ');
 end
 
 function d = describe(strategy)
 if strcmp(strategy.name, 'lifecycle')
-    d = 'Current default fund: 80% risky to 39, 0% at 67, half REIT';
+    d = 'Reference strategy: 80% risky to 39, 0% at 67, half REIT';
 else
     d = figures.describe_strategy(strategy);
 end

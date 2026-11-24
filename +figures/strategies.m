@@ -103,13 +103,13 @@ for ten = R.tenures
         role = n{1}; j = find(opts.only == n{1}, 1);
         if ~isempty(opts.roles) && ~isempty(j), role = sprintf('%s  [%s]', opts.roles(j), n{1}); end
         if opts.colors == "rank" && ~isref, role = sprintf('%d. %s', c, role); end
-        if isref, role = sprintf('Reference: production  [%s]', n{1}); end
+        if isref, role = sprintf('Reference strategy  [%s]', n{1}); end
         if opts.legend == "full"
             lab{end+1} = sprintf('%s\n   %s\n   welfare vs %s: %s', role, describe(R, n{1}), R.reference, ...
                 strjoin(compose('%ss %+.2f%%', R.tenures(:), gg(:)), ', ')); %#ok<AGROW>
         else
             short = n{1}; if opts.colors == "rank" && ~isref, short = sprintf('%d. %s', c, n{1}); end
-            if isref, short = sprintf('%s (production, reference)', n{1}); end
+            if isref, short = sprintf('%s (reference strategy)', n{1}); end
             lab{end+1} = sprintf('%s  (%s)', short, strjoin(compose('%s %+.2f%%', extractBefore(R.tenures(:), 2), gg(:)), ', ')); %#ok<AGROW>
         end
         isr(end+1) = isref; rk(end+1) = c; %#ok<AGROW>
