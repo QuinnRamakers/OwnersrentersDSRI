@@ -147,6 +147,9 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-24 The production fund is a placeholder, not a default (spec: none, asked by Quinn in Claude Code)
+Quinn: "the production lifecycle is not a default that is relevant in the analysis but simply a placeholder to generate results for a strategy". Added to CLAUDE.md, Known limits: gains against `lifecycle` are only a common yardstick; do not report it as the current default, and do not treat the max-min against it as a result. The compromise that counts is the max-min against each type's best, which is `k100_70_30z_r75` on both the medium grid (`knot_night`) and the production grid (`grid_night`, six strategies solved for both tenures). Figure texts that say "the current default fund" (`figures.strategy_scatter`, `figures.strategy_panel`, `figures.grid_compare`) are unchanged for now. No code changed, so no tests were run.
+
 ### 2026-11-24 Life cycles on both grids, and the quadrature check started (spec: none, asked by Quinn in Claude Code)
 Quinn: "give me plots that compare the output of the medium and ... grid, so the simulated lifecycles with large and medium grid", then "Yes, run it" to separating the grid from the quadrature nodes.
 1. New `figures.grid_compare(folders)`. Page 1 draws, for every strategy saved in both folders, the second grid's life cycle minus the first's by tenure: mean private savings, mean pension account, mean equity share of private savings, median consumption and mean pension payout. One page per strategy then draws both grids over each other, with the gain on each grid. Drawn for `knot_night` against `grid_night` (9 pages and a PDF in `results/strategies/grid_night/`, not committed). The summaries were read from `grid_night_lite`, the 14 files without their solutions (414 KB), written on the pod by `runs/strip_sol.m` (not committed).
