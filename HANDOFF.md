@@ -147,6 +147,32 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-25 figures.strategies: the fund's stocks, private holdings and the composite (spec: none, asked by Quinn in Claude Code)
+Quinn asked for the ranked age-profile plot ("the old color coded plots ... add the stock holdings too", then "show the private holdings and the composite").
+Changed: `+figures/strategies.m` draws twelve panels (3 x 4) instead of six:
+1. (a) the fund's risky share, as before;
+2. (b) the fund's stock share;
+3. (c) the equity share of liquid savings;
+4. (d) the composite stock share of pot plus liquid savings;
+5. (e) private stocks in EUR;
+6. (f) composite stocks in EUR;
+7. (g) the composite stocks-plus-REIT share;
+8. (h)-(l) consumption, liquid wealth, pot, payout and bankruptcy, as before.
+The summary keeps no household split, so private stocks are the mean equity share times mean liquid wealth and pension stocks the fund's mean share times the mean pot, as `figures.strategy_panel` does.
+Redrawn (not committed): `strategies_<tenure>_all_rank_stocks.png`, colours by rank:
+- in `results/strategies/spline_night`, the 84 splines;
+- in `knot_night`, knots and splines together, 192 funds.
+Also drawn (not committed):
+- `results/strategies/strategy_paths.png`, the searched glide paths;
+- `knot_night/heatmap_stocks_*.png`.
+What the plots show:
+- Renters cut the private equity share from 100% to 5-70% between 45 and 67, lowest under the riskiest funds.
+- After 67 the private equity share stays at 15-40% under funds that keep risk to 100, and goes back up to about 90% under the reference.
+- The best funds by max-min hold about 30-65% composite stocks young (renters), against 70-100% for the worst.
+Checks run: `run_tests(solve=false)`: 0 of 23 checks failed, 0 skipped.
+Commit: see git log (this entry's commit), pushed to main.
+Open: none.
+
 ### 2026-11-25 Renter grid-axis check: u3 drives the strategy shift, u1 and u3 the level (spec: none, asked by Quinn in Claude Code)
 Quinn: "download the results identify what is causing the renter issues". Downloaded the renter solves with their solutions from `grid_medium_gh5` and `grid_night` (430 MB, `results/strategies/grid_medium_gh5_sol/` and `grid_night_sol/`, not committed). Ran on the DSRI `runs/axis_renter.sh` (not committed), commit cb78b39, 32 thread workers, 09:57-11:56 UTC: renters only, 5 nodes, the medium grid with one axis raised at a time (tags `axis_u3`, `axis_u1`, `axis_u2`). 13 solves, none failed; `c_bound_25_39` 0 and off-grid 0 on all. Tables: `results/strategies/grid_night/axis_check.md` (not committed).
 1. Level. The reference strategy's renter `ce_entry`: medium 0.3296; u3 20 to 40 0.3221 (-2.3%); u1 24 to 32 0.3204 (-2.8%); u2 12 to 16 0.3281 (-0.5%); production 0.3075 (-6.7%). The single changes add to -5.5%; refining them together gives the rest.

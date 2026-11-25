@@ -7,15 +7,24 @@ function files = strategies(folders, opts)
 %
 %   Reads the solves that model.strategies saved (through
 %   model.rank_strategies, so the same folders and the same checks) and draws
-%   one figure per tenure, six panels by age, means or medians across the
+%   one figure per tenure, twelve panels by age, means or medians across the
 %   simulated households:
 %     (a) the fund's risky share, stocks plus REIT (the strategy itself; with
 %         free choice the households' mean)
-%     (b) median consumption, in percent above or below the reference's
-%     (c) median liquid wealth, thousands of euros
-%     (d) mean pension pot, thousands of euros
-%     (e) mean pension payout before tax, thousands of euros a year
-%     (f) the share bankrupt, percent
+%     (b) the fund's stock share (the REIT share is (a) less (b))
+%     (c) the mean equity share of the household's own liquid savings
+%     (d) composite: the stock share of pension pot plus liquid savings
+%     (e) private stocks, thousands of euros
+%     (f) composite stocks, pension and private, thousands of euros
+%     (g) composite risky share, stocks and REIT, of pot plus liquid savings
+%     (h) median consumption, in percent above or below the reference's
+%     (i) median liquid wealth, thousands of euros
+%     (j) mean pension pot, thousands of euros
+%     (k) mean pension payout before tax, thousands of euros a year
+%     (l) the share bankrupt, percent
+%   The summary keeps no household split of the holdings, so private stocks
+%   are the mean equity share times mean liquid wealth and pension stocks the
+%   fund's mean stock share times the mean pot (as figures.strategy_panel).
 %   The reference (model.rank_strategies) is black and thick. The legend
 %   lists the strategies best first: role, what the fund holds (for a knots
 %   fund the risky share at each knot and the REIT part), and the welfare gain for both
@@ -56,21 +65,24 @@ dash = {'-', '--', ':', '-.'};
 files = {};
 
 for ten = R.tenures
-    fig = figure('Visible', 'off', 'Color', 'w', 'Position', [50 50 1750 820]);
-    tl = tiledlayout(fig, 2, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    fig = figure('Visible', 'off', 'Color', 'w', 'Position', [50 50 2150 1200]);
+    tl = tiledlayout(fig, 3, 4, 'TileSpacing', 'compact', 'Padding', 'compact');
     title(tl, sprintf('DC fund strategies: %ss, by age (reference `%s` in black)', ten, R.reference), ...
         'FontSize', st.font + 3, 'Interpreter', 'none');
-    ax = gobjects(1, 6);
-    tiles = 1:6;
-    for k = 1:6
-        ax(k) = nexttile(tl, tiles(k)); hold(ax(k), 'on'); grid(ax(k), 'on');
+    np = 12;
+    ax = gobjects(1, np);
+    for k = 1:np
+        ax(k) = nexttile(tl, k); hold(ax(k), 'on'); grid(ax(k), 'on');
         set(ax(k), 'FontSize', st.font, 'GridColor', st.grid, 'XLim', opts.ages);
     end
-    ttl = {'(a) Fund risky share (stocks + REIT)', '(b) Median consumption vs reference (%)', ...
-           '(c) Median liquid wealth (EUR 1,000)', '(d) Mean pension pot (EUR 1,000)', ...
-           '(e) Mean pension payout, before tax (EUR 1,000 a year)', '(f) Share bankrupt (%)'};
-    for k = 1:6, title(ax(k), ttl{k}, 'FontWeight', 'normal'); end
-    xlabel(ax(4:6), 'Age');
+    ttl = {'(a) Fund risky share (stocks + REIT)', '(b) Fund stock share', ...
+           '(c) Private: equity share of liquid savings', '(d) Composite: stock share of pot + liquid savings', ...
+           '(e) Private stocks, mean (EUR 1,000)', '(f) Composite stocks, pension + private (EUR 1,000)', ...
+           '(g) Composite: stocks + REIT share of pot + liquid savings', '(h) Median consumption vs reference (%)', ...
+           '(i) Median liquid wealth (EUR 1,000)', '(j) Mean pension pot (EUR 1,000)', ...
+           '(k) Mean pension payout, before tax (EUR 1,000 a year)', '(l) Share bankrupt (%)'};
+    for k = 1:np, title(ax(k), ttl{k}, 'FontWeight', 'normal'); end
+    xlabel(ax(9:12), 'Age');
 
     ref = load_summary(R, R.reference, ten);
     h = gobjects(0); lab = {}; isr = false(1, 0); rk = zeros(1, 0);
@@ -93,11 +105,21 @@ for ten = R.tenures
         a = s.ages;
         args = {'Color', col, 'LineStyle', ls, 'LineWidth', lw};
         hh = plot(ax(1), a(1:end-1), s.dc_share(1:end-1) + s.dc_reit(1:end-1), args{:});   % none is held after the last age
-        plot(ax(2), a, 100 * (s.C.p50 ./ ref.C.p50 - 1), args{:});
-        plot(ax(3), a, s.X.p50 / 1e3, args{:});
-        plot(ax(4), a, s.A.mean / 1e3, args{:});
-        plot(ax(5), a, s.ann_pay.mean / 1e3, args{:});
-        plot(ax(6), a, 100 * s.floored, args{:});
+        plot(ax(2), a(1:end-1), s.dc_share(1:end-1), args{:});
+        plot(ax(3), a, s.pi, args{:});
+        X = s.X.mean(:).'; A = s.A.mean(:).'; W = max(X + A, realmin);
+        pis = s.pi(:).'; pis(isnan(pis)) = 0;
+        Sp = pis .* X; Sf = s.dc_share(:).' .* A; Rf = s.dc_reit(:).' .* A;   % private stocks, pension stocks, pension REIT
+        Sf(end) = NaN; Rf(end) = NaN;                    % the fund holds nothing after the last age
+        plot(ax(4), a, (Sp + Sf) ./ W, args{:});
+        plot(ax(5), a, Sp / 1e3, args{:});
+        plot(ax(6), a, (Sp + Sf) / 1e3, args{:});
+        plot(ax(7), a, (Sp + Sf + Rf) ./ W, args{:});
+        plot(ax(8), a, 100 * (s.C.p50 ./ ref.C.p50 - 1), args{:});
+        plot(ax(9), a, s.X.p50 / 1e3, args{:});
+        plot(ax(10), a, s.A.mean / 1e3, args{:});
+        plot(ax(11), a, s.ann_pay.mean / 1e3, args{:});
+        plot(ax(12), a, 100 * s.floored, args{:});
         h(end+1) = hh; %#ok<AGROW>
         gg = arrayfun(@(t) R.table.("gain_" + t)(strcmp(R.table.strategy, n{1})), R.tenures);
         role = n{1}; j = find(opts.only == n{1}, 1);
@@ -115,10 +137,10 @@ for ten = R.tenures
         isr(end+1) = isref; rk(end+1) = c; %#ok<AGROW>
     end
     if opts.colors == "rank"
-        for k = 1:6, ax(k).Children = flipud(ax(k).Children); end   % the best drawn on top
+        for k = 1:np, ax(k).Children = flipud(ax(k).Children); end   % the best drawn on top
     end
-    yline(ax(2), 0, 'Color', st.muted);
-    ylim(ax(1), [0 1]);
+    yline(ax(8), 0, 'Color', st.muted);
+    for k = [1:4, 7], ylim(ax(k), [0 1]); end
     keep = true(size(h));
     if opts.legend == "colorbar"
         % Only the reference and the five best are named; the colour bar gives the rank.
