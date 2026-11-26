@@ -147,6 +147,36 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-26 Beta 0.98 against 0.96 on the small grid, and welfare in euros (spec: none, asked by Quinn in Claude Code)
+Quinn: "could you run some on the small grid with beta 0.98?", then "could you also give me the euro welfare effects".
+Run: on the DSRI (commit 844ac4d, 32 thread workers), 10:43-11:09 UTC on 26 November, `runs/beta_small.sh` (not committed).
+- Strategies: the twelve of `model.strategy_list`, plus `k100_70_30z_r75`, `k100_50_20z_r100`, `k100_70_30h_r50` and `k80_90_30h_r100`.
+- Both tenures, small grid 8x6x6x4, 3 nodes, 2,000 households.
+- `small_b096`: beta 0.96. The twelve were copied from `dash_small` and reused; 8 new solves, 4.6 min.
+- `small_b098`: beta 0.98, 32 solves, 21.6 min.
+- None failed. Checks on all 64: `c_bound_25_39` 0, off-grid 0.
+- Pulled to `results/strategies/small_b096` and `small_b098` (not committed).
+
+Euros (scratch script, not in the repo):
+- Income at 25 is EUR 33,829 (`config.income_profile`, 2025 prices).
+- EUR a year = (ce - ce_ref) x 33,829, every year alive.
+- PV at 25 = that amount x 42.34, the survival-weighted annuity factor at r = 1.15%.
+
+Results, renter / owner, beta 0.96 -> 0.98 (small grid):
+1. The cost of the pension account falls but stays large. No pension account gains +5.37% -> +2.44% for renters and +9.33% -> +6.44% for owners against the reference strategy. For owners that is EUR 1,265 -> 902 a year, PV EUR 53,600 -> 38,200.
+2. Fund choice matters more at 0.98. Losses against each type's best grow by about a third to a half:
+   - all bonds: -2.71 / -0.75 -> -3.57 / -1.11;
+   - all stocks: -1.22 / -1.10 -> -1.96 / -1.77;
+   - free choice over the best fixed fund: +0.56 / +0.25 -> +0.89 / +0.38.
+3. The ranking does not move. Max-min against best is `k100_70_30z_r75` at both betas (-0.06 / -0.03 and -0.03 / -0.03, EUR 4-8 a year). The best owner fund is `k100_70_30h_r50` and the best renter fund `k80_90_30h_r100` at both betas. On the small grid that renter order differs from the medium grid's (`k80_90_30h_r100` is last there), a grid effect (u3).
+4. Medium grid, beta 0.96, in euros (`knot_night` + `night_medium`):
+   - the max-min fund is EUR 67 / 32 a year above the reference (PV 2,800 / 1,400), within EUR 4 / 3 of each type's best;
+   - all stocks costs EUR 500 / 156 a year against the best;
+   - no pension account gains EUR 352 / 1,305 a year (PV 14,900 / 55,300).
+Checks run: none in the repo; no code changed.
+Commit: see git log (this entry's commit), pushed to main.
+Open: why the pension account costs owners 6-9% (Larsen and Munk find +4.5% for a plan with fair annuitisation); beta 0.98 on the medium grid if wanted.
+
 ### 2026-11-25 figures.strategies: the fund's stocks, private holdings and the composite (spec: none, asked by Quinn in Claude Code)
 Quinn asked for the ranked age-profile plot ("the old color coded plots ... add the stock holdings too", then "show the private holdings and the composite").
 Changed: `+figures/strategies.m` draws twelve panels (3 x 4) instead of six:
