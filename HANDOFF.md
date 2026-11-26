@@ -147,6 +147,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Neural-network plan: training in Julia (spec: none, asked by Quinn in Claude Code)
+Quinn: "i have julia, would that not be quicker?", then "Yes, use Julia".
+Changed: `docs/prompts/neural_policy.md`. Decision 1 taken: Julia (Flux, Zygote, Optimisers; CUDA.jl for the GPU, MAT.jl for MATLAB's exports). New sections "How the work is split" (MATLAB derives and exports every number; one year of the model written again in Julia and tied to `simulate.paths_lna` by a replay test; the grid policy simulated in MATLAB, the network in Julia, on the same test draws) and "Layout" (`neural/` Julia project with a committed Manifest, `+neural/` MATLAB exports only). Part 0 and part 1 rewritten for Julia; checks: MATLAB draws equal to `paths_lna`'s in every bit, Julia replay to 1e-12, Zygote against finite differences, CPU against GPU. Found on the PC: Julia 1.11.2 with Flux, Zygote, Optimisers and ForwardDiff; an RTX 2070 SUPER, 8 GB; CUDA.jl and MAT.jl not installed.
+Checks run: none; no code changed.
+Commit: this entry and the file, pushed to `work-2026-11-26`.
+Open: decisions 2-4, then part 0.
+
 ### 2026-11-26 Plan for a neural-network policy on an experimental branch, saved, not started (spec: none, asked by Quinn in Claude Code)
 Quinn: an experimental branch to train a neural network on simulated lifetime utility, as their coauthor described it, then "write up a plan for the neural network branch".
 Changed: new `docs/prompts/neural_policy.md`: the method (one network with age as an input, every household from the welfare anchor's entry state, only the innovations drawn, lifetime utility exact on each path; Maliar, Maliar and Winant 2021, equation 6), what it is for (both methods' policies through the same simulator and the same test draws), what is known (no Deep Learning Toolbox or Python on the PC, the DSRI image the same; no simulated lifetime utility in the repository; default as a choice needs a value the network does not have), four decisions for Quinn, four parts that stop for Quinn, the checks and the limits. On branch `work-2026-11-26`, cut from main at 8636a0d; not on main.

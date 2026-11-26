@@ -1,8 +1,8 @@
 # Prompt: policies from a neural network trained on simulated lifetime utility
 
 Saved on 26 November 2026 on branch `work-2026-11-26`, cut from main at
-8636a0d. Not started. An experimental branch: nothing here goes to main
-without Quinn.
+8636a0d; training in Julia since 27 November 2026 (Quinn). Not started. An
+experimental branch: nothing here goes to main without Quinn.
 
 ## To start
 
@@ -10,8 +10,8 @@ Open Claude Code in the repository checkout on branch `work-2026-11-26` and
 paste:
 
 "Read docs/prompts/neural_policy.md and follow it. Start with the
-session-start skill. Settle the decisions with me before any code. Stop for
-me at the end of each part."
+session-start skill. Settle the open decisions with me before any code. Stop
+for me at the end of each part."
 
 ## The idea
 
@@ -48,17 +48,32 @@ lifetime utility by 2^(1-gamma) and changes no choice.
 ## What it is for
 
 A second solution method for the same model, set against the grid solver on
-the same simulator. Both methods give a feasible policy, so the simulated
-value of each at entry is a lower bound on the best attainable, up to
-sampling error. On the same test draws, the higher one is closer to the
-optimum. The comparison does not use the value function, so the gap between
-the value function and simulated welfare does not enter it.
+the same draws. Both methods give a feasible policy, so the simulated value
+of each at entry is a lower bound on the best attainable, up to sampling
+error. On the same test draws, the higher one is closer to the optimum. The
+comparison does not use the value function, so the gap between the value
+function and simulated welfare does not enter it.
 
 It does not replace the grid solver until it matches it on rungs where the
 grid converges. Where the grid does not converge (production; renters when
 young), it is a check on the grid solution, and possibly a better one.
 
-## What is known (26 November 2026)
+## How the work is split
+
+MATLAB stays the model's definition. Julia trains the network.
+
+1. MATLAB derives every number (`config.derive`, the income profile, the
+   annuity prices, the floor shares, survival) and exports it to a `.mat`
+   file. Julia reads that file and derives nothing from primitives.
+2. One year of the model (budget, taxes, contribution, housing cost,
+   mortgage, returns, DC annuity, floor, bequest) is written a second time in
+   Julia, for training. A replay test ties it to `simulate.paths_lna`
+   (part 1).
+3. The grid policy is simulated in MATLAB, by `simulate.paths_lna`; the
+   network in Julia. Both on the same test draws, and both paths go through
+   the same lifetime-utility function in Julia.
+
+## What is known (27 November 2026)
 
 1. `simulate.paths_lna` draws independent normals after `rng(seed)`,
    correlates them with a Cholesky factor in the order income, stock, house,
@@ -72,10 +87,10 @@ young), it is a check on the grid solution, and possibly a better one.
    48x48, for owners at step 7b at 16x16 and at step 13 at 24x24. It did not
    converge for owners at step 16, and renters did not converge when young at
    any step with housing.
-4. MATLAB R2025b on the PC has the Optimization and Parallel Computing
-   toolboxes only, and `install_matlab.sh` installs the same two on the DSRI.
-   There is no Deep Learning Toolbox, and no Python on the PC. Whether the pod
-   can have a GPU is not checked.
+4. The PC has Julia 1.11.2 with Flux, Zygote, Optimisers and ForwardDiff in
+   the default environment, an NVIDIA GeForce RTX 2070 SUPER (8 GB, driver
+   621.01) and 32 logical cores. CUDA.jl and MAT.jl are not installed. The
+   DSRI image has no Julia.
 5. Production makes default a choice (`default_choice`, step 24): a household
    defaults where the value of continuing is no more than the default value.
    The simulator reads that comparison from the solver's `sol.V_cont`. A
@@ -84,20 +99,21 @@ young), it is a check on the grid solution, and possibly a better one.
    constraint) trained with Adam at a learning rate of 0.001, 64 draws a step
    and 50,000 steps. This model has 76 years, up to five inputs and two to
    four choices, so expect many more draws a step.
+7. Zygote cannot differentiate code that writes into an array in place. The
+   Julia year has to return new arrays.
+8. A GeForce card is fast in single precision and slow in double. Training
+   runs in Float32 on the GPU; the replay test and the final evaluation run
+   in Float64 on the CPU.
 
-## Decisions for Quinn, before code
+## Decisions
 
-1. The tool.
-   (a) MATLAB with the Deep Learning Toolbox (`dlarray`, `dlgradient`,
-   `adamupdate`). One implementation of the model: training uses the same
-   `config.derive`, income profile, annuity prices and budget rules as the
-   grid solver. It needs the toolbox licensed on the PC and added to
-   `PRODUCTS` in `install_matlab.sh` for the DSRI.
-   (b) Python with PyTorch or JAX. Faster automatic differentiation, GPUs,
-   and possibly the coauthor's code as a start. But the budget, taxes,
-   annuity, mortgage and floor would exist twice and have to be kept
-   identical, and every parameter exported from MATLAB.
-   Recommended: (a), unless the coauthor's code is to be the starting point.
+Taken:
+
+1. The tool: Julia, with Flux, Zygote and Optimisers, CUDA.jl for the GPU and
+   MAT.jl to read MATLAB's exports (Quinn, 27 November 2026).
+
+Open, for Quinn before code:
+
 2. The entry state.
    (a) Fixed at the welfare anchor (the coauthor's method, the paper's
    equation 6). Right for welfare at 25.
@@ -117,33 +133,51 @@ young), it is a check on the grid solution, and possibly a better one.
    (c) Stop at step 23, the forced rule, for now.
    Recommended: (c) until part 3 is done, then (a).
 
+## Layout
+
+1. `neural/`: a Julia project with its own `Project.toml` and
+   `Manifest.toml`, both committed, so the package versions are fixed. Code in
+   `neural/src/`, tests in `neural/test/runtests.jl`. Run from the repository
+   root: `julia --project=neural -e "using Pkg; Pkg.test()"`.
+2. `+neural/`: the MATLAB side, exports only. Nothing else in MATLAB
+   changes. Its options are a struct of its own, not primitives in
+   `config.params`, so `ladder.same_calibration` and the ladder do not see
+   them.
+3. Exported `.mat` files and trained networks are gitignored, like every
+   other result. Notes go in `.md` files.
+
 ## Part 0: setup
 
-1. Install the chosen tool on the PC and the DSRI. For (a), check
-   `license('test', 'Neural_Network_Toolbox')` (the Deep Learning Toolbox's
-   licence name) in both places.
-2. A smoke test: a small network fitted to a toy problem with `dlgradient`,
-   on the PC and on the pod.
+1. Create the `neural/` project with Flux, Zygote, Optimisers, CUDA, MAT,
+   Statistics and Test.
+2. Check that CUDA.jl finds the RTX 2070 SUPER (`CUDA.functional()`).
+3. A smoke test: a small network fitted to a toy problem on the CPU and on
+   the GPU, with Zygote's gradient checked against central finite
+   differences.
+4. Time one training step of a dummy 76-year loop with a two-layer network,
+   at 1,024, 4,096 and 16,384 households, on the CPU and the GPU, as a table.
+5. Stop and report.
 
-## Part 1: a differentiable simulator, no training
+## Part 1: the Julia year, no training
 
-1. A new package `+neural`. Nothing outside it changes. Its options are a
-   struct of its own, not primitives in `config.params`, so
-   `ladder.same_calibration` and the ladder do not see them.
-2. `neural.draw_shocks(p, N, seed)` returns the correlated draws in the same
-   order as `simulate.paths_lna`, so the same seed gives the same draws.
-3. `neural.simulate(p, profile, ann_price, policy, shocks)` runs the
-   households forward. One year's budget, taxes, contribution, housing cost,
-   returns, annuity and floor are written once, for ordinary arrays and for
-   `dlarray`. `policy` is a function handle: the network, or the grid
-   solver's policy read off the cube as `simulate.paths_lna` reads it.
-4. `neural.lifetime_utility(p, sim)` returns each household's realised
-   discounted utility, with survival weights and the bequest term, and the
-   certainty equivalent of their mean.
-5. Stop and report: the equality tests below; the share of mean utility that
-   comes from the worst 1% of paths at steps 6, 12, 18 and 23; and the gap
-   between the grid policy's simulated value and its value function at
-   entry, with the Monte Carlo standard error.
+1. `neural.export_model(p, file)` (MATLAB) writes `p` after `config.derive`
+   and everything `simulate.paths_lna` reads: the income profile, the annuity
+   prices, `phi_path`, `D_abs`, survival, tax rates, return moments and the
+   Cholesky factor.
+2. `neural.draw_shocks(p, N, seed)` (MATLAB) makes the draws of
+   `simulate.paths_lna` for the same seed, in the same order. Check first that
+   `paths_lna` draws nothing else.
+3. `neural.export_replay(...)` (MATLAB) runs `simulate.paths_lna` on a
+   quick-grid solve and writes the draws, the choices it applied (`c_frac`,
+   `pi`, the fund shares, the defaults) and the paths.
+4. In Julia, one year as a function that returns new arrays: the same code
+   for CPU and GPU arrays, in Float32 or Float64.
+5. In Julia, lifetime utility from the paths of C and the bequests, with
+   survival weights, and the certainty equivalent of the mean.
+6. Stop and report: the tests below; the share of mean utility that comes
+   from the worst 1% of paths at steps 6, 12, 18 and 23; and the gap between
+   the grid policy's simulated value and its value function at entry, with
+   the Monte Carlo standard error.
 
 ## Part 2: training at the first rung
 
@@ -151,16 +185,20 @@ Step 6 (`corr_SL`): no housing and no DC pension, so the inputs are age and
 u1.
 
 1. A network of two hidden layers of 64 with sigmoid outputs. Adam, fresh
-   draws each step, a fixed test set of 20,000 households.
-2. Report: the training curve; the test-set certainty equivalent of the
+   draws each step (Julia's own random numbers, fixed seed), Float32 on the
+   GPU.
+2. A fixed test set of 20,000 households, drawn by `neural.draw_shocks` and
+   exported, so the grid policy can be simulated on the same draws by
+   `simulate.paths_lna`. Evaluation in Float64 on the CPU.
+3. Report: the training curve; the test-set certainty equivalent of the
    network and of the grid policy (solved at standard numerics), with
    standard errors; consumption, the equity share and wealth by age along the
    simulated paths, one line per method; the time per training step and in
    total, as a table.
-3. The network passes when its test-set certainty equivalent is above the
+4. The network passes when its test-set certainty equivalent is above the
    grid policy's or within two standard errors of it, and the age profiles
    agree. Quinn decides.
-4. Stop and report.
+5. Stop and report.
 
 ## Part 3: up the ladder
 
@@ -188,21 +226,25 @@ After decision 4.
 
 ## Checks that must pass
 
-1. `run_tests(solve=false)` and the full `run_tests`, unchanged: nothing
-   outside `+neural` and its tests changes.
-2. New tests in `tests/neural_tests.m`, apart from `run_tests`:
-   1. with the grid policy, `neural.simulate` reproduces `simulate.paths_lna`
-      for C, X, A, H and Y at every age to 1e-12 relative, on the quick grid,
-      at steps 6, 12, 18 and 23, both tenures;
-   2. the gradient from `dlgradient` matches central finite differences on a
-      small network to 1e-6 relative;
+1. `run_tests(solve=false)` and the full `run_tests`, unchanged: nothing in
+   MATLAB outside `+neural` changes.
+2. MATLAB, in `tests/neural_tests.m`, apart from `run_tests`: the draws of
+   `neural.draw_shocks` reproduce the Y, H and stock-return paths of
+   `simulate.paths_lna` for the same seed, in every bit.
+3. Julia, in `neural/test/runtests.jl`:
+   1. replay: fed the exported draws and choices, the Julia year reproduces
+      C, X, A, H and Y at every age to 1e-12 relative (Float64, CPU), on the
+      quick grid, at steps 6, 12, 18 and 23, both tenures;
+   2. Zygote's gradient matches central finite differences on a small
+      network to 1e-6 relative (Float64);
    3. doubling Y0 leaves every choice unchanged and multiplies lifetime
       utility by 2^(1-gamma), to 1e-12;
    4. every output is inside its bounds at random inputs, including inputs
       far outside the states seen in training;
-   5. the same seed gives the same training run.
-3. Every comparison of the two methods uses the same simulator and the same
-   test draws.
+   5. the CPU and the GPU give the same loss to 1e-5 relative (Float32);
+   6. the same seed gives the same training run on the CPU.
+4. Every comparison of the two methods uses the same test draws and the same
+   lifetime-utility function.
 
 ## Limits
 
@@ -219,8 +261,12 @@ After decision 4.
    the share now.
 5. Gradients through 76 years can explode or vanish. Scaled inputs and
    gradient clipping are the usual remedies.
-6. Keep smoke runs small: the fewest households and steps that test the
-   code. Long training runs go on the DSRI and are logged like any other run.
+6. When main is merged into this branch, or the model's year changes in
+   MATLAB, rerun the replay test before training again. A failure means the
+   Julia year is out of date.
+7. Keep smoke runs small: the fewest households and steps that test the
+   code. Long runs are logged like any other run, with the commit, the
+   device and the wall time.
 
 ## Reference
 
