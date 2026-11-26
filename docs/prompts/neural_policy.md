@@ -10,8 +10,8 @@ Open Claude Code in the repository checkout on branch `work-2026-11-26` and
 paste:
 
 "Read docs/prompts/neural_policy.md and follow it. Start with the
-session-start skill. Settle the open decisions with me before any code. Stop
-for me at the end of each part."
+session-start skill. The decisions are taken; begin with part 0. Stop for me
+at the end of each part."
 
 ## The idea
 
@@ -107,29 +107,24 @@ MATLAB stays the model's definition. Julia trains the network.
 
 ## Decisions
 
-Taken:
+All taken by Quinn on 27 November 2026.
 
 1. The tool: Julia, with Flux, Zygote and Optimisers, CUDA.jl for the GPU and
-   MAT.jl to read MATLAB's exports (Quinn, 27 November 2026).
+   MAT.jl to read MATLAB's exports.
 2. The entry state: fixed at the welfare anchor, as the coauthor does (the
-   paper's equation 6), so the result is welfare at 25 from that state
-   (Quinn, 27 November 2026). Drawing the buffer over a range (the paper's
-   equation 7) is the way to pin the policy down on more states, or to read
-   welfare at other buffers without retraining, if that is wanted later.
-
-Open, for Quinn before code:
-
-3. The inputs besides (u1, u2, u3, q): age scaled to [0, 1], and possibly
-   years to retirement and a retired indicator, so that one network can turn
-   sharply at 67. Recommended: try age alone and age with the retirement
-   inputs at the first rung, and keep what does better on the test set.
-4. Default as a choice (production only).
-   (a) A further output, the probability of default, trained with a smoothed
-   rule and evaluated with the hard rule.
-   (b) A value network next to the policy, so the values can be compared as
-   in the solver.
-   (c) Stop at step 23, the forced rule, for now.
-   Recommended: (c) until part 3 is done, then (a).
+   paper's equation 6), so the result is welfare at 25 from that state.
+   Drawing the buffer over a range (the paper's equation 7) is the way to pin
+   the policy down on more states, or to read welfare at other buffers
+   without retraining, if that is wanted later.
+3. The inputs: (u1, u2, u3, q) and age scaled to [0, 1]. At the first rung,
+   train two versions, age alone and age with years to retirement and a
+   retired indicator (so that one network can turn sharply at 67), and keep
+   the one that does better on the test set.
+4. Default as a choice (production only): stop at step 23, the forced rule,
+   until part 3 is done. Then add a further output, the probability of
+   default, trained with a smoothed rule and evaluated with the hard rule. If
+   that fails, the alternative is a value network next to the policy, so the
+   values can be compared as in the solver.
 
 ## Layout
 
@@ -179,10 +174,11 @@ Open, for Quinn before code:
 
 ## Part 2: training at the first rung
 
-Step 6 (`corr_SL`): no housing and no DC pension, so the inputs are age and
-u1.
+Step 6 (`corr_SL`): no housing and no DC pension, so the state inputs are age
+and u1.
 
-1. A network of two hidden layers of 64 with sigmoid outputs. Adam, fresh
+1. A network of two hidden layers of 64 with sigmoid outputs, in the two
+   versions of decision 3. Adam, fresh
    draws each step (Julia's own random numbers, fixed seed), Float32 on the
    GPU.
 2. A fixed test set of 20,000 households, drawn by `neural.draw_shocks` and
@@ -215,9 +211,10 @@ stopping after each:
 
 ## Part 4: production and strategies
 
-After decision 4.
+After part 3.
 
-1. Step 24 with the chosen treatment of default.
+1. Step 24, with the probability of default as a further output
+   (decision 4).
 2. Fund strategies: one network per strategy, or the strategy's knots as
    inputs so that one network covers a menu. Decide from the training times
    of part 3.

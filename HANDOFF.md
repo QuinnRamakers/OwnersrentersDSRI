@@ -147,6 +147,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Neural-network plan: the inputs and default decided (spec: none, asked by Quinn in Claude Code)
+Quinn took both recommendations ("Yes, take both").
+Changed: `docs/prompts/neural_policy.md`, decisions 3 and 4 taken, so none is open. Inputs: age alone and age with years to retirement and a retired indicator, both trained at step 6, the better on the test set kept. Default as a choice: stop at step 23 until part 3 is done, then the probability of default as a further output; a value network is the fallback. The start prompt, part 2 and part 4 follow.
+Checks run: none; no code changed.
+Commit: this entry and the file, pushed to `work-2026-11-26`.
+Open: part 0.
+
 ### 2026-11-27 Neural-network plan: the entry state fixed (spec: none, asked by Quinn in Claude Code)
 Quinn: "Yes, fixed entry".
 Changed: `docs/prompts/neural_policy.md`, decision 2 taken: every household starts from the welfare anchor's entry state (the paper's equation 6); drawing the buffer (equation 7) is noted for later.
