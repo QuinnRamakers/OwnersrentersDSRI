@@ -260,9 +260,13 @@ After part 3.
    `simulate.paths_lna` for the same seed, in every bit.
 3. Julia, in `neural/test/runtests.jl`:
    1. replay: fed the exported draws and choices, the Julia year reproduces
-      C, X, A, H and Y at every age to 1e-12 relative (Float64, CPU), on the
-      quick grid, at steps 1, 6, 12, 13, 18 and 23, both tenures where they
-      differ;
+      C, X, A, H, Y, LW and q at every age to 1e-12 of the larger of the
+      value and entry income (Float64, CPU), on the quick grid, at steps 1,
+      6, 12, 13, 18 and 23, both tenures where they differ. Measured against
+      the value alone the largest gap was 1.1e-11 (27 November 2026): where
+      liquid wealth is a few euros, LW - C cancels two numbers of the order
+      of income, and the two languages' last-digit rounding is 1e-16 of
+      income. A, H, Y and q agree to 3e-15 at every age;
    2. Zygote's gradient matches central finite differences on a small
       network to 1e-6 relative (Float64);
    3. doubling Y0 leaves every choice unchanged and multiplies lifetime

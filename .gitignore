@@ -17,3 +17,6 @@ slurm-*.out
 *.pdf
 *.csv
 !CBSunisexmortality21-26.csv
+
+# The neural-network branch: exported panels and trained networks.
+neural/data/

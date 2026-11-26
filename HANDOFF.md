@@ -147,6 +147,46 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Neural network, part 1: the Julia model year and the replay against simulate.paths_lna (spec: docs/prompts/neural_policy.md, part 1)
+Quinn: "start part 0", then "i leave you overnight, try to come as far as you can come", and asked to verify the architecture and the intermediate results from the CGM core on, to train separate and joint networks for the tenures, and to document what is done.
+Changed: new MATLAB package `+neural/` (`export_model`, `draw_shocks`, `export_replay`, `make_replays`, `make_testsets`), new `tests/neural_tests.m`; Julia `neural/src/model.jl` (the year of `simulate.paths_lna` for all households at once, without writing into arrays, CPU or GPU, Float32 or Float64; lifetime utility with survival weights, the bankrupt valued at u(F) D_beq as in the solver), `neural/src/policy.jl` (inputs, network, training, evaluation), `neural/scripts/part1_report.jl`, `neural/scripts/train_rung.jl`, `neural/README.md`. Not covered yet: default as a choice (step 24) and bequest utility (chi > 0); both are refused for training. The plan's replay bound restated (below). `neural/data/` added to `.gitignore`. Nothing outside `+neural`, `tests/neural_tests.m` and `neural/` changed in MATLAB.
+Checks run, on the PC:
+- `run_tests(solve=false)`: 0 of 23 checks failed. `neural_tests`: 0 of 6 failed (at step 1 and step 13 owner, the stock returns, the income paths and the house paths built from `neural.draw_shocks` equal those of `paths_lna` in every bit).
+- `neural.make_replays()`: quick grid 8x6x6x4, gh_n 3, 2,000 households, seed 101, steps 1, 6, 12, 13, 18, 23 and both tenures where they differ (9 panels). Solve times 3.3 s (step 1) to 336 s (step 23 owner).
+- Julia tests (`Pkg.test()`): 93 of 93 passed. Replay: the largest gap over C, X, A, H, Y, LW, q and the bequest, relative to the larger of the value and entry income, is 2.0e-15 to 1.5e-14 in the nine panels; bankruptcy entries equal. Relative to the value alone it reaches 1.1e-11, only where liquid wealth is a few euros (LW - C cancels two numbers of the order of income); A, H, Y and q agree to 3e-15 at every age. The plan's bound of 1e-12 is restated as relative to the larger of the value and entry income, with this reason. Zygote's gradient through 76 years of the step-12 model against central finite differences: 9.3e-10 relative (104 parameters, Float64). Doubling entry income: consumption doubles, the equity shares are unchanged and utility scales by 2^(1-gamma), to 1e-12. Consumption is at or above the floor.
+- `part1_report.jl`, the grid policy's simulated certainty equivalent (Julia lifetime utility on MATLAB's draws) against its value function's `ce_entry`, quick grid, 2,000 households:
+
+| panel | gamma | ce value fn | ce simulated (s.e.) | gap | worst 1% of paths' share of utility | bankrupt at 100 | household-years at the floor |
+|---|---|---|---|---|---|---|---|
+| step 1 | 10 | 0.6431 | 0.6548 (0.0174) | +1.8% | 0.535 | 0 | 0 |
+| step 6 | 5 | 1.2325 | 1.2293 (0.0087) | -0.3% | 0.106 | 0 | 0 |
+| step 12 | 5 | 1.1265 | 1.1465 (0.0060) | +1.8% | 0.074 | 0 | 0 |
+| step 13 owner | 5 | 0.7915 | 0.0000 | -100% | 0.811 | 0 | 0.0254 |
+| step 13 renter | 5 | 0.8285 | 0.0000 | -100% | 1.000 | 0 | 0.00008 |
+| step 18 owner | 5 | 0.3775 | 0.2351 (0.0136) | -38% | 0.834 | 0.006 | 0.0043 |
+| step 18 renter | 5 | 0.3818 | 0.1861 (0.0057) | -51% | 0.485 | 0.275 | 0.0696 |
+| step 23 owner | 5 | 0.3982 | 0.2311 (0.0181), no bequest utility | -42% | 0.891 | 0.004 | 0.0026 |
+| step 23 renter | 5 | 0.3764 | 0.1746 (0.0071), no bequest utility | -54% | 0.662 | 0.146 | 0.0278 |
+
+What it means: without housing the grid policy's simulated value and its value function agree within sampling error, so the Julia lifetime utility measures what the solver maximises. With housing and the yearly top-up at 1e-6 of income (steps 7-17), a handful of household-years at the top-up (12 of 152,000 for renters at step 13) take the simulated certainty equivalent to zero: simulated welfare there is the model's own objective, and the grid policy does badly on it, so a network trained on it will avoid those states at almost any cost. With the absorbing floor (steps 18-23) the value function is 38-54% above the simulated value on the quick grid, the overpricing next to the floor noted on 18 October. At gamma 10 half of all utility comes from the worst 1% of paths.
+Commit: this entry and the files, pushed to `work-2026-11-26`.
+Open: part 2 (training from step 1).
+
+### 2026-11-27 Neural network, part 0: Julia project, smoke tests, timing (spec: docs/prompts/neural_policy.md, part 0)
+Changed: new Julia package `neural/` (`Project.toml`, `Manifest.toml` committed): Flux 0.16.15, Zygote 0.7.21, Optimisers 0.4.13, CUDA 6.5.1, MAT 0.13.0, on Julia 1.11.2. `neural/src/toy.jl` (a 76-year toy problem), `neural/test/runtests.jl`, `neural/scripts/part0_timing.jl`.
+Checks run, on the PC: CUDA.jl finds the NVIDIA GeForce RTX 2070 SUPER (sm_75, 7.0 of 8 GB free, CUDA runtime 13.4). Toy tests: Zygote's gradient against central finite differences 1.5e-9 relative (114 parameters, Float64); outputs inside (0, 1) at inputs of size 100; 200 Adam steps raise the toy's certainty equivalent from 0.838 to 0.932 on a fixed test set; the same seed gives the same weights in every bit; CPU against GPU 4.8e-7 on the loss and 1.2e-6 on the gradient (Float32).
+Timing, one training step (gradient through 76 years and the Adam update), two hidden layers of 64, Float32, 16 BLAS threads:
+
+| households | CPU ms | GPU ms | CPU/GPU |
+|---|---|---|---|
+| 1,024 | 254 | 109 | 2.3 |
+| 4,096 | 457 | 111 | 4.1 |
+| 16,384 | 1,177 | 118 | 9.9 |
+
+The GPU time hardly moves with the batch: it is the launch of many small operations, 76 years of them, not the arithmetic. Large batches are almost free on the GPU, which suits the heavy tail of utility.
+Commit: with part 1, pushed to `work-2026-11-26`.
+Open: none.
+
 ### 2026-11-27 Neural-network plan: the inputs and default decided (spec: none, asked by Quinn in Claude Code)
 Quinn took both recommendations ("Yes, take both").
 Changed: `docs/prompts/neural_policy.md`, decisions 3 and 4 taken, so none is open. Inputs: age alone and age with years to retirement and a retired indicator, both trained at step 6, the better on the test set kept. Default as a choice: stop at step 23 until part 3 is done, then the probability of default as a further output; a value network is the fallback. The start prompt, part 2 and part 4 follow.
