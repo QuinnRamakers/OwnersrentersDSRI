@@ -147,6 +147,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Neural-network plan: the entry state fixed (spec: none, asked by Quinn in Claude Code)
+Quinn: "Yes, fixed entry".
+Changed: `docs/prompts/neural_policy.md`, decision 2 taken: every household starts from the welfare anchor's entry state (the paper's equation 6); drawing the buffer (equation 7) is noted for later.
+Checks run: none; no code changed.
+Commit: this entry and the file, pushed to `work-2026-11-26`.
+Open: decisions 3 and 4, then part 0.
+
 ### 2026-11-27 Neural-network plan: training in Julia (spec: none, asked by Quinn in Claude Code)
 Quinn: "i have julia, would that not be quicker?", then "Yes, use Julia".
 Changed: `docs/prompts/neural_policy.md`. Decision 1 taken: Julia (Flux, Zygote, Optimisers; CUDA.jl for the GPU, MAT.jl for MATLAB's exports). New sections "How the work is split" (MATLAB derives and exports every number; one year of the model written again in Julia and tied to `simulate.paths_lna` by a replay test; the grid policy simulated in MATLAB, the network in Julia, on the same test draws) and "Layout" (`neural/` Julia project with a committed Manifest, `+neural/` MATLAB exports only). Part 0 and part 1 rewritten for Julia; checks: MATLAB draws equal to `paths_lna`'s in every bit, Julia replay to 1e-12, Zygote against finite differences, CPU against GPU. Found on the PC: Julia 1.11.2 with Flux, Zygote, Optimisers and ForwardDiff; an RTX 2070 SUPER, 8 GB; CUDA.jl and MAT.jl not installed.

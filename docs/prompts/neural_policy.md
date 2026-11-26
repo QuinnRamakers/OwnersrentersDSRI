@@ -111,16 +111,14 @@ Taken:
 
 1. The tool: Julia, with Flux, Zygote and Optimisers, CUDA.jl for the GPU and
    MAT.jl to read MATLAB's exports (Quinn, 27 November 2026).
+2. The entry state: fixed at the welfare anchor, as the coauthor does (the
+   paper's equation 6), so the result is welfare at 25 from that state
+   (Quinn, 27 November 2026). Drawing the buffer over a range (the paper's
+   equation 7) is the way to pin the policy down on more states, or to read
+   welfare at other buffers without retraining, if that is wanted later.
 
 Open, for Quinn before code:
 
-2. The entry state.
-   (a) Fixed at the welfare anchor (the coauthor's method, the paper's
-   equation 6). Right for welfare at 25.
-   (b) The buffer drawn over a range (the paper's equation 7). The policy is
-   pinned down on more states, and welfare at other buffers needs no
-   retraining.
-   Recommended: (a) first.
 3. The inputs besides (u1, u2, u3, q): age scaled to [0, 1], and possibly
    years to retirement and a retired indicator, so that one network can turn
    sharply at 67. Recommended: try age alone and age with the retirement
