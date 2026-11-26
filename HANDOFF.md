@@ -147,6 +147,13 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-26 Plan for a neural-network policy on an experimental branch, saved, not started (spec: none, asked by Quinn in Claude Code)
+Quinn: an experimental branch to train a neural network on simulated lifetime utility, as their coauthor described it, then "write up a plan for the neural network branch".
+Changed: new `docs/prompts/neural_policy.md`: the method (one network with age as an input, every household from the welfare anchor's entry state, only the innovations drawn, lifetime utility exact on each path; Maliar, Maliar and Winant 2021, equation 6), what it is for (both methods' policies through the same simulator and the same test draws), what is known (no Deep Learning Toolbox or Python on the PC, the DSRI image the same; no simulated lifetime utility in the repository; default as a choice needs a value the network does not have), four decisions for Quinn, four parts that stop for Quinn, the checks and the limits. On branch `work-2026-11-26`, cut from main at 8636a0d; not on main.
+Checks run: none; no code changed.
+Commit: this entry and the file, pushed to `work-2026-11-26`.
+Open: the decisions, then part 0.
+
 ### 2026-11-26 Beta 0.98 against 0.96 on the small grid, and welfare in euros (spec: none, asked by Quinn in Claude Code)
 Quinn: "could you run some on the small grid with beta 0.98?", then "could you also give me the euro welfare effects".
 Run: on the DSRI (commit 844ac4d, 32 thread workers), 10:43-11:09 UTC on 26 November, `runs/beta_small.sh` (not committed).
