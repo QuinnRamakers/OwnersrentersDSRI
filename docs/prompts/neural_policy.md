@@ -168,36 +168,68 @@ All taken by Quinn on 27 November 2026.
 5. In Julia, lifetime utility from the paths of C and the bequests, with
    survival weights, and the certainty equivalent of the mean.
 6. Stop and report: the tests below; the share of mean utility that comes
-   from the worst 1% of paths at steps 6, 12, 18 and 23; and the gap between
+   from the worst 1% of paths at steps 1, 6, 12, 18 and 23; and the gap between
    the grid policy's simulated value and its value function at entry, with
    the Monte Carlo standard error.
 
+## Verification at every rung
+
+Asked by Quinn on 27 November 2026: verify the architecture and the
+intermediate results from the CGM core on. At each rung, before the next:
+
+1. Architecture: the outputs stay inside their bounds; the inputs are scaled
+   to order one over the states the households reach; the training curve
+   flattens; the result does not move when the network is made wider (64 to
+   128) or deeper (two to three hidden layers), or when it is trained from
+   another seed.
+2. Against the grid: the test-set certainty equivalent of both methods, with
+   standard errors; consumption, the liquid equity share and wealth by age,
+   one line per method.
+3. Intermediate quantities by age: the share of households at the floor or
+   bankrupt, the mean and spread of the inputs the network sees, and the
+   share of mean utility from the worst 1% of paths.
+4. Each rung's report goes in the log before the next rung starts.
+
+## Tenures: separate and joint networks
+
+Asked by Quinn on 27 November 2026. At every rung where the tenures differ
+(from step 7, housing):
+
+1. Separate: one network per tenure, each trained on its own households.
+2. Joint: one network with a tenure indicator as a further input, trained on
+   owners and renters together. Each tenure's mean utility is divided by the
+   absolute value of the grid policy's on the same test draws before the two
+   are added, so both count equally whatever their levels.
+3. Report both tenures' test-set certainty equivalents under each, against
+   the grid. A flexible enough joint network should match the separate ones.
+
+At steps 1-6 the two tenures are the same model (no housing, pooled income).
+There the joint network must give the same choices for both values of the
+indicator, which checks the joint set-up before housing makes them differ.
+
 ## Part 2: training at the first rung
 
-Step 6 (`corr_SL`): no housing and no DC pension, so the state inputs are age
-and u1.
+Step 1 (`cgm`), the CGM core: gamma 10, no housing, no pension, no taxes, so
+the state inputs are age and u1.
 
 1. A network of two hidden layers of 64 with sigmoid outputs, in the two
-   versions of decision 3. Adam, fresh
-   draws each step (Julia's own random numbers, fixed seed), Float32 on the
-   GPU.
+   versions of decision 3. Adam, fresh draws each step (Julia's own random
+   numbers, fixed seed), Float32 on the GPU.
 2. A fixed test set of 20,000 households, drawn by `neural.draw_shocks` and
    exported, so the grid policy can be simulated on the same draws by
    `simulate.paths_lna`. Evaluation in Float64 on the CPU.
-3. Report: the training curve; the test-set certainty equivalent of the
-   network and of the grid policy (solved at standard numerics), with
-   standard errors; consumption, the equity share and wealth by age along the
-   simulated paths, one line per method; the time per training step and in
-   total, as a table.
+3. The checks of "Verification at every rung", and the time per training
+   step and in total, as a table.
 4. The network passes when its test-set certainty equivalent is above the
    grid policy's or within two standard errors of it, and the age profiles
    agree. Quinn decides.
-5. Stop and report.
+5. Then steps 2-6 in order (gamma 5, retirement at 67, the DHS income, the
+   market, the income-stock correlation), each with the same checks.
 
 ## Part 3: up the ladder
 
-In this order, each with the report of part 2, one step and tenure at a time,
-stopping after each:
+In this order, each with the checks of "Verification at every rung" and the
+tenures separate and joint:
 
 1. Step 12 (`aow`): the DC pot, the glide and the annuity, no housing.
 2. Step 7b (`annuity`), then step 13 (`pension`): housing and the mortgage
@@ -229,7 +261,8 @@ After part 3.
 3. Julia, in `neural/test/runtests.jl`:
    1. replay: fed the exported draws and choices, the Julia year reproduces
       C, X, A, H and Y at every age to 1e-12 relative (Float64, CPU), on the
-      quick grid, at steps 6, 12, 18 and 23, both tenures;
+      quick grid, at steps 1, 6, 12, 13, 18 and 23, both tenures where they
+      differ;
    2. Zygote's gradient matches central finite differences on a small
       network to 1e-6 relative (Float64);
    3. doubling Y0 leaves every choice unchanged and multiplies lifetime
