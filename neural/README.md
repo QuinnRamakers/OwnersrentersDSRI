@@ -1,6 +1,8 @@
 # neural: policies from a network trained on simulated lifetime utility
 
 The plan is [docs/prompts/neural_policy.md](../docs/prompts/neural_policy.md).
+The method written out formally (state, network, objective, optimiser, limits)
+is [METHOD.md](METHOD.md).
 Results are logged in [HANDOFF.md](../HANDOFF.md). This file describes the
 code and how to run it.
 
