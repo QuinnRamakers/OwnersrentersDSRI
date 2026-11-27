@@ -239,7 +239,11 @@ function year(m::Model, t::Integer, s, ch, e)
     if choice
         # Default as a choice: weights instead of flags (see the docstring).
         F_lo = max.(F(m.phi_floor) .* s.Y, F(1e-12) .* (s.X .+ s.A .+ s.H .+ s.Y))
-        d = ifelse.(LW .<= F_lo, one(F), ch.d)
+        # A consumption ratio of LW (Spec ratio) has no lower bound: default
+        # is forced only when nothing can be consumed. A replayed panel also
+        # gives c, so a ratio is told apart by the network's share being free.
+        forced = haskey(ch, :ratio) ? LW .<= zero(F) : LW .<= F_lo
+        d = ifelse.(forced, one(F), ch.d)
         wd = s.w .* d
         wc = s.w .- wd
         Cbar = s.Cbar .+ wd .* F_t

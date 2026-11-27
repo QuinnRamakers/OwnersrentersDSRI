@@ -8,12 +8,16 @@ Which inputs the network gets besides age and the normalised state (u1, u2,
 u3, q): `retire` adds years to retirement and a retired indicator, `tenure`
 an owner indicator (for one network trained on both tenures). `default`
 adds a third output, the probability of defaulting this year (default as a
-choice, step 24).
+choice, step 24). `ratio` (with `default` only) makes the first output the
+share of all liquid resources consumed, C = c LW, with no lower bound on
+consumption: saving (1 - c) LW is positive whenever LW is, and a household is
+forced to default only when LW <= 0.
 """
 Base.@kwdef struct Spec
     retire::Bool = false
     tenure::Bool = false
     default::Bool = false
+    ratio::Bool = false
 end
 
 n_inputs(spec::Spec) = 5 + 2 * spec.retire + spec.tenure
@@ -105,6 +109,7 @@ function choices(net, m::Model, spec::Spec; hard::Bool=false)
             if hard
                 d = ifelse.(d .> 0.5, one.(d), zero.(d))
             end
+            spec.ratio && return (; c=sh, pi=sigmoid.(out[2:2, :]), d, ratio=true)
             return (; s=sh, pi=sigmoid.(out[2:2, :]), d)
         end
         return (; s=sh, pi=sigmoid.(out[2:2, :]))

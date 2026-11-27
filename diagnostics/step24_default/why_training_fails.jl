@@ -8,11 +8,15 @@
 #  2. Both steps, and step 23 without the bequest motive, trained alike (steps, households, rate), then evaluated with
 #     hard decisions on the same 20,000 Julia draws.
 # Run from the repository root:
-#   julia --project=neural diagnostics/step24_default/why_training_fails.jl [steps]
+#   julia --project=neural diagnostics/step24_default/why_training_fails.jl [steps] [arms]
+# arms: a comma list of chi0, s23, s24 and s24ratio (step 24 with the first
+# output a ratio of all liquid resources, no lower bound on consumption);
+# all four by default.
 using NeuralPolicy, MAT, Flux, Statistics, Printf, Random
 
 const DATA = joinpath(@__DIR__, "..", "..", "neural", "data")
 steps = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 300
+arms = length(ARGS) >= 2 ? split(ARGS[2], ",") : ["chi0", "s23", "s24", "s24ratio"]
 d = matread(joinpath(DATA, "replay_23_renter.mat"))
 m23 = Model(d["model"])
 kw = Dict{Symbol,Any}(k => getfield(m23, k) for k in fieldnames(Model))
@@ -66,15 +70,18 @@ g = m23.gamma
 guard = 10.0^(-30 / (g - 1))
 N = 8192
 println("Part 1: the starting network (seed 1), $N households, guard $(round(guard; sigdigits=3))")
-s23 = Spec(retire=true); s24 = Spec(retire=true, default=true)
+s23 = Spec(retire=true); s24 = Spec(retire=true, default=true); s24r = Spec(retire=true, default=true, ratio=true)
 report("step 23 (forced default at the floor)", m23, s23, policy_net(s23; rng=Xoshiro(1)), N, 11; guard)
 report("step 24 (default as a choice)", m24, s24, policy_net(s24; rng=Xoshiro(1)), N, 11; guard)
+report("step 24, consumption a ratio of resources", m24, s24r, policy_net(s24r; rng=Xoshiro(1)), N, 11; guard)
 
 println("\nPart 2: training, $steps steps, 4,096 households a step, lr 3e-3")
 eval_e(m) = draw(m, 20000, Xoshiro(202); F=Float64)
 kw[:default_choice] = false; kw[:chi] = 0.0
 m0 = Model(; kw...)
-for (name, m, spec) in (("step 23 with chi = 0", m0, s23), ("step 23", m23, s23), ("step 24", m24, s24))
+all_arms = Dict("chi0" => ("step 23 with chi = 0", m0, s23), "s23" => ("step 23", m23, s23), "s24" => ("step 24", m24, s24),
+                "s24ratio" => ("step 24, consumption a ratio of resources", m24, s24r))
+for (name, m, spec) in (all_arms[a] for a in arms)
     t0 = time()
     net, curve = train([m], spec; steps, N=4096, lr=3e-3, seed=1, device=:cpu, progress=100)
     secs = time() - t0

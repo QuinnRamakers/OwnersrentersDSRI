@@ -147,6 +147,19 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Step 24 with consumption as a ratio of resources, no floor: fails the same way (spec: none, asked by Quinn in Claude Code)
+
+Asked by Quinn: no floor, an output that is a ratio that could go to zero. `Spec(ratio=true)` (with `default` only) makes the first output the share of all liquid resources consumed, C = c LW, so saving (1 - c) LW is positive whenever LW is. Default is forced only when LW <= 0, instead of LW <= 1e-6 Y. The year was already able to take a ratio `c`; the change is in `neural/src/policy.jl` and the forced rule in `neural/src/model.jl`. Julia tests 136 of 136 pass.
+
+The same experiment as the entry below (`why_training_fails.jl 300 s24ratio`, renters, 300 steps, 4,096 households, lr 3e-3, 20,000 evaluation draws, seed 202):
+- ce 0.00007 (s.e. 0.00001), against 0.00002 with the floor-share output and 0.2439 at chi = 0;
+- 1 household of 20,000 carries half of E[U];
+- defaulted 0.0691, the same share as the other step-24 run, so most likely only forced defaults (LW <= 0, rent above resources);
+- liquid wealth at 66 is 0.58 entry incomes;
+- the trained objective is 92% bequest terms with a base below F_t and 8% consumption below F_t.
+
+Reading: the lower bound on consumption was not the problem. A ratio of resources goes to zero when resources do, which for renters happens whenever rent takes nearly all income, and the bequest from those resources is then near zero too. The mean over households is set by the worst such death. The network's default probability does not reach one half at those states, which leaves the near-zero bequest on the path.
+
 ### 2026-11-27 Why the network fails at step 24: the bequest without a shifter, already at step 23 (spec: none, asked by Quinn in Claude Code)
 
 Script `diagnostics/step24_default/why_training_fails.jl` (log `neural/data/logs/why_training_fails.txt`, gitignored). Renters, built from `replay_23_renter.mat`: step 23 as saved, step 24 = the same with `default_choice` on, and a control with chi = 0. Each arm trained alike: 300 steps, 4,096 households a step, lr 3e-3, CPU. Each evaluated with hard decisions on 20,000 Julia draws (seed 202).
