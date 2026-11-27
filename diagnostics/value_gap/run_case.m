@@ -42,6 +42,7 @@ if opts.decompose
     res.dec_sec = toc(t0);
     fprintf('decomposition: %.0f s\n', res.dec_sec);
     disp(res.dec.sum);
+    save(fullfile(opts.out_dir, ['gap_' tag '.mat']), '-struct', 'res');   % the decomposition, before the simulations
 end
 
 % The grid policy and the fresh policies on the same households
@@ -64,7 +65,7 @@ for k = 1:numel(names)
     rows(end+1, :) = {char(names(k)), ce, se, ce - ce0, std(h) / sqrt(numel(h)), ...
         mean(sim.absorbed(:)), mean(any(sim.absorbed, 2)), median(sim.abs_age, 'omitnan'), sec}; %#ok<AGROW>
     fprintf('%-8s ce %.4f (s.e. %.4f), minus grid %+.4f (s.e. %.4f), years bankrupt %.4f, ever %.4f, median age %g, %.0f s\n', rows{end, :});
-    if k == 1, res.sim_grid_offgrid = struct2array(rmfield(sim.diagnostics, {'n_clamp_c', 'n_clamp_pi', 'n_negLW', 'n_floored'})); end
+    if k == 1, dg = sim.diagnostics; res.sim_grid_offgrid = [dg.n_offgrid_u1, dg.n_offgrid_u2, dg.n_offgrid_u3, dg.n_offgrid_q]; end
 end
 res.sims = cell2table(rows, 'VariableNames', {'policy', 'ce', 'se', 'minus_grid', 'se_diff', 'years_bankrupt', 'ever_bankrupt', 'median_age', 'sec'});
 disp(res.sims);
