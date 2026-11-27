@@ -147,6 +147,28 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Step 18: the owners' solver-simulation gap is the absorbing state (spec: none, asked by Quinn in Claude Code)
+Quinn: "I think the problem might be in the absorption state and how it is in the model".
+Test (`diagnostics/step18_absorbing/value_along_paths.m`, `bankrupt_owners.m`): the step-18 standard-grid solve's own policy simulated for 100,000 households (seed 303); at every age, the solver's value at each household's state (its V interpolated as in the solver; the bankrupt value u(F) D_beq(t) for the bankrupt) against the utility the household goes on to realise. The code path was read first: the solver's budget, its next-year bankruptcy test (`bankrupt_nodes`, `next_h_cost`) and the simulator's apply the same rule to the same housing costs.
+
+| | owners | renters |
+|---|---|---|
+| ever bankrupt | 0.31%, at 41-54 (median 51) | 25.6%, at 75-97 (median 88) |
+| entry, all households: solver / realised | 0.3594 / 0.2651 | 0.3479 / 0.2131 |
+| entry, households never bankrupt: solver / realised | 0.3594 / 0.3570 | 0.3479 / 0.4047 |
+| age 50, all: solver / realised / one step (u + beta p V_next at the realised next state) | 0.2544 / 0.2176 / 0.2458 | 0.2349 / 0.1606 / 0.2288 |
+| age 55 and later, all: solver / realised | 0.2161 / 0.2162 (no bankruptcies after 54) | |
+
+The bankrupt owners, medians in entry income: five years before, liquid wealth 0.09, income 0.79, 1 - u2 = 0.0077; one year before 0.018, 0.66 and 0.0012, consuming 90% of resources with 71% of liquid saving in stocks. At bankruptcy: income 0.62 (35% of the median at that age), house 10.67, outstanding mortgage 0.90, equity 9.83 (all 310 positive), pension pot 3.72. The equity alone is 196 years of the floor they then consume. The u2 grid has nodes at 1 - u2 = 0.019, 0.017, 0.008, 0.0024, 0.0003 and 0, so the last five years before bankruptcy lie in two intervals.
+
+What it means:
+1. For owners the whole gap between the solver and simulation is the 0.31% who go bankrupt: for the rest the two agree within 0.7%. In every year from 25 to 54 the solver expects a higher value next year than the households reach, so it under-prices the coming bankruptcies; once they have happened (55) the two agree.
+2. These owners are illiquid, not insolvent: a shortfall of a few hundred euros in one year costs them a house with about EUR 330,000 of equity, a pot of about EUR 125,000 and all later income, for a floor of about EUR 1,750 a year (the floor scales with their own, low income). At gamma 5 those lifetimes set the owners' welfare, and they sit in a sliver of the cube (liquid wealth under 1% of non-income wealth, because the house dominates W), where the edge depends on u1, u2 and q together. This fits the refinements of one axis at a time leaving the owner values where they were.
+3. Renters' bankruptcy is different: in old age, when rent outgrows retirement income (resources 0.40 of income a year before, floor 0.28). Their standard-grid gap is the interpolation error that refinement removes.
+4. So the owner problem is in how bankruptcy is modelled, not in the code: the house cannot be sold or borrowed against before the floor binds. Default as a choice (step 24) does not change that. The alternative proposed on 21 October (owner_absorbing_state: sell, repay the mortgage, rent for life) is open, with its decisions (rent level, the renter value function as the continuation, underwater owners).
+Also: `neural.plot_lifecycles` takes several lines in `gains_title`; the renter production figure puts the 100,000 fresh households first.
+Commit: this entry, the two diagnostics and the figure change.
+
 ### 2026-11-27 Neural network, step 18 checked in MATLAB: the networks in the simulator and in the solver, against the standard and the production grid (spec: none, asked by Quinn in Claude Code)
 Quinn: "how did you implement the absorbing state, please run step 18 with more details for me so we can be really sure. really really critically evaluate the result, for example use the network policies in the matlab solver", then "afterwards show me the different model simulations and the policy functions" and "what grid you use for step 18" (until this morning quick 12x12x8x6 and standard 16x16x10x8; now also production 32x16x40x4 for renters, owners running).
 The absorbing state in the Julia year (`neural/src/model.jl`, `year`), as in `simulate.paths_lna` and `solver.bellman_step_lna`: each household carries a bankrupt flag and the consumption fixed at entry. Liquid resources LW are formed as in the simulator; the floor is F = phi_path(t) Y (c_min on the owners' profile, the same share of current income for both tenures). A solvent household with LW < F goes bankrupt that year: it consumes F every year after, its liquid wealth, pot and house are zero from the next year, and it chooses nothing. A solvent household consumes F + s (LW - F), s in (0, 1) from the network, the solver's search domain [c_floor, 1]. Utility in the year of entry is u(F) D_beq(t), the solver's value of the bankrupt (D_abs(t) = 1 + beta p_t D_abs(t+1) with chi = 0), and zero after, which equals summing u(F) over the remaining years with survival weights. Training uses the hard rule: the gradient does not see the jump in value at the edge of bankruptcy, only the smooth parts on either side.

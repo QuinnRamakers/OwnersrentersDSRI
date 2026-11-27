@@ -23,7 +23,7 @@ arguments
     opts.title char = ''
     opts.file char = 'lifecycles.png'
     opts.gains table = table()
-    opts.gains_title char = 'Welfare gain over the grid policy'
+    opts.gains_title string = "Welfare gain over the grid policy"   % several strings: several lines
 end
 
 col = struct('grid_std', [0.55 0.55 0.55], 'grid_fine', [0.05 0.05 0.05], ...
