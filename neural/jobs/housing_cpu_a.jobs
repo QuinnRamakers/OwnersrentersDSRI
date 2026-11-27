@@ -1,0 +1,2 @@
+# The longest housing job, started early (see housing_cpu.jobs).
+step13_joint  testset_13_renter_quick.mat testset_13_owner_quick.mat variants=ret_n8192_lr3e-3_k2000_joint device=cpu
