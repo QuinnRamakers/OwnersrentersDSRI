@@ -23,13 +23,14 @@ checks = {@params_derive, @ladder_reaches_production, @ladder_fields, @ladder_br
           @income_profile, @income_table, @tenure_arms, @housing_corr_by_tenure, @q_axis_where_live, ...
           @nibud_rule, @floor_derive, @dc_choice_param, @glide_age100, @gross_rate_param, @fast_power_param, ...
           @paper_steps, @glide_knots_rule, @annuity_variable, @return_moments, @strategy_list_derives, ...
-          @strategy_panel_roles};
+          @strategy_panel_roles, @default_boundary_param, @cont_z_extend};
 if opts.solve
     checks = [checks, {@default_choice_step, @default_choice_panel, @strategies_smoke, @dc_choice_dominates, @dc_choice_smoke, ...
                        @collapsed_axes_exact, @nohousing_ignores_housing, @smoke_both_tenures, ...
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
                        @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test, ...
-                       @bequest_off_identical, @bequest_last_year, @bequest_bankrupt, @fast_power_step}];
+                       @bequest_off_identical, @bequest_last_year, @bequest_bankrupt, @fast_power_step, ...
+                       @default_boundary_step}];
     % Some checks call the solver without model.run, so parfor would open
     % MATLAB's default pool: processes, which run out of memory on the DSRI
     % pod. Open the thread pool model.run uses instead.
@@ -887,6 +888,96 @@ for g = [5 5.5]
         end
         V = Va; c = ca; pi_ = pa;
     end
+end
+end
+
+function default_boundary_param()
+% default_boundary is a numerics primitive, 'off' in production. A result
+% saved before it existed interpolated next year's max(V_default,
+% V_continue): it is the same calibration as production, and not as
+% production with the option on. derive refuses anything but 'off', 'cont'
+% and 'extend'.
+p = config.params();
+assert(isfield(config.params(false), 'default_boundary') && strcmp(p.default_boundary, 'off'), ...
+    'default_boundary is not an off primitive');
+old = rmfield(p, 'default_boundary');
+assert(ladder.same_calibration(old, p), 'a result without default_boundary is not production');
+q = p; q.default_boundary = 'extend';
+assert(~ladder.same_calibration(old, q), 'a result without default_boundary is production with it on');
+q.default_boundary = true;
+assert(threw_id(@() config.derive(q), 'derive:default_boundary'), 'derive took default_boundary = true');
+end
+
+function cont_z_extend()
+% utility.cont_z at a working and a retired age, both tenures, small grid,
+% from a value of continuing whose certainty equivalent is the resources
+% above the edge, s = LW/W - phi_floor u1 (utility.slack_terms), where s > 0,
+% and -Inf where it is not, as the solver leaves closed nodes. Without
+% extend the closed nodes read 0 and the open ones s; with extend every node
+% reads s (to rounding), so the interpolant runs through zero at the edge
+% itself. Some nodes are closed, so the test is not empty.
+for owner = [false true]
+    p = config.params(false); p.is_owner = owner; p.grid_dims = [8 6 6 4]; p = config.derive(p);
+    [~, ~, an] = config.model_inputs(p);
+    n_closed = 0;
+    for t = [10, p.t_ret + 5]
+        [g1, g2] = utility.grid_at(p, t);
+        [U1, U2, U3] = ndgrid(g1, g2, p.u3_grid);
+        Nq = numel(p.q_grid);
+        S = zeros([size(U1), Nq]);
+        for iq = 1:Nq
+            [num, den] = utility.slack_terms(p, t, U1, U3, p.q_grid(iq), an);
+            S(:, :, :, iq) = num - den .* U2;
+        end
+        Vc = -inf(size(S)); o = S > 0;
+        Vc(o) = S(o) .^ (1 - p.gamma) / (1 - p.gamma);
+        z0 = utility.cont_z(p, t, Vc, an, false);
+        [z1, info] = utility.cont_z(p, t, Vc, an, true);
+        assert(all(z0(~o) == 0) && max(abs(z0(o) ./ S(o) - 1)) < 1e-12, 'owner %d, t = %d: cont_z without extend', owner, t);
+        assert(max(abs(z1(:) - S(:))) < 1e-12 * max(abs(S(:))), 'owner %d, t = %d: the extension is not s', owner, t);
+        n_closed = n_closed + info.n_closed;
+    end
+    assert(n_closed > 0, 'owner %d: no closed nodes, the test is empty', owner);
+end
+end
+
+function default_boundary_step()
+% p.default_boundary from one continuation (step 24, small grid, c_min =
+% 10,000 so that default is near), at a working and a retired age, both
+% tenures. 'off' with V_next given as a struct is the step as before in
+% every bit. Interpolating V_continue and taking the exact default value
+% where it is more ('cont') never prices next year above the interpolated
+% max ('off'), and carrying V_continue past the edge ('extend') never above
+% 'cont': at every node the value is no higher, to the search's precision
+% (fewer than 2% of nodes more than 1e-6 above in consumption units). The
+% rule changes the value at some node.
+ce = @(V, g) ((1 - g) * V) .^ (1 / (1 - g));
+for owner = [false true]
+    p = ladder.params(24); p.is_owner = owner; p.c_min = 10000;
+    p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
+    [pf, sk, an] = config.model_inputs(p);
+    B = solver.solve(p, pf, sk, an, false);
+    changed = false;
+    for t = [10, p.t_ret + 5]
+        pol = struct('c', B.c_pol(:,:,:,:,t+1), 'pi', B.pi_pol(:,:,:,:,t+1));
+        Vn = struct('V', B.V(:,:,:,:,t+1), 'V_cont', B.V_cont(:,:,:,:,t+1));
+        [V0, c0] = solver.bellman_step_lna(t, B.V(:,:,:,:,t+1), p, pf, sk, an, pol);
+        [Vs, cs] = solver.bellman_step_lna(t, Vn, p, pf, sk, an, pol);
+        assert(isequaln(V0, Vs) && isequaln(c0, cs), 'owner %d, t = %d: off with a struct V_next is not the step', owner, t);
+        V = {V0};
+        for mode = {'cont', 'extend'}
+            q = p; q.default_boundary = mode{1};
+            V{end + 1} = solver.bellman_step_lna(t, Vn, q, pf, sk, an, pol); %#ok<AGROW>
+        end
+        for k = 2:3
+            up = ce(V{k}(:), p.gamma) ./ ce(V{k - 1}(:), p.gamma) - 1;
+            fprintf('      default_boundary_step: owner %d, t = %d, step %d: nodes changed %d of %d, highest rise %.2g, lowest %.2g\n', ...
+                owner, t, k - 1, sum(V{k}(:) ~= V{k - 1}(:)), numel(up), max(up), min(up));
+            assert(all(isfinite(V{k}(:))) && mean(up > 1e-6) < 0.02, 'owner %d, t = %d: mode %d prices above the one before', owner, t, k);
+            changed = changed || any(V{k}(:) ~= V{k - 1}(:));
+        end
+    end
+    assert(changed, 'owner %d: default_boundary changed nothing', owner);
 end
 end
 

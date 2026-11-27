@@ -91,7 +91,16 @@ for t = 1:T
     % bankrupt value where the state is bankrupt (forced rule) or has no
     % resources (default as a choice), else the interpolant, and with default
     % as a choice never below the default value (bankrupt_nodes).
-    Vint(:, t) = (sim.W(idx, t) / Y0 .* zlook(sol.V(:, :, :, :, t), g, g1, g2, p.u3_grid, q_grid, lam, u2, u3, qq, space)) .^ (1 - g) / (1 - g);
+    % With p.default_boundary on, the solver reads V_cont and takes the
+    % default value where it is more (the max below).
+    if choice && ~strcmp(utility.boundary_mode(p), 'off')
+        zc = utility.cont_z(p, t, sol.V_cont(:, :, :, :, t), r.ann_price, strcmp(utility.boundary_mode(p), 'extend'));
+        if numel(q_grid) > 1, Fz = griddedInterpolant({g1, g2, p.u3_grid, q_grid}, zc, 'linear', 'nearest'); zs = Fz(lam, u2, u3, qq);
+        else, Fz = griddedInterpolant({g1, g2, p.u3_grid}, zc(:, :, :, 1), 'linear', 'nearest'); zs = Fz(lam, u2, u3); end
+        Vint(:, t) = (sim.W(idx, t) / Y0 .* max(zs, realmin)) .^ (1 - g) / (1 - g);
+    else
+        Vint(:, t) = (sim.W(idx, t) / Y0 .* zlook(sol.V(:, :, :, :, t), g, g1, g2, p.u3_grid, q_grid, lam, u2, u3, qq, space)) .^ (1 - g) / (1 - g);
+    end
     before = ab(idx, t) & t_ab(idx) < t;                  % bankrupt in an earlier year
     enter  = t_ab(idx) == t;
     vdef   = u(p.phi_path(t) * sim.Y(idx, t)) * p.D_beq(t);

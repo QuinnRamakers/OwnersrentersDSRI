@@ -32,6 +32,10 @@ end
 p = r.p;
 if isempty(opts.V_next)
     if t < p.T, Vn = r.sol.V(:, :, :, :, t + 1); else, Vn = []; end
+    % p.default_boundary: the step reads next year's V_cont as well
+    if t < p.T && isfield(r.sol, 'V_cont') && ~strcmp(utility.boundary_mode(p), 'off')
+        Vn = struct('V', Vn, 'V_cont', r.sol.V_cont(:, :, :, :, t + 1));
+    end
 else
     Vn = opts.V_next;
 end

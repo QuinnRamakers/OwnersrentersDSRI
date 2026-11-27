@@ -73,6 +73,22 @@ function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_n
 %   continuing, also where default is worth more. At the quadrature nodes
 %   (abs_node_test) the continuation is at least next year's default value.
 %
+%   p.default_boundary (default as a choice only) sets what is interpolated
+%   at the quadrature nodes. 'off': next year's V = max(V_default,
+%   V_continue), as before 27 November 2026; the line between a node that
+%   defaults and one that continues runs above both values across the kink
+%   of the max, so continuing is overpriced next to the default boundary.
+%   'cont': V_continue of next year alone is interpolated in z, and the
+%   exact default value, phi Y D^(1/(1-gamma)) per unit of W (linear in u1,
+%   so exact at every state), is taken where it is more (bankrupt_nodes), so
+%   the kink sits where the two values cross at the node itself. This is the
+%   rule by which simulate.paths_lna decides default. 'extend': as 'cont',
+%   with V_continue carried past the edge of continuing in proportion to
+%   resources (utility.cont_z), so a state just inside the edge is not
+%   priced off a closed node beyond it at zero. With either, V_next is a
+%   struct with fields V and V_cont (next year's sol.V and sol.V_cont); it
+%   needs interp_space 'z' and abs_node_test.
+%
 %   The household dies at the end of the last period (t = p.T) for certain.
 %   Without a bequest motive it consumes all its liquid resources then. With
 %   one (p.chi > 0) the last period is solved as any other, without a
@@ -111,6 +127,11 @@ if nargin < 7, pol_next = []; end              % the last period has no next pol
 if nargin < 8, fixed = []; end                 % no fixed policy: search at every node
 if nargin < 9, pts = []; end                   % no points: solve at the grid's nodes
 have_pts = ~isempty(pts);
+% Next year's value of continuing, for p.default_boundary: V_next as a struct.
+Vc_next = [];
+if isstruct(V_next)
+    Vc_next = V_next.V_cont; V_next = V_next.V;
+end
 [g1, g2] = utility.grid_at(p, t);              % this period's points (they can follow age)
 N1 = numel(g1); N2 = numel(g2); N3 = numel(p.u3_grid);
 q_grid = p.q_grid(:); Nq = numel(q_grid);
@@ -217,6 +238,17 @@ Vc_t      = [];
 if choice, phi_lo = p.phi_floor; Vc_t = -inf(size(V_t)); end
 D_t       = p.D_beq(t);                       % D_abs(t) when chi = 0
 FLOOR_EPS = 1e-12;
+% p.default_boundary: interpolate next year's V_continue, not the max, and
+% take the exact default value where it is more (at the quadrature nodes,
+% bankrupt_nodes). 'extend' carries V_continue past the edge of continuing.
+bnd = utility.boundary_mode(p);
+use_bnd = choice && ~strcmp(bnd, 'off') && t < p.T;
+if use_bnd
+    assert(~isempty(Vc_next), 'bellman_step_lna:no_V_cont', ...
+        'p.default_boundary = ''%s'' needs V_next as a struct with fields V and V_cont.', bnd);
+    assert(p.abs_node_test, 'bellman_step_lna:boundary_node_test', ...
+        'p.default_boundary needs abs_node_test: the exact default value enters at the quadrature nodes.');
+end
 
 % Take-home income per unit of gross income. Contributions are deducted
 % before tax (EET).
@@ -302,14 +334,21 @@ R_S_at = config.after_tax_stock(p, R_S);
 % Continuation in certainty-equivalent units; none in the last period
 pp_z = [];
 if ~last
-    arg = one_m_g * V_next; arg(arg <= 0) = NaN;
-    z_next = arg .^ inv_omg;
-    z_finite = z_next(isfinite(z_next));
-    if isempty(z_finite)
-        error('bellman_step_lna:no_finite_z', 'No finite z values at t=%d', t);
+    if use_bnd
+        % Next year's value of continuing, 0 (or with 'extend' below 0) where
+        % it is not open; the default value enters at the nodes.
+        z_next = utility.cont_z(p, t + 1, Vc_next, ann_price, strcmp(bnd, 'extend'));
+        z_min  = min(z_next(:));
+    else
+        arg = one_m_g * V_next; arg(arg <= 0) = NaN;
+        z_next = arg .^ inv_omg;
+        z_finite = z_next(isfinite(z_next));
+        if isempty(z_finite)
+            error('bellman_step_lna:no_finite_z', 'No finite z values at t=%d', t);
+        end
+        z_min = min(z_finite);
+        z_next(isnan(z_next)) = z_min;
     end
-    z_min = min(z_finite);
-    z_next(isnan(z_next)) = z_min;
     interp_method = validatestring(p.interp_method, {'linear', 'makima', 'spline'}, ...
                                    'bellman_step_lna', 'p.interp_method');
     [n1, n2] = utility.grid_at(p, t + 1);     % next period's points, where V_next lives
@@ -320,6 +359,8 @@ if ~last
     space = 'z';
     if isfield(p, 'interp_space') && ~isempty(p.interp_space), space = char(p.interp_space); end
     space = validatestring(space, {'z', 'V', 'logz'}, 'bellman_step_lna', 'p.interp_space');
+    assert(~use_bnd || strcmp(space, 'z'), 'bellman_step_lna:boundary_space', ...
+        'p.default_boundary interpolates V_continue in z, which is 0 or below where continuing is not open.');
     switch space
         case 'z',    f_next = z_next;
         case 'V',    f_next = z_next .^ one_m_g / one_m_g;

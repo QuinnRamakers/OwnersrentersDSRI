@@ -10,7 +10,9 @@ function sol = solve_lifecycle_lna(p, profile, shocks, ann_price, verbose)
 %   With p.dc_choice also sol.tau_pol and sol.reit_pol, the fund's stock and
 %   REIT shares the household picks, of the same size. With p.default_choice
 %   (and the absorbing floor) also sol.V_cont, the value of continuing, -Inf
-%   where the household has no resources to continue with.
+%   where the household has no resources to continue with. With
+%   p.default_boundary on, each step is given next year's V_cont with its V
+%   (solver.bellman_step_lna).
 
 if nargin < 5 || isempty(verbose), verbose = true; end
 
@@ -31,6 +33,8 @@ if dc_on, tau_pol = zeros(N1, N2, N3, Nq, T); reit_pol = zeros(N1, N2, N3, Nq, T
 choice = p.floor_absorbing && isfield(p, 'default_choice') && p.default_choice;
 V_cont = [];
 if choice, V_cont = -inf(N1, N2, N3, Nq, T); end
+% p.default_boundary: each step reads next year's V_cont as well as its V.
+bnd = choice && ~strcmp(utility.boundary_mode(p), 'off');
 period_sec = zeros(T, 1);
 t0 = tic;
 
@@ -49,8 +53,10 @@ for t = T-1 : -1 : 1
     t_step = tic;
     pol_next = struct('c', c_pol(:,:,:,:,t+1), 'pi', pi_pol(:,:,:,:,t+1));
     if dc_on, pol_next.tau = tau_pol(:,:,:,:,t+1); pol_next.reit = reit_pol(:,:,:,:,t+1); end
+    V_next = V(:,:,:,:,t+1);
+    if bnd, V_next = struct('V', V_next, 'V_cont', V_cont(:,:,:,:,t+1)); end
     [V(:,:,:,:,t), c_pol(:,:,:,:,t), pi_pol(:,:,:,:,t), tau_t, reit_t, Vc_t] = ...
-        solver.bellman_step_lna(t, V(:,:,:,:,t+1), p, profile, shocks, ann_price, pol_next);
+        solver.bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next);
     if dc_on, tau_pol(:,:,:,:,t) = tau_t; reit_pol(:,:,:,:,t) = reit_t; end
     if choice, V_cont(:,:,:,:,t) = Vc_t; end
     period_sec(t) = toc(t_step);

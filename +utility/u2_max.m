@@ -18,29 +18,8 @@ function m = u2_max(p, t, u1, u3, q, ann_price)
 %   The factor 1 - 1e-9 keeps the node at v = 1 just inside, where the
 %   household consumes the floor and saves nothing. u1, u3 and q are arrays
 %   of one size (q a scalar or empty where it plays no part); ann_price is
-%   needed only in retirement.
-net_inc = 1 - p.tau_inc;
-if t >= p.t_ret
-    y = net_inc; a = net_inc / ann_price(t);
-else
-    y = (1 - p.kappa(min(t, numel(p.kappa)))) * net_inc; a = 0;
-end
-if isempty(q), q = 1; end
-if p.h_mult == 0
-    h = 0;
-elseif p.is_owner
-    if t <= numel(p.m_rate_path), mr = p.m_rate_path(t); else, mr = 0; end
-    hm = mr; ht = p.theta;
-    if strcmp(p.mortgage, 'annuity'), hm = mr .* q; end
-    if p.maint_on_purchase, ht = p.theta .* q; end
-    h = ht + hm;
-else
-    h = p.alpha;
-end
-phi = p.phi_path(t);
-if p.floor_absorbing && isfield(p, 'default_choice') && p.default_choice, phi = p.phi_floor; end
-num = (1 - u1) + (y - phi) .* u1;
-den = (1 - u1) .* (1 - a .* u3 + h .* (1 - u3));
+%   needed only in retirement. The two terms are utility.slack_terms.
+[num, den] = utility.slack_terms(p, t, u1, u3, q, ann_price);
 m = min(1, (1 - 1e-9) * num ./ den);
 m(~(den > 0)) = 1;                  % u1 = 1: nothing but income, never short
 m = max(m, 1e-9);

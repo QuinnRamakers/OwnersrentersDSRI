@@ -36,7 +36,10 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %   the value of continuing at its state (sol.V_cont) is no more than the
 %   default value, or when it has no resources; a solvent household consumes
 %   what its policy says, which can be less than the floor amount, and floored
-%   marks the bankrupt.
+%   marks the bankrupt. With p.default_boundary = 'extend' the value of
+%   continuing is read as the solver then reads it, carried past the edge of
+%   continuing in proportion to resources (utility.cont_z); with 'off' and
+%   'cont', with 0 where continuing is not open, as before.
 %
 %   sol may instead carry sol.policy_fn, a function [s, pi] = f(t, u1, u2,
 %   u3, q) of the households' raw coordinates (neural.net_policy): s is the
@@ -104,6 +107,7 @@ assert(~choice || isfield(sol, 'V_cont') || isfield(sol, 'policy_fn'), 'paths_ln
 pp_zc = cell(T, 1);
 Dfac  = ones(T, 1);
 if choice, Dfac = p.D_beq(:) .^ (1 / (1 - p.gamma)); end
+extend_zc = choice && strcmp(utility.boundary_mode(p), 'extend');   % V_cont read as the solver reads it
 
 % Policies on the 4D grid where they depend on q (it enters this year or a
 % later one), and on the q = 1 slice elsewhere, where every slice is the same.
@@ -130,7 +134,7 @@ for t = 1 : T * ~use_fn
         ax = {g1, g2, p.u3_grid, q_grid};
         pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,:,t), 'linear', 'nearest');
         pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,:,t), 'linear', 'nearest');
-        if choice, pp_zc{t} = griddedInterpolant(ax, ce_units(sol.V_cont(:,:,:,:,t), p.gamma), 'linear', 'nearest'); end
+        if choice, pp_zc{t} = griddedInterpolant(ax, utility.cont_z(p, t, sol.V_cont(:,:,:,:,t), ann_price, extend_zc), 'linear', 'nearest'); end
         if dc_on
             pp_tS{t} = griddedInterpolant(ax, sol.tau_pol(:,:,:,:,t), 'linear', 'nearest');
             pp_tR{t} = griddedInterpolant(ax, sol.reit_pol(:,:,:,:,t), 'linear', 'nearest');
@@ -139,7 +143,7 @@ for t = 1 : T * ~use_fn
         ax = {g1, g2, p.u3_grid};
         pp_c{t}  = griddedInterpolant(ax, sol.c_pol(:,:,:,iq1,t), 'linear', 'nearest');
         pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:,:,:,iq1,t), 'linear', 'nearest');
-        if choice, pp_zc{t} = griddedInterpolant(ax, ce_units(sol.V_cont(:,:,:,iq1,t), p.gamma), 'linear', 'nearest'); end
+        if choice, pp_zc{t} = griddedInterpolant(ax, utility.cont_z(p, t, sol.V_cont(:,:,:,iq1,t), ann_price, extend_zc), 'linear', 'nearest'); end
         if dc_on
             pp_tS{t} = griddedInterpolant(ax, sol.tau_pol(:,:,:,iq1,t), 'linear', 'nearest');
             pp_tR{t} = griddedInterpolant(ax, sol.reit_pol(:,:,:,iq1,t), 'linear', 'nearest');
@@ -436,12 +440,4 @@ if any(n_off > 0)
          '(u1: %d, u2: %d, u3: %d, q: %d) and were extrapolated flat from the edge. ' ...
          'Widen the affected axis; see GRIDS.md.'], sum(n_off), N * T, n_off(1), n_off(2), n_off(3), n_off(4));
 end
-end
-
-function z = ce_units(V, gamma)
-%CE_UNITS  A value per unit of W^(1-gamma) as a certainty equivalent per unit
-%   of W; 0 where the value is -Inf (continuing is not open).
-z = zeros(size(V));
-m = isfinite(V);
-z(m) = ((1 - gamma) * V(m)) .^ (1 / (1 - gamma));
 end
