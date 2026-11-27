@@ -147,6 +147,37 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Neural network: steps 1-6, 7b and 12 trained and checked against the grid policy (spec: docs/prompts/neural_policy.md, parts 2-3)
+Runs on the PC, overnight; job lists in `neural/jobs/`, logs in `neural/data/logs/`, results in `neural/data/results_<tag>.mat`, figures in `neural/data/figures/` (`step1_matched_set.png`, `step2.png` to `step4.png`). Every network is scored against the grid policy on the same 20,000 test households (seed 202) with the same Julia lifetime utility; "paired s.e." is the standard error of the difference.
+
+| step | network | households, steps, rate | ce network (s.e.) | ce grid policy (s.e.) | network - grid (paired s.e.) | years at the floor, network / grid |
+|---|---|---|---|---|---|---|
+| 1 (CGM, gamma 10) | age only, 2 x 64 | 8,192, 3,000, 1e-3 | 0.5388 (0.023) | 0.6736 (0.008) | -0.1348 (0.018) | 0 / 0 |
+| 1 | retirement inputs, 2 x 64 | 8,192, 3,000, 1e-3 | 0.5719 (0.014) | 0.6736 | -0.1017 (0.0096) | 0 / 0 |
+| 1 | retirement inputs, 2 x 128 | 8,192, 3,000, 1e-3 | 0.6053 (0.015) | 0.6736 | -0.0683 (0.010) | 0 / 0 |
+| 1 | retirement inputs, 3 x 64 | 8,192, 3,000, 1e-3 | 0.6079 (0.015) | 0.6736 | -0.0657 (0.0099) | 0 / 0 |
+| 1 | retirement inputs, 2 x 64, seed 2 | 8,192, 3,000, 1e-3 | 0.6079 (0.017) | 0.6736 | -0.0657 (0.012) | 0 / 0 |
+| 1 | retirement inputs, 2 x 64 | 8,192, 3,000, 3e-3 | 0.6175 (0.013) | 0.6736 | -0.0561 (0.0081) | 0 / 0 |
+| 2 (gamma 5) | retirement inputs, 2 x 64 | 16,384, 3,000, 3e-3 | 0.9173 (0.0042) | 0.9189 (0.0042) | -0.0017 (0.0002) | 0 / 0 |
+| 3 (retire at 67) | same | same | 0.9184 (0.0043) | 0.9201 (0.0042) | -0.0018 (0.0002) | 0 / 0 |
+| 4 (DHS income) | same | same | 1.2601 (0.0022) | 1.2608 (0.0022) | -0.0007 (0.00003) | 0 / 0 |
+| 5 (the market) | same | same | 1.244 (0.0025) | 1.245 (0.0025) | -0.0008 (0.00004) | 0 / 0 |
+| 6 (corr_SL) | same | same | 1.243 (0.0026) | 1.244 (0.0025) | -0.0008 (0.00004) | 0 / 0 |
+| 12 (DC pot, no housing) | retirement inputs, 2 x 64 | 8,192, 1,500, 3e-3 | 1.141 (0.002) | 1.159 (0.0018) | -0.0177 (0.0004) | 0 / 0 |
+| 7b renter (quick grid) | retirement inputs, 2 x 64 | 8,192, 1,500, 3e-3 | 0.0297 | 5.1e-06 | +0.0297 | 0 / 0.00043 |
+| 7b owner (quick grid) | same | same | 4.3e-06 | 4.4e-06 | -1.2e-07 | 0.0028 / 0.0072 |
+
+The step-1 runs started the consumption share at 0.85 and used a training guard of 1e-3; the later runs 0.5 and the gamma rule (`neural/README.md`).
+
+What it means:
+1. At gamma 5, without housing (steps 2-6), the network reproduces the grid policy: welfare within 0.07-0.19% of consumption at every rung, and the same consumption, wealth and equity share by age up to about 85 (figure `step4.png`); after 90 it runs its wealth down more slowly than the grid and spends the rest at 100, which costs almost nothing because few households live that long and the years are discounted.
+2. At gamma 10 (the CGM core) the networks fall 6-13% of consumption short after 3,000 steps, and every change that helps (a higher learning rate, 128 units, a third layer, another seed) helps by a similar amount, which reads as under-training, not a wrong model. By age (`step1_matched_set.png`): the networks hold a flat equity share of 0.2-0.45 where the grid has the CGM shape (1.0 at 25, 0.4 at 55-70, rising to 0.55 at 95), save far more while working (wealth 30 against 20 at 65) and hardly run their wealth down after 65, spending it at 100. Half of all utility sits in the worst 1% of paths at gamma 10 (against 7-16% at gamma 5), so the gradient on the equity share is dominated by a few disastrous paths, and the later years get little weight from discounting and survival; both slow learning. The seed alone moves the result by 4 points.
+3. Step 12 (the pot, no housing) is 1.5% short after 1,500 steps, against 0.1-0.2% at steps 2-6 after 3,000.
+4. Step 7b (housing, the yearly top-up at 1e-6 of income) is not a test of the method. Both welfare numbers are set by years at the top-up, where utility is about 10^16 times worse than at normal consumption. The renter network has learned to give up almost anything to avoid them: it reaches no year at the floor (the grid policy 0.043%) by consuming 1.4% of income at 25, which every household does from the same entry state and which then sets its certainty equivalent (0.03). For owners one household (4572 in both panels), whose house grows to 270-350 times its income, cannot pay maintenance on the current value and sits at the floor from 83, under both policies; it sets both certainty equivalents. The network reaches the floor in 0.28% of owner years, the grid policy in 0.72%. The housing comparison therefore moved to step 18 (the absorbing floor at EUR 5,000, maintenance on the purchase price), where simulated welfare is not dominated by the top-up; step 13 (also on the top-up) was dropped.
+Checks run: as in the entries below; the Julia tests (104 of 104) were not rerun after this entry's runs, since no code changed.
+Commit: this entry, pushed to `work-2026-11-26`.
+Open: step 1 trained for 6,000 steps (CPU) and the joint step-1 check (GPU), the step-7b joint network, step 18 renters and owners separately and jointly (running).
+
 ### 2026-11-27 Neural network, part 2 begun: steps 1 and 2, the bequest in the Julia year, the commit limit (spec: docs/prompts/neural_policy.md, part 2)
 Changed: `neural/src/model.jl`, the bequest motive in utility as the solver values it (beta (1 - p_t) chi u(liquid wealth and the house net of the sale cost after a year of returns), bounded below by 1e-12 of wealth; the last year's bequest on one more year of draws, drawn in Julia with seed 777 and the same for every policy scored), and terms that are zero without a house or a pot left out (no number changes: the replay gaps are identical). `neural/src/policy.jl`: the consumption share's starting value (0.85 for the step-1 CPU runs below, 0.5 from then on: 0.85 started further from the grid, objective -182,000 against -2,400, and had caught up by step 250), progress lines, the training guard set from gamma. `neural/scripts/train_rung.jl`: each tenure's objective scaled by the value function's utility at entry (so -1 is the grid value function and both tenures of a joint network count alike; the grid policy's simulated utility is astronomically large from step 7 to 17), floor shares and log10 of the utility ratio in the results. New `neural/scripts/queue.sh`, `grid_ce.jl`, `summary.jl`, `+neural/plot_rung.m`, job lists in `neural/jobs/`. Test sets: `neural.make_testsets` for steps 1-6 and 12 at standard and fine numerics, 7b and 13 at quick, 20,000 households, seed 202; step 12 with chi = 32 at fine for the bequest check.
 Checks run, on the PC:
