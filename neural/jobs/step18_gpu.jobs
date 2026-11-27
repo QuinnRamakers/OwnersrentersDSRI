@@ -1,0 +1,4 @@
+# Step 18, one network for renters and owners (a tenure indicator), on the GPU,
+# with the settings of step18_cpu.jobs (8,192 households, 1,000 steps, 3e-3).
+# Run: JULIA_CUDA_SOFT_MEMORY_LIMIT=3GiB JULIA_CUDA_HARD_MEMORY_LIMIT=6GiB JULIA_FLAGS=--heap-size-hint=5G bash neural/scripts/queue.sh neural/jobs/step18_gpu.jobs 1
+step18_joint testset_18_renter_quick.mat testset_18_owner_quick.mat variants=ret_n8192_lr3e-3_k1000_joint

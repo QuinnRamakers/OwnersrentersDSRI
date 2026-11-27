@@ -1,0 +1,10 @@
+# Step 18 (housing, the DC pension, maintenance on the purchase price, the
+# absorbing floor at EUR 5,000): the first housing rung whose simulated
+# welfare is not dominated by the yearly top-up of steps 7-17. Renters and
+# owners separately on the CPU: retirement inputs, 8,192 households a step,
+# 1,000 steps, learning rate 3e-3 (3e-4 after 667), the hard bankruptcy rule
+# in training (the smoothing of the plan is not implemented). Test sets on the
+# quick grid. The joint network is step18_gpu.jobs, with the same settings.
+# Run: OPENBLAS_NUM_THREADS=3 JULIA_FLAGS=--heap-size-hint=2500M bash neural/scripts/queue.sh neural/jobs/step18_cpu.jobs 2
+step18_renter testset_18_renter_quick.mat variants=ret_n8192_lr3e-3_k1000 device=cpu
+step18_owner  testset_18_owner_quick.mat  variants=ret_n8192_lr3e-3_k1000 device=cpu
