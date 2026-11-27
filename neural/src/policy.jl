@@ -25,12 +25,18 @@ mortgage or maintenance on the purchase price), 1 elsewhere.
 """
 function features(m::Model, t::Integer, s, spec::Spec)
     F = eltype(s.Y)
-    W = s.X .+ s.A .+ s.H .+ s.Y
-    u1 = s.Y ./ W
-    sA = s.A ./ W
-    sAH = sA .+ s.H ./ W
-    u2 = sAH ./ max.(one(F) .- u1, F(1e-12))
-    u3 = clamp.(sA ./ max.(sAH, F(1e-12)), zero(F), one(F))
+    if has_housing(m) || has_dc(m)
+        W = s.X .+ s.A .+ s.H .+ s.Y
+        u1 = s.Y ./ W
+        sA = s.A ./ W
+        sAH = sA .+ s.H ./ W
+        u2 = sAH ./ max.(one(F) .- u1, F(1e-12))
+        u3 = clamp.(sA ./ max.(sAH, F(1e-12)), zero(F), one(F))
+    else
+        u1 = s.Y ./ (s.X .+ s.Y)     # A = H = 0, so u2 = u3 = 0
+        u2 = zero(u1)
+        u3 = u2
+    end
     q_on = m.is_owner && (m.annuity || m.maint_on_purchase)
     q = q_on ? s.q : zero(u1) .+ one(F)
     age = zero(u1) .+ F((t - 1) / (m.T - 1))
@@ -51,16 +57,23 @@ end
 
 A network from `features` to two raw outputs, mapped to (0, 1) by `choices`:
 the share of resources above the floor consumed and the liquid equity share.
-`depth` hidden layers of `hidden` units, tanh.
+`depth` hidden layers of `hidden` units, tanh; the outputs start at a
+consumption share of `c_init` and an equity share of one half.
 """
 function policy_net(spec::Spec; hidden::Integer=64, depth::Integer=2,
-                    rng::AbstractRNG=Random.default_rng())
+                    rng::AbstractRNG=Random.default_rng(), c_init::Real=0.85)
     init = Flux.glorot_uniform(rng)
     layers = Any[Dense(n_inputs(spec) => hidden, tanh; init)]
     for _ in 2:depth
         push!(layers, Dense(hidden => hidden, tanh; init))
     end
-    push!(layers, Dense(hidden => 2; init))
+    out = Dense(hidden => 2; init)
+    # Start at a consumption share of c_init of the resources above the floor
+    # and an equity share of one half, not at one half and one half: at
+    # gamma = 10 consuming half of income in the first year costs more than
+    # the network learns in its first hundreds of steps.
+    out.bias .= [log(c_init / (1 - c_init)), 0.0]
+    push!(layers, out)
     return f32(Chain(layers...))
 end
 

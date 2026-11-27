@@ -16,7 +16,7 @@ include("model.jl")
 include("policy.jl")
 
 export toy_policy, toy_shocks, toy_lifetime_utility, toy_ce, to_gpu, TOY_YEARS
-export Model, check_supported, draws_from_matlab, draw, entry, year, lifetime, panel
+export Model, has_housing, has_dc, check_supported, draws_from_matlab, draw, entry, year, lifetime, panel
 export certainty_equivalent, worst_share
 export Spec, n_inputs, features, policy_net, choices, replay_choices, train, evaluate
 

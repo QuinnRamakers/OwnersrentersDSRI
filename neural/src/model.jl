@@ -87,6 +87,12 @@ function Model(d::AbstractDict)
           D_abs=v("D_abs"), D_beq=v("D_beq"), chol=Matrix{Float64}(d["chol"]))
 end
 
+"Does the model have a house or rent index (H > 0)?"
+has_housing(m::Model) = m.h_mult > 0
+
+"Does the model have a DC pot (a contribution at some age)?"
+has_dc(m::Model) = any(>(0), m.kappa)
+
 "Refuse the parts of the model the Julia year does not cover yet."
 function check_supported(m::Model)
     m.default_choice && error("default as a choice (step 24) is not in the Julia year yet")
@@ -165,7 +171,12 @@ function year(m::Model, t::Integer, s, ch, e)
 
     # Housing cost as a share of H: the annuity on the purchase price q H,
     # maintenance on the purchase price or the current value.
-    if m.is_owner
+    # Without a house (H = 0) or a pot (no contribution at any age, so A = 0)
+    # the terms they would add are zero and are left out, which changes no
+    # number and saves work.
+    hous = has_housing(m)
+    dc = has_dc(m)
+    if hous && m.is_owner
         mr = F(m.m_rate[t])
         m_q = m.annuity ? mr .* s.q : mr
         th_q = m.maint_on_purchase ? F(m.theta) .* s.q : F(m.theta)
@@ -174,13 +185,18 @@ function year(m::Model, t::Integer, s, ch, e)
         hcr = F(m.alpha)
     end
 
+    ann_pay = nothing
     if retired
-        ann_pay = s.A ./ F(m.ann_price[t])
-        LW = s.X .+ net_inc .* s.Y .+ ann_pay .* net_inc .- hcr .* s.H
+        if dc
+            ann_pay = s.A ./ F(m.ann_price[t])
+            LW = hous ? s.X .+ net_inc .* s.Y .+ ann_pay .* net_inc .- hcr .* s.H :
+                        s.X .+ net_inc .* s.Y .+ ann_pay .* net_inc
+        else
+            LW = hous ? s.X .+ net_inc .* s.Y .- hcr .* s.H : s.X .+ net_inc .* s.Y
+        end
     else
-        ann_pay = zero(s.A)
         contrib_factor = (1 - kappa_t) * net_inc
-        LW = s.X .+ contrib_factor .* s.Y .- hcr .* s.H
+        LW = hous ? s.X .+ contrib_factor .* s.Y .- hcr .* s.H : s.X .+ contrib_factor .* s.Y
     end
 
     # The floor. With the absorbing floor a household bankrupt earlier has no
@@ -225,26 +241,29 @@ function year(m::Model, t::Integer, s, ch, e)
     Rf_at = F((1 + m.r * (1 - m.tau_cg_bond)) * (1 - m.tau_wealth))
     R_X = (one(F) .- pi_) .* Rf_at .+ pi_ .* R_S_at
 
-    if m.dc_choice
-        tS = clamp.(ch.tS, zero(F), one(F))
-        tR = clamp.(ch.tR, zero(F), one(F))
-        tot = tS .+ tR
-        over = tot .> one(F)
-        tS = ifelse.(over, tS ./ tot, tS)
-        tR = ifelse.(over, tR ./ tot, tR)
-        tS = ifelse.(look, tS, F(m.tau_e[t]))
-        tR = ifelse.(look, tR, F(m.reit_e[t]))
+    if dc
+        if m.dc_choice
+            tS = clamp.(ch.tS, zero(F), one(F))
+            tR = clamp.(ch.tR, zero(F), one(F))
+            tot = tS .+ tR
+            over = tot .> one(F)
+            tS = ifelse.(over, tS ./ tot, tS)
+            tR = ifelse.(over, tR ./ tot, tR)
+            tS = ifelse.(look, tS, F(m.tau_e[t]))
+            tR = ifelse.(look, tR, F(m.reit_e[t]))
+        else
+            tS = F(m.tau_e[t])
+            tR = F(m.reit_e[t])
+        end
+        R_REIT = m.reit_on ? exp.(F(m.mu_REIT) .+ F(m.sigma_REIT) .* e.eps_R[t]) : one(F)
+        R_A = ((one(F) .- tS .- tR) .* F(m.Rf) .+ tS .* R_S .+ tR .* R_REIT) ./ F(max(m.p_surv[t], 1e-8))
+        A_pre = retired ? s.A .- ann_pay : s.A .+ kappa_t .* s.Y
+        A1 = R_A .* A_pre
     else
-        tS = F(m.tau_e[t])
-        tR = F(m.reit_e[t])
+        A1 = s.A
     end
-    R_REIT = m.reit_on ? exp.(F(m.mu_REIT) .+ F(m.sigma_REIT) .* e.eps_R[t]) : one(F)
-    R_A = ((one(F) .- tS .- tR) .* F(m.Rf) .+ tS .* R_S .+ tR .* R_REIT) ./ F(max(m.p_surv[t], 1e-8))
-
-    A_pre = retired ? s.A .- ann_pay : s.A .+ kappa_t .* s.Y
     X1 = R_X .* X_post
-    A1 = R_A .* A_pre
-    H1 = R_H .* s.H
+    H1 = hous ? R_H .* s.H : s.H
     q1 = s.q ./ R_H
     if m.floor_absorbing
         X1 = ifelse.(look, X1, zero(F))

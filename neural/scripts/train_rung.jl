@@ -20,7 +20,7 @@ function parse_variant(v::AbstractString)
     base = parts[1]
     base in ("age", "ret") || error("variant $v: the base must be age or ret")
     o = Dict{String,Any}("name" => v, "retire" => base == "ret", "hidden" => 64, "depth" => 2,
-                         "seed" => 1, "N" => 4096, "steps" => 3000, "lr" => 1e-3, "joint" => false)
+                         "seed" => 1, "N" => 16384, "steps" => 3000, "lr" => 1e-3, "joint" => false)
     for p in parts[2:end]
         if p == "joint"
             o["joint"] = true
@@ -39,7 +39,10 @@ function profiles(P, m)
     Y0 = m.Y0
     solvent = P["absorbed"] .== 0
     pi_mean = [mean(P["pi"][solvent[:, t], t]) for t in 1:m.T]
-    return Dict("C" => vec(mean(P["C"]; dims=1)) ./ Y0,
+    u1 = P["Y"] ./ (P["X"] .+ P["A"] .+ P["H"] .+ P["Y"])
+    qtl(p) = [quantile(u1[:, t], p) for t in 1:m.T]
+    return Dict("u1_p01" => qtl(0.01), "u1_p50" => qtl(0.5), "u1_p99" => qtl(0.99),
+                "C" => vec(mean(P["C"]; dims=1)) ./ Y0,
                 "X" => vec(mean(P["X"]; dims=1)) ./ Y0,
                 "W" => vec(mean(P["X"] .+ P["A"] .+ P["H"]; dims=1)) ./ Y0,
                 "Y" => vec(mean(P["Y"]; dims=1)) ./ Y0,
@@ -63,10 +66,10 @@ function with_owner(m::Model, owner::Bool)
     return Model(; kw...)
 end
 
-tag = ARGS[1]
+tag = String(ARGS[1])
 files = filter(a -> endswith(a, ".mat"), ARGS[2:end])
 opts = Dict(split(a, "=")[1] => split(a, "=")[2] for a in ARGS[2:end] if occursin("=", a))
-variants = split(get(opts, "variants", "ret"), ",")
+variants = String.(split(get(opts, "variants", "ret"), ","))
 device = Symbol(get(opts, "device", "gpu"))
 
 sets = map(files) do f
