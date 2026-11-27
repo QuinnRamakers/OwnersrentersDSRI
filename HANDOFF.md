@@ -147,6 +147,28 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Neural network: step 18 trained for 3,000 steps, separately and jointly; summary of the night (spec: docs/prompts/neural_policy.md, part 3)
+Step 18 again, 3,000 steps instead of 1,000 (`neural/jobs/step18_long.jobs` on the CPU, 88 minutes; `gpu_morning.jobs` joint on the GPU, 63 minutes), otherwise as the entry below. Scored on the standard-grid test sets with `neural/scripts/evaluate.jl`. Figures `neural/data/figures/step18_renters.png`, `step18_owners.png` (all four networks against the standard-grid policy), `step1_long.png`.
+
+| step 18, against the standard-grid policy | renters: ce | network - grid (paired s.e.) | years bankrupt | owners: ce | network - grid (paired s.e.) | years bankrupt |
+|---|---|---|---|---|---|---|
+| grid policy, standard grid | 0.2161 | | 4.61% | 0.2642 | | 0.21% |
+| separate, 1,000 steps | 0.2396 | +0.0235 (0.0026) | 1.45% | 0.2814 | +0.0172 (0.0056) | 0.08% |
+| separate, 3,000 steps | 0.2438 | +0.0277 (0.0026) | 1.30% | 0.2866 | +0.0223 (0.0062) | 0.07% |
+| joint, 1,000 steps | 0.2401 | +0.0240 (0.0027) | 1.25% | 0.2847 | +0.0204 (0.0057) | 0.07% |
+| joint, 3,000 steps | 0.2448 | +0.0287 (0.0025) | 1.55% | 0.2854 | +0.0212 (0.0060) | 0.07% |
+
+Three times the training adds about half a point for each tenure: 13% of consumption above the grid policy for renters and 8% for owners. Joint and separate stay within each other's standard errors. The consumption drop at 67 (renters, from about 0.8 to 0.55 of entry income) is in all four networks, so it is how this set-up learns the transition into retirement, not something that 3,000 steps remove.
+
+Summary of the night, in order of the plan:
+1. Parts 0 and 1 done: the Julia model year reproduces `simulate.paths_lna` to 1.5e-14 of the larger of the value and entry income at steps 1 to 23, bequest utility included and checked against the solver; 104 Julia tests pass.
+2. Without housing the network method reproduces the grid policy at gamma 5 (steps 2-6: within 0.07-0.19% of consumption; step 12 with the pot: 1.5% after 1,500 steps) but not yet at gamma 10 (the CGM core, step 1: 6% short after 6,000 steps, too little and too flat an equity share, too slow a decumulation; half of all utility in the worst 1% of paths).
+3. With housing and the yearly top-up (steps 7-17) simulated welfare is set by years at the top-up, for the grid policy and the network alike, so those rungs are no test of either.
+4. With the absorbing floor (step 18) the networks beat the standard-grid policy on simulated welfare by 8-13% of consumption and are bankrupt a third as often, separately or jointly; the grid's value function overstates its own policy by 40-60%.
+5. Not done: smoothing the bankruptcy jump in training, the bequest rung (step 23) and production (step 24, default as a choice), the step-18 comparison on the fine grid, figures of steps 5, 6 and 12. A wide 6,000-step step-1 run was still on the GPU at 07:00 (`step1gpu_ret_w128_lr3_k6000`).
+Commit: this entry, pushed to `work-2026-11-26`.
+Open: the points under 5; for Quinn, whether the step-18 result holds on the fine (production) grid, which takes about 4 hours a tenure on the PC, or on the DSRI.
+
 ### 2026-11-27 Neural network: step 18, renters and owners separately and jointly, against the grid policy on the quick and standard grids (spec: docs/prompts/neural_policy.md, part 3)
 Step 18 (housing, the DC pension, maintenance on the purchase price, the absorbing floor at EUR 5,000) is the first housing rung whose simulated welfare is not set by the yearly top-up. Test sets: `neural.make_testsets({18}, numerics={'quick'})` and `{'standard'}` (renters 64 s and 136 s, owners 536 s and 1,561 s on the PC; same draws, seed 202, 20,000 households). Networks: retirement inputs, 2 x 64, 8,192 households a step, 1,000 steps, learning rate 3e-3, the hard bankruptcy rule in training (the plan's smoothing is not implemented); separate on the CPU (`neural/jobs/step18_cpu.jobs`, 30 minutes each), joint on the GPU with a tenure indicator (`step18_gpu.jobs`, 23 minutes). Trained against draws outside the test sets; scored with `neural/scripts/evaluate.jl` (new; also writes `results_<tag>_<run>_eval.mat` for `neural.plot_rung`). Figures: `neural/data/figures/step18_renter_standard.png`, `step18_owner_standard.png`.
 
