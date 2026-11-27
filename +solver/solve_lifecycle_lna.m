@@ -35,10 +35,23 @@ V_cont = [];
 if choice, V_cont = -inf(N1, N2, N3, Nq, T); end
 % p.default_boundary: each step reads next year's V_cont as well as its V.
 bnd = choice && ~strcmp(utility.boundary_mode(p), 'off');
+% p.u2_coord = 'boundary': before each period is solved, its default
+% boundary is found on every (u1, u3, q) line (solver.find_boundary) and put
+% in p.u2_bnd, so that period's u2 nodes, v = u2 / u2b, have v = 1 on it.
+bcoord = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'boundary');
+bnd_sec = zeros(T, 1); bnd_info = cell(T, 1);
+if bcoord
+    assert(choice, 'solve_lifecycle_lna:boundary', 'u2_coord = ''boundary'' needs default as a choice.');
+    p.u2_bnd = ones(N1, N3, Nq, T);
+end
 period_sec = zeros(T, 1);
 t0 = tic;
 
 t_step = tic;
+if bcoord
+    [p.u2_bnd(:,:,:,T), bnd_info{T}] = solver.find_boundary(T, [], p, profile, shocks, ann_price);
+    bnd_sec(T) = bnd_info{T}.sec;
+end
 [V(:,:,:,:,T), c_pol(:,:,:,:,T), pi_pol(:,:,:,:,T), tau_T, reit_T, Vc_T] = ...
     solver.bellman_step_lna(T, [], p, profile, shocks, ann_price);
 if dc_on, tau_pol(:,:,:,:,T) = tau_T; reit_pol(:,:,:,:,T) = reit_T; end
@@ -55,6 +68,10 @@ for t = T-1 : -1 : 1
     if dc_on, pol_next.tau = tau_pol(:,:,:,:,t+1); pol_next.reit = reit_pol(:,:,:,:,t+1); end
     V_next = V(:,:,:,:,t+1);
     if bnd, V_next = struct('V', V_next, 'V_cont', V_cont(:,:,:,:,t+1)); end
+    if bcoord
+        [p.u2_bnd(:,:,:,t), bnd_info{t}] = solver.find_boundary(t, V_next, p, profile, shocks, ann_price);
+        bnd_sec(t) = bnd_info{t}.sec;
+    end
     [V(:,:,:,:,t), c_pol(:,:,:,:,t), pi_pol(:,:,:,:,t), tau_t, reit_t, Vc_t] = ...
         solver.bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next);
     if dc_on, tau_pol(:,:,:,:,t) = tau_t; reit_pol(:,:,:,:,t) = reit_t; end
@@ -78,9 +95,13 @@ end
 sol.V = V; sol.c_pol = c_pol; sol.pi_pol = pi_pol;
 if dc_on, sol.tau_pol = tau_pol; sol.reit_pol = reit_pol; end
 if choice, sol.V_cont = V_cont; end
+if bcoord
+    sol.u2_bnd = p.u2_bnd;
+    sol.bnd_info = [bnd_info{:}];
+end
 sol.grid_type = 'lna';
 sol.elapsed = toc(t0);
-sol.timing  = struct('period_sec', period_sec, 'total_sec', sol.elapsed, ...
+sol.timing  = struct('period_sec', period_sec, 'bnd_sec', bnd_sec, 'total_sec', sol.elapsed, ...
                      'pool', pool_info(), 'hostname', hostname(), ...
                      'timestamp', char(datetime('now')));
 end

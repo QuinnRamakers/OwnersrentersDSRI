@@ -84,8 +84,8 @@ for t = 1:T
     [g1, g2] = utility.grid_at(p, t);
     lam = sim.lambda(idx, t); sA = sim.sA(idx, t); sH = sim.sH(idx, t); qq = sim.q(idx, t);
     sAH = sA + sH; u2 = sAH ./ max(1 - lam, 1e-12); u3 = min(max(sA ./ max(sAH, 1e-12), 0), 1);
-    if isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge')
-        u2 = u2 ./ utility.u2_max(p, t, lam, u3, qq, r.ann_price);   % the grid's v
+    if isfield(p, 'u2_coord') && any(strcmp(p.u2_coord, {'edge', 'boundary'}))
+        u2 = u2 ./ utility.u2_scale(p, t, lam, u3, qq, r.ann_price);   % the grid's v
     end
     % V_int is the value the solver's continuation gives the state: the
     % bankrupt value where the state is bankrupt (forced rule) or has no

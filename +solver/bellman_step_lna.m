@@ -122,6 +122,17 @@ function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_n
 %   vectors, one entry per state. For checks of the value between nodes and
 %   of the policy's interpolation (diagnostics/value_gap); a grid solve is
 %   unchanged by it.
+%
+%   With p.u2_coord = 'boundary' (default as a choice) the second axis holds
+%   v = u2 / u2b(t, u1, u3, q), where u2b = R u2_max is the default boundary
+%   of the node's (u1, u3, q) line, found before the period is solved
+%   (solver.find_boundary; p.u2_bnd holds R for every period, interpolated
+%   between lines by utility.u2_scale_fn). The node v = 1 sits on the
+%   boundary, where continuing and defaulting are worth the same, so no cell
+%   straddles the kink of V = max(V_default, V_continue); next year's value
+%   is read at v' = u2' / u2b(t+1), and past v' = 1 the flat extrapolation
+%   gives the boundary node's value, the default value to the search's
+%   precision.
 
 if nargin < 7, pol_next = []; end              % the last period has no next policy
 if nargin < 8, fixed = []; end                 % no fixed policy: search at every node
@@ -172,9 +183,15 @@ end
 % the nodes' u2 follows this year's edge of bankruptcy at each (u1, u3, q),
 % so they are placed per q slice below, and next year's value is read at
 % v' = u2' / u2_max(t+1).
-edge = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge');
+% With p.u2_coord = 'boundary' the axis is v = u2 / u2b instead, u2b the
+% default boundary of each line (solver.find_boundary, p.u2_bnd), so the node
+% v = 1 sits on the boundary; the rest is as with the edge.
+bcoord = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'boundary');
+assert(~bcoord || (isfield(p, 'u2_bnd') && ~isempty(p.u2_bnd)), 'bellman_step_lna:no_u2_bnd', ...
+    'u2_coord = ''boundary'' needs p.u2_bnd (solver.find_boundary; solver.solve_lifecycle_lna fills it).');
+edge = isfield(p, 'u2_coord') && any(strcmp(p.u2_coord, {'edge', 'boundary'}));
 assert(~edge || ~(isfield(p, 'u2_grid_age') && ~isempty(p.u2_grid_age)), 'bellman_step_lna:edge', ...
-    'u2_coord = ''edge'' does not combine with a u2 grid that follows age.');
+    'u2_coord = ''edge'' or ''boundary'' does not combine with a u2 grid that follows age.');
 V2 = U2;                                       % the nodes' v (edge) or u2
 
 gamma   = p.gamma;
@@ -393,7 +410,17 @@ if ~last
                 pp_z = @(varargin) max(pp_lin(varargin{:}), z_min);
             end
     end
-    if edge
+    if bcoord
+        % Read next year's value at v' = u2' / u2b(t+1), next year's default
+        % boundary (utility.u2_scale_fn); q' where it counts.
+        m1 = utility.u2_scale_fn(p, t + 1, ann_price);
+        pp_u = pp_z;
+        if q_cont
+            pp_z = @(u1, u2, u3, q) pp_u(u1, u2 ./ m1(u1, u3, q), u3, q);
+        else
+            pp_z = @(u1, u2, u3) pp_u(u1, u2 ./ m1(u1, u3, []), u3);
+        end
+    elseif edge
         % Read next year's value at v' = u2' / u2_max(t+1); q' where it counts.
         pe = edge_struct(p);
         pp_u = pp_z;
@@ -792,7 +819,11 @@ end
 function [lam, sA, sH] = edge_shares(p, t, U1, V2, U3, q, ann_price)
 %EDGE_SHARES  The shares of W at the nodes (U1, V2, U3) of the edge
 %   coordinate at one q: u2 = v * u2_max(t, u1, u3, q).
-U2 = V2 .* utility.u2_max(p, t, U1, U3, q, ann_price);
+if isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'boundary')
+    U2 = V2 .* utility.u2_scale(p, t, U1, U3, q, ann_price);   % the line's default boundary at v = 1
+else
+    U2 = V2 .* utility.u2_max(p, t, U1, U3, q, ann_price);
+end
 lam = U1;
 sA  = U2 .* (1 - U1) .* U3;
 sH  = U2 .* (1 - U1) .* (1 - U3);

@@ -131,7 +131,7 @@ p.lambda_lo     = [];         % bottom of the u1 axis; [] = 0.0008, or 0.0002 wi
 p.lambda_hi     = [];         % top of the u1 axis; [] = min(0.9, 3/(1+h_mult)), or 1 without housing
 p.grid_pow      = 3;          % > 1 bunches u1 nodes toward the bottom
 p.grid_pow_u2   = 3;          % > 1 bunches u2 nodes toward 1
-p.u2_coord      = 'share';    % second axis: 'share', u2 = (A+H)/(W-Y); 'edge', v = u2 / u2_max, the edge of bankruptcy at v = 1 (utility.u2_max)
+p.u2_coord      = 'share';    % second axis: 'share', u2 = (A+H)/(W-Y); 'edge', v = u2 / u2_max, the edge of bankruptcy at v = 1 (utility.u2_max); 'boundary', v = u2 / u2b, the default boundary at v = 1 (solver.find_boundary; default as a choice)
 p.u2_lo         = 0;          % bottom of the u2 axis
 p.u3_lo         = 0;          % bottom of the u3 axis
 p.u3_hi         = 1;          % top of the u3 axis

@@ -30,7 +30,7 @@ if opts.solve
                        @nohousing_arms_corr, @annuity_flat_prices, @annuity_payment_pv, ...
                        @figures_render, @floor_off_identical, @floor_absorbing, @floor_node_test, ...
                        @bequest_off_identical, @bequest_last_year, @bequest_bankrupt, @fast_power_step, ...
-                       @default_boundary_step}];
+                       @default_boundary_step, @boundary_coord_solve}];
     % Some checks call the solver without model.run, so parfor would open
     % MATLAB's default pool: processes, which run out of memory on the DSRI
     % pod. Open the thread pool model.run uses instead.
@@ -979,6 +979,43 @@ for owner = [false true]
     end
     assert(changed, 'owner %d: default_boundary changed nothing', owner);
 end
+end
+
+function boundary_coord_solve()
+% u2_coord = 'boundary' (step 24 renters, small grid, c_min = 10,000 so that
+% default is near): the solve keeps the boundary of every line and period,
+% a share of u2_max in (0, 1]; at the node v = 1 of a line that crosses, the
+% value of continuing equals the default value to the search's precision
+% (within 1e-4 in consumption units at 98% of such nodes; the grid's search
+% starts from next year's policy, the boundary's from fixed points); the
+% nodes below it continue (99%); and the panel defaults past the boundary.
+ce = @(V, g) ((1 - g) * V) .^ (1 / (1 - g));
+p = ladder.params(24); p.c_min = 10000; p.u2_coord = 'boundary';
+p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
+assert(p.u2_grid(end) == 1, 'the v axis does not end at 1');
+r = model.run(p, N_sim = 2000, keep_sim = true, verbose = false);
+R = r.sol.u2_bnd;
+assert(isequal(size(R), [numel(p.u1_grid), numel(p.u3_grid), numel(p.q_grid), p.T]) && all(R(:) > 0 & R(:) <= 1), ...
+    'the boundary table');
+gap = []; below = []; n_cross = 0;
+for t = [10, p.t_ret + 5, p.T - 3]
+    Vc = r.sol.V_cont(:, :, :, :, t);
+    zd = p.phi_path(t) * p.u1_grid(:) * p.D_beq(t) ^ (1 / (1 - p.gamma));
+    zc = ce(Vc, p.gamma);
+    cross = squeeze(R(:, :, :, t) < 1 & R(:, :, :, t) > 1e-3);     % N1 x N3 x Nq
+    n_cross = n_cross + nnz(cross);
+    top = squeeze(zc(:, end, :, :)) ./ zd - 1;
+    gap = [gap; top(cross)]; %#ok<AGROW>
+    lo = zc(:, 1:end-1, :, :) > zd;                                % continue below the boundary
+    below = [below; lo(:)]; %#ok<AGROW>
+end
+fprintf('      boundary_coord_solve: %d crossing lines at three ages, |z_cont/z_def - 1| at v = 1: median %.2g, max %.2g; nodes below continuing %.4f\n', ...
+    n_cross, median(abs(gap)), max(abs(gap)), mean(below));
+assert(n_cross > 0, 'no line crosses: the test is empty');
+assert(mean(abs(gap) < 1e-4) >= 0.98, 'the v = 1 node is not on the boundary');
+assert(mean(below) >= 0.99, 'nodes below the boundary default');
+s = r.sim;
+assert(any(s.absorbed(:)) && all(isfinite(s.C(:))) && isfinite(r.checks.ce_entry), 'the panel');
 end
 
 function tf = threw_id(f, id)

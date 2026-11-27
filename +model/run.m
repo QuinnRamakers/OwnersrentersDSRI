@@ -45,6 +45,9 @@ end
 t0  = tic;
 sol = solver.solve(p, profile, shocks, ann_price, opts.verbose);
 t_solve = toc(t0);
+% p.u2_coord = 'boundary': the default boundary the solve found is part of
+% the grid's coordinates, so everything that reads r.p gets it.
+if isfield(sol, 'u2_bnd'), p.u2_bnd = sol.u2_bnd; end
 
 t1  = tic;
 sim = simulate.forward(p, profile, sol, ann_price, opts.N_sim, opts.seed, p.b0);

@@ -22,9 +22,9 @@ end
 b = [p.b0, p.b_alt];
 p.u1_grid = merge_nodes(p.u1_grid, 1 ./ (1 + p.h_mult + b));
 u2a = p.h_mult ./ (p.h_mult + b);
-if isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge')
+if isfield(p, 'u2_coord') && any(strcmp(p.u2_coord, {'edge', 'boundary'}))
     % The edge coordinate v = u2 / u2_max (utility.u2_max): the entry states' v at 25.
-    u2a = u2a ./ utility.u2_max(p, 1, 1 ./ (1 + p.h_mult + b), zeros(size(b)), 1, []);
+    u2a = u2a ./ utility.u2_scale(p, 1, 1 ./ (1 + p.h_mult + b), zeros(size(b)), 1, []);   % 'boundary': as 'edge' before any solve
 end
 p.u2_grid = merge_nodes(p.u2_grid, u2a);
 p.N_u1    = numel(p.u1_grid);

@@ -126,6 +126,11 @@ use_fn = isfield(sol, 'policy_fn');
 % p.u2_coord = 'edge': the grid's second axis is v = u2 / u2_max (utility.u2_max).
 % A policy function still takes u2 itself.
 edge = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge') && ~use_fn;
+% p.u2_coord = 'boundary': v = u2 / u2b, u2b the default boundary the solve
+% found (sol.u2_bnd, utility.u2_scale_fn); a household at v >= 1 is on the
+% default side and defaults.
+bcoord = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'boundary') && ~use_fn;
+if isfield(sol, 'u2_bnd'), p.u2_bnd = sol.u2_bnd; end
 assert(~use_fn || ~dc_on, 'paths_lna:policy_fn', ...
     'sol.policy_fn does not cover free DC choice.');
 for t = 1 : T * ~use_fn
@@ -238,6 +243,8 @@ for t = 1:T
     if edge
         % the edge coordinate v = u2 / u2_max, in which the policies are stored
         u2_raw = u2_raw ./ utility.u2_max(p, t, u1_raw, u3_raw, q_path(:,t), ann_price);
+    elseif bcoord
+        u2_raw = u2_raw ./ utility.u2_scale(p, t, u1_raw, u3_raw, q_path(:,t), ann_price);
     end
     [g1, g2] = utility.grid_at(p, t);
     u1q = min(max(u1_raw, g1(1)), g1(end));
@@ -267,6 +274,7 @@ for t = 1:T
             else
                 if q_dep(t), zc = pp_zc{t}(u1q, u2q, u3q, qq); else, zc = pp_zc{t}(u1q, u2q, u3q); end
                 enter = ~gone & (LW <= F_lo | W_path(:,t) .* zc <= F_t * Dfac(t));
+                if bcoord, enter = enter | (~gone & u2_raw >= 1); end   % past the boundary
             end
         else
             enter = ~gone & LW < F_t;

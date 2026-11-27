@@ -14,7 +14,9 @@ function sol2 = fresh_policy(r, mode, opts)
 %   only where the corner nodes of the household's grid cell disagree (the
 %   cell the default boundary runs through); elsewhere the nodes' common
 %   decision is taken. If the boundary does not fold back inside a cell this
-%   is the 'default' rule at a fraction of the cost.
+%   is the 'default' rule at a fraction of the cost. With u2_coord =
+%   'boundary' every state at or past v = 1 is solved too: the cell there
+%   is clamped onto the boundary nodes, whose decisions are a tie.
 %   If simulated welfare then rises to the value function, the policy's
 %   interpolation (or the simulator's default rule) is the cause of the gap.
 %   The point solves run in the pool the solver uses. sol2.stats() returns
@@ -26,6 +28,8 @@ arguments
     opts.gh_n double = []          % the point solves' quadrature: gh_n nodes a shock (default r.p.gh_n)
 end
 p = r.p;
+if isfield(r.sol, 'u2_bnd'), p.u2_bnd = r.sol.u2_bnd; r.p = p; end
+bcoord = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'boundary');
 pg = p; if ~isempty(opts.gh_n), pg.gh_n = opts.gh_n; end
 r.shocks = grids.shock_grid(pg);
 choice = p.floor_absorbing && isfield(p, 'default_choice') && p.default_choice;
@@ -51,6 +55,13 @@ sol2 = struct('policy_fn', @fn, 'stats', @stats);
             dn = node_d{t}(u1, u2, u3, q);           % share of the cell's corners that default
             mixed = solve & dn > 1e-12 & dn < 1 - 1e-12;
             d = dn >= 1 - 1e-12;
+            if bcoord
+                % u2_coord = 'boundary': past v = 1 the cell is clamped onto the
+                % boundary nodes, where the two values tie, so their decisions
+                % say nothing there: solve every such state.
+                vv = u2 ./ utility.u2_scale(p, t, u1, u3, q, r.ann_price);
+                mixed = mixed | (solve & vv >= 1 - 1e-9);
+            end
             n_cell(t) = n_cell(t) + sum(mixed);
             if any(mixed)
                 [~, ~, ~, Vc] = point_solve(r, t, lam(mixed), sA(mixed), sH(mixed), q(mixed));
@@ -95,7 +106,14 @@ function f = node_decisions(r)
 %   as the simulator clamps them: strictly between 0 and 1 means the
 %   household's cell has corners that disagree.
 p = r.p; sol = r.sol; T = p.T;
-assert(~(isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge')), 'fresh_policy:edge', 'boundary mode reads the share coordinate only.');
+% The grid's second axis: u2 itself, or v = u2 / u2_max (edge) or u2 / u2b (boundary).
+vax = isfield(p, 'u2_coord') && any(strcmp(p.u2_coord, {'edge', 'boundary'}));
+if isfield(sol, 'u2_bnd'), p.u2_bnd = sol.u2_bnd; end
+if vax
+    tov = @(t, u1, u2, u3, q) u2 ./ utility.u2_scale(p, t, u1, u3, q, r.ann_price);
+else
+    tov = @(t, u1, u2, u3, q) u2;
+end
 q_grid = p.q_grid(:); iq1 = find(q_grid == 1);
 q_dep = numel(q_grid) > 1 & flipud(cummax(flipud(double(p.q_live(:))))) > 0;
 Dfac = p.D_beq(:) .^ (1 / (1 - p.gamma));
@@ -109,10 +127,10 @@ for t = 1:T
     lim = [g1(1), g1(end), g2(1), g2(end), q_grid(1), q_grid(end)];
     if q_dep(t)
         G = griddedInterpolant({g1, g2, p.u3_grid, q_grid}, dn, 'linear', 'nearest');
-        f{t} = @(u1, u2, u3, q) G(min(max(u1, lim(1)), lim(2)), min(max(u2, lim(3)), lim(4)), u3, min(max(q, lim(5)), lim(6)));
+        f{t} = @(u1, u2, u3, q) G(min(max(u1, lim(1)), lim(2)), min(max(tov(t, u1, u2, u3, q), lim(3)), lim(4)), u3, min(max(q, lim(5)), lim(6)));
     else
         G = griddedInterpolant({g1, g2, p.u3_grid}, dn(:, :, :, iq1), 'linear', 'nearest');
-        f{t} = @(u1, u2, u3, q) G(min(max(u1, lim(1)), lim(2)), min(max(u2, lim(3)), lim(4)), u3);
+        f{t} = @(u1, u2, u3, q) G(min(max(u1, lim(1)), lim(2)), min(max(tov(t, u1, u2, u3, q), lim(3)), lim(4)), u3);
     end
 end
 end

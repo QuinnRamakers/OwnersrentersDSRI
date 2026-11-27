@@ -36,12 +36,12 @@ if ~extend || all(m(:)), return; end
 N1 = numel(g1); N2 = numel(g2); N3 = numel(p.u3_grid); Nq = size(Vc, 4);
 q_grid = p.q_grid(:);
 if Nq == 1, q_grid = 1; end
-edge = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge');
+edge = isfield(p, 'u2_coord') && any(strcmp(p.u2_coord, {'edge', 'boundary'}));
 [U1, U2, U3] = ndgrid(g1, g2, p.u3_grid);
 for iq = 1:Nq
     [num, den] = utility.slack_terms(p, t, U1, U3, q_grid(iq), ann_price);
     u2 = U2;
-    if edge, u2 = U2 .* utility.u2_max(p, t, U1, U3, q_grid(iq), ann_price); end
+    if edge, u2 = U2 .* utility.u2_scale(p, t, U1, U3, q_grid(iq), ann_price); end
     s  = num - den .* u2;                         % N1 x N2 x N3
     zs = z(:, :, :, iq); ms = m(:, :, :, iq);
     for i3 = 1:N3

@@ -28,12 +28,12 @@ for t = 1:T
         pp_pi{t} = griddedInterpolant(ax, sol.pi_pol(:, :, :, iq1, t), 'linear', 'nearest');
     end
 end
-edge = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge');   % the grid's second axis is v = u2 / u2_max
+edge = isfield(p, 'u2_coord') && any(strcmp(p.u2_coord, {'edge', 'boundary'}));   % the grid's second axis is v = u2 / u2_max (or the default boundary)
 pol = struct('fn', @lookup, 'kind', 'c');
 
     function [c, pi_] = lookup(t, u1, u2, u3, q)
         L = lim{t};
-        if edge, u2 = u2 ./ utility.u2_max(p, t, u1, u3, q, r.ann_price); end   % the grid's v
+        if edge, u2 = u2 ./ utility.u2_scale(p, t, u1, u3, q, r.ann_price); end   % the grid's v
         u1 = min(max(u1, L(1)), L(2));
         u2 = min(max(u2, L(3)), L(4));
         q  = min(max(q, L(5)), L(6));
