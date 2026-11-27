@@ -1,0 +1,6 @@
+# Step 18 renters and owners separately, trained for 3,000 steps: after 1,000
+# they already beat the quick-grid policy and were still improving. As
+# step18_cpu.jobs otherwise.
+# Run: OPENBLAS_NUM_THREADS=3 JULIA_FLAGS=--heap-size-hint=2500M bash neural/scripts/queue.sh neural/jobs/step18_long.jobs 2
+step18_renter_k3000 testset_18_renter_quick.mat variants=ret_n8192_lr3e-3_k3000 device=cpu
+step18_owner_k3000  testset_18_owner_quick.mat  variants=ret_n8192_lr3e-3_k3000 device=cpu
