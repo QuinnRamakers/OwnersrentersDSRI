@@ -22,6 +22,7 @@ arguments
     opts.out_dir char = fullfile(utility.output_dir(), 'value_gap')
     opts.N (1,1) double = 100000
     opts.seed (1,1) double = 303
+    opts.boundary (1,1) logical = true   % also score the boundary default rule (default as a choice)
 end
 d = fullfile(opts.out_dir, opts.tag);
 if ~isfolder(d), mkdir(d); end
@@ -69,6 +70,16 @@ for i = 1:numel(cases)
     fprintf(['%s: ce_entry %.4f, simulated %.4f (s.e. %.4f), value above simulation %+.1f%%, ever bankrupt %.4f, ' ...
         'worst 1%% hold %.2f of utility; c_bound_25_39 %.4g, offgrid [%s]; solve %.0f s\n'], name, row.ce_entry, ce, se, ...
         row.gap_pct, row.ever_bankrupt, row.worst1_share, row.c_bound_25_39, num2str(row.offgrid), solve_sec);
+    % With default as a choice, the same households under the boundary rule
+    % (the default decision solved at the state where the cell's corners
+    % disagree; compare_rules), in the share coordinate.
+    if opts.boundary && p.floor_absorbing && p.default_choice && strcmp(crd, 'share')
+        Tb = compare_rules(r, N = opts.N, seed = opts.seed, rules = "boundary");
+        row.ce_sim_boundary = Tb.ce_sim; row.se_boundary = Tb.se; row.gap_boundary = Tb.gap_pct;
+        row.ever_boundary = Tb.ever_default; row.worst1_boundary = Tb.worst1_share;
+        row.boundary_solved = Tb.solved; row.boundary_sec = Tb.sec;
+        save(f, 'row', 'prof', 'extra');
+    end
     clear r sim U
 end
 T = summarize(d);
@@ -79,16 +90,21 @@ fs = dir(fullfile(d, '*.mat'));
 rows = {};
 for i = 1:numel(fs)
     s = load(fullfile(d, fs(i).name), 'row'); w = s.row;
-    rows(end+1, :) = {w.name, w.ce_entry, w.ce_sim, w.se_sim, w.gap_pct, w.ever_bankrupt, w.worst1_share, w.solve_sec / 60}; %#ok<AGROW>
+    b = [NaN NaN NaN];
+    if isfield(w, 'ce_sim_boundary'), b = [w.ce_sim_boundary, w.se_boundary, w.gap_boundary]; end
+    rows(end+1, :) = {w.name, w.ce_entry, w.ce_sim, w.se_sim, w.gap_pct, w.ever_bankrupt, w.worst1_share, w.solve_sec / 60, b(1), b(2), b(3)}; %#ok<AGROW>
 end
 if isempty(rows), T = table(); return, end
-T = cell2table(rows, 'VariableNames', {'case', 'ce_entry', 'ce_sim', 'se_sim', 'gap_pct', 'ever_bankrupt', 'worst1_share', 'solve_min'});
+T = cell2table(rows, 'VariableNames', {'case', 'ce_entry', 'ce_sim', 'se_sim', 'gap_pct', 'ever_bankrupt', 'worst1_share', 'solve_min', ...
+    'ce_sim_boundary', 'se_boundary', 'gap_boundary'});
 disp(T);
 fid = fopen(fullfile(d, 'summary.md'), 'w');
-fprintf(fid, '| case | ce_entry | simulated (s.e.) | value above simulation | ever bankrupt | worst 1%% share | solve min |\n|---|---|---|---|---|---|---|\n');
+fprintf(fid, ['| case | ce_entry | simulated (s.e.) | value above simulation | ever bankrupt | worst 1%% share | solve min | ' ...
+    'simulated, boundary rule (s.e.) | value above, boundary rule |\n|---|---|---|---|---|---|---|---|---|\n']);
 for i = 1:height(T)
-    fprintf(fid, '| %s | %.4f | %.4f (%.4f) | %+.1f%% | %.4f | %.2f | %.0f |\n', T.case{i}, T.ce_entry(i), T.ce_sim(i), ...
-        T.se_sim(i), T.gap_pct(i), T.ever_bankrupt(i), T.worst1_share(i), T.solve_min(i));
+    fprintf(fid, '| %s | %.4f | %.4f (%.4f) | %+.1f%% | %.4f | %.2f | %.0f | %.4f (%.4f) | %+.1f%% |\n', T.case{i}, T.ce_entry(i), T.ce_sim(i), ...
+        T.se_sim(i), T.gap_pct(i), T.ever_bankrupt(i), T.worst1_share(i), T.solve_min(i), ...
+        T.ce_sim_boundary(i), T.se_boundary(i), T.gap_boundary(i));
 end
 fclose(fid);
 end

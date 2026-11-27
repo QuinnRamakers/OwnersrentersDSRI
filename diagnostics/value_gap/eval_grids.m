@@ -18,6 +18,7 @@ arguments
     r struct
     grids cell
     opts.interp_method char = ''
+    opts.interp_space char = ''
     opts.grid_pow double = []
     opts.grid_pow_u2 double = []
     opts.grid_pow_q double = []
@@ -27,6 +28,7 @@ gpol = neural.grid_policy_fn(r);
 base = ladder.params(r.p.ladder.number);
 base.is_owner = r.p.is_owner;
 if ~isempty(opts.interp_method), base.interp_method = opts.interp_method; end
+if ~isempty(opts.interp_space), base.interp_space = opts.interp_space; end
 if ~isempty(opts.grid_pow), base.grid_pow = opts.grid_pow; end
 if ~isempty(opts.grid_pow_u2), base.grid_pow_u2 = opts.grid_pow_u2; end
 if ~isempty(opts.grid_pow_q), base.grid_pow_q = opts.grid_pow_q; end
