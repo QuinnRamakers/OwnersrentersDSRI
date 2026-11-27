@@ -1,0 +1,9 @@
+# Step 18, renters and owners separately, two more training seeds (the night's
+# networks are seed 1), to see how much of the gain over the grid policy
+# depends on the seed. Settings of step18_cpu.jobs (8,192 households, 1,000
+# steps, 3e-3), on the GPU, one job at a time.
+# Run: JULIA_CUDA_SOFT_MEMORY_LIMIT=3GiB JULIA_CUDA_HARD_MEMORY_LIMIT=6GiB JULIA_FLAGS=--heap-size-hint=5G bash neural/scripts/queue.sh neural/jobs/step18_seeds.jobs 1
+step18_renter_s2 testset_18_renter_quick.mat variants=ret_n8192_lr3e-3_k1000_s2
+step18_owner_s2  testset_18_owner_quick.mat  variants=ret_n8192_lr3e-3_k1000_s2
+step18_renter_s3 testset_18_renter_quick.mat variants=ret_n8192_lr3e-3_k1000_s3
+step18_owner_s3  testset_18_owner_quick.mat  variants=ret_n8192_lr3e-3_k1000_s3

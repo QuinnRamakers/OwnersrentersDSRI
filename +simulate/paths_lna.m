@@ -37,6 +37,11 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %   default value, or when it has no resources; a solvent household consumes
 %   what its policy says, which can be less than the floor amount, and floored
 %   marks the bankrupt.
+%
+%   sol may instead carry sol.policy_fn, a function [s, pi] = f(t, u1, u2,
+%   u3, q) of the households' raw coordinates (neural.net_policy): s is the
+%   share of resources above the floor consumed, so c = F/LW + s (1 - F/LW).
+%   Then no grid policy is read.
 
 if nargin < 5 || isempty(N), N = 5000; end
 if nargin < 6 || isempty(seed), seed = 20260511; end
@@ -111,7 +116,10 @@ pp_c  = cell(T, 1);
 pp_pi = cell(T, 1);
 pp_tS = cell(T, 1);
 pp_tR = cell(T, 1);
-for t = 1:T
+use_fn = isfield(sol, 'policy_fn');
+assert(~use_fn || ~(choice || dc_on), 'paths_lna:policy_fn', ...
+    'sol.policy_fn does not cover default as a choice or free DC choice.');
+for t = 1 : T * ~use_fn
     [g1, g2] = utility.grid_at(p, t);
     if q_dep(t)
         ax = {g1, g2, p.u3_grid, q_grid};
@@ -259,7 +267,11 @@ for t = 1:T
     n_off(2) = n_off(2) + sum(look & (u2_raw < g2(1) - 1e-12 | u2_raw > g2(end) + 1e-12));
     n_off(3) = n_off(3) + sum(look & (u3_raw < p.u3_grid(1) - 1e-12 | u3_raw > p.u3_grid(end) + 1e-12));
 
-    if q_dep(t)
+    if use_fn
+        [s_fn, pi_raw] = sol.policy_fn(t, u1_raw, u2_raw, u3_raw, q_raw);
+        Fs = min(F_t ./ max(LW, realmin), 1);
+        cf_raw = Fs + s_fn .* (1 - Fs);
+    elseif q_dep(t)
         n_off(4) = n_off(4) + sum(look & (q_raw < q_grid(1) - 1e-12 | q_raw > q_grid(end) + 1e-12));
         cf_raw = pp_c{t}(u1q, u2q, u3q, qq);
         pi_raw = pp_pi{t}(u1q, u2q, u3q, qq);

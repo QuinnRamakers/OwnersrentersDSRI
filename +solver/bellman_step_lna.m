@@ -1,4 +1,4 @@
-function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
+function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next, fixed)
 %BELLMAN_STEP_LNA  One backward-induction step on the (u1, u2, u3, q) grid.
 %
 %   [V_t, c_pol, pi_pol] = solver.bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
@@ -85,8 +85,15 @@ function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_n
 %   power is taken by repeated multiplication (upow): the same number to
 %   within two units in the last digit, about 80 times faster. With it off,
 %   or with any other gamma, it is MATLAB's power, as before 13 November 2026.
+%
+%   With fixed, a function [s, pi] = fixed(t, u1, u2, u3, q) of the nodes'
+%   coordinates (neural.net_policy), nothing is searched: each node takes
+%   c = c_floor + s (1 - c_floor) and pi, and V_t is that policy's value
+%   (policy evaluation, neural.evaluate_policy). Not with dc_choice or
+%   default_choice.
 
 if nargin < 7, pol_next = []; end              % the last period has no next policy
+if nargin < 8, fixed = []; end                 % no fixed policy: search at every node
 [g1, g2] = utility.grid_at(p, t);              % this period's points (they can follow age)
 N1 = numel(g1); N2 = numel(g2); N3 = numel(p.u3_grid);
 q_grid = p.q_grid(:); Nq = numel(q_grid);
@@ -354,8 +361,28 @@ n_solve = numel(solve_k);
 free_dc = dc_on && ~last && ~no_dc;
 dcx = struct('R_S', R_S, 'R_REIT', R_REIT, 'Rf', p.Rf, 'pt', pt, 'reit', config.reit_active(p));
 
+% A fixed policy's choices at every node, from the coordinates a simulated
+% household at the node would have (u2 = 0 where u1 = 1, u3 = 0 where u2 = 0).
+% A struct fixed (fn, kind 'c') gives the share of resources consumed
+% instead, as a grid policy stores it; it then consumes at least the floor.
+have_fixed = ~isempty(fixed);
+assert(~have_fixed || ~(dc_on || choice), 'bellman_step_lna:fixed', ...
+    'A fixed policy does not cover free DC choice or default as a choice.');
+S_fix = zeros(n_states, Nq); P_fix = zeros(n_states, Nq);
+fix_c = false;
+if have_fixed
+    fix_fn = fixed;
+    if isstruct(fixed), fix_fn = fixed.fn; fix_c = strcmp(fixed.kind, 'c'); end
+    sAH_pts = sA_pts + sH_pts;
+    u2_in = sAH_pts ./ max(1 - lam_pts, 1e-12);
+    u3_in = min(max(sA_pts ./ max(sAH_pts, 1e-12), 0), 1);
+    for iq = slices
+        [S_fix(:, iq), P_fix(:, iq)] = fix_fn(t, lam_pts, u2_in, u3_in, q_grid(iq) * ones(n_states, 1));
+    end
+end
+
 % The equity share stored where nothing is saved (c = 1)
-pi_limit = isfield(p, 'pi_nothing_saved') && strcmp(validatestring(p.pi_nothing_saved, ...
+pi_limit =isfield(p, 'pi_nothing_saved') && strcmp(validatestring(p.pi_nothing_saved, ...
     {'one', 'limit'}, 'bellman_step_lna', 'p.pi_nothing_saved'), 'limit');
 
 % Annuity payout in retirement: the pot pays A/a_t each period.
@@ -456,6 +483,19 @@ for iq = slices
         c_floor = F_lo / LW_W;
         c_grid  = linspace(c_floor, 1, NC).';
         dc0     = c_grid(2) - c_grid(1);
+
+        if have_fixed
+            if fix_c
+                c_j = min(max(S_fix(k, iq), c_floor), 1);
+            else
+                c_j = c_floor + S_fix(k, iq) * (1 - c_floor);
+            end
+            p_j = min(max(P_fix(k, iq), 0), 1);
+            v_j = bellman_rhs(c_j, p_j, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
+                              w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+            V_sub(j) = v_j; c_sub(j) = c_j; pi_sub(j) = p_j; Vc_sub(j) = v_j;
+            continue
+        end
 
         % Stage 1: seed from next period's policy, or two fixed points without one.
         if isfinite(c_warm) && isfinite(pi_warm)

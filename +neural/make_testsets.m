@@ -10,7 +10,9 @@ function files = make_testsets(steps, opts)
 %   neural.export_replay to <out_dir>/testset_<step>_<tenure>_<numerics>.mat.
 %   The same seed gives the same draws at every step with the same T and
 %   correlations, so the network and the grid policy are compared on the
-%   same households.
+%   same households. With keep_solve=true the whole model.run output (the
+%   solution included) is also saved, as solve_<step>_<tenure>_<numerics>.mat,
+%   for neural.evaluate_policy and neural.paths_net.
 
 arguments
     steps cell = {1}
@@ -18,6 +20,7 @@ arguments
     opts.N (1,1) double = 20000
     opts.seed (1,1) double = 202
     opts.out_dir char = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'neural', 'data')
+    opts.keep_solve (1,1) logical = false
 end
 
 if ~isfolder(opts.out_dir), mkdir(opts.out_dir); end
@@ -38,6 +41,9 @@ for i = 1:numel(steps)
             name = sprintf('testset_%s_%s_%s.mat', p.ladder.number, model.tenure(pa), n.name);
             file = fullfile(opts.out_dir, name);
             neural.export_replay(r, opts.N, opts.seed, file);
+            if opts.keep_solve
+                save(fullfile(opts.out_dir, strrep(name, 'testset_', 'solve_')), 'r', '-v7.3');
+            end
             fprintf('%s: grid %dx%dx%dx%d, gh_n %d, solve %.1f s, ce_entry %.4f, offgrid [%s]\n', ...
                 name, n.dims, n.gh_n, r.timing.solve_sec, r.checks.ce_entry, num2str(r.checks.offgrid));
             files{end+1} = file; %#ok<AGROW>

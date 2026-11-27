@@ -147,6 +147,70 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Neural network, step 18 checked in MATLAB: the networks in the simulator and in the solver, against the standard and the production grid (spec: none, asked by Quinn in Claude Code)
+Quinn: "how did you implement the absorbing state, please run step 18 with more details for me so we can be really sure. really really critically evaluate the result, for example use the network policies in the matlab solver", then "afterwards show me the different model simulations and the policy functions" and "what grid you use for step 18" (until this morning quick 12x12x8x6 and standard 16x16x10x8; now also production 32x16x40x4 for renters, owners running).
+The absorbing state in the Julia year (`neural/src/model.jl`, `year`), as in `simulate.paths_lna` and `solver.bellman_step_lna`: each household carries a bankrupt flag and the consumption fixed at entry. Liquid resources LW are formed as in the simulator; the floor is F = phi_path(t) Y (c_min on the owners' profile, the same share of current income for both tenures). A solvent household with LW < F goes bankrupt that year: it consumes F every year after, its liquid wealth, pot and house are zero from the next year, and it chooses nothing. A solvent household consumes F + s (LW - F), s in (0, 1) from the network, the solver's search domain [c_floor, 1]. Utility in the year of entry is u(F) D_beq(t), the solver's value of the bankrupt (D_abs(t) = 1 + beta p_t D_abs(t+1) with chi = 0), and zero after, which equals summing u(F) over the remaining years with survival weights. Training uses the hard rule: the gradient does not see the jump in value at the edge of bankruptcy, only the smooth parts on either side.
+Changed:
+- `+solver/bellman_step_lna.m`: optional eighth input `fixed`, a policy as a function of the node's coordinates. Nothing is searched; each node takes that policy's choice and V is its value (policy evaluation). Without it nothing changes.
+- `+simulate/paths_lna.m`: `sol.policy_fn`, the same for the simulator.
+- New in `+neural`: `net_policy`, `net_forward` (the network in MATLAB), `evaluate_policy` (backward induction with a fixed policy on any grid), `grid_policy_fn` (a grid solve's policy read as the simulator reads it), `sim_utility` (lifetime utility summed off the panel in MATLAB, written apart from the Julia code), `check_networks`, `compare_panels`, `eval_refinement`, `step18_checks`, `plot_lifecycles`, `plot_policies`, `plot_refinement`. `make_testsets` gains `keep_solve`.
+- New: `neural/scripts/export_net.jl`, `neural/jobs/step18_seeds.jobs` (two more training seeds a tenure, 1,000 steps, GPU, 9-12 minutes each).
+Checks run, on the PC:
+- `run_tests(solve=false)`: 0 of 23 failed. Full `run_tests`: 1 of 42 failed, 2 skipped. The failure, `floor_node_test` ("owner 1: solve out of range"), is an equity share of -6.07e-05 against a tolerance of -1e-6 (fmincon's active-set step past the bound); the committed `bellman_step_lna` gives the same number, so it predates this change and is not fixed here.
+- Step 18 solved again at standard numerics (renters 188 s, owners 2,642 s with other jobs running; ce_entry 0.3479 and 0.3594 as last night) and at production numerics for renters (2,808 s, ce_entry 0.2877, no off-grid lookups).
+- The networks in MATLAB: outputs equal Julia's to 7e-15. Simulated by `paths_lna` on the test draws and scored by `neural.sim_utility`, every network gives Julia's certainty equivalent to four digits (renters 0.2438, owners 0.2866). The quick-grid model the networks trained on differs from the standard one only in the annuity price, by 1.6e-4.
+- With a fixed policy the solver gives the grid policy on its own grid exactly its value function (0.3479).
+
+Network minus grid policy, certainty-equivalent consumption at entry (entry income), paired standard errors:
+
+| step 18 | renters, standard grid | renters, production grid | owners, standard grid |
+|---|---|---|---|
+| grid policy in simulation (value function) | 0.2161 (0.3479) | 0.2422 (0.2877) | 0.2642 (0.3594) |
+| network, 3,000 steps, 20,000 test households | +0.0277 (0.0026) | +0.0016 (0.0016) | +0.0223 (0.0062) |
+| the same, 100,000 new households (seed 303) | +0.0262 (0.0016) | +0.0034 (0.0012) | +0.0308 (0.0032) |
+| joint network, 3,000 steps | +0.0287 (0.0025) | +0.0026 (0.0016) | +0.0212 (0.0060) |
+| three seeds, 1,000 steps each | +0.0235, +0.0232, +0.0237 | -0.0027, -0.0030, -0.0024 (s.e. 0.0017-0.0020) | +0.0172, +0.0185, +0.0186 |
+| ever bankrupt, grid policy / network | 25.1% / 14.0% | 24.1% / 14.0% | 0.30% / 0.09% |
+| median age at bankruptcy, grid policy / network | 88 / 96 | 95 / 96 | 51 / 50 |
+
+Where the gain over the standard-grid policy comes from (the difference in mean lifetime utility split by households, 20,000 test households):
+
+| group | renters: share of households | share of the gain | owners: share of households | share of the gain |
+|---|---|---|---|---|
+| bankrupt under neither | 74.9% | -19% | 99.7% | -11% |
+| bankrupt under both | 14.0% | +95% | 0.10% | -29% |
+| bankrupt under the grid policy only | 11.2% | +24% | 0.21% | +139% |
+| bankrupt under the network only | 0 | 0 | 0 | 0 |
+
+The solver's own value of fixed policies as the evaluation grid refines (`neural.eval_refinement`; each policy is the same function on every grid; the last row is simulation):
+
+| evaluation grid (nodes) | gh_n | renters: standard-grid policy | network | production-grid policy | network | owners: standard-grid policy | network |
+|---|---|---|---|---|---|---|---|
+| 14x14x8x(1 or 7) | 3 | 0.3605 | 0.3094 | | | 0.3594 | 0.3474 |
+| 18x18x10x(1 or 9), the standard grid | 5 | 0.3479 | 0.3039 | | | 0.3594 | 0.3461 |
+| the same | 7 | 0.3478 | 0.3038 | | | 0.3581 | 0.3459 |
+| 34x18x40x(1 or 5), the production grid | 5 | 0.2679 | 0.2717 | 0.2877 | 0.2717 | 0.3472 | 0.3456 |
+| the same | 9 | | | | | 0.3487 | 0.3463 |
+| 34x18x40x9 | 5 | | | | | 0.3471 | 0.3431 |
+| 34x18x40x17 | 5 | | | | | 0.3415 | 0.3397 |
+| 34x34x40 | 5 | 0.2635 | 0.2703 | | | 0.3473 | 0.3465 |
+| 66x34x40 | 5 | 0.2362 | 0.2553 | | | 0.3458 | 0.3463 |
+| 66x34x80 | 5 | 0.2278 | 0.2510 | 0.2539 | 0.2510 | 0.3457 | 0.3464 |
+| 130x34x80 | 5 | 0.2205 | 0.2460 | 0.2473 | 0.2460 | | |
+| simulation, 20,000 households | | 0.2161 | 0.2438 | 0.2422 | 0.2438 | 0.2642 | 0.2866 |
+
+What it means:
+1. The numbers are not an artefact of the Julia code: MATLAB's own simulator and an independent utility sum give the same certainty equivalents, on the test draws and on 100,000 new households, for three training seeds.
+2. Against the standard grid (16x16x10x8) the networks win by 11-13% of consumption for renters and 7-8% for owners, but that is mostly the standard grid's failure. Its value function overprices states next to the floor (the solver values its own policy at 0.348, it delivers 0.216), so the policy under-saves for old age: renters run their liquid wealth to zero by 90.
+3. Against the production grid (32x16x40x4) the renter networks and the grid policy are close: the 3,000-step network is ahead by 0.7-1.4% of consumption (+0.0016 on the test households, +0.0034 with s.e. 0.0012 on 100,000 new ones), the 1,000-step networks behind by about 1%. The production-grid policy saves like the networks while working (liquid wealth near 4 times entry income at 60) and differs in retirement: it decumulates to zero by 100 with a high equity share (0.5-1.0), the networks keep a buffer of 2-4 times entry income with a low equity share, and 24% against 14% of renters go bankrupt, at 95 against 96. Welfare is nearly the same, so retirement behaviour is weakly identified by welfare.
+4. The solver agrees with simulation for renters once its evaluation grid is fine enough: on 130x34x80 nodes it values the standard-grid policy at 0.2205 and the network at 0.2460 (simulation 0.2161 and 0.2438), and the production-grid policy at 0.2473 against the network's 0.2460 (simulation 0.2422 and 0.2438, so nearly tied either way). The u1 axis carries the error; the quadrature does not (gh_n 7 or 9 changes nothing).
+5. For owners the solver does not converge to simulation along any axis tried: u1, u2, u3, q (up to 17 nodes) and gh_n 9 all leave both policies near 0.34-0.35, against 0.26-0.29 in simulation, and the two policies tied. Owner welfare in simulation is set by 0.3% of households (bankrupt at 30-55 when income falls while the mortgage and maintenance on the purchase price stay fixed; their lifetime utility is 650 times the typical one), and the network's whole gain comes from 41 of 20,000 households whom the grid policy bankrupts. Why the solver misses these tails is not found; it is not the q range (0 to 2.5, never left) or the quadrature. Until it is, the owner comparison is unsettled.
+6. The gain is a trade the objective rewards: the network costs the households who never go bankrupt utility (they consume less to hold a buffer) and buys a later or no bankruptcy for the rest.
+7. Where the networks are worse: they do not smooth consumption over known jumps (renters drop at 67; owners jump at 55 when the mortgage ends and drop at 67), which an optimal policy with liquid wealth would not do, so they are not the optimum either. Their policies are reliable only where households are: off the support, consumption can fall with wealth (renters at 45 above 2 years of income), and owners' equity shares are arbitrary (owners hold almost no liquid wealth: the owner and joint networks choose 0.7 and 0.01 in retirement at the same welfare).
+Figures in `neural/data/figures`: `step18_renter_refinement.png`, `step18_renter_lifecycles.png` and `step18_renter_policies.png` (standard and production grid, networks), `step18_owner_lifecycles_standard.png`, `step18_owner_policies_standard.png`.
+Commit: this entry and the files, pushed to `work-2026-11-26`.
+Open: step 18 for owners at production numerics (running, then `neural.step18_checks('owner', 'fine')`); why the solver's owner values do not converge to simulation; a renter grid solve at 64x32x40x4 (stopped to keep the PC free) to see whether a finer solve's policy moves further; training that smooths consumption at 55 and 67.
+
 ### 2026-11-27 Neural network: step 18 trained for 3,000 steps, separately and jointly; summary of the night (spec: docs/prompts/neural_policy.md, part 3)
 Step 18 again, 3,000 steps instead of 1,000 (`neural/jobs/step18_long.jobs` on the CPU, 88 minutes; `gpu_morning.jobs` joint on the GPU, 63 minutes), otherwise as the entry below. Scored on the standard-grid test sets with `neural/scripts/evaluate.jl`. Figures `neural/data/figures/step18_renters.png`, `step18_owners.png` (all four networks against the standard-grid policy), `step1_long.png`.
 
