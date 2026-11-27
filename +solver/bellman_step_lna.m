@@ -92,6 +92,13 @@ function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_n
 %   (policy evaluation, neural.evaluate_policy). Not with dc_choice or
 %   default_choice.
 %
+%   With p.u2_coord = 'edge' the second axis holds v = u2 / u2_max(t, u1, u3, q)
+%   instead of u2 (utility.u2_max): v = 1 is this year's edge of bankruptcy
+%   at every (u1, u3, q), so the nodes cover the solvent states only and
+%   none straddles the jump in value at the edge. Each q slice then has its
+%   own node positions, and next year's value is read at v' = u2' / u2_max
+%   of t+1. Off by default ('share'): the solve is as before.
+%
 %   With pts, a struct of column vectors lam, sA, sH (Y/W, A/W and H/W) and q,
 %   the step is solved at those states instead of at the grid's nodes, against
 %   the same V_next, quadrature and search (the point mode). pts.c and pts.pi,
