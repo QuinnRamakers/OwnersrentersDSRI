@@ -147,6 +147,26 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Neural network: step 18, renters and owners separately and jointly, against the grid policy on the quick and standard grids (spec: docs/prompts/neural_policy.md, part 3)
+Step 18 (housing, the DC pension, maintenance on the purchase price, the absorbing floor at EUR 5,000) is the first housing rung whose simulated welfare is not set by the yearly top-up. Test sets: `neural.make_testsets({18}, numerics={'quick'})` and `{'standard'}` (renters 64 s and 136 s, owners 536 s and 1,561 s on the PC; same draws, seed 202, 20,000 households). Networks: retirement inputs, 2 x 64, 8,192 households a step, 1,000 steps, learning rate 3e-3, the hard bankruptcy rule in training (the plan's smoothing is not implemented); separate on the CPU (`neural/jobs/step18_cpu.jobs`, 30 minutes each), joint on the GPU with a tenure indicator (`step18_gpu.jobs`, 23 minutes). Trained against draws outside the test sets; scored with `neural/scripts/evaluate.jl` (new; also writes `results_<tag>_<run>_eval.mat` for `neural.plot_rung`). Figures: `neural/data/figures/step18_renter_standard.png`, `step18_owner_standard.png`.
+
+| step 18 | network, separate | network, joint | grid policy, quick grid | grid policy, standard grid | separate - standard grid (paired s.e.) | joint - standard grid (paired s.e.) | value function, standard grid |
+|---|---|---|---|---|---|---|---|
+| renters: ce | 0.2396 (0.004) | 0.2401 (0.004) | 0.2070 | 0.2161 | +0.0235 (0.0026) | +0.0240 (0.0027) | 0.3479 |
+| renters: years bankrupt | 1.45% | 1.25% | 5.31% | 4.61% | | | |
+| owners: ce | 0.2814 (0.009) | 0.2847 (0.009) | 0.2573 | 0.2642 | +0.0172 (0.0056) | +0.0204 (0.0057) | 0.3594 |
+| owners: years bankrupt | 0.08% | 0.07% | 0.27% | 0.21% | | | |
+
+What it means:
+1. After 1,000 steps the networks reach higher expected lifetime utility than the grid policy on the standard grid, in the same model with the same utility, on households they were not trained on: 11% of consumption for renters (9 standard errors), 6.5% for owners (3 standard errors). They are bankrupt in a third of the household-years. The finer grid closes about a quarter of the gap (the quick grid's policy is 1-1.5 points further behind).
+2. Where it comes from (figures): renter networks consume less while young (0.27 of entry income at 25 against 0.34), carry more wealth into retirement and consume more after 80; the buffer cuts bankruptcy. This fits the overpricing of states next to the floor by the grid's interpolation (18 October): the grid policy under-saves against rent shocks. Owners' wealth is the house under both policies.
+3. Where the networks are worse: they smooth badly over known jumps in income. Renter consumption drops at 67 (0.70 to 0.50 of entry income) where the grid's is smooth; owner consumption jumps at 55, when the 30-year mortgage ends, and drops at 67, where the grid anticipates both. The retired indicator makes a jump at 67 easy. The welfare gain from avoiding bankruptcy outweighs this; more training should remove some of it.
+4. The grid's value function at entry (0.35-0.36) overstates what its own policy delivers in simulation by 40-60% on both grids.
+5. Joint against separate: one network with a tenure indicator does as well as two (renters 0.2401 against 0.2396, owners 0.2847 against 0.2814, within the standard errors). At step 7b (dominated by the top-up) the joint network did worse than the separate ones (years at the floor 0.39% against 0 for renters, 3.6% against 0.28% for owners), and at step 1 on an identical model it chose differently for the two values of the indicator (median gap 14% in consumption and 0.09 in the equity share) at the same welfare (0.5813 and 0.5795), so equal welfare does not mean the same policy.
+Step 1 trained for 6,000 steps at 3e-3: ce 0.6323 against 0.6736, -0.041 (paired s.e. 0.0068), against -0.056 after 3,000; the equity share is still too low and flat (0.56 at 25 falling to 0.20, the grid 1.0 to 0.4 and back to 0.55) and wealth too high in retirement.
+Commit: this entry and `neural/scripts/evaluate.jl`, pushed to `work-2026-11-26`.
+Open: step 18 for 3,000 steps, separately (CPU) and jointly (GPU), running; then the wide 6,000-step step-1 run on the GPU if time allows.
+
 ### 2026-11-27 Neural network: steps 1-6, 7b and 12 trained and checked against the grid policy (spec: docs/prompts/neural_policy.md, parts 2-3)
 Runs on the PC, overnight; job lists in `neural/jobs/`, logs in `neural/data/logs/`, results in `neural/data/results_<tag>.mat`, figures in `neural/data/figures/` (`step1_matched_set.png`, `step2.png` to `step4.png`). Every network is scored against the grid policy on the same 20,000 test households (seed 202) with the same Julia lifetime utility; "paired s.e." is the standard error of the difference.
 
