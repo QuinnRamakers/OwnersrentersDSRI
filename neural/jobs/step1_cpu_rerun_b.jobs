@@ -1,0 +1,4 @@
+# Step 1 checks that died at 01:37 and 01:47, rerun after the first ones end.
+# Run: OPENBLAS_NUM_THREADS=3 JULIA_FLAGS=--heap-size-hint=2500M bash neural/scripts/queue.sh neural/jobs/step1_cpu_rerun_b.jobs 2
+step1cpu_ret_s2   testset_1_nohousing_fine.mat variants=ret_n8192_s2   device=cpu
+step1cpu_joint    testset_1_nohousing_fine.mat variants=ret_n8192_joint device=cpu
