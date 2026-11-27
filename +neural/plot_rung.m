@@ -50,7 +50,16 @@ for j = 1:3
     title(ax, panels{j, 2});
     xlabel(ax, 'age');
     grid(ax, 'on');
-    if j == 1, legend(ax, 'Location', 'best', 'Interpreter', 'none', 'FontSize', 7); end
+    if j == 1
+        % A network that leaves wealth at 100 consumes it in the last year;
+        % that spike would flatten the rest, so the scale is set by ages to 99.
+        early = g.ages < g.ages(end);
+        top = max(g.C(early));
+        for i = 1:numel(runs), top = max(top, max(runs{i}.net.C(early))); end
+        ylim(ax, [0, 1.1 * top]);
+        title(ax, 'Consumption (entry income); the last year off scale');
+        legend(ax, 'Location', 'best', 'Interpreter', 'none', 'FontSize', 7);
+    end
 end
 ax = nexttile(tl);
 for i = 1:numel(runs)
@@ -58,7 +67,7 @@ for i = 1:numel(runs)
         'DisplayName', runs{i}.variant);
     hold(ax, 'on');
 end
-yline(ax, 1, 'k--', 'grid value function');
+yline(ax, 1, 'k--', 'grid value function', 'HandleVisibility', 'off');
 title(ax, 'Training: minus mean utility over the grid value function''s');
 xlabel(ax, 'step');
 grid(ax, 'on');
