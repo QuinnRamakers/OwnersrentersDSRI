@@ -12,7 +12,7 @@ using NeuralPolicy, MAT, Flux, Printf, Statistics
 const DATA = joinpath(@__DIR__, "..", "data")
 tag, key = ARGS[1], ARGS[2]
 r = matread(joinpath(DATA, "results_$tag.mat"))[key]
-spec = Spec(retire=r["retire"], tenure=r["joint"])
+spec = Spec(retire=r["retire"], tenure=r["joint"], default=get(r, "default", false))
 _, re = Flux.destructure(policy_net(spec; hidden=Int(r["hidden"]), depth=Int(r["depth"])))
 net = re(Float32.(vec(r["theta"])))
 println("network $tag/$key: $(r["variant"]), trained against $(r["test_set"])")

@@ -1,8 +1,8 @@
-function [s, pi_] = net_policy(net, p, t, u1, u2, u3, q)
+function [s, pi_, d] = net_policy(net, p, t, u1, u2, u3, q)
 %NET_POLICY  A trained policy network's choices in MATLAB.
 %
 %   net = load('neural/data/net_step18_renter_k3000_run1.mat');
-%   [s, pi_] = neural.net_policy(net, p, t, u1, u2, u3, q)
+%   [s, pi_, d] = neural.net_policy(net, p, t, u1, u2, u3, q)
 %
 %   The network of neural/src/policy.jl, written by
 %   neural/scripts/export_net.jl: tanh hidden layers, two outputs through a
@@ -13,7 +13,11 @@ function [s, pi_] = net_policy(net, p, t, u1, u2, u3, q)
 %   features(): age scaled to [0, 1], u1, u2, u3, q only for owners whose
 %   budget depends on it (1 elsewhere), then years to retirement and a retired
 %   indicator (net.retire), then an owner indicator (net.tenure). In the last
-%   period without a bequest motive s = 1, as in the solver.
+%   period without a bequest motive s = 1, as in the solver. A network with a
+%   third output (default as a choice, step 24) gives d, the decision to
+%   default this year (its probability above one half); without one d is
+%   false. With default as a choice consumption is phi_floor Y + s (LW -
+%   phi_floor Y) instead (simulate.paths_lna).
 
 u1 = u1(:); u2 = u2(:); u3 = u3(:); q = q(:);
 n = numel(u1);
@@ -31,5 +35,9 @@ s   = 1 ./ (1 + exp(-out(1, :).'));
 pi_ = 1 ./ (1 + exp(-out(2, :).'));
 if t == p.T && p.chi <= 0
     s = ones(n, 1);
+end
+d = false(n, 1);
+if size(out, 1) >= 3
+    d = out(3, :).' > 0;          % sigmoid above one half
 end
 end

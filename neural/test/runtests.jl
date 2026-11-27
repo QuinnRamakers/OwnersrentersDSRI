@@ -71,15 +71,14 @@ end
     if isempty(replays)
         @warn "No replay panels in neural/data: run neural.make_replays in MATLAB. The replay tests are skipped."
     end
+    # Default as a choice (step 24): the quick-grid test sets of neural.make_testsets.
+    replays_24 = isdir(DATA) ? filter(f -> startswith(f, "testset_24_") && endswith(f, "_quick.mat"), readdir(DATA)) : String[]
+    isempty(replays_24) && @warn "No step-24 test sets in neural/data: the replay of default as a choice is skipped."
 
     @testset "replay: the Julia year reproduces simulate.paths_lna" begin
-        for f in replays
+        for f in [replays; replays_24]
             d = matread(joinpath(DATA, f))
             m = Model(d["model"])
-            if m.default_choice
-                @info "$f: default as a choice is not in the Julia year; skipped"
-                continue
-            end
             P = d["panel"]
             e = draws_from_matlab(d["draws"], m)
             N = size(P["C"], 1)
@@ -128,6 +127,56 @@ end
             err = relnorm(g, gfd)
             @info "gradient check through the model year" file = gf chi = mg.chi n_params = length(theta) relative_error = err
             @test err < 1e-6
+        end
+
+        # Default as a choice: step 24 is step 23 with the switch on.
+        f23 = joinpath(DATA, "replay_23_owner.mat")
+        if isfile(f23)
+            kw = Dict{Symbol,Any}(k => getfield(Model(matread(f23)["model"]), k) for k in fieldnames(Model))
+            kw[:default_choice] = true
+            m24 = Model(; kw...)
+
+            @testset "model: Zygote's gradient with default as a choice against finite differences (Float64)" begin
+                spec = Spec(retire=true, default=true)
+                # A default output near one half, so that both branches carry weight.
+                net = f64(policy_net(spec; hidden=6, rng=Xoshiro(21), d_init=0.3))
+                e = draw(m24, 32, Xoshiro(22); F=Float64)
+                s0 = entry(m24, zeros(1, 32); unit=1)
+                theta, re = Flux.destructure(net)
+                f(v) = mean(lifetime(m24, s0, choices(re(v), m24, spec), e; unit=1))
+                g = Zygote.gradient(f, theta)[1]
+                gfd = similar(theta)
+                for i in eachindex(theta)
+                    h = 1e-6 * max(1.0, abs(theta[i]))
+                    ev = zero(theta)
+                    ev[i] = h
+                    gfd[i] = (f(theta .+ ev) - f(theta .- ev)) / (2h)
+                end
+                err = relnorm(g, gfd)
+                @info "gradient check with default as a choice" n_params = length(theta) relative_error = err
+                @test err < 1e-6
+            end
+
+            @testset "model: the weighted utility is the expectation over random default decisions" begin
+                # Each household defaults each year with probability 0.2 (or is
+                # forced): the weighted lifetime utility against the mean over
+                # K hard draws of the decisions, on the same income and return paths.
+                spec = Spec(retire=true)
+                base = choices(f64(policy_net(spec; rng=Xoshiro(23))), m24, spec)
+                N, K = 20, 4000
+                e = draw(m24, N, Xoshiro(24); F=Float64)
+                soft = (t, s) -> merge(base(t, s), (; d=fill(0.2, 1, length(s.Y))))
+                U_soft = vec(lifetime(m24, entry(m24, zeros(1, N); unit=1), soft, e; unit=1))
+                eK = map(v -> [repeat(x, 1, K) for x in v], e)
+                rng = Xoshiro(25)
+                hard = (t, s) -> merge(base(t, s), (; d=Float64.(rand(rng, 1, length(s.Y)) .< 0.2)))
+                U_hard = reshape(vec(lifetime(m24, entry(m24, zeros(1, N * K); unit=1), hard, eK; unit=1)), N, K)
+                mc = vec(mean(U_hard; dims=2))
+                se = vec(std(U_hard; dims=2)) ./ sqrt(K)
+                z = maximum(abs.(mc .- U_soft) ./ se)
+                @info "weighted against random decisions" largest_z = z households = N draws = K
+                @test z < 4.5
+            end
         end
 
         # The bequest term against the solver: on the fine grid at step 12 the

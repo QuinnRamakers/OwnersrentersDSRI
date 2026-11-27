@@ -2,18 +2,22 @@
 # lifetime utility (docs/prompts/neural_policy.md, "The idea").
 
 """
-    Spec(; retire=false, tenure=false)
+    Spec(; retire=false, tenure=false, default=false)
 
 Which inputs the network gets besides age and the normalised state (u1, u2,
 u3, q): `retire` adds years to retirement and a retired indicator, `tenure`
-an owner indicator (for one network trained on both tenures).
+an owner indicator (for one network trained on both tenures). `default`
+adds a third output, the probability of defaulting this year (default as a
+choice, step 24).
 """
 Base.@kwdef struct Spec
     retire::Bool = false
     tenure::Bool = false
+    default::Bool = false
 end
 
 n_inputs(spec::Spec) = 5 + 2 * spec.retire + spec.tenure
+n_outputs(spec::Spec) = 2 + spec.default
 
 """
     features(m, t, s, spec)
@@ -55,40 +59,53 @@ end
 """
     policy_net(spec; hidden=64, depth=2, rng=Random.default_rng())
 
-A network from `features` to two raw outputs, mapped to (0, 1) by `choices`:
-the share of resources above the floor consumed and the liquid equity share.
-`depth` hidden layers of `hidden` units, tanh; the outputs start at a
-consumption share of `c_init` and an equity share of one half.
+A network from `features` to raw outputs, mapped to (0, 1) by `choices`:
+the share of resources above the floor consumed, the liquid equity share
+and, with `spec.default`, the probability of defaulting this year. `depth`
+hidden layers of `hidden` units, tanh; the outputs start at a consumption
+share of `c_init`, an equity share of one half and a default probability of
+`d_init`, so that at the start hardly anyone defaults.
 """
 function policy_net(spec::Spec; hidden::Integer=64, depth::Integer=2,
-                    rng::AbstractRNG=Random.default_rng(), c_init::Real=0.5)
+                    rng::AbstractRNG=Random.default_rng(), c_init::Real=0.5, d_init::Real=1e-3)
     init = Flux.glorot_uniform(rng)
     layers = Any[Dense(n_inputs(spec) => hidden, tanh; init)]
     for _ in 2:depth
         push!(layers, Dense(hidden => hidden, tanh; init))
     end
-    out = Dense(hidden => 2; init)
+    out = Dense(hidden => n_outputs(spec); init)
     # The output biases set the starting consumption share. At step 1 a start
     # at 0.85 began further from the grid policy than one at 0.5 (objective
     # -182,000 against -2,400, the grid at -1) and had caught up by step 250.
-    out.bias .= [log(c_init / (1 - c_init)), 0.0]
+    b = [log(c_init / (1 - c_init)), 0.0]
+    spec.default && push!(b, log(d_init / (1 - d_init)))
+    out.bias .= b
     push!(layers, out)
     return f32(Chain(layers...))
 end
 
 """
-    choices(net, m, spec)
+    choices(net, m, spec; hard=false)
 
 A `choose(t, s)` function for `lifetime` and `panel`: the network's outputs
 through a sigmoid. In the last year without a bequest motive everything is
-consumed, as in the solver.
+consumed, as in the solver. With `spec.default` the third output is the
+probability of defaulting, d; `hard=true` (evaluation) takes the decision
+d > 1/2, as a household would.
 """
-function choices(net, m::Model, spec::Spec)
+function choices(net, m::Model, spec::Spec; hard::Bool=false)
     return function (t, s)
         out = net(features(m, t, s, spec))
         sh = sigmoid.(out[1:1, :])
         if t == m.T && m.chi <= 0
             sh = one.(sh)
+        end
+        if spec.default
+            d = sigmoid.(out[3:3, :])
+            if hard
+                d = ifelse.(d .> 0.5, one.(d), zero.(d))
+            end
+            return (; s=sh, pi=sigmoid.(out[2:2, :]), d)
         end
         return (; s=sh, pi=sigmoid.(out[2:2, :]))
     end
@@ -99,16 +116,19 @@ end
 
 A `choose(t, s)` function that returns the choices a MATLAB panel applied
 (the share of resources consumed and the equity share; 0 where the panel
-has NaN, the bankrupt households, whose choices are not used).
+has NaN, the bankrupt households, whose choices are not used), and the
+default decision: 1 in the year the household enters bankruptcy.
 """
 function replay_choices(P::AbstractDict, T::Integer)
     nan0(x) = isnan(x) ? 0.0 : x
     c = Float64.(P["c_frac"]); p = Float64.(P["pi"])
     tA = Float64.(P["tau_A"]); rA = Float64.(P["reit_A"])
+    ab = Float64.(P["absorbed"])
     row(M, t) = reshape(nan0.(M[:, t]), 1, :)
     return function (t, s)
         tt = min(t, size(tA, 2))
-        return (; c=row(c, t), pi=row(p, t), tS=row(tA, tt), tR=row(rA, tt))
+        d = t == 1 ? row(ab, 1) : row(ab, t) .- row(ab, t - 1)
+        return (; c=row(c, t), pi=row(p, t), tS=row(tA, tt), tR=row(rA, tt), d)
     end
 end
 
@@ -182,6 +202,6 @@ function evaluate(net, m::Model, spec::Spec, e)
     net64 = f64(cpu(net))
     N = size(e.eps_Y[1], 2)
     s0 = entry(m, zeros(1, N); unit=m.Y0)
-    P = panel(m, s0, choices(net64, m, spec), e; unit=m.Y0)
+    P = panel(m, s0, choices(net64, m, spec; hard=true), e; unit=m.Y0)
     return P, certainty_equivalent(m, P["U"])
 end

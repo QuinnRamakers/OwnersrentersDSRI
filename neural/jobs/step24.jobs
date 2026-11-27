@@ -1,0 +1,6 @@
+# Step 24 (production: default as a choice, REIT, bequest at b = 2), renters and
+# owners separately, the settings of step 18 (8,192 households, 1,000 steps,
+# 3e-3, then 3e-4), on the GPU, one job at a time. The network has a third
+# output, the probability of defaulting (Spec default, set by the model).
+# Run: JULIA_CUDA_SOFT_MEMORY_LIMIT=3GiB JULIA_CUDA_HARD_MEMORY_LIMIT=6GiB JULIA_FLAGS=--heap-size-hint=5G bash neural/scripts/queue.sh neural/jobs/step24.jobs 1
+step24_renter testset_24_renter_quick.mat variants=ret_n8192_lr3e-3_k1000

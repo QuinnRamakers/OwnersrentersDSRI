@@ -41,7 +41,9 @@ function sim = paths_lna(p, profile, sol, ann_price, N, seed, X0_frac)
 %   sol may instead carry sol.policy_fn, a function [s, pi] = f(t, u1, u2,
 %   u3, q) of the households' raw coordinates (neural.net_policy): s is the
 %   share of resources above the floor consumed, so c = F/LW + s (1 - F/LW).
-%   Then no grid policy is read.
+%   Then no grid policy is read. With default as a choice it is
+%   [s, pi, d] = f(...): d true defaults, and s is the share of resources
+%   above the search's lower bound, phi_floor * Y, as the solver searches.
 
 if nargin < 5 || isempty(N), N = 5000; end
 if nargin < 6 || isempty(seed), seed = 20260511; end
@@ -117,8 +119,8 @@ pp_pi = cell(T, 1);
 pp_tS = cell(T, 1);
 pp_tR = cell(T, 1);
 use_fn = isfield(sol, 'policy_fn');
-assert(~use_fn || ~(choice || dc_on), 'paths_lna:policy_fn', ...
-    'sol.policy_fn does not cover default as a choice or free DC choice.');
+assert(~use_fn || ~dc_on, 'paths_lna:policy_fn', ...
+    'sol.policy_fn does not cover free DC choice.');
 for t = 1 : T * ~use_fn
     [g1, g2] = utility.grid_at(p, t);
     if q_dep(t)
@@ -237,13 +239,24 @@ for t = 1:T
     % resources of its own; one whose resources fall below the floor this
     % year goes bankrupt now. Neither looks up a policy.
     F_t = phi_path(t) * Y_path(:,t);
+    if use_fn
+        if choice
+            [s_fn, pi_fn, d_fn] = sol.policy_fn(t, u1_raw, u2_raw, u3_raw, q_raw);
+        else
+            [s_fn, pi_fn] = sol.policy_fn(t, u1_raw, u2_raw, u3_raw, q_raw);
+        end
+    end
     if absorbing
         gone = ab_path(:,t);
         LW(gone) = 0; disp_t(gone) = 0;
         if choice
-            if q_dep(t), zc = pp_zc{t}(u1q, u2q, u3q, qq); else, zc = pp_zc{t}(u1q, u2q, u3q); end
             F_lo  = max(p.phi_floor * Y_path(:,t), 1e-12 * W_path(:,t));
-            enter = ~gone & (LW <= F_lo | W_path(:,t) .* zc <= F_t * Dfac(t));
+            if use_fn
+                enter = ~gone & (LW <= F_lo | d_fn);
+            else
+                if q_dep(t), zc = pp_zc{t}(u1q, u2q, u3q, qq); else, zc = pp_zc{t}(u1q, u2q, u3q); end
+                enter = ~gone & (LW <= F_lo | W_path(:,t) .* zc <= F_t * Dfac(t));
+            end
         else
             enter = ~gone & LW < F_t;
         end
@@ -268,8 +281,9 @@ for t = 1:T
     n_off(3) = n_off(3) + sum(look & (u3_raw < p.u3_grid(1) - 1e-12 | u3_raw > p.u3_grid(end) + 1e-12));
 
     if use_fn
-        [s_fn, pi_raw] = sol.policy_fn(t, u1_raw, u2_raw, u3_raw, q_raw);
-        Fs = min(F_t ./ max(LW, realmin), 1);
+        pi_raw = pi_fn;
+        if choice, Fb = F_lo; else, Fb = F_t; end     % the lower bound of consumption
+        Fs = min(Fb ./ max(LW, realmin), 1);
         cf_raw = Fs + s_fn .* (1 - Fs);
     elseif q_dep(t)
         n_off(4) = n_off(4) + sum(look & (q_raw < q_grid(1) - 1e-12 | q_raw > q_grid(end) + 1e-12));

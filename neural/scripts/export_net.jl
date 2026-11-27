@@ -8,10 +8,10 @@ using NeuralPolicy, MAT, Flux, Random
 const DATA = joinpath(@__DIR__, "..", "data")
 tag, key = ARGS[1], ARGS[2]
 r = matread(joinpath(DATA, "results_$tag.mat"))[key]
-spec = Spec(retire=r["retire"], tenure=r["joint"])
+spec = Spec(retire=r["retire"], tenure=r["joint"], default=get(r, "default", false))
 _, re = Flux.destructure(f64(policy_net(spec; hidden=Int(r["hidden"]), depth=Int(r["depth"]))))
 net = re(Float64.(vec(r["theta"])))
-out = Dict{String,Any}("retire" => spec.retire, "tenure" => spec.tenure, "n_layers" => length(net.layers),
+out = Dict{String,Any}("retire" => spec.retire, "tenure" => spec.tenure, "default" => spec.default, "n_layers" => length(net.layers),
                        "variant" => r["variant"], "tag" => tag, "run" => key)
 for (i, l) in enumerate(net.layers)
     out["W$i"] = Matrix{Float64}(l.weight)

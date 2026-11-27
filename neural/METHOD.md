@@ -153,6 +153,33 @@ biased in this way. The network learns to keep a buffer only through the
 smooth part: at gamma 5, consumption just above the floor is already very
 costly.
 
+## 4b. Default as a choice (step 24)
+
+At step 24 bankruptcy is a decision (the paper's eq. 24, `default_choice`).
+A solvent household chooses d_t in {0, 1}; d_t = 1 is absorbing: it
+consumes F_t for life and is worth u(F_t/Y_1) D_t, with D_t including the
+bequest of beq_bankrupt years of F at death (D_beq). Default is forced only
+where L_t <= Fl_t = max(phi_floor Y_t, 1e-12 W_t), and a household that
+continues consumes C_t = Fl_t + s_t (L_t - Fl_t), which can be below F_t.
+
+The network gets a third output, d_t = sigmoid(o_3), read as the probability
+of defaulting this year; it starts at 0.001. The state carries w_t, the
+probability of not having defaulted before (w_1 = 1). Because default is
+absorbing and the continuing path does not depend on it, the expected
+utility over the decisions along one shock path is exactly
+
+    U(theta; eps) = sum_t beta^(t-1) S_t [ w_t d_t u(F_t/Y_1) D_t + w_t (1 - d_t) r_t^c ],
+    w_{t+1} = w_t (1 - d_t),
+
+with r_t^c the continuing household's reward (utility of consumption and,
+with chi > 0, the bequest term), and d_t = 1 where default is forced. This is
+smooth in theta: the gradient with respect to d_t compares the default
+value with the realised value of continuing, so the jump of section 4 is no
+longer outside the gradient. The objective is linear in each d_t, so
+training pushes d_t towards 0 or 1; evaluation takes the decision d_t > 1/2.
+`neural/test/runtests.jl` checks the gradient against finite differences and
+the formula against the mean over random 0/1 decisions on the same paths.
+
 ## 5. Evaluation
 
 Test draws not used in training: the draws of `simulate.paths_lna`'s

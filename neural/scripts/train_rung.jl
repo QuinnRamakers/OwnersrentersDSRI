@@ -99,7 +99,7 @@ floored(P, m) = mean(P["LW"] .< m.phi_path' .* P["Y"])
         "ce grid", "net-grid", "s.e.", "fl. net", "fl. grid", "train s")
 for v in variants
     o = parse_variant(v)
-    spec = Spec(retire=o["retire"], tenure=o["joint"])
+    spec = Spec(retire=o["retire"], tenure=o["joint"], default=any(s.m.default_choice for s in sets))
     if o["joint"]
         ms = [s.m for s in sets]
         es = [s.e for s in sets]
@@ -135,7 +135,7 @@ for v in variants
                                 "se_net" => c.a.se, "ce_grid" => c.b.ce, "se_grid" => c.b.se,
                                 "diff" => c.diff, "se_diff" => c.se_diff, "train_sec" => secs,
                                 "curve_step" => first.(curve), "curve_value" => last.(curve),
-                                "theta" => Float64.(theta), "retire" => o["retire"], "joint" => o["joint"],
+                                "theta" => Float64.(theta), "retire" => o["retire"], "joint" => o["joint"], "default" => spec.default,
                                 "hidden" => o["hidden"], "depth" => o["depth"], "seed" => o["seed"],
                                 "N" => o["N"], "steps" => o["steps"], "lr" => o["lr"],
                                 "net" => profiles(P, ms[j]), "grid" => profiles(Gs[j], ms[j]),

@@ -3,9 +3,6 @@
 # Zygote can differentiate the whole life. Every number comes from
 # neural.export_model; nothing is derived here. The replay test in
 # test/runtests.jl ties this file to paths_lna.
-#
-# Not covered yet: default as a choice (production, step 24) and the bequest
-# motive (chi > 0, step 23). Both raise an error rather than run wrongly.
 
 """
     Model
@@ -95,7 +92,7 @@ has_dc(m::Model) = any(>(0), m.kappa)
 
 "Refuse the parts of the model the Julia year does not cover yet."
 function check_supported(m::Model)
-    m.default_choice && error("default as a choice (step 24) is not in the Julia year yet")
+    m.dc_choice && m.default_choice && error("free DC choice with default as a choice is not covered")
     return m
 end
 
@@ -170,7 +167,7 @@ function entry(m::Model, template::AbstractArray; unit=m.Y0)
     z = zero(template)
     Y = z .+ F(unit)
     return (; Y, X=F(m.b0) .* Y, A=z, H=F(m.h_mult) .* Y, q=z .+ one(F),
-            gone=z .> one(F), Cbar=z)
+            gone=z .> one(F), Cbar=z, w=z .+ one(F))
 end
 
 """
@@ -185,6 +182,18 @@ the search domain of the solver). `ch.pi` is the liquid equity share; with
 the next state (nothing in the last year) and the year's consumption,
 resources, bankruptcy entries, the solvent households and, in the last year,
 the bequest.
+
+With default as a choice (`m.default_choice`), `ch.d` is the probability of
+defaulting this year, and the state carries `w`, the probability of not
+having defaulted before. Because default is absorbing and the path of a
+household that continues does not depend on it, lifetime utility along a
+path is exactly the expectation over the decision: this year a weight
+wd = w d on the default value and wc = w (1 - d) on continuing, and w = wc
+next year. With d at 0 or 1 this is the hard rule of `simulate.paths_lna`.
+Default is forced where resources do not exceed phi_floor Y (or 1e-12 of
+W), and a household that continues consumes at least that, not the floor F.
+The continuing path is carried on for every household; where its weight is
+zero it counts for nothing.
 """
 function year(m::Model, t::Integer, s, ch, e)
     F = eltype(s.Y)
@@ -225,26 +234,43 @@ function year(m::Model, t::Integer, s, ch, e)
     # The floor. With the absorbing floor a household bankrupt earlier has no
     # resources of its own, and one short of the floor now goes bankrupt.
     F_t = F(m.phi_path[t]) .* s.Y
-    if m.floor_absorbing
+    choice = m.default_choice
+    wd = nothing; wc = s.w
+    if choice
+        # Default as a choice: weights instead of flags (see the docstring).
+        F_lo = max.(F(m.phi_floor) .* s.Y, F(1e-12) .* (s.X .+ s.A .+ s.H .+ s.Y))
+        d = ifelse.(LW .<= F_lo, one(F), ch.d)
+        wd = s.w .* d
+        wc = s.w .- wd
+        Cbar = s.Cbar .+ wd .* F_t
+        enter = wd .> 0
+        gone = s.gone
+        look = wc .> 0
+    elseif m.floor_absorbing
         LW = ifelse.(s.gone, zero(F), LW)
         enter = .!s.gone .& (LW .< F_t)
         gone = s.gone .| enter
         Cbar = ifelse.(enter, F_t, s.Cbar)
+        look = .!gone
     else
         enter = s.gone
         gone = s.gone
         Cbar = s.Cbar
+        look = .!gone
     end
-    look = .!gone
 
-    if haskey(ch, :s)
-        C = F_t .+ ch.s .* max.(LW .- F_t, zero(F))
+    if choice
+        C = haskey(ch, :s) ? F_lo .+ ch.s .* max.(LW .- F_lo, zero(F)) : ch.c .* max.(LW, zero(F))
     else
-        C = ch.c .* max.(LW, zero(F))
+        if haskey(ch, :s)
+            C = F_t .+ ch.s .* max.(LW .- F_t, zero(F))
+        else
+            C = ch.c .* max.(LW, zero(F))
+        end
+        C = ifelse.(LW .< F_t, F_t, C)
     end
-    C = ifelse.(LW .< F_t, F_t, C)
     pi_ = ch.pi
-    if m.floor_absorbing
+    if m.floor_absorbing && !choice
         C = ifelse.(look, max.(C, F_t), Cbar)
         pi_ = ifelse.(look, pi_, zero(F))
     end
@@ -261,8 +287,8 @@ function year(m::Model, t::Integer, s, ch, e)
     if t == m.T && !bequest
         h_beq = m.is_owner ? F(1 - m.sell_cost) : zero(F)
         beq = max.(LW .- C, zero(F)) .+ h_beq .* s.H
-        beq = ifelse.(look, beq, zero(F))
-        return (; state=nothing, C, LW, enter, look, beq, pi=pi_, beq_next=nothing, W)
+        beq = choice ? wc .* beq : ifelse.(look, beq, zero(F))
+        return (; state=nothing, C, LW, enter, look, beq, pi=pi_, beq_next=nothing, W, wd, wc, F_t, Cbar)
     end
 
     X_post = max.(LW .- C, zero(F))
@@ -276,9 +302,10 @@ function year(m::Model, t::Integer, s, ch, e)
     if t == m.T
         # The panel's bequest is that of simulate.paths_lna, before returns.
         h_beq = m.is_owner ? F(1 - m.sell_cost) : zero(F)
-        beq = ifelse.(look, max.(LW .- C, zero(F)) .+ h_beq .* s.H, zero(F))
+        beq = max.(LW .- C, zero(F)) .+ h_beq .* s.H
+        beq = choice ? wc .* beq : ifelse.(look, beq, zero(F))
         beq_next = R_X .* X_post .+ h_beq_s .* (R_H .* s.H)
-        return (; state=nothing, C, LW, enter, look, beq, pi=pi_, beq_next, W)
+        return (; state=nothing, C, LW, enter, look, beq, pi=pi_, beq_next, W, wd, wc, F_t, Cbar)
     end
 
     if dc
@@ -289,8 +316,10 @@ function year(m::Model, t::Integer, s, ch, e)
             over = tot .> one(F)
             tS = ifelse.(over, tS ./ tot, tS)
             tR = ifelse.(over, tR ./ tot, tR)
-            tS = ifelse.(look, tS, F(m.tau_e[t]))
-            tR = ifelse.(look, tR, F(m.reit_e[t]))
+            if !choice
+                tS = ifelse.(look, tS, F(m.tau_e[t]))
+                tR = ifelse.(look, tR, F(m.reit_e[t]))
+            end
         else
             tS = F(m.tau_e[t])
             tR = F(m.reit_e[t])
@@ -306,7 +335,7 @@ function year(m::Model, t::Integer, s, ch, e)
     H1 = hous ? R_H .* s.H : s.H
     q1 = s.q ./ R_H
     beq_next = bequest ? X1 .+ h_beq_s .* H1 : nothing
-    if m.floor_absorbing
+    if m.floor_absorbing && !choice
         X1 = ifelse.(look, X1, zero(F))
         A1 = ifelse.(look, A1, zero(F))
         H1 = ifelse.(look, H1, zero(F))
@@ -318,8 +347,8 @@ function year(m::Model, t::Integer, s, ch, e)
     else
         Y1 = s.Y
     end
-    state = (; Y=Y1, X=X1, A=A1, H=H1, q=q1, gone, Cbar)
-    return (; state, C, LW, enter, look, beq=nothing, pi=pi_, beq_next, W)
+    state = (; Y=Y1, X=X1, A=A1, H=H1, q=q1, gone, Cbar, w=wc)
+    return (; state, C, LW, enter, look, beq=nothing, pi=pi_, beq_next, W, wd, wc, F_t, Cbar)
 end
 
 crra(c, omg) = c^omg / omg
@@ -342,13 +371,17 @@ function year_utility(m::Model, t::Integer, o, unit, guard)
     omg = F(1 - m.gamma)
     c = max.(o.C ./ F(unit), F(guard))
     u = crra.(c, omg)
-    if m.floor_absorbing
+    if m.default_choice
+        # wd on the default value, wc on continuing (see `year`).
+        uF = crra.(max.(o.F_t ./ F(unit), F(guard)), omg) .* F(m.D_beq[t])
+        u = o.wd .* uF .+ o.wc .* u
+    elseif m.floor_absorbing
         u = ifelse.(o.enter, u .* F(m.D_beq[t]), ifelse.(o.look, u, zero(F)))
     end
     if m.chi > 0
         b = max.(o.beq_next, F(1e-12) .* o.W) ./ F(unit)
         ub = F(m.beta * (1 - m.p_surv[t]) * m.chi) .* crra.(max.(b, F(guard)), omg)
-        u = u .+ ifelse.(o.look, ub, zero(F))
+        u = u .+ (m.default_choice ? o.wc .* ub : ifelse.(o.look, ub, zero(F)))
     end
     return u
 end
@@ -391,14 +424,25 @@ function panel(m::Model, s0, choose, e; unit=m.Y0)
     disc = 1.0
     beq = zeros(1, N)
     for t in 1:T
-        for (k, v) in (("Y", s.Y), ("X", s.X), ("A", s.A), ("H", s.H), ("q", s.q))
+        # With default as a choice the continuing path is carried for every
+        # household; the panel shows the expected path under the weights,
+        # which with decisions at 0 or 1 is the path of simulate.paths_lna.
+        wk = m.default_choice ? s.w : one(eltype(s.Y))
+        for (k, v) in (("Y", s.Y), ("X", wk .* s.X), ("A", wk .* s.A), ("H", wk .* s.H), ("q", s.q))
             P[k][:, t] = vec(Array(v))
         end
         o = year(m, t, s, choose(t, s), e)
-        P["C"][:, t] = vec(Array(o.C))
-        P["LW"][:, t] = vec(Array(o.LW))
-        P["pi"][:, t] = vec(Array(o.pi .+ zero(o.C)))
-        P["absorbed"][:, t] = vec(Array(.!o.look))
+        if m.default_choice
+            P["C"][:, t] = vec(Array(o.wc .* o.C .+ (1 .- o.wc) .* o.Cbar))
+            P["LW"][:, t] = vec(Array(s.w .* o.LW))
+            P["pi"][:, t] = vec(Array(o.wc .* o.pi))
+            P["absorbed"][:, t] = vec(Array(1 .- o.wc))
+        else
+            P["C"][:, t] = vec(Array(o.C))
+            P["LW"][:, t] = vec(Array(o.LW))
+            P["pi"][:, t] = vec(Array(o.pi .+ zero(o.C)))
+            P["absorbed"][:, t] = vec(Array(.!o.look))
+        end
         U = U .+ disc .* Array(year_utility(m, t, o, unit, 0))
         disc *= m.beta * m.p_surv[t]
         if t == T
