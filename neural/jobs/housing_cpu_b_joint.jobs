@@ -1,0 +1,5 @@
+# Step 7b, one network for renters and owners (a tenure indicator), as
+# housing_cpu_b.jobs otherwise. A joint job holds two tapes, so it needs a
+# larger heap: with 2.5 GB it spent most of its time collecting garbage.
+# Run: OPENBLAS_NUM_THREADS=3 JULIA_FLAGS=--heap-size-hint=5G bash neural/scripts/queue.sh neural/jobs/housing_cpu_b_joint.jobs 1
+step7b_joint testset_7b_renter_quick.mat testset_7b_owner_quick.mat variants=ret_n8192_lr3e-3_k1500_joint device=cpu

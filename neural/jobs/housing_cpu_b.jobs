@@ -1,5 +1,9 @@
-# Housing batch b (see housing_cpu.jobs): step 7b joint and separate, step 12.
-step7b_joint  testset_7b_renter_quick.mat testset_7b_owner_quick.mat variants=ret_n8192_lr3e-3_k2000_joint device=cpu
-step7b_renter testset_7b_renter_quick.mat variants=ret_n8192_lr3e-3_k2000 device=cpu
-step7b_owner  testset_7b_owner_quick.mat  variants=ret_n8192_lr3e-3_k2000 device=cpu
-step12_ret    testset_12_nohousing_fine.mat variants=ret_n8192_lr3e-3_k2000 device=cpu
+# Housing batch b: step 7b (housing, the mortgage annuity, no DC) renters and
+# owners separately, and step 12 (the DC pot, no housing), on the CPU:
+# retirement inputs, 8,192 households a step, 1,500 steps, learning rate 3e-3
+# (3e-4 after 1,000), the consumption share starting at 0.5. The joint
+# network of step 7b is housing_cpu_b_joint.jobs, with the same settings.
+# Run: OPENBLAS_NUM_THREADS=3 JULIA_FLAGS=--heap-size-hint=2500M bash neural/scripts/queue.sh neural/jobs/housing_cpu_b.jobs 4
+step7b_renter testset_7b_renter_quick.mat variants=ret_n8192_lr3e-3_k1500 device=cpu
+step7b_owner  testset_7b_owner_quick.mat  variants=ret_n8192_lr3e-3_k1500 device=cpu
+step12_ret    testset_12_nohousing_fine.mat variants=ret_n8192_lr3e-3_k1500 device=cpu
