@@ -77,7 +77,10 @@ not use it.
 2. Utility is of consumption in units of entry income, so that gamma = 10
    does not underflow in Float32; the model is homothetic, so this changes
    no choice. Consumption is bounded below by 1e-3 of entry income inside
-   the training utility only (`guard`), so that Float32 cannot overflow.
+   the training utility only (`guard`), so that Float32 cannot overflow:
+   by default 10^(-30/(gamma-1)) of entry income, 4.6e-4 at gamma 10 and
+   3e-8 at gamma 5 (below the yearly top-up, so it never binds there). The
+   step-1 runs of 27 November used 1e-3.
    Evaluation has no guard.
 3. Consumption is the floor plus a share of the resources above it, the
    search domain of the grid solver. In the last year without a bequest

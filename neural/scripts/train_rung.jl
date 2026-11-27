@@ -60,6 +60,16 @@ function paired(m, U1, U2)
     return (; a, b, diff=a.ce - b.ce, se_diff=std(h) / sqrt(length(h)))
 end
 
+"""
+The lifetime utility, in units of entry income, of a constant consumption
+`ce` (the grid value function's certainty equivalent at entry): the scale
+each tenure's mean utility is divided by in training, so that the objective
+is -1 at the value function's value and both tenures of a joint network
+count alike. Not the grid policy's simulated utility: from step 7 to 17 a
+few household-years at the yearly top-up make that astronomically large.
+"""
+eu_ref(m::Model, ce) = ce^(1 - m.gamma) / (1 - m.gamma) * m.D_abs[1]
+
 function with_owner(m::Model, owner::Bool)
     kw = Dict{Symbol,Any}(f => getfield(m, f) for f in fieldnames(Model))
     kw[:is_owner] = owner
@@ -82,8 +92,11 @@ sets = map(files) do f
 end
 
 results = Dict{String,Any}()
-@printf("\n%-22s %-34s %9s %9s %9s %9s %9s %8s\n", "variant", "test set", "ce net", "s.e.",
-        "ce grid", "net-grid", "s.e.", "train s")
+"The share of household-years whose resources fall short of the floor (the top-up, or bankruptcy)."
+floored(P, m) = mean(P["LW"] .< m.phi_path' .* P["Y"])
+
+@printf("\n%-22s %-34s %10s %9s %10s %10s %9s %9s %9s %8s\n", "variant", "test set", "ce net", "s.e.",
+        "ce grid", "net-grid", "s.e.", "fl. net", "fl. grid", "train s")
 for v in variants
     o = parse_variant(v)
     spec = Spec(retire=o["retire"], tenure=o["joint"])
@@ -92,16 +105,18 @@ for v in variants
         es = [s.e for s in sets]
         Gs = [s.G for s in sets]
         names = [s.file for s in sets]
+        ces = [s.ce_vf for s in sets]
         if length(sets) == 1
             push!(ms, with_owner(sets[1].m, !sets[1].m.is_owner))
             push!(es, sets[1].e)
             push!(Gs, sets[1].G)
+            push!(ces, sets[1].ce_vf)
             names = [names[1] * " (as renter)", names[1] * " (as owner)"]
         end
-        w = [1 / abs(mean(G["U"])) for G in Gs]
+        w = [1 / abs(eu_ref(m, ce)) for (m, ce) in zip(ms, ces)]
         groups = [(ms, es, Gs, names, w)]
     else
-        groups = [([s.m], [s.e], [s.G], [s.file], [1 / abs(mean(s.G["U"]))]) for s in sets]
+        groups = [([s.m], [s.e], [s.G], [s.file], [1 / abs(eu_ref(s.m, s.ce_vf))]) for s in sets]
     end
     for (ms, es, Gs, names, w) in groups
         t0 = time()
@@ -112,8 +127,9 @@ for v in variants
         for j in eachindex(ms)
             P, _ = evaluate(net, ms[j], spec, es[j])
             c = paired(ms[j], P["U"], Gs[j]["U"])
-            @printf("%-22s %-34s %9.4f %9.4f %9.4f %9.4f %9.4f %8.0f\n", v, names[j], c.a.ce, c.a.se,
-                    c.b.ce, c.diff, c.se_diff, secs)
+            fl_net, fl_grid = floored(P, ms[j]), floored(Gs[j], ms[j])
+            @printf("%-22s %-34s %10.4g %9.2g %10.4g %10.4g %9.2g %9.5f %9.5f %8.0f\n", v, names[j], c.a.ce,
+                    c.a.se, c.b.ce, c.diff, c.se_diff, fl_net, fl_grid, secs)
             key = "run$(length(results) + 1)"
             results[key] = Dict("variant" => v, "test_set" => names[j], "ce_net" => c.a.ce,
                                 "se_net" => c.a.se, "ce_grid" => c.b.ce, "se_grid" => c.b.se,
@@ -124,6 +140,8 @@ for v in variants
                                 "N" => o["N"], "steps" => o["steps"], "lr" => o["lr"],
                                 "net" => profiles(P, ms[j]), "grid" => profiles(Gs[j], ms[j]),
                                 "is_owner" => ms[j].is_owner,
+                                "floored_net" => fl_net, "floored_grid" => fl_grid,
+                                "log10_EU_ratio" => log10(mean(P["U"]) / mean(Gs[j]["U"])),
                                 "worst1_net" => worst_share(P["U"]), "worst1_grid" => worst_share(Gs[j]["U"]))
         end
         # With a tenure indicator on a model without housing, the two tenures are

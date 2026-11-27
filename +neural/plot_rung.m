@@ -58,8 +58,8 @@ for i = 1:numel(runs)
         'DisplayName', runs{i}.variant);
     hold(ax, 'on');
 end
-yline(ax, 1, 'k--', 'grid policy');
-title(ax, 'Training: minus mean utility over that of the grid policy');
+yline(ax, 1, 'k--', 'grid value function');
+title(ax, 'Training: minus mean utility over the grid value function''s');
 xlabel(ax, 'step');
 grid(ax, 'on');
 legend(ax, 'Location', 'northeast', 'Interpreter', 'none', 'FontSize', 7);

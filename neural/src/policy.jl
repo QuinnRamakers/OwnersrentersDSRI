@@ -123,11 +123,15 @@ draws every step, Float32, on `device` (:gpu or :cpu). The learning rate is
 `lr` for the first two thirds of the steps and `lr / 10` after. Returns the
 network on the CPU and the training curve (the weighted objective at every
 `log_every` steps). Prints the objective and the time every `progress` steps.
+`guard` bounds consumption below inside the training utility only, as a
+share of entry income; by default 10^(-30/(gamma-1)), the smallest that keeps
+c^(1-gamma) below 1e30 in Float32 (4.6e-4 at gamma 10, 3e-8 at gamma 5, below
+the yearly top-up of 1e-6, so it never binds there).
 """
 function train(models::Vector{Model}, spec::Spec; weights=ones(length(models)),
                steps::Integer=3000, N::Integer=4096, lr=1e-3, seed::Integer=1,
                device::Symbol=:gpu, hidden::Integer=64, depth::Integer=2,
-               guard=1e-3, log_every::Integer=50, progress::Integer=250)
+               guard=nothing, log_every::Integer=50, progress::Integer=250)
     foreach(check_supported, models)
     t0 = time()
     rng = Xoshiro(seed)
@@ -145,7 +149,8 @@ function train(models::Vector{Model}, spec::Spec; weights=ones(length(models)),
             tot = 0f0
             for (j, m) in enumerate(models)
                 s0 = entry(m, template; unit=1)
-                U = lifetime(m, s0, choices(nn, m, spec), es[j]; unit=1, guard)
+                g = guard === nothing ? 10.0^(-30 / (m.gamma - 1)) : guard
+                U = lifetime(m, s0, choices(nn, m, spec), es[j]; unit=1, guard=g)
                 tot += Float32(weights[j]) * mean(U)
             end
             -tot
