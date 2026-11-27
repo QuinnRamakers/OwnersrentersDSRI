@@ -147,6 +147,23 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Why the network fails at step 24: the bequest without a shifter, already at step 23 (spec: none, asked by Quinn in Claude Code)
+
+Script `diagnostics/step24_default/why_training_fails.jl` (log `neural/data/logs/why_training_fails.txt`, gitignored). Renters, built from `replay_23_renter.mat`: step 23 as saved, step 24 = the same with `default_choice` on, and a control with chi = 0. Each arm trained alike: 300 steps, 4,096 households a step, lr 3e-3, CPU. Each evaluated with hard decisions on 20,000 Julia draws (seed 202).
+
+| arm | ce | households carrying half of E[U] | defaulted | liquid wealth at 66 |
+|---|---|---|---|---|
+| step 23, chi = 0 | 0.2439 (s.e. 0.0056) | 70 | 0.029 | 16.5 entry incomes |
+| step 23 (bequest, forced default) | 0.00037 | 1 | 0.145 | 2.0 |
+| step 24 (bequest, default as a choice) | 0.00002 | 1 | 0.069 | 0.6 |
+
+Where the objective comes from:
+- At the starting network (8,192 households), the bequest term for households whose bequest base is below the floor amount F_t is 100% of the objective at step 23 and 99.5% at step 24. Consumption below F_t is the other 0.5% at step 24.
+- After training it is still 100% (step 23) and 93% (step 24, with 7% from consumption below F_t).
+- With chi = 0 the objective is 42% consumption and 58% the default value, and 19 of 8,192 households carry half of it.
+
+Reading: v(B) = chi B^(1-gamma)/(1-gamma) at gamma 5 goes to minus infinity as B goes to 0. A household just above the floor must consume about all its resources, so a death that year leaves almost nothing, while a bankrupt household is valued at `beq_bankrupt` years of floor consumption. Just above the floor is therefore worth far less than bankruptcy. The training objective is a mean over households, so the single worst bequest sets it. Default as a choice is not the cause; it adds consumption down to phi_floor Y and a soft default weight that cannot get close enough to 1. The fix (a shifter, a lower bound on the bequest base, or a different value just above the floor) is Quinn's to decide. Literature on discrete choices with networks and taste shocks is in the session reply: Maliar and Maliar 2022 JEDC, Iskhakov et al. 2017 QE, Gordon 2019.
+
 ### 2026-11-27 Step 18 owners on the production grid: the networks stay ahead (spec: none, asked by Quinn in Claude Code)
 Follows the step-18 entries below. `neural.make_testsets({18}, numerics={'fine'}, keep_solve=true)` for owners on the PC: grid 32x16x40x4, gh_n 5, solve 16,540 s (4.6 hours, sharing the PC), ce_entry 0.3545, no off-grid lookups. Then `neural.step18_checks('owner', 'fine', refinement=false)`.
 
