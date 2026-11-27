@@ -160,7 +160,7 @@ Renters, 20,000 test households (seed 202); welfare in entry income, lifetime ut
 | | value function | simulated welfare | worst household's share of total utility | defaulted |
 |---|---|---|---|---|
 | grid policy, quick grid | 0.3637 | 0.0063 | 80% (99.96% for the worst 10) | 7.4% |
-| grid policy, standard grid | 0.3544 | 0.0540 | 81% (98.3% for the worst 10) | 7.2% |
+| grid policy, standard grid | 0.3544 | 0.0540 | 81% (98.3% for the worst 10) | 7.4% (100,000 households, seed 303) |
 | network, 1,000 steps, 3e-3 | | 0.0018 | about 100% | 0.03% |
 | network, 3,000 steps, 3e-4, 16,384 a step | | 0.00003 | | |
 
