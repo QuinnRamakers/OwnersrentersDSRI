@@ -98,12 +98,28 @@ is the lifetime-reward method of Maliar, Maliar and Winant (2021, eq. 6):
 the policy is optimised directly on expected lifetime utility. No value
 function, Bellman equation or Euler equation is used.
 
-In training J is multiplied by w = 1/|EU_ref|, with EU_ref = u(ce_VF) D_1 and
-ce_VF the quick-grid value function's certainty equivalent at entry, so the
-objective is about -1 at the grid's value. The scale does not change the
-maximiser. The joint network maximises w_R J_R + w_O J_O with the owner
-indicator as an input; the weights make each tenure about -1 at its own grid
-value, so both count alike.
+In training J is multiplied by a positive constant w = 1/|EU_ref|, with
+EU_ref = u(ce_VF) D_1 and ce_VF the quick-grid value function's certainty
+equivalent at entry. For one tenure this is bookkeeping only. A positive
+constant does not change the maximiser, and it does not change Adam's steps
+either: the step is m/(sqrt(v) + epsilon), m scales with w and sqrt(v) with
+w, so only epsilon = 1e-8 could tell them apart. Its one use is that the
+logged objective reads -1 at the grid's value.
+
+For the joint network the weights are a choice. Its objective is
+w_R J_R + w_O J_O. Near the reference,
+
+    w dJ = (gamma - 1) (ce_VF / ce)^(gamma - 1) dce / ce,
+
+so each tenure counts by the percentage change in its certainty equivalent,
+scaled up by (ce_VF / ce)^(gamma-1) where its welfare lies below its
+reference. Without weights a tenure would count by its utility level, which
+at gamma 5 grows like ce^-4 and with the tail, so the worse-off tenure would
+set the gradient. The network sees the owner indicator, so it can fit each
+tenure's own optimum; the weights act only through its limited size and the
+finite training. At step 18 the joint and separate networks agree within
+their standard errors. The reference ce_VF is the grid's value, which
+overprices both tenures, so the two count alike only roughly.
 
 ## 4. Estimator and optimiser
 
