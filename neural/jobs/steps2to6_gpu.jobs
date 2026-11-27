@@ -1,0 +1,10 @@
+# Steps 2-6 (gamma 5, retirement at 67, DHS income, the market, the income-stock
+# correlation), one network each on the GPU: retirement inputs, 16,384
+# households a step, 3,000 steps, learning rate 3e-3 (3e-4 after 2,000), the
+# consumption share starting at 0.5.
+# Run: bash neural/scripts/queue.sh neural/jobs/steps2to6_gpu.jobs 1
+step2_ret_lr3 testset_2_nohousing_fine.mat variants=ret_lr3e-3
+step3_ret_lr3 testset_3_nohousing_fine.mat variants=ret_lr3e-3
+step4_ret_lr3 testset_4_nohousing_fine.mat variants=ret_lr3e-3
+step5_ret_lr3 testset_5_nohousing_fine.mat variants=ret_lr3e-3
+step6_ret_lr3 testset_6_nohousing_fine.mat variants=ret_lr3e-3

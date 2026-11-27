@@ -61,17 +61,16 @@ the share of resources above the floor consumed and the liquid equity share.
 consumption share of `c_init` and an equity share of one half.
 """
 function policy_net(spec::Spec; hidden::Integer=64, depth::Integer=2,
-                    rng::AbstractRNG=Random.default_rng(), c_init::Real=0.85)
+                    rng::AbstractRNG=Random.default_rng(), c_init::Real=0.5)
     init = Flux.glorot_uniform(rng)
     layers = Any[Dense(n_inputs(spec) => hidden, tanh; init)]
     for _ in 2:depth
         push!(layers, Dense(hidden => hidden, tanh; init))
     end
     out = Dense(hidden => 2; init)
-    # Start at a consumption share of c_init of the resources above the floor
-    # and an equity share of one half, not at one half and one half: at
-    # gamma = 10 consuming half of income in the first year costs more than
-    # the network learns in its first hundreds of steps.
+    # The output biases set the starting consumption share. At step 1 a start
+    # at 0.85 began further from the grid policy than one at 0.5 (objective
+    # -182,000 against -2,400, the grid at -1) and had caught up by step 250.
     out.bias .= [log(c_init / (1 - c_init)), 0.0]
     push!(layers, out)
     return f32(Chain(layers...))
@@ -123,13 +122,14 @@ absolute value of a reference value, so both tenures count alike). Fresh
 draws every step, Float32, on `device` (:gpu or :cpu). The learning rate is
 `lr` for the first two thirds of the steps and `lr / 10` after. Returns the
 network on the CPU and the training curve (the weighted objective at every
-`log_every` steps).
+`log_every` steps). Prints the objective and the time every `progress` steps.
 """
 function train(models::Vector{Model}, spec::Spec; weights=ones(length(models)),
                steps::Integer=3000, N::Integer=4096, lr=1e-3, seed::Integer=1,
                device::Symbol=:gpu, hidden::Integer=64, depth::Integer=2,
-               guard=1e-3, log_every::Integer=50)
+               guard=1e-3, log_every::Integer=50, progress::Integer=250)
     foreach(check_supported, models)
+    t0 = time()
     rng = Xoshiro(seed)
     net = policy_net(spec; hidden, depth, rng)
     on_gpu = device === :gpu
@@ -156,6 +156,11 @@ function train(models::Vector{Model}, spec::Spec; weights=ones(length(models)),
         Flux.update!(opt, net, g[1])
         if k % log_every == 0 || k == 1
             push!(curve, (k, -Float64(val)))
+        end
+        if progress > 0 && (k % progress == 0 || k == 1)
+            println("step $k of $steps: objective $(round(-Float64(val); sigdigits=6)), ",
+                    "$(round(Int, time() - t0)) s")
+            flush(stdout)
         end
     end
     return cpu(net), curve

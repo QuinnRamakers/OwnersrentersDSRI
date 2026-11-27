@@ -1,0 +1,11 @@
+# Step 1 (CGM core), the matched set of architecture checks on the CPU:
+# 8,192 households a step, 3,000 steps, learning rate 1e-3 (1e-4 after 2,000).
+# The last line: learning rate 3e-3 (3e-4 after 2,000).
+# Run: OPENBLAS_NUM_THREADS=3 bash neural/scripts/queue.sh neural/jobs/step1_cpu.jobs 7
+step1cpu_age      testset_1_nohousing_fine.mat variants=age_n8192      device=cpu
+step1cpu_ret      testset_1_nohousing_fine.mat variants=ret_n8192      device=cpu
+step1cpu_ret_w128 testset_1_nohousing_fine.mat variants=ret_n8192_w128 device=cpu
+step1cpu_ret_d3   testset_1_nohousing_fine.mat variants=ret_n8192_d3   device=cpu
+step1cpu_ret_s2   testset_1_nohousing_fine.mat variants=ret_n8192_s2   device=cpu
+step1cpu_joint    testset_1_nohousing_fine.mat variants=ret_n8192_joint device=cpu
+step1cpu_ret_lr3  testset_1_nohousing_fine.mat variants=ret_n8192_lr3e-3 device=cpu
