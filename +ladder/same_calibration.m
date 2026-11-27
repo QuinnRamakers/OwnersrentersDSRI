@@ -15,7 +15,8 @@ function tf = same_calibration(p1, p2)
 %   not the same calibration as production, which has it on. One saved before
 %   default_choice and nibud_year existed (16 November 2026) had the forced
 %   bankruptcy rule and the 2026 Nibud norms: they read as false and 2026. A
-%   missing glide_knots reads as empty, as any other missing field.
+%   missing glide_knots reads as empty, as any other missing field. One saved
+%   before u2_coord existed (27 November 2026) had the share coordinate.
 f  = [fieldnames(config.params(false)); {'is_owner'}];
 if ~config.reit_active(p1) && ~config.reit_active(p2)
     f = f(cellfun(@isempty, regexp(f, 'reit|REIT|^corr_R[LSH]', 'once')));
@@ -29,7 +30,7 @@ end
 
 function v = getf(p, f)
 before = struct('dc_choice', false, 'glide_rule', 'span', 'gross_rate', 0, 'fast_power', false, ...
-                'default_choice', false, 'nibud_year', 2026);   % primitives added later, as they were
+                'default_choice', false, 'nibud_year', 2026, 'u2_coord', 'share');   % primitives added later, as they were
 if isfield(p, f), v = p.(f); elseif isfield(before, f), v = before.(f); else, v = []; end
 if isstring(v), v = char(v); end
 end

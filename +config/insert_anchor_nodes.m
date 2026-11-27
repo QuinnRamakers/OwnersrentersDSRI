@@ -21,7 +21,12 @@ if ~all(isfield(p, {'b0', 'b_alt', 'h_mult', 'u1_grid', 'u2_grid'}))
 end
 b = [p.b0, p.b_alt];
 p.u1_grid = merge_nodes(p.u1_grid, 1 ./ (1 + p.h_mult + b));
-p.u2_grid = merge_nodes(p.u2_grid, p.h_mult ./ (p.h_mult + b));
+u2a = p.h_mult ./ (p.h_mult + b);
+if isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge')
+    % The edge coordinate v = u2 / u2_max (utility.u2_max): the entry states' v at 25.
+    u2a = u2a ./ utility.u2_max(p, 1, 1 ./ (1 + p.h_mult + b), zeros(size(b)), 1, []);
+end
+p.u2_grid = merge_nodes(p.u2_grid, u2a);
 p.N_u1    = numel(p.u1_grid);
 p.N_u2    = numel(p.u2_grid);
 end

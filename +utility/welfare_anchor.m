@@ -29,6 +29,9 @@ den = 1 + p.h_mult + b(:);          % same order as insert_anchor_nodes, so the 
 u1  = 1 ./ den;
 u2  = p.h_mult ./ max(p.h_mult + b(:), realmin);   % 0/0 without housing or buffer: no illiquid wealth
 u3  = zeros(size(den));
+if isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge')
+    u2 = u2 ./ utility.u2_max(p, 1, u1, u3, 1, []);   % the edge coordinate v, as insert_anchor_nodes places it
+end
 Vt0 = reshape(F(u1, u2, u3), size(b));
 if nargout > 1
     node = struct('b', b(:).', 'u1', u1.', 'u2', u2.', 'u3', u3.', 'q', 1, 'W0_over_Y0', den.');

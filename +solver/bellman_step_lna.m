@@ -1,4 +1,4 @@
-function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next, fixed)
+function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next, fixed, pts)
 %BELLMAN_STEP_LNA  One backward-induction step on the (u1, u2, u3, q) grid.
 %
 %   [V_t, c_pol, pi_pol] = solver.bellman_step_lna(t, V_next, p, profile, shocks, ann_price, pol_next)
@@ -91,31 +91,63 @@ function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_n
 %   c = c_floor + s (1 - c_floor) and pi, and V_t is that policy's value
 %   (policy evaluation, neural.evaluate_policy). Not with dc_choice or
 %   default_choice.
+%
+%   With pts, a struct of column vectors lam, sA, sH (Y/W, A/W and H/W) and q,
+%   the step is solved at those states instead of at the grid's nodes, against
+%   the same V_next, quadrature and search (the point mode). pts.c and pts.pi,
+%   if given, seed the search as pol_next does. The outputs are then column
+%   vectors, one entry per state. For checks of the value between nodes and
+%   of the policy's interpolation (diagnostics/value_gap); a grid solve is
+%   unchanged by it.
 
 if nargin < 7, pol_next = []; end              % the last period has no next policy
 if nargin < 8, fixed = []; end                 % no fixed policy: search at every node
+if nargin < 9, pts = []; end                   % no points: solve at the grid's nodes
+have_pts = ~isempty(pts);
 [g1, g2] = utility.grid_at(p, t);              % this period's points (they can follow age)
 N1 = numel(g1); N2 = numel(g2); N3 = numel(p.u3_grid);
 q_grid = p.q_grid(:); Nq = numel(q_grid);
 iq1    = find(q_grid == 1);
-V_t    = nan(N1, N2, N3, Nq);
-c_pol  = nan(N1, N2, N3, Nq);
-pi_pol = nan(N1, N2, N3, Nq);
+if have_pts
+    % One pass over the states; the arrays below are n x 1.
+    n_pt = numel(pts.lam);
+    N1 = n_pt; N2 = 1; N3 = 1;
+end
+V_t    = nan(N1, N2, N3, Nq * ~have_pts + have_pts);
+c_pol  = nan(size(V_t));
+pi_pol = nan(size(V_t));
 dc_on    = isfield(p, 'dc_choice') && p.dc_choice;   % the household picks the fund's shares
 tau_pol  = [];
 reit_pol = [];
-if dc_on, tau_pol = zeros(N1, N2, N3, Nq); reit_pol = zeros(N1, N2, N3, Nq); end
+if dc_on, tau_pol = zeros(size(V_t)); reit_pol = zeros(size(V_t)); end
 
 % Does q enter this year's problem (now or through any later year), and does
 % it enter the continuation?
 q_now  = Nq > 1 && any(p.q_live(t:end));
 q_cont = Nq > 1 && t < p.T && any(p.q_live(t+1:end));
 if q_now, slices = 1:Nq; else, slices = iq1; end
+if have_pts, slices = 1; end
 
-[U1, U2, U3] = ndgrid(g1, g2, p.u3_grid);
-Lam_all = U1;
-SA_all  = U2 .* (1 - Lam_all) .* U3;
-SH_all  = U2 .* (1 - Lam_all) .* (1 - U3);
+if have_pts
+    Lam_all = pts.lam(:); SA_all = pts.sA(:); SH_all = pts.sH(:);
+    q_pt = pts.q(:);
+    U3 = min(max(SA_all ./ max(SA_all + SH_all, 1e-12), 0), 1);
+    U2 = (SA_all + SH_all) ./ max(1 - Lam_all, 1e-12);
+else
+    q_pt = [];
+    [U1, U2, U3] = ndgrid(g1, g2, p.u3_grid);
+    Lam_all = U1;
+    SA_all  = U2 .* (1 - Lam_all) .* U3;
+    SH_all  = U2 .* (1 - Lam_all) .* (1 - U3);
+end
+% With p.u2_coord = 'edge' the second axis is v = u2 / u2_max (utility.u2_max):
+% the nodes' u2 follows this year's edge of bankruptcy at each (u1, u3, q),
+% so they are placed per q slice below, and next year's value is read at
+% v' = u2' / u2_max(t+1).
+edge = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge');
+assert(~edge || ~(isfield(p, 'u2_grid_age') && ~isempty(p.u2_grid_age)), 'bellman_step_lna:edge', ...
+    'u2_coord = ''edge'' does not combine with a u2 grid that follows age.');
+V2 = U2;                                       % the nodes' v (edge) or u2
 
 gamma   = p.gamma;
 one_m_g = 1 - gamma;
@@ -146,6 +178,23 @@ elseif is_owner
 else
     h_cost_q = p.alpha * ones(Nq, 1);
 end
+% The same rate at each state of the point mode, from its own q.
+hc_pt = [];
+if have_pts
+    if p.h_mult == 0
+        hc_pt = zeros(n_pt, 1);
+    elseif is_owner
+        hm = m_rate_t * ones(n_pt, 1); ht = p.theta * ones(n_pt, 1);
+        if strcmp(p.mortgage, 'annuity'), hm = m_rate_t * q_pt; end
+        if p.maint_on_purchase, ht = p.theta * q_pt; end
+        hc_pt = ht + hm;
+    else
+        hc_pt = p.alpha * ones(n_pt, 1);
+    end
+end
+% What next_h_cost reads, without broadcasting all of p to the workers.
+hx = struct('h_mult', p.h_mult, 'is_owner', p.is_owner, 'theta', p.theta, ...
+            'maint_on_purchase', p.maint_on_purchase, 'mortgage', p.mortgage, 'alpha', p.alpha);
 
 kappa_t   = p.kappa(min(t, numel(p.kappa)));
 h_beq_fac = is_owner * (p.h_mult > 0) * (1 - p.sell_cost);   % renters bequeath no housing
@@ -158,7 +207,7 @@ absorbing = p.floor_absorbing;
 choice    = absorbing && isfield(p, 'default_choice') && p.default_choice;
 phi_lo    = phi_t;
 Vc_t      = [];
-if choice, phi_lo = p.phi_floor; Vc_t = -inf(N1, N2, N3, Nq); end
+if choice, phi_lo = p.phi_floor; Vc_t = -inf(size(V_t)); end
 D_t       = p.D_beq(t);                       % D_abs(t) when chi = 0
 FLOOR_EPS = 1e-12;
 
@@ -176,10 +225,14 @@ last = (t == p.T);
 if last && p.chi <= 0
     for iq = slices
         h_cost_rate = h_cost_q(iq);
+        if edge && ~have_pts
+            [Lam_all, SA_all, SH_all] = edge_shares(p, t, U1, V2, U3, q_grid(iq), ann_price);
+        end
         V_s = nan(N1, N2, N3); c_s = nan(N1, N2, N3); pi_s = nan(N1, N2, N3);
         Vc_s = -inf(N1, N2, N3);
         for k = 1:numel(Lam_all)
             lam = Lam_all(k); sA = SA_all(k); sH = SH_all(k);
+            if have_pts, h_cost_rate = hc_pt(k); end
             sX  = 1 - lam - sA - sH;
             if is_retired
                 LW_W = sX + contrib_factor * lam + net_inc * sA / ann_price(t) ...
@@ -204,7 +257,9 @@ if last && p.chi <= 0
         V_t(:, :, :, iq) = V_s; c_pol(:, :, :, iq) = c_s; pi_pol(:, :, :, iq) = pi_s;
         if choice, Vc_t(:, :, :, iq) = Vc_s; end
     end
-    [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t);
+    if ~have_pts
+        [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t);
+    end
     return
 end
 
@@ -263,6 +318,16 @@ if ~last
     else
         % A smooth scheme can undershoot below zero next to the ruin region.
         pp_z = @(varargin) max(pp_lin(varargin{:}), z_min);
+    end
+    if edge
+        % Read next year's value at v' = u2' / u2_max(t+1); q' where it counts.
+        pe = edge_struct(p);
+        pp_u = pp_z;
+        if q_cont
+            pp_z = @(u1, u2, u3, q) pp_u(u1, u2 ./ utility.u2_max(pe, t + 1, u1, u3, q, ann_price), u3, q);
+        else
+            pp_z = @(u1, u2, u3) pp_u(u1, u2 ./ utility.u2_max(pe, t + 1, u1, u3, [], ann_price), u3);
+        end
     end
 end
 
@@ -349,6 +414,7 @@ if two_u3 && p.h_mult == 0
 elseif two_u3 && no_dc
     u3_keep = 1;
 end
+if have_pts || edge, u3_keep = 0; end         % every state is solved (point mode; edge nodes differ by u3)
 if u3_keep > 0
     solve_k = find(U3(:) == p.u3_grid(u3_keep) | U2(:) == 0);
 else
@@ -366,8 +432,8 @@ dcx = struct('R_S', R_S, 'R_REIT', R_REIT, 'Rf', p.Rf, 'pt', pt, 'reit', config.
 % A struct fixed (fn, kind 'c') gives the share of resources consumed
 % instead, as a grid policy stores it; it then consumes at least the floor.
 have_fixed = ~isempty(fixed);
-assert(~have_fixed || ~(dc_on || choice), 'bellman_step_lna:fixed', ...
-    'A fixed policy does not cover free DC choice or default as a choice.');
+assert(~have_fixed || ~(dc_on || (choice && ~have_pts)), 'bellman_step_lna:fixed', ...
+    'A fixed policy does not cover free DC choice, or default as a choice outside the point mode.');
 S_fix = zeros(n_states, Nq); P_fix = zeros(n_states, Nq);
 fix_c = false;
 if have_fixed
@@ -376,8 +442,17 @@ if have_fixed
     sAH_pts = sA_pts + sH_pts;
     u2_in = sAH_pts ./ max(1 - lam_pts, 1e-12);
     u3_in = min(max(sA_pts ./ max(sAH_pts, 1e-12), 0), 1);
-    for iq = slices
-        [S_fix(:, iq), P_fix(:, iq)] = fix_fn(t, lam_pts, u2_in, u3_in, q_grid(iq) * ones(n_states, 1));
+    if have_pts
+        [S_fix(:, 1), P_fix(:, 1)] = fix_fn(t, lam_pts, u2_in, u3_in, q_pt);
+    else
+        for iq = slices
+            if edge
+                [lf, af, hf] = edge_shares(p, t, U1, V2, U3, q_grid(iq), ann_price);
+                u2_in = (af + hf) ./ max(1 - lf, 1e-12);
+                u3_in = min(max(af ./ max(af + hf, 1e-12), 0), 1);
+            end
+            [S_fix(:, iq), P_fix(:, iq)] = fix_fn(t, lam_pts, u2_in, u3_in, q_grid(iq) * ones(n_states, 1));
+        end
     end
 end
 
@@ -395,18 +470,31 @@ else
 end
 
 for iq = slices
-    h_cost_rate = h_cost_q(iq);
-    % Next year's q at each shock node, where the continuation depends on it.
-    if q_cont, q_n = q_grid(iq) ./ R_H; else, q_n = []; end
-    if nx.on, nx.h1 = next_h_cost(p, nx.m1, q_n); end
-    if have_warm
+    if have_pts
+        h_cost_rate = NaN; q_n = [];               % per state, in the loop
+    else
+        h_cost_rate = h_cost_q(iq);
+        % Next year's q at each shock node, where the continuation depends on it.
+        if q_cont, q_n = q_grid(iq) ./ R_H; else, q_n = []; end
+        if nx.on, nx.h1 = next_h_cost(p, nx.m1, q_n); end
+        if edge
+            % this slice's nodes, on this year's edge at its q
+            [la, aa, ha] = edge_shares(p, t, U1, V2, U3, q_grid(iq), ann_price);
+            lam_pts = la(:); sA_pts = aa(:); sH_pts = ha(:);
+        end
+    end
+    if have_pts && isfield(pts, 'c') && ~isempty(pts.c)
+        cw_pts = pts.c(:); pw_pts = pts.pi(:);
+    elseif have_pts
+        cw_pts = nan(n_states, 1); pw_pts = nan(n_states, 1);
+    elseif have_warm
         cw_pts = reshape(pol_next.c(:, :, :, iq), [], 1);
         pw_pts = reshape(pol_next.pi(:, :, :, iq), [], 1);
     else
         cw_pts = nan(n_states, 1);
         pw_pts = nan(n_states, 1);
     end
-    if have_warm_dc
+    if have_warm_dc && ~have_pts
         tw_pts = reshape(pol_next.tau(:, :, :, iq), [], 1);
         rw_pts = reshape(pol_next.reit(:, :, :, iq), [], 1);
     else
@@ -426,13 +514,24 @@ for iq = slices
         sX  = 1 - lam - sA - sH;
         c_warm = cw_pts(k); pi_warm = pw_pts(k);
         tS_sub(j) = tau; tR_sub(j) = tau_R;          % the fund's shares unless chosen below
+        % The housing cost rate, next year's q at the shock nodes and next
+        % year's housing cost: the slice's, or in the point mode the state's.
+        nxk = nx;
+        if have_pts
+            hck = hc_pt(k);
+            qnk = [];
+            if q_cont, qnk = q_pt(k) ./ R_H; end
+            if nx.on, nxk.h1 = next_h_cost(hx, nx.m1, qnk); end
+        else
+            hck = h_cost_rate; qnk = q_n;
+        end
 
         if is_retired
             LW_W              = sX + contrib_factor * lam + net_inc * sA / ann_t ...
-                                    - h_cost_rate * sH;
+                                    - hck * sH;
             A_next_pre_return = sA * A_keep_fac;
         else
-            LW_W              = sX + contrib_factor * lam - h_cost_rate * sH;
+            LW_W              = sX + contrib_factor * lam - hck * sH;
             A_next_pre_return = sA + kappa_t * lam;
         end
 
@@ -457,18 +556,18 @@ for iq = slices
                 u1_0   = max(min(Y_next_W ./ W_g0, 1), 0);
                 u2_0   = max(min(denAH0 ./ max(denAH0, 1e-12), 1), 0);
                 u3_0   = max(min(A_next_W ./ max(denAH0, 1e-12), 1), 0);
-                z_0    = z_at(pp_z, u1_0, u2_0, u3_0, q_n);
-                val    = val + beta_eff * sum(w_join .* (upow(W_g0 .* z_0, one_m_g, nx.pw) / one_m_g));
+                z_0    = z_at(pp_z, u1_0, u2_0, u3_0, qnk);
+                val    = val + beta_eff * sum(w_join .* (upow(W_g0 .* z_0, one_m_g, nxk.pw) / one_m_g));
             end
             if beq_eff > 0
                 beq_base = max(h_beq_fac * H_next_W, FLOOR_EPS);
-                val = val + beq_eff * sum(w_join .* (upow(beq_base, one_m_g, nx.pw) / one_m_g));
+                val = val + beq_eff * sum(w_join .* (upow(beq_base, one_m_g, nxk.pw) / one_m_g));
             end
             if free_dc && A_next_pre_return > 0
                 % Nothing saved, but the pot is still invested: the shares alone.
                 [tS_f, tR_f, val] = sweep_dc(tau, tau_R, val, u_f, 0, A_next_pre_return, dcx, ...
-                    H_next_W, Y_next_W, w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
-                    FLOOR_EPS, nx);
+                    H_next_W, Y_next_W, w_join, pp_z, qnk, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
+                    FLOOR_EPS, nxk);
                 tS_sub(j) = tS_f; tR_sub(j) = tR_f;
             end
             best = -inf;
@@ -492,7 +591,7 @@ for iq = slices
             end
             p_j = min(max(P_fix(k, iq), 0), 1);
             v_j = bellman_rhs(c_j, p_j, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                              w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+                              w_join, pp_z, qnk, one_m_g, beta_eff, beq_eff, h_beq_fac, nxk);
             V_sub(j) = v_j; c_sub(j) = c_j; pi_sub(j) = p_j; Vc_sub(j) = v_j;
             continue
         end
@@ -507,15 +606,15 @@ for iq = slices
         for s = 1:size(cand, 1)
             v = bellman_rhs(cand(s,1), cand(s,2), LW_W, Rf_at, R_S_at, ...
                     A_next_W, H_next_W, Y_next_W, ...
-                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+                    w_join, pp_z, qnk, one_m_g, beta_eff, beq_eff, h_beq_fac, nxk);
             if v > maxval, maxval = v; c_seed = cand(s,1); pi_seed = cand(s,2); end
         end
 
         % Stage 2: global sweep
         if use_refine
             [c_sw, p_sw, v_sw] = sweep_cpi(c_seed, pi_seed, maxval, LW_W, Rf_at, R_S_at, ...
-                A_next_W, H_next_W, Y_next_W, w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, ...
-                h_beq_fac, c_floor, dc0, dp0, nx);
+                A_next_W, H_next_W, Y_next_W, w_join, pp_z, qnk, one_m_g, beta_eff, beq_eff, ...
+                h_beq_fac, c_floor, dc0, dp0, nxk);
             if v_sw > maxval
                 maxval = v_sw; c_seed = c_sw; pi_seed = p_sw;
             end
@@ -525,7 +624,7 @@ for iq = slices
         lb2 = [c_floor; 0];
         ub2 = [1; 1];
         rhs_fun = @(x) bellman_rhs(x(1), x(2), LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                                   w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+                                   w_join, pp_z, qnk, one_m_g, beta_eff, beq_eff, h_beq_fac, nxk);
         if use_ce
             % Certainty-equivalent units relative to the seed: a monotone
             % transform of the objective, equal to -1 at the seed at every node.
@@ -552,8 +651,8 @@ for iq = slices
         if free_dc && A_next_pre_return > 0
             [v_f, x_f] = free_dc_search(v_j, [c_j, p_j, tau, tau_R], ...
                 [c_warm, pi_warm, tw_pts(k), rw_pts(k)], LW_W, Rf_at, R_S_at, A_next_pre_return, dcx, ...
-                H_next_W, Y_next_W, w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
-                c_floor, dc0, dp0, nx, use_ce, inv_omg, obj_scale, opts_opt);
+                H_next_W, Y_next_W, w_join, pp_z, qnk, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
+                c_floor, dc0, dp0, nxk, use_ce, inv_omg, obj_scale, opts_opt);
             if v_f > v_j
                 v_j = v_f; c_j = x_f(1); p_j = x_f(2);
                 tS_sub(j) = x_f(3); tR_sub(j) = x_f(4);
@@ -567,7 +666,7 @@ for iq = slices
         if c_j >= 1
             if pi_limit
                 p_j = limit_share(LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+                    w_join, pp_z, qnk, one_m_g, beta_eff, beq_eff, h_beq_fac, nxk);
             else
                 p_j = 1;
             end
@@ -610,7 +709,31 @@ for iq = slices
         reit_pol(:, :, :, iq) = reshape(tR_flat, N1, N2, N3);
     end
 end
-[V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t);
+if ~have_pts
+    [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = copy_slices(q_now, iq1, V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t);
+end
+end
+
+% ------------------------------------------------------------------------
+function [lam, sA, sH] = edge_shares(p, t, U1, V2, U3, q, ann_price)
+%EDGE_SHARES  The shares of W at the nodes (U1, V2, U3) of the edge
+%   coordinate at one q: u2 = v * u2_max(t, u1, u3, q).
+U2 = V2 .* utility.u2_max(p, t, U1, U3, q, ann_price);
+lam = U1;
+sA  = U2 .* (1 - U1) .* U3;
+sH  = U2 .* (1 - U1) .* (1 - U3);
+end
+
+% ------------------------------------------------------------------------
+function pe = edge_struct(p)
+%EDGE_STRUCT  What utility.u2_max reads, so the continuation's handle does
+%   not carry all of p to the workers.
+f = {'tau_inc', 't_ret', 'kappa', 'h_mult', 'is_owner', 'm_rate_path', 'theta', ...
+     'mortgage', 'maint_on_purchase', 'alpha', 'phi_path', 'phi_floor', 'floor_absorbing', 'default_choice'};
+pe = struct();
+for i = 1:numel(f)
+    if isfield(p, f{i}), pe.(f{i}) = p.(f{i}); end
+end
 end
 
 % ------------------------------------------------------------------------

@@ -119,6 +119,9 @@ pp_pi = cell(T, 1);
 pp_tS = cell(T, 1);
 pp_tR = cell(T, 1);
 use_fn = isfield(sol, 'policy_fn');
+% p.u2_coord = 'edge': the grid's second axis is v = u2 / u2_max (utility.u2_max).
+% A policy function still takes u2 itself.
+edge = isfield(p, 'u2_coord') && strcmp(p.u2_coord, 'edge') && ~use_fn;
 assert(~use_fn || ~dc_on, 'paths_lna:policy_fn', ...
     'sol.policy_fn does not cover free DC choice.');
 for t = 1 : T * ~use_fn
@@ -228,6 +231,10 @@ for t = 1:T
     u1_raw = lam_path(:,t);
     u2_raw = sAH ./ max(1 - lam_path(:,t), 1e-12);
     u3_raw = min(max(sA_path(:,t) ./ max(sAH, 1e-12), 0), 1);
+    if edge
+        % the edge coordinate v = u2 / u2_max, in which the policies are stored
+        u2_raw = u2_raw ./ utility.u2_max(p, t, u1_raw, u3_raw, q_path(:,t), ann_price);
+    end
     [g1, g2] = utility.grid_at(p, t);
     u1q = min(max(u1_raw, g1(1)), g1(end));
     u2q = min(max(u2_raw, g2(1)), g2(end));
