@@ -31,10 +31,16 @@ Winant (2021), equation 6.
    same test draws, and both scored by the same lifetime-utility function
    (`lifetime` and `panel` in model.jl).
 
-Not in the Julia year yet: default as a choice (step 24) and the bequest
-motive in utility (chi > 0, step 23). `check_supported` refuses both for
-training; the replay test covers the paths of step 23, whose bequest only
-enters utility.
+Not in the Julia year yet: default as a choice (step 24); `check_supported`
+refuses it for training. The bequest motive (chi > 0, step 23) is in: a
+solvent household gets beta (1 - p_t) chi u(bequest) each year, the bequest
+being liquid wealth and the house net of the sale cost after a year of
+returns, bounded below by 1e-12 of wealth, as in the solver. The last
+year's bequest needs one more year of draws than MATLAB's panel has; it is
+drawn in Julia (`draws_from_matlab`, seed 777), the same for every policy
+scored on those draws. The check: on the fine grid at step 12 the grid
+policy's simulated value is 0.63% above its value function without the
+bequest and 0.65% with chi = 32.
 
 ## Files
 
