@@ -147,6 +147,25 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Step 18 owners on the production grid: the networks stay ahead (spec: none, asked by Quinn in Claude Code)
+Follows the step-18 entries below. `neural.make_testsets({18}, numerics={'fine'}, keep_solve=true)` for owners on the PC: grid 32x16x40x4, gh_n 5, solve 16,540 s (4.6 hours, sharing the PC), ce_entry 0.3545, no off-grid lookups. Then `neural.step18_checks('owner', 'fine', refinement=false)`.
+
+| owners, production grid | network minus grid policy (paired s.e.) | in % of consumption |
+|---|---|---|
+| grid policy simulated (value function) | 0.2603 (0.3545) | |
+| network, 3,000 steps, 20,000 test households | +0.0263 (0.0069) | +10.1% |
+| the same, 100,000 fresh households (seed 303) | +0.0350 (0.0034), grid 0.2609 | +13.4% |
+| joint network, 3,000 steps | +0.0251 (0.0068) | +9.6% |
+| 1,000 steps, seeds 1-3 and joint | +0.0211 to +0.0244 | +8.1% to +9.4% |
+| ever bankrupt by 100, grid policy / network | 0.33% / 0.10% | |
+| solver's value of the policy, grid / network | 0.3545 / 0.3456 | |
+
+1. Unlike renters (within about 1% against the production grid), the owner networks beat the production-grid policy by 8-13% of consumption; every run is ahead by more than three standard errors.
+2. The whole difference is again the bankruptcy tail: the 0.23% of households bankrupt under the grid policy only carry 131% of the gain (122% on 100,000), those bankrupt under neither cost the network 2-3%. The grid policy's bankruptcies come at 33-54, while the mortgage runs.
+3. The solver still values both policies at 0.35 against 0.26-0.29 in simulation and ranks them the other way, as on the standard grid: the production grid does not fix the owner gap (`docs/prompts/grid_value_gap.md`).
+4. Behaviour: the production-grid policy saves liquid wealth to 1.07 times entry income at 67 and runs it down by 88, with an equity share near 1 in retirement, so its consumption falls smoothly from 0.95 of entry income at 67 to 0.84 at 88. The networks hold little liquid wealth after 55 and consume their income: they jump at 55 when the mortgage ends and drop at 67 to 0.84.
+Figure: `neural/data/figures/step18_owner_production_vs_network.png`.
+
 ### 2026-11-27 Step 24 (default as a choice) in the network and in MATLAB's simulator; renters (spec: none, asked by Quinn in Claude Code)
 Quinn: "I am still not on board with the absorbing state, it should be a binary decision variable that then influences t up to T, will that work?", then "use full step 24", "show me the output please to see how bad it is", and "make a prompt on the grid issue".
 Changed:
