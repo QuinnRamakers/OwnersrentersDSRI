@@ -1,0 +1,4 @@
+# Step 1 trained longer and wider on the GPU, after steps 2-6: retirement
+# inputs, 128 units, 16,384 households, learning rate 3e-3, 6,000 steps.
+# Run: JULIA_CUDA_SOFT_MEMORY_LIMIT=3GiB JULIA_CUDA_HARD_MEMORY_LIMIT=6GiB JULIA_FLAGS=--heap-size-hint=3G bash neural/scripts/queue.sh neural/jobs/step1_long_gpu.jobs 1
+step1gpu_ret_w128_lr3_k6000 testset_1_nohousing_fine.mat variants=ret_w128_lr3e-3_k6000

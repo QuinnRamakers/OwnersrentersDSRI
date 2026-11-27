@@ -1,0 +1,5 @@
+# Housing batch b (see housing_cpu.jobs): step 7b joint and separate, step 12.
+step7b_joint  testset_7b_renter_quick.mat testset_7b_owner_quick.mat variants=ret_n8192_lr3e-3_k2000_joint device=cpu
+step7b_renter testset_7b_renter_quick.mat variants=ret_n8192_lr3e-3_k2000 device=cpu
+step7b_owner  testset_7b_owner_quick.mat  variants=ret_n8192_lr3e-3_k2000 device=cpu
+step12_ret    testset_12_nohousing_fine.mat variants=ret_n8192_lr3e-3_k2000 device=cpu

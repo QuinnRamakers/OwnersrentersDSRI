@@ -1,0 +1,5 @@
+# Step 1 (CGM core, gamma 10) trained longer: at 3,000 steps and learning rate
+# 1e-3 the networks were 15-20% below the grid policy and still improving.
+# CPU: retirement inputs, 8,192 households, learning rate 3e-3, 6,000 steps.
+# Run: OPENBLAS_NUM_THREADS=3 JULIA_FLAGS=--heap-size-hint=2500M bash neural/scripts/queue.sh neural/jobs/step1_long.jobs 1
+step1cpu_ret_lr3_k6000 testset_1_nohousing_fine.mat variants=ret_n8192_lr3e-3_k6000 device=cpu
