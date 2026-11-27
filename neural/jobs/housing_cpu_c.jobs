@@ -1,3 +1,6 @@
-# Housing batch c (see housing_cpu.jobs): step 13 renters and owners separately.
-step13_renter testset_13_renter_quick.mat variants=ret_n8192_lr3e-3_k2000 device=cpu
-step13_owner  testset_13_owner_quick.mat  variants=ret_n8192_lr3e-3_k2000 device=cpu
+# Housing batch c: step 13 (housing, the AOW and the DC pension) renters and
+# owners separately, after the step-7b separate networks, 1,000 steps to end
+# by morning; otherwise as housing_cpu_b.jobs.
+# Run: OPENBLAS_NUM_THREADS=3 JULIA_FLAGS=--heap-size-hint=2500M bash neural/scripts/queue.sh neural/jobs/housing_cpu_c.jobs 2
+step13_renter testset_13_renter_quick.mat variants=ret_n8192_lr3e-3_k1000 device=cpu
+step13_owner  testset_13_owner_quick.mat  variants=ret_n8192_lr3e-3_k1000 device=cpu
