@@ -12,25 +12,40 @@ function fig = plot_lifecycles(runs, opts)
 %   percentiles shaded for the first network and the last grid, mean liquid
 %   wealth, mean pension pot, mean equity share of the solvent, and the
 %   share bankrupt. Saved as a PNG in neural/data/figures.
+%
+%   gains= adds a tall panel on the right with welfare gains: a table with
+%   columns label, gain and se (both in % of the reference policy's
+%   certainty-equivalent consumption) and style (a colour name as above,
+%   or 'other' for grey); each row is a dot with its 95% interval.
 
 arguments
     runs cell
     opts.title char = ''
     opts.file char = 'lifecycles.png'
+    opts.gains table = table()
+    opts.gains_title char = 'Welfare gain over the grid policy'
 end
 
 col = struct('grid_std', [0.55 0.55 0.55], 'grid_fine', [0.05 0.05 0.05], ...
-    'net1', [42 120 214] / 255, 'net2', [235 104 52] / 255, 'net3', [27 175 122] / 255, 'net4', [237 161 0] / 255);
+    'net1', [42 120 214] / 255, 'net2', [235 104 52] / 255, 'net3', [27 175 122] / 255, 'net4', [237 161 0] / 255, ...
+    'other', [0.55 0.55 0.55]);
 sty = struct('grid_std', '--', 'grid_fine', '-', 'net1', '-', 'net2', '-', 'net3', '-', 'net4', '-');
-ink2 = [82 81 78] / 255;
+ink = [11 11 11] / 255; ink2 = [82 81 78] / 255;
 ages = 25 : 25 + numel(runs{1, 2}.C) - 1;
 panels = {'C', 'Mean consumption'; 'C_p50', 'Median consumption, 10th-90th percentile shaded'; ...
           'X', 'Mean liquid wealth'; 'A', 'Mean pension pot'; ...
           'pi', 'Mean liquid equity share, solvent households'; 'absorbed', 'Share bankrupt'};
-fig = figure('Color', [252 252 251] / 255, 'Position', [50 50 1500 900], 'Visible', 'off');
-tl = tiledlayout(fig, 2, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+if isempty(opts.gains)
+    fig = figure('Color', [252 252 251] / 255, 'Position', [50 50 1500 900], 'Visible', 'off');
+    tl = tiledlayout(fig, 2, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    tiles = 1:6;
+else
+    fig = figure('Color', [252 252 251] / 255, 'Position', [50 50 2000 900], 'Visible', 'off');
+    tl = tiledlayout(fig, 2, 4, 'TileSpacing', 'compact', 'Padding', 'compact');
+    tiles = [1 2 3 5 6 7];
+end
 for j = 1:size(panels, 1)
-    ax = nexttile(tl);
+    ax = nexttile(tl, tiles(j));
     hold(ax, 'on');
     f = panels{j, 1};
     if strcmp(f, 'C_p50')
@@ -55,6 +70,28 @@ for j = 1:size(panels, 1)
         'XColor', ink2, 'YColor', ink2, 'FontSize', 10, 'XLim', [25 100]);
     xline(ax, 67, ':', 'Color', ink2, 'HandleVisibility', 'off');
     if j == 1, legend(ax, 'Location', 'best', 'Interpreter', 'none', 'FontSize', 9, 'Box', 'off'); end
+end
+if ~isempty(opts.gains)
+    G = opts.gains;
+    n = height(G);
+    ax = nexttile(tl, 4, [2 1]);
+    hold(ax, 'on');
+    xline(ax, 0, '-', 'Color', ink2, 'LineWidth', 1, 'HandleVisibility', 'off');
+    lim = max(abs([G.gain - 1.96 * G.se; G.gain + 1.96 * G.se])) * 1.15;
+    for k = 1:n
+        y = n + 1 - k;
+        c = col.(G.style{k});
+        plot(ax, G.gain(k) + 1.96 * G.se(k) * [-1 1], [y y], '-', 'Color', c, 'LineWidth', 2.2);
+        plot(ax, G.gain(k), y, 'o', 'MarkerFaceColor', c, 'MarkerEdgeColor', 'w', 'MarkerSize', 10, 'LineWidth', 1.5);
+        % The label above its row, so the panel needs no tick labels.
+        text(ax, -lim, y + 0.3, sprintf('%s   %+.1f%%', G.label(k), G.gain(k)), 'HorizontalAlignment', 'left', ...
+            'VerticalAlignment', 'bottom', 'FontSize', 10, 'Color', ink, 'Interpreter', 'none');
+    end
+    set(ax, 'YTick', [], 'YLim', [0.4 n + 0.9], 'XLim', [-lim lim], 'YColor', 'none', ...
+        'XGrid', 'on', 'GridColor', [0.88 0.88 0.87], 'GridAlpha', 1, 'Box', 'off', ...
+        'XColor', ink2, 'FontSize', 10, 'TickLength', [0 0]);
+    xlabel(ax, '% of certainty-equivalent consumption, with 95% interval', 'Color', ink2);
+    title(ax, opts.gains_title, 'FontWeight', 'normal', 'FontSize', 11);
 end
 if ~isempty(opts.title), title(tl, opts.title, 'FontSize', 13, 'Interpreter', 'none'); end
 out = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'neural', 'data', 'figures');
