@@ -372,16 +372,18 @@ function year_utility(m::Model, t::Integer, o, unit, guard)
     c = max.(o.C ./ F(unit), F(guard))
     u = crra.(c, omg)
     if m.default_choice
-        # wd on the default value, wc on continuing (see `year`).
+        # wd on the default value, wc on continuing (see `year`). Where the
+        # weight of continuing is zero its path may consume nothing (a replayed
+        # panel's choices after default), so it is left out, not multiplied by 0.
         uF = crra.(max.(o.F_t ./ F(unit), F(guard)), omg) .* F(m.D_beq[t])
-        u = o.wd .* uF .+ o.wc .* u
+        u = o.wd .* uF .+ ifelse.(o.wc .> 0, o.wc .* u, zero(F))
     elseif m.floor_absorbing
         u = ifelse.(o.enter, u .* F(m.D_beq[t]), ifelse.(o.look, u, zero(F)))
     end
     if m.chi > 0
         b = max.(o.beq_next, F(1e-12) .* o.W) ./ F(unit)
         ub = F(m.beta * (1 - m.p_surv[t]) * m.chi) .* crra.(max.(b, F(guard)), omg)
-        u = u .+ (m.default_choice ? o.wc .* ub : ifelse.(o.look, ub, zero(F)))
+        u = u .+ (m.default_choice ? ifelse.(o.wc .> 0, o.wc .* ub, zero(F)) : ifelse.(o.look, ub, zero(F)))
     end
     return u
 end

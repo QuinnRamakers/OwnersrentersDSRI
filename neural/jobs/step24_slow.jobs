@@ -1,0 +1,5 @@
+# Step 24 renters again, slower and longer: 16,384 households a step, 3e-4,
+# 3,000 steps, after the 1,000-step run at 3e-3 ended in a policy that
+# consumes 4% of the floor amount at 25. Is it the optimiser or the objective?
+# Run: JULIA_CUDA_SOFT_MEMORY_LIMIT=3GiB JULIA_CUDA_HARD_MEMORY_LIMIT=6GiB JULIA_FLAGS=--heap-size-hint=5G bash neural/scripts/queue.sh neural/jobs/step24_slow.jobs 1
+step24_renter_slow testset_24_renter_quick.mat variants=ret_n16384_lr3e-4_k3000

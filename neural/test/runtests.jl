@@ -95,6 +95,7 @@ end
                 @test gap < 1e-12
             end
             @test J["absorbed"] == Float64.(P["absorbed"])
+            @test all(isfinite, J["U"])
             gap_beq = maximum(abs.(J["bequest"] .- vec(P["bequest"])) ./ max.(abs.(vec(P["bequest"])), m.Y0))
             @test gap_beq < 1e-12
             @info "replay $f" N largest_gap = max(worst, gap_beq) bankrupt_share = mean(J["absorbed"][:, end])
