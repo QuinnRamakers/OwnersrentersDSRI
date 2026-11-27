@@ -147,6 +147,31 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-27 Step 24 (default as a choice) in the network and in MATLAB's simulator; renters (spec: none, asked by Quinn in Claude Code)
+Quinn: "I am still not on board with the absorbing state, it should be a binary decision variable that then influences t up to T, will that work?", then "use full step 24", "show me the output please to see how bad it is", and "make a prompt on the grid issue".
+Changed:
+- Julia (`neural/src/model.jl`, `policy.jl`): with `default_choice` the network has a third output, the probability of defaulting this year (starts at 0.001). The state carries w, the probability of not having defaulted before. Lifetime utility along a path is the exact expectation over the decisions (default is absorbing and the continuing path does not depend on it): w d u(F) D_beq(t) + w (1 - d) (u(C) + bequest term), w' = w (1 - d), smooth in the weights. Default is forced where resources are at or below phi_floor Y; a continuing household consumes phi_floor Y + s (LW - phi_floor Y). Evaluation takes d > 1/2. The refusal of default as a choice is gone. `neural/METHOD.md` section 4b.
+- MATLAB: `simulate.paths_lna` takes the network's default decision from `sol.policy_fn` ([s, pi, d]); `neural.net_policy` returns d. `neural.panel_profiles` (moved out of `compare_panels`). New `neural/scripts/net_panel.jl`, `diagnostics/step24_default/` (value_along_paths.m, decompose.jl, net_in_matlab.m, figures_renter.m), `neural/jobs/step24.jobs`, `step24_slow.jobs`, `docs/prompts/grid_value_gap.md`.
+Checks: Julia tests 136 of 136 pass: the replays of MATLAB's step-24 test panels (renter 6.8e-15, 7.4% default; owner 2.6e-15, 0.06% default), the gradient with default as a choice against finite differences (2.2e-8), the weighted utility against the mean over random 0/1 decisions on the same paths (largest z 1.9 over 20 households and 4,000 draws), finite utility on every replay. MATLAB's simulator with the network against the Julia year: consumption 5.3e-15, the same 6 defaults. `run_tests(solve=false)` 0 of 23 failed.
+Solves (PC, `neural.make_testsets({24}, numerics={'quick','standard'}, keep_solve=true)`): renter quick 122 s, ce_entry 0.3637; renter standard 730 s, 0.3544; owner quick 1,090 s, 0.3952; owner standard running. No off-grid lookups.
+
+Renters, 20,000 test households (seed 202); welfare in entry income, lifetime utility from the Julia year with the bequest term:
+
+| | value function | simulated welfare | worst household's share of total utility | defaulted |
+|---|---|---|---|---|
+| grid policy, quick grid | 0.3637 | 0.0063 | 80% (99.96% for the worst 10) | 7.4% |
+| grid policy, standard grid | 0.3544 | 0.0540 | 81% (98.3% for the worst 10) | 7.2% |
+| network, 1,000 steps, 3e-3 | | 0.0018 | about 100% | 0.03% |
+| network, 3,000 steps, 3e-4, 16,384 a step | | 0.00003 | | |
+
+What it means:
+1. The grid policies behave sensibly (hump-shaped consumption peaking near 0.8 of entry income at 67, liquid wealth near 4 times entry income at 67, 7% defaulted by 100), but their simulated welfare is set by one or two households: renters who continue at 91-92 and 100 on about 1e-4 of entry income instead of defaulting (the simulator decides by the interpolated value of continuing, which overprices states with almost no resources) and leave bequests of that size. 9% of renters continue below the floor amount at some age. On the standard grid with 100,000 households (seed 303) the realised welfare is 0.001: the number depends on which single households the sample holds.
+2. The networks fail. The 1,000-step network consumes 4% of the floor amount at 25 and saves until liquid wealth is 103 times entry income at 100; its objective swung between -1e6 and -2e9 (-1 is the grid's value). Training slower and longer is worse: the objective swings between -4e10 and -9e18 and ends at 0.00003. The failure is the objective, not the optimiser: utility is unbounded below in states a household can reach.
+3. Two features of step 24 make it so: a continuing household may consume down to 1e-6 of income, and the bequest chi u(b) (chi = 32) has no shifter, so near-zero liquid wealth in any year is near-infinitely bad through the death probability. Default as a choice itself works as intended (V continuous, the replay and the gradient are exact).
+4. Open for Quinn: a bequest shifter, chi (b + bbar)^(1-gamma)/(1-gamma); the floor as the lower bound of continuing consumption; both; or step 24 as it is with behaviour only. The owner network is not trained until that is decided.
+Figures: `neural/data/figures/step24_renter_lifecycles.png`, `step24_renter_tail.png`.
+Commits: 17c0ff8, 98f259d, 015ddba, 69150f1 and this entry, pushed to `work-2026-11-26`.
+
 ### 2026-11-27 Step 18: the owners' solver-simulation gap is the absorbing state (spec: none, asked by Quinn in Claude Code)
 Quinn: "I think the problem might be in the absorption state and how it is in the model".
 Test (`diagnostics/step18_absorbing/value_along_paths.m`, `bankrupt_owners.m`): the step-18 standard-grid solve's own policy simulated for 100,000 households (seed 303); at every age, the solver's value at each household's state (its V interpolated as in the solver; the bankrupt value u(F) D_beq(t) for the bankrupt) against the utility the household goes on to realise. The code path was read first: the solver's budget, its next-year bankruptcy test (`bankrupt_nodes`, `next_h_cost`) and the simulator's apply the same rule to the same housing costs.
