@@ -165,7 +165,8 @@ Summary of the night, in order of the plan:
 2. Without housing the network method reproduces the grid policy at gamma 5 (steps 2-6: within 0.07-0.19% of consumption; step 12 with the pot: 1.5% after 1,500 steps) but not yet at gamma 10 (the CGM core, step 1: 6% short after 6,000 steps, too little and too flat an equity share, too slow a decumulation; half of all utility in the worst 1% of paths).
 3. With housing and the yearly top-up (steps 7-17) simulated welfare is set by years at the top-up, for the grid policy and the network alike, so those rungs are no test of either.
 4. With the absorbing floor (step 18) the networks beat the standard-grid policy on simulated welfare by 8-13% of consumption and are bankrupt a third as often, separately or jointly; the grid's value function overstates its own policy by 40-60%.
-5. Not done: smoothing the bankruptcy jump in training, the bequest rung (step 23) and production (step 24, default as a choice), the step-18 comparison on the fine grid, figures of steps 5, 6 and 12. A wide 6,000-step step-1 run was still on the GPU at 07:00 (`step1gpu_ret_w128_lr3_k6000`).
+5. Not done: smoothing the bankruptcy jump in training, the bequest rung (step 23) and production (step 24, default as a choice), the step-18 comparison on the fine grid, figures of steps 5, 6 and 12.
+6. The last run, step 1 with 128 units, 16,384 households a step, 3e-3, 6,000 steps on the GPU (50 minutes): ce 0.6356 against 0.6736, -0.038 (paired s.e. 0.0029), against -0.041 for 64 units and 8,192 households over the same steps. At gamma 10 more width and larger batches help only a little; the gap closes slowly with training.
 Commit: this entry, pushed to `work-2026-11-26`.
 Open: the points under 5; for Quinn, whether the step-18 result holds on the fine (production) grid, which takes about 4 hours a tenure on the PC, or on the DSRI.
 
