@@ -81,7 +81,7 @@ end
                 continue
             end
             P = d["panel"]
-            e = draws_from_matlab(d["draws"], m.T)
+            e = draws_from_matlab(d["draws"], m)
             N = size(P["C"], 1)
             J = panel(m, entry(m, zeros(1, N); unit=m.Y0), replay_choices(P, m.T), e; unit=m.Y0)
             # The gap relative to the larger of the value and entry income. Where
@@ -106,13 +106,17 @@ end
         d1 = matread(joinpath(DATA, replays[1]))
         m1 = Model(d1["model"])
 
-        @testset "model: Zygote's gradient through the model year against finite differences (Float64)" begin
+        # The gradient through the model year, and through the bequest term
+        # where a panel with a bequest motive exists.
+        grad_files = [replays[1]; filter(f -> occursin("chi", f), replays)]
+        @testset "model: Zygote's gradient through the model year against finite differences (Float64), $gf" for gf in grad_files
+            mg = Model(matread(joinpath(DATA, gf))["model"])
             spec = Spec(retire=true)
             net = f64(policy_net(spec; hidden=6, rng=Xoshiro(11)))
-            e = draw(m1, 32, Xoshiro(12); F=Float64)
-            s0 = entry(m1, zeros(1, 32); unit=1)
+            e = draw(mg, 32, Xoshiro(12); F=Float64)
+            s0 = entry(mg, zeros(1, 32); unit=1)
             theta, re = Flux.destructure(net)
-            f(v) = mean(lifetime(m1, s0, choices(re(v), m1, spec), e; unit=1))
+            f(v) = mean(lifetime(mg, s0, choices(re(v), mg, spec), e; unit=1))
             g = Zygote.gradient(f, theta)[1]
             gfd = similar(theta)
             for i in eachindex(theta)
@@ -122,8 +126,27 @@ end
                 gfd[i] = (f(theta .+ ev) - f(theta .- ev)) / (2h)
             end
             err = relnorm(g, gfd)
-            @info "gradient check through the model year" file = replays[1] n_params = length(theta) relative_error = err
+            @info "gradient check through the model year" file = gf chi = mg.chi n_params = length(theta) relative_error = err
             @test err < 1e-6
+        end
+
+        # The bequest term against the solver: on the fine grid at step 12 the
+        # grid policy's simulated value sits as far from its value function with
+        # chi = 32 as without (0.63% and 0.65% on 27 November 2026).
+        f0, f1 = joinpath(DATA, "testset_12_nohousing_fine.mat"), joinpath(DATA, "testset_12chi32_nohousing_fine.mat")
+        if isfile(f0) && isfile(f1)
+            @testset "model: the bequest utility measures what the solver values" begin
+                gaps = map((f0, f1)) do f
+                    d = matread(f)
+                    m = Model(d["model"])
+                    N = size(d["panel"]["C"], 1)
+                    J = panel(m, entry(m, zeros(1, N); unit=m.Y0), replay_choices(d["panel"], m.T),
+                              draws_from_matlab(d["draws"], m); unit=m.Y0)
+                    certainty_equivalent(m, J["U"]).ce / d["value"]["ce_entry"] - 1
+                end
+                @info "simulated against value function, step 12 fine grid" without_bequest = gaps[1] with_bequest = gaps[2]
+                @test abs(gaps[2] - gaps[1]) < 0.003
+            end
         end
 
         @testset "model: doubling entry income leaves the choices and scales utility by 2^(1-gamma)" begin

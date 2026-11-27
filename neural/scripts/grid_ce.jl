@@ -14,7 +14,7 @@ for f in files
     d = matread(joinpath(DATA, f))
     m = Model(d["model"])
     P = d["panel"]
-    e = draws_from_matlab(d["draws"], m.T)
+    e = draws_from_matlab(d["draws"], m)
     N = size(P["C"], 1)
     J = panel(m, entry(m, zeros(1, N); unit=m.Y0), replay_choices(P, m.T), e; unit=m.Y0)
     c = certainty_equivalent(m, J["U"])

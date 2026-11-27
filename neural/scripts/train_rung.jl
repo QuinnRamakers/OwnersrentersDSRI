@@ -85,7 +85,7 @@ device = Symbol(get(opts, "device", "gpu"))
 sets = map(files) do f
     d = matread(joinpath(DATA, f))
     m = Model(d["model"])
-    e = draws_from_matlab(d["draws"], m.T)
+    e = draws_from_matlab(d["draws"], m)
     N = size(d["panel"]["C"], 1)
     G = panel(m, entry(m, zeros(1, N); unit=m.Y0), replay_choices(d["panel"], m.T), e; unit=m.Y0)
     (; file=f, m, e, G, ce_vf=d["value"]["ce_entry"])

@@ -96,35 +96,58 @@ has_dc(m::Model) = any(>(0), m.kappa)
 "Refuse the parts of the model the Julia year does not cover yet."
 function check_supported(m::Model)
     m.default_choice && error("default as a choice (step 24) is not in the Julia year yet")
-    m.chi > 0 && error("the bequest motive (chi > 0, step 23) is not in the Julia year yet")
     return m
 end
 
 """
-    draws_from_matlab(d, T)
+Years of draws a life needs: T - 1 transitions, and one more with a bequest
+motive, for the year of returns the last bequest earns (as in the solver).
+"""
+n_draw_years(m::Model) = m.chi > 0 ? m.T : m.T - 1
+
+"""
+    draws_from_matlab(d, m; seed=777)
 
 The draws `neural.draw_shocks` exported (N x (T-1) each) as vectors of
-1 x N rows, one a year.
+1 x N rows, one a year. With a bequest motive the last year's draws, which
+MATLAB's panel does not need, are added from Julia's generator (`seed`), the
+same for every policy evaluated on these draws.
 """
-function draws_from_matlab(d::AbstractDict, T::Integer)
+function draws_from_matlab(d::AbstractDict, m; seed::Integer=777)
+    T = m.T
     rows(E) = [reshape(Float64.(E[:, t]), 1, :) for t in 1:T-1]
-    return (; eps_Y=rows(d["eps_Y"]), eps_S=rows(d["eps_S"]),
-            eps_H=rows(d["eps_H"]), eps_R=rows(d["eps_R"]))
+    e = (; eps_Y=rows(d["eps_Y"]), eps_S=rows(d["eps_S"]),
+         eps_H=rows(d["eps_H"]), eps_R=rows(d["eps_R"]))
+    if m.chi > 0
+        N = size(d["eps_Y"], 1)
+        last = draw_year(m, N, Xoshiro(seed), Float64)
+        e = (; eps_Y=[e.eps_Y; [last[1]]], eps_S=[e.eps_S; [last[2]]],
+             eps_H=[e.eps_H; [last[3]]], eps_R=[e.eps_R; [last[4]]])
+    end
+    return e
+end
+draws_from_matlab(d::AbstractDict, T::Integer) = draws_from_matlab(d, (; T, chi=0.0))
+
+function draw_year(m, N, rng, F)
+    L = F.(m.chol)
+    k = size(L, 1)
+    E = L * randn(rng, F, k, N)
+    return (E[1:1, :], E[2:2, :], E[3:3, :], k == 4 ? E[4:4, :] : zeros(F, 1, N))
 end
 
 """
     draw(m, N, rng; F=Float32)
 
 Fresh correlated draws for N households, by the exported Cholesky factor, in
-the order income, stock, house, REIT, on the CPU. Not the same numbers as
-MATLAB's for any seed; for training only.
+the order income, stock, house, REIT, on the CPU, for `n_draw_years(m)`
+years. Not the same numbers as MATLAB's for any seed; for training only.
 """
 function draw(m::Model, N::Integer, rng::AbstractRNG; F::Type{<:AbstractFloat}=Float32)
     L = F.(m.chol)
     k = size(L, 1)
-    eY = Vector{Matrix{F}}(undef, m.T - 1)
+    eY = Vector{Matrix{F}}(undef, n_draw_years(m))
     eS = similar(eY); eH = similar(eY); eR = similar(eY)
-    for t in 1:m.T-1
+    for t in 1:n_draw_years(m)
         E = L * randn(rng, F, k, N)
         eY[t] = E[1:1, :]
         eS[t] = E[2:2, :]
@@ -226,11 +249,20 @@ function year(m::Model, t::Integer, s, ch, e)
         pi_ = ifelse.(look, pi_, zero(F))
     end
 
-    if t == m.T
+    # With a bequest motive the solver values, for a death after this year,
+    # the liquid wealth and the house (net of the sale cost) after a year of
+    # returns, bounded below by 1e-12 of this year's wealth W (FLOOR_EPS in
+    # solver.bellman_step_lna). The last year is no exception: the bequest
+    # earns one more year of returns, from the extra year of draws.
+    bequest = m.chi > 0
+    h_beq_s = (m.is_owner && hous) ? F(1 - m.sell_cost) : zero(F)
+    W = bequest ? s.X .+ s.A .+ s.H .+ s.Y : nothing
+
+    if t == m.T && !bequest
         h_beq = m.is_owner ? F(1 - m.sell_cost) : zero(F)
         beq = max.(LW .- C, zero(F)) .+ h_beq .* s.H
         beq = ifelse.(look, beq, zero(F))
-        return (; state=nothing, C, LW, enter, look, beq, pi=pi_)
+        return (; state=nothing, C, LW, enter, look, beq, pi=pi_, beq_next=nothing, W)
     end
 
     X_post = max.(LW .- C, zero(F))
@@ -240,6 +272,14 @@ function year(m::Model, t::Integer, s, ch, e)
     R_S_at = (R_S .- F(m.tau_cg_stock) .* gain) .* F(1 - m.tau_wealth)
     Rf_at = F((1 + m.r * (1 - m.tau_cg_bond)) * (1 - m.tau_wealth))
     R_X = (one(F) .- pi_) .* Rf_at .+ pi_ .* R_S_at
+
+    if t == m.T
+        # The panel's bequest is that of simulate.paths_lna, before returns.
+        h_beq = m.is_owner ? F(1 - m.sell_cost) : zero(F)
+        beq = ifelse.(look, max.(LW .- C, zero(F)) .+ h_beq .* s.H, zero(F))
+        beq_next = R_X .* X_post .+ h_beq_s .* (R_H .* s.H)
+        return (; state=nothing, C, LW, enter, look, beq, pi=pi_, beq_next, W)
+    end
 
     if dc
         if m.dc_choice
@@ -265,6 +305,7 @@ function year(m::Model, t::Integer, s, ch, e)
     X1 = R_X .* X_post
     H1 = hous ? R_H .* s.H : s.H
     q1 = s.q ./ R_H
+    beq_next = bequest ? X1 .+ h_beq_s .* H1 : nothing
     if m.floor_absorbing
         X1 = ifelse.(look, X1, zero(F))
         A1 = ifelse.(look, A1, zero(F))
@@ -278,7 +319,7 @@ function year(m::Model, t::Integer, s, ch, e)
         Y1 = s.Y
     end
     state = (; Y=Y1, X=X1, A=A1, H=H1, q=q1, gone, Cbar)
-    return (; state, C, LW, enter, look, beq=nothing, pi=pi_)
+    return (; state, C, LW, enter, look, beq=nothing, pi=pi_, beq_next, W)
 end
 
 crra(c, omg) = c^omg / omg
@@ -290,8 +331,11 @@ Each household's utility this year, discounted to year t only by nothing
 (the caller multiplies by the discount): u(C) for a solvent household; for one
 going bankrupt this year u(F) D_beq(t), the value of the floor for the rest
 of its life as the solver counts it; zero for one bankrupt before. Utility is
-of consumption in units of `unit`. `guard` bounds consumption below (a share
-of `unit`) so that Float32 cannot overflow; it is 0 in evaluation.
+of consumption in units of `unit`. With a bequest motive a solvent household
+also gets beta (1 - p_t) chi u(bequest after a year of returns), the value of
+dying after this year in the solver (p_T = 0, so the last year counts it
+fully). `guard` bounds consumption and the bequest below (a share of `unit`)
+so that Float32 cannot overflow; it is 0 in evaluation.
 """
 function year_utility(m::Model, t::Integer, o, unit, guard)
     F = eltype(o.C)
@@ -300,6 +344,11 @@ function year_utility(m::Model, t::Integer, o, unit, guard)
     u = crra.(c, omg)
     if m.floor_absorbing
         u = ifelse.(o.enter, u .* F(m.D_beq[t]), ifelse.(o.look, u, zero(F)))
+    end
+    if m.chi > 0
+        b = max.(o.beq_next, F(1e-12) .* o.W) ./ F(unit)
+        ub = F(m.beta * (1 - m.p_surv[t]) * m.chi) .* crra.(max.(b, F(guard)), omg)
+        u = u .+ ifelse.(o.look, ub, zero(F))
     end
     return u
 end
