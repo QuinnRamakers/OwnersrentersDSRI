@@ -39,6 +39,7 @@ arguments
     opts.n_rest (1,1) double = 5000
     opts.sample_seed (1,1) double = 1
     opts.ages double = []                  % empty: every age
+    opts.gh_test double = []               % also the grid policy's one-year value with gh_test nodes a shock
 end
 p = r.p; sol = r.sol; g = p.gamma; T = p.T;
 [~, shocks] = config.model_inputs(p); r.shocks = shocks;
@@ -71,6 +72,8 @@ ns = numel(idx);
 
 % The solver's value at the states, interpolated in z
 Vint = zeros(ns, T); Vopt = zeros(ns, T); Vpol = zeros(ns, T);
+Vpg = nan(ns, T);                                       % with gh_test nodes
+if ~isempty(opts.gh_test), pg = p; pg.gh_n = opts.gh_test; rg = r; rg.shocks = grids.shock_grid(pg); end
 gpol = neural.grid_policy_fn(r);
 q_grid = p.q_grid(:);
 choice = p.floor_absorbing && isfield(p, 'default_choice') && p.default_choice;
@@ -103,6 +106,13 @@ for t = 1:T
     end
     Vint(before, t) = u(Cbar(idx(before))) * p.D_beq(t);
     if ~ismember(t, ages), Vopt(:, t) = NaN; Vpol(:, t) = NaN; continue, end
+    Vpg(:, t) = Vint(:, t);
+    if ~isempty(opts.gh_test)
+        [vg, ~, ~, vcg] = point_solve(rg, t, lam(live), sA(live), sH(live), qq(live), fixed = gpol);
+        if choice, vg = vcg; end
+        Vpg(live, t) = vg .* (sim.W(idx(live), t) / Y0) .^ (1 - g);
+        if choice, Vpg(enter, t) = vdef(enter); end
+    end
     t0 = tic;
     sc = (sim.W(idx(live), t) / Y0) .^ (1 - g);           % per unit of W^(1-g) to entry-income units
     vo = point_solve(r, t, lam(live), sA(live), sH(live), qq(live), ...
@@ -174,8 +184,19 @@ for j = 1:4
 end
 out.se = array2table(se, 'VariableNames', {'gap', 'interp', 'policy', 'quad'});
 fprintf('standard errors: gap %.4g, interp %.4g, policy %.4g, quad %.4g\n', se);
+if ~isempty(opts.gh_test)
+    % The quadrature part again, with the one-year value of the grid policy
+    % taken over gh_test nodes a shock (the same V_next): if it shrinks, the
+    % solver's quadrature misses what the draws find.
+    Xg = sum((Vpg - B) .* disc, 2, 'omitnan');
+    tg = sh(1) * mean(Xg(eb)) + sh(2) * mean(Xg(~eb));
+    sg = sqrt(sh(1)^2 * var(Xg(eb)) / (N * sh(1)) + sh(2)^2 * var(Xg(~eb)) / sum(~eb));
+    out.quad_test = struct('gh_n', opts.gh_test, 'quad', tg, 'se', sg, 'quad_bk', sh(1) * mean(Xg(eb)));
+    fprintf('quadrature at gh_n %d: quad %.4g (s.e. %.4g), against %.4g at gh_n %d\n', ...
+        opts.gh_test, tg, sg, sum(out.by_age.quad), p.gh_n);
+end
 out.idx = idx; out.wt = wt; out.ever = eb; out.t_ab = t_ab(idx);
-out.Vint = Vint; out.Vopt = Vopt; out.Vpol = Vpol; out.B = B;
+out.Vint = Vint; out.Vopt = Vopt; out.Vpol = Vpol; out.B = B; out.Vpg = Vpg;
 out.c_opt_note = 'Vopt seeded by the simulated policy at the state';
 fprintf('ce: V_int at entry %.4f (ce_entry %.4f), realised %.4f (sim_utility %.4f); ever bankrupt %.4f\n', ...
     out.total.ce_Vint, r.checks.ce_entry, out.total.ce_realised, ce_sim, mean(ever));

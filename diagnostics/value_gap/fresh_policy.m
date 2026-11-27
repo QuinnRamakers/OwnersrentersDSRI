@@ -1,4 +1,4 @@
-function sol2 = fresh_policy(r, mode)
+function sol2 = fresh_policy(r, mode, opts)
 %FRESH_POLICY  A policy for simulate.paths_lna that is optimised at each state.
 %
 %   sim = simulate.paths_lna(r.p, r.profile, fresh_policy(r, 'all'), r.ann_price, N, seed, r.p.b0)
@@ -17,9 +17,11 @@ function sol2 = fresh_policy(r, mode)
 arguments
     r struct
     mode char {mustBeMember(mode, {'all', 'default'})} = 'all'
+    opts.gh_n double = []          % the point solves' quadrature: gh_n nodes a shock (default r.p.gh_n)
 end
 p = r.p;
-[~, shocks] = config.model_inputs(p); r.shocks = shocks;
+pg = p; if ~isempty(opts.gh_n), pg.gh_n = opts.gh_n; end
+r.shocks = grids.shock_grid(pg);
 choice = p.floor_absorbing && isfield(p, 'default_choice') && p.default_choice;
 assert(choice || strcmp(mode, 'all'), 'fresh_policy:mode', 'mode ''default'' needs default as a choice.');
 gpol = neural.grid_policy_fn(r);

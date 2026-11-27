@@ -25,6 +25,8 @@ arguments
     opts.N_fresh (1,1) double = 20000
     opts.fresh string = "all"
     opts.decompose (1,1) logical = true
+    opts.gh_test double = []          % decompose_gap: the quadrature part also at gh_test nodes
+    opts.fresh_gh double = []         % fresh policies solved with this many nodes a shock
 end
 f = opts.file;
 if isempty(f), f = fullfile(pwd, 'neural', 'data', sprintf('solve_%d_%s_%s.mat', step, tenure, numerics)); end
@@ -38,7 +40,7 @@ res = struct('tag', tag, 'ce_entry', r.checks.ce_entry, 'dims', [numel(p.u1_grid
 
 if opts.decompose
     t0 = tic;
-    res.dec = decompose_gap(r, N=opts.N_dec, seed=303, n_rest=opts.n_rest);
+    res.dec = decompose_gap(r, N=opts.N_dec, seed=303, n_rest=opts.n_rest, gh_test=opts.gh_test);
     res.dec_sec = toc(t0);
     fprintf('decomposition: %.0f s\n', res.dec_sec);
     disp(res.dec.sum);
@@ -54,7 +56,7 @@ for k = 1:numel(names)
     if names(k) == "grid"
         sol = r.sol;
     else
-        sol = fresh_policy(r, char(names(k)));
+        sol = fresh_policy(r, char(names(k)), gh_n=opts.fresh_gh);
     end
     sim = simulate.paths_lna(p, r.profile, sol, r.ann_price, opts.N_fresh, 202, p.b0);
     [U, ce, se] = realised_utility(p, r.profile, sim);
