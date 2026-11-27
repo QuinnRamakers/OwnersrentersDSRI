@@ -313,18 +313,44 @@ if ~last
     interp_method = validatestring(p.interp_method, {'linear', 'makima', 'spline'}, ...
                                    'bellman_step_lna', 'p.interp_method');
     [n1, n2] = utility.grid_at(p, t + 1);     % next period's points, where V_next lives
+    % p.interp_space: what is interpolated. 'z' (the default), the certainty
+    % equivalent per unit of W; 'V', V_tilde itself (utility units, which
+    % weigh a node near the floor far more); 'logz', the log of z. Each is
+    % turned back into z at the query.
+    space = 'z';
+    if isfield(p, 'interp_space') && ~isempty(p.interp_space), space = char(p.interp_space); end
+    space = validatestring(space, {'z', 'V', 'logz'}, 'bellman_step_lna', 'p.interp_space');
+    switch space
+        case 'z',    f_next = z_next;
+        case 'V',    f_next = z_next .^ one_m_g / one_m_g;
+        case 'logz', f_next = log(z_next);
+    end
     if q_cont
         pp_lin = griddedInterpolant({n1, n2, p.u3_grid, q_grid}, ...
-                                    z_next, interp_method, 'nearest');
+                                    f_next, interp_method, 'nearest');
     else
         pp_lin = griddedInterpolant({n1, n2, p.u3_grid}, ...
-                                    z_next(:, :, :, iq1), interp_method, 'nearest');
+                                    f_next(:, :, :, iq1), interp_method, 'nearest');
     end
-    if strcmp(interp_method, 'linear')
-        pp_z = pp_lin;
-    else
-        % A smooth scheme can undershoot below zero next to the ruin region.
-        pp_z = @(varargin) max(pp_lin(varargin{:}), z_min);
+    switch space
+        case 'V'
+            % V < 0 everywhere, and a convex combination stays below zero; a
+            % smooth scheme is held at the lowest node value.
+            V_min = z_min ^ one_m_g / one_m_g;
+            if strcmp(interp_method, 'linear')
+                pp_z = @(varargin) (one_m_g * pp_lin(varargin{:})) .^ inv_omg;
+            else
+                pp_z = @(varargin) (one_m_g * min(max(pp_lin(varargin{:}), V_min), -realmin)) .^ inv_omg;
+            end
+        case 'logz'
+            pp_z = @(varargin) exp(pp_lin(varargin{:}));
+        otherwise
+            if strcmp(interp_method, 'linear')
+                pp_z = pp_lin;
+            else
+                % A smooth scheme can undershoot below zero next to the ruin region.
+                pp_z = @(varargin) max(pp_lin(varargin{:}), z_min);
+            end
     end
     if edge
         % Read next year's value at v' = u2' / u2_max(t+1); q' where it counts.

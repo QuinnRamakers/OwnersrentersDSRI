@@ -123,6 +123,7 @@ p.use_refine    = true;       % global (c, pi) sweep before fmincon at every nod
 p.fmincon_algorithm = 'active-set';   % local solve: 'active-set', 'interior-point' or 'sqp'
 p.fmincon_objective = 'ce';   % what fmincon minimises: 'ce' (certainty-equivalent units) or 'utility'
 p.interp_method = 'linear';   % continuation interpolant: 'linear', 'makima' or 'spline'
+p.interp_space  = 'z';        % what the continuation interpolates: 'z' (certainty equivalent per unit of W), 'V' (utility units) or 'logz'
 p.pi_nothing_saved = 'limit'; % equity share stored where nothing is saved: 'limit' (the first euro's share) or 'one'
 p.fast_power    = true;       % x.^(1-gamma) over the quadrature nodes by repeated multiplication when 1-gamma is a negative integer; false: MATLAB's power
 p.lambda_lo     = [];         % bottom of the u1 axis; [] = 0.0008, or 0.0002 with housing

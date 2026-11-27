@@ -75,6 +75,7 @@ gpol = neural.grid_policy_fn(r);
 q_grid = p.q_grid(:);
 choice = p.floor_absorbing && isfield(p, 'default_choice') && p.default_choice;
 ages = opts.ages; if isempty(ages), ages = 1:T; end
+space = 'z'; if isfield(p, 'interp_space') && ~isempty(p.interp_space), space = char(p.interp_space); end
 sec = zeros(T, 1);
 for t = 1:T
     [g1, g2] = utility.grid_at(p, t);
@@ -87,7 +88,7 @@ for t = 1:T
     % bankrupt value where the state is bankrupt (forced rule) or has no
     % resources (default as a choice), else the interpolant, and with default
     % as a choice never below the default value (bankrupt_nodes).
-    Vint(:, t) = (sim.W(idx, t) / Y0 .* zlook(sol.V(:, :, :, :, t), g, g1, g2, p.u3_grid, q_grid, lam, u2, u3, qq)) .^ (1 - g) / (1 - g);
+    Vint(:, t) = (sim.W(idx, t) / Y0 .* zlook(sol.V(:, :, :, :, t), g, g1, g2, p.u3_grid, q_grid, lam, u2, u3, qq, space)) .^ (1 - g) / (1 - g);
     before = ab(idx, t) & t_ab(idx) < t;                  % bankrupt in an earlier year
     enter  = t_ab(idx) == t;
     vdef   = u(p.phi_path(t) * sim.Y(idx, t)) * p.D_beq(t);
@@ -155,6 +156,24 @@ out.by_age = table((p.age0:p.age0 + T - 1).', ...
     nanz(wt(eb) .* D(eb, :)).', nanz(wt(eb) .* Di(eb, :)).', nanz(wt(eb) .* Dp(eb, :)).', nanz(wt(eb) .* Dq(eb, :)).', sec, ...
     'VariableNames', {'age', 'gap', 'interp', 'policy', 'quad', 'gap_bk', 'interp_bk', 'policy_bk', 'quad_bk', 'sec'});
 out.sum = varfun(@(x) sum(x, 'omitnan'), out.by_age(:, 2:9));
+% Standard errors of the four totals: the ever-bankrupt stratum is the whole
+% of its part of the panel, the rest a random subsample of the others; each
+% stratum's mean is scaled by its share of the panel. Within the ever bankrupt
+% the quadrature part is positive by selection (they drew the bad shocks);
+% only its total over both strata is a test of the quadrature.
+X = [sum(D, 2), sum(Di, 2, 'omitnan'), sum(Dp, 2, 'omitnan'), sum(Dq, 2, 'omitnan')];
+sh = [mean(ever), 1 - mean(ever)];
+se = zeros(1, 4);
+for j = 1:4
+    v = 0;
+    for s = 1:2
+        m = eb; if s == 2, m = ~eb; end
+        if sum(m) > 1, v = v + sh(s)^2 * var(X(m, j)) / (sum(m) * (s == 2) + N * sh(s) * (s == 1)); end
+    end
+    se(j) = sqrt(v);
+end
+out.se = array2table(se, 'VariableNames', {'gap', 'interp', 'policy', 'quad'});
+fprintf('standard errors: gap %.4g, interp %.4g, policy %.4g, quad %.4g\n', se);
 out.idx = idx; out.wt = wt; out.ever = eb; out.t_ab = t_ab(idx);
 out.Vint = Vint; out.Vopt = Vopt; out.Vpol = Vpol; out.B = B;
 out.c_opt_note = 'Vopt seeded by the simulated policy at the state';
@@ -164,14 +183,26 @@ s = out.sum{1, :};
 fprintf('utility gap %.4g = interp %.4g + policy %.4g + quad %.4g; of which ever bankrupt %.4g = %.4g + %.4g + %.4g\n', s);
 end
 
-function z = zlook(V, g, g1, g2, g3, q_grid, u1, u2, u3, q)
+function z = zlook(V, g, g1, g2, g3, q_grid, u1, u2, u3, q, space)
+% z at the states, interpolated linearly in the solver's interp_space
 z = zeros(size(V)); m = isfinite(V); z(m) = ((1 - g) * V(m)) .^ (1 / (1 - g));
+z(~m) = min(z(m));
+switch space
+    case 'V',    f = z .^ (1 - g) / (1 - g);
+    case 'logz', f = log(z);
+    otherwise,   f = z;
+end
 if numel(q_grid) > 1
-    F = griddedInterpolant({g1, g2, g3, q_grid}, z, 'linear', 'nearest');
-    z = F(u1, u2, u3, q);
+    F = griddedInterpolant({g1, g2, g3, q_grid}, f, 'linear', 'nearest');
+    f = F(u1, u2, u3, q);
 else
-    F = griddedInterpolant({g1, g2, g3}, z(:, :, :, 1), 'linear', 'nearest');
-    z = F(u1, u2, u3);
+    F = griddedInterpolant({g1, g2, g3}, f(:, :, :, 1), 'linear', 'nearest');
+    f = F(u1, u2, u3);
+end
+switch space
+    case 'V',    z = ((1 - g) * f) .^ (1 / (1 - g));
+    case 'logz', z = exp(f);
+    otherwise,   z = f;
 end
 end
 
