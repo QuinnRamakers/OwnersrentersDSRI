@@ -112,11 +112,15 @@ Found while running (27 November 2026):
    household (0.25 s at 2,048, about 0.75 s at 8,192), alone. The GPU's time
    is the launch of many small operations, not arithmetic, so it barely
    beats the CPU, and the CPU can run several trainings side by side.
-10. On the 8 GB card two trainings of 16,384 households fit. With more,
-    GPU memory spills into system memory (Windows lets it), the commit charge
-    reaches its limit, and processes die (Julia out-of-memory and
-    ReadOnlyMemoryError in the compiler; MATLAB out of memory). Two GPU
-    processes share the GPU by time-slicing.
+10. Memory limits the PC through the Windows commit limit (about 70 GB),
+    not RAM. Without a cap CUDA's memory pool grows past the 8 GB card into
+    system memory, which Windows charges to the commit limit (one GPU job
+    reached 19 GB in 25 minutes), and then any process that allocates dies
+    (Julia out-of-memory, "OpenBLAS: malloc failed", ReadOnlyMemoryError in
+    the compiler; MATLAB out of memory). Six step-1 runs were lost this way.
+    With `JULIA_CUDA_HARD_MEMORY_LIMIT=6GiB` a GPU job holds about 10 GB of
+    commit; a CPU job with `--heap-size-hint=2500M` about 3-4 GB
+    (neural/README.md).
 11. Seven CPU trainings of 8,192 households side by side take about 1.8 s a
     step each.
 

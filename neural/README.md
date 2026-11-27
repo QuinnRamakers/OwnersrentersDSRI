@@ -82,9 +82,25 @@ From the repository root, in this order the first time:
    PNGs in `neural/data/figures/`.
 
 Where to train: on this PC a step at 16,384 households takes about 0.95 s
-on the GPU and a step at 8,192 about 0.75 s on the CPU, alone. Two GPU
-trainings at a time fit in its 8 GB; more spill into system memory and die.
-The CPU runs seven side by side at about 1.8 s a step each.
+on the GPU and a step at 8,192 about 0.75 s on the CPU, alone. The CPU runs
+seven side by side at about 1.8 s a step each.
+
+Memory is what limits this PC, through the Windows commit limit (about 70
+GB: RAM plus page file), not through RAM. A process that cannot allocate
+dies (Julia: "OpenBLAS: malloc failed", "LLVM ERROR: out of memory",
+ReadOnlyMemoryError in the compiler; MATLAB: "Out of memory"), whichever
+process asked last. So:
+
+1. On the GPU, cap CUDA's memory pool:
+   `JULIA_CUDA_SOFT_MEMORY_LIMIT=3GiB JULIA_CUDA_HARD_MEMORY_LIMIT=6GiB`.
+   Without it the pool grows past the card into system memory, which
+   Windows charges to the commit limit (one job reached 19 GB in 25
+   minutes). With it a GPU job holds about 10 GB of commit, since Windows
+   also charges the card's memory to it. One GPU job at a time.
+2. On the CPU, `JULIA_FLAGS=--heap-size-hint=2500M`: a job then holds about
+   3-4 GB.
+3. Count the commit before starting more (`Get-Counter '\Memory\Committed
+   Bytes'`) and leave room for MATLAB and for tests.
 
 The first `using NeuralPolicy` in a new environment precompiles Flux and
 CUDA (about 3 minutes). CUDA.jl downloads its own runtime; it needs only the

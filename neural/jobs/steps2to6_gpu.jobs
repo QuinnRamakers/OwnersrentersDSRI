@@ -2,7 +2,9 @@
 # correlation), one network each on the GPU: retirement inputs, 16,384
 # households a step, 3,000 steps, learning rate 3e-3 (3e-4 after 2,000), the
 # consumption share starting at 0.5.
-# Run: bash neural/scripts/queue.sh neural/jobs/steps2to6_gpu.jobs 1
+# Run: JULIA_CUDA_SOFT_MEMORY_LIMIT=3GiB JULIA_CUDA_HARD_MEMORY_LIMIT=6GiB bash neural/scripts/queue.sh neural/jobs/steps2to6_gpu.jobs 1
+# (without the limits the CUDA memory pool grows past the card into system
+# memory, which Windows charges to the commit limit: 19 GB after 25 minutes).
 step2_ret_lr3 testset_2_nohousing_fine.mat variants=ret_lr3e-3
 step3_ret_lr3 testset_3_nohousing_fine.mat variants=ret_lr3e-3
 step4_ret_lr3 testset_4_nohousing_fine.mat variants=ret_lr3e-3
