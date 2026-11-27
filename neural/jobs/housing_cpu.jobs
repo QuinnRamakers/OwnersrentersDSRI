@@ -1,0 +1,13 @@
+# Step 12 (the DC pot, no housing) and steps 7b and 13 (housing; 13 also the
+# AOW and the DC pension), renters and owners separately and jointly, on the
+# CPU: retirement inputs, 8,192 households a step, 2,000 steps, learning rate
+# 3e-3 (3e-4 after 1,333), the consumption share starting at 0.5. The housing
+# test sets are on the quick grid (12x12x8x6, gh_n 3).
+# Run: OPENBLAS_NUM_THREADS=3 bash neural/scripts/queue.sh neural/jobs/housing_cpu.jobs 7
+step7b_joint  testset_7b_renter_quick.mat testset_7b_owner_quick.mat variants=ret_n8192_lr3e-3_k2000_joint device=cpu
+step13_joint  testset_13_renter_quick.mat testset_13_owner_quick.mat variants=ret_n8192_lr3e-3_k2000_joint device=cpu
+step7b_renter testset_7b_renter_quick.mat variants=ret_n8192_lr3e-3_k2000 device=cpu
+step7b_owner  testset_7b_owner_quick.mat  variants=ret_n8192_lr3e-3_k2000 device=cpu
+step13_renter testset_13_renter_quick.mat variants=ret_n8192_lr3e-3_k2000 device=cpu
+step13_owner  testset_13_owner_quick.mat  variants=ret_n8192_lr3e-3_k2000 device=cpu
+step12_ret    testset_12_nohousing_fine.mat variants=ret_n8192_lr3e-3_k2000 device=cpu

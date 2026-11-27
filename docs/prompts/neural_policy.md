@@ -105,6 +105,21 @@ MATLAB stays the model's definition. Julia trains the network.
    runs in Float32 on the GPU; the replay test and the final evaluation run
    in Float64 on the CPU.
 
+Found while running (27 November 2026):
+
+9. A training step of the real model costs about 0.95 s on the GPU at
+   16,384 households, alone. On the CPU it costs about 107 ms plus 0.08 ms a
+   household (0.25 s at 2,048, about 0.75 s at 8,192), alone. The GPU's time
+   is the launch of many small operations, not arithmetic, so it barely
+   beats the CPU, and the CPU can run several trainings side by side.
+10. On the 8 GB card two trainings of 16,384 households fit. With more,
+    GPU memory spills into system memory (Windows lets it), the commit charge
+    reaches its limit, and processes die (Julia out-of-memory and
+    ReadOnlyMemoryError in the compiler; MATLAB out of memory). Two GPU
+    processes share the GPU by time-slicing.
+11. Seven CPU trainings of 8,192 households side by side take about 1.8 s a
+    step each.
+
 ## Decisions
 
 All taken by Quinn on 27 November 2026.

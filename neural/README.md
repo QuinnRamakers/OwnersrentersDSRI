@@ -64,7 +64,21 @@ From the repository root, in this order the first time:
    (about 2 minutes after the first precompile).
 3. `julia --project=neural neural/scripts/part1_report.jl`.
 4. A rung: `matlab -batch "neural.make_testsets({1}, numerics={'standard','fine'})"`,
-   then `julia --project=neural neural/scripts/train_rung.jl step1 testset_1_nohousing_standard.mat variants=age,ret`.
+   then `julia --project=neural neural/scripts/train_rung.jl step1 testset_1_nohousing_fine.mat variants=age,ret`.
+   A variant is `age` or `ret` with suffixes (`_w128`, `_d3`, `_s2`,
+   `_n8192`, `_k2000`, `_lr3e-3`, `_joint`; see the script's header);
+   `device=cpu` trains on the CPU.
+5. Many trainings: a job list in `neural/jobs/` (one line per training, the
+   arguments of `train_rung.jl`) and
+   `OPENBLAS_NUM_THREADS=3 bash neural/scripts/queue.sh neural/jobs/<name>.jobs 7`.
+   Logs go to `neural/data/logs/`, results to `neural/data/results_<tag>.mat`.
+6. Figures: `matlab -batch "neural.plot_rung({'<tag>', ...}, title='...')"`,
+   PNGs in `neural/data/figures/`.
+
+Where to train: on this PC a step at 16,384 households takes about 0.95 s
+on the GPU and a step at 8,192 about 0.75 s on the CPU, alone. Two GPU
+trainings at a time fit in its 8 GB; more spill into system memory and die.
+The CPU runs seven side by side at about 1.8 s a step each.
 
 The first `using NeuralPolicy` in a new environment precompiles Flux and
 CUDA (about 3 minutes). CUDA.jl downloads its own runtime; it needs only the
