@@ -1,0 +1,8 @@
+# On the GPU from 05:35:
+# 1. Step 18 jointly for 3,000 steps, to compare with step18_long.jobs (the
+#    same settings, separately, on the CPU).
+# 2. Step 1 trained longer and wider (128 units, 16,384 households, 3e-3,
+#    6,000 steps), if there is time.
+# Run: JULIA_CUDA_SOFT_MEMORY_LIMIT=3GiB JULIA_CUDA_HARD_MEMORY_LIMIT=6GiB JULIA_FLAGS=--heap-size-hint=5G bash neural/scripts/queue.sh neural/jobs/gpu_morning.jobs 1
+step18_joint_k3000 testset_18_renter_quick.mat testset_18_owner_quick.mat variants=ret_n8192_lr3e-3_k3000_joint
+step1gpu_ret_w128_lr3_k6000 testset_1_nohousing_fine.mat variants=ret_w128_lr3e-3_k6000
