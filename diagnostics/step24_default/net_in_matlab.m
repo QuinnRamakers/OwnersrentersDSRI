@@ -8,12 +8,13 @@ function net_in_matlab(tenure, tag, run, numerics)
 %   default decision included) and compares consumption, liquid wealth and
 %   the defaults with the panel neural/scripts/net_panel.jl wrote from the
 %   Julia year on the same draws. Needs solve_24_<tenure>_<numerics>.mat,
-%   net_<tag>_<run>.mat (export_net.jl) and netpanel_<tag>_<run>.mat.
+%   net_<tag>_<run>.mat (export_net.jl) and
+%   netpanel_<tag>_<run>_24_<tenure>_<numerics>.mat (net_panel.jl).
 
 d = fullfile(pwd, 'neural', 'data');
 r = load(fullfile(d, sprintf('solve_24_%s_%s.mat', tenure, numerics))).r;
 net = load(fullfile(d, sprintf('net_%s_%s.mat', tag, run)));
-J = load(fullfile(d, sprintf('netpanel_%s_%s.mat', tag, run)));
+J = load(fullfile(d, sprintf('netpanel_%s_%s_24_%s_%s.mat', tag, run, tenure, numerics)));
 p = r.p;
 fwd = neural.net_forward(net, net.check_in);
 fprintf('network forward pass against Julia: largest gap %.2e\n', max(abs(fwd(:) - net.check_out(:))));

@@ -99,7 +99,7 @@ C_bar     = zeros(N, 1);
 % is no more than the default value phi_t Y D_t^(1/(1-gamma)), or when its
 % resources do not exceed the search's lower bound, phi_floor * Y.
 choice = absorbing && isfield(p, 'default_choice') && p.default_choice;
-assert(~choice || isfield(sol, 'V_cont'), 'paths_lna:no_V_cont', ...
+assert(~choice || isfield(sol, 'V_cont') || isfield(sol, 'policy_fn'), 'paths_lna:no_V_cont', ...
     'default_choice is set but sol has no V_cont.');
 pp_zc = cell(T, 1);
 Dfac  = ones(T, 1);
