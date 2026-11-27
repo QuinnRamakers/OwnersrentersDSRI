@@ -1,0 +1,3 @@
+# Housing batch c (see housing_cpu.jobs): step 13 renters and owners separately.
+step13_renter testset_13_renter_quick.mat variants=ret_n8192_lr3e-3_k2000 device=cpu
+step13_owner  testset_13_owner_quick.mat  variants=ret_n8192_lr3e-3_k2000 device=cpu
