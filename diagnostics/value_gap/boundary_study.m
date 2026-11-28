@@ -26,14 +26,15 @@ arguments
     opts.rules = {'grid', 'boundary'}
     opts.out char = ''
     opts.coord char = 'share'      % p.u2_coord: 'share', 'edge' or 'boundary'
+    opts.space char = 'z'          % p.interp_space: 'z', 'V' or 'logz'
 end
 rows = {};
 for mode = string(opts.modes)
     p = ladder.params(24); p.is_owner = owner; p.grid_dims = opts.grid; p.gh_n = opts.gh_n;
-    p.default_boundary = char(mode); p.u2_coord = opts.coord;
+    p.default_boundary = char(mode); p.u2_coord = opts.coord; p.interp_space = opts.space;
     p = config.derive(p);
-    fprintf('\n=== step 24, owner %d, grid %s, gh_n %d, default_boundary %s, u2_coord %s ===\n', ...
-        owner, mat2str(opts.grid), opts.gh_n, mode, opts.coord);
+    fprintf('\n=== step 24, owner %d, grid %s, gh_n %d, default_boundary %s, u2_coord %s, interp_space %s ===\n', ...
+        owner, mat2str(opts.grid), opts.gh_n, mode, opts.coord, opts.space);
     t0 = tic;
     r = model.run(p, N_sim=2000, verbose=false);
     t_solve = r.timing.solve_sec;
