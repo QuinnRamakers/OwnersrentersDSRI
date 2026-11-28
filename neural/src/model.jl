@@ -192,7 +192,8 @@ path is exactly the expectation over the decision: this year a weight
 wd = w d on the default value and wc = w (1 - d) on continuing, and w = wc
 next year. With d at 0 or 1 this is the hard rule of `simulate.paths_lna`.
 Default is forced where resources do not exceed phi_floor Y (or 1e-12 of
-W), and a household that continues consumes at least that, not the floor F.
+W), and a household that continues consumes at least that, not the floor F;
+with `ch.floor_F` (Spec floor_F) the bound is F_t in both places.
 The continuing path is carried on for every household; where its weight is
 zero it counts for nothing.
 """
@@ -243,6 +244,9 @@ function year(m::Model, t::Integer, s, ch, e)
         # A consumption ratio of LW (Spec ratio) has no lower bound: default
         # is forced only when nothing can be consumed. A replayed panel also
         # gives c, so a ratio is told apart by the network's share being free.
+        # With Spec floor_F a household that continues consumes at least F_t,
+        # so default is forced when LW <= F_t.
+        haskey(ch, :floor_F) && (F_lo = F_t)
         forced = haskey(ch, :ratio) ? LW .<= zero(F) : LW .<= F_lo
         d = ifelse.(forced, one(F), ch.d)
         wd = s.w .* d

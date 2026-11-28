@@ -178,6 +178,24 @@ end
                 @info "weighted against random decisions" largest_z = z households = N draws = K
                 @test z < 4.5
             end
+
+            @testset "model: with floor_F a household that continues consumes at least F, and defaults when LW <= F" begin
+                spec = Spec(retire=true, default=true, floor_F=true)
+                ch = choices(f64(policy_net(spec; rng=Xoshiro(26), d_init=0.3)), m24, spec)
+                e = draw(m24, 2000, Xoshiro(27); F=Float64)
+                s = entry(m24, zeros(1, 2000); unit=1)
+                n_forced = 0
+                for t in 1:m24.T
+                    o = year(m24, t, s, ch(t, s), e)
+                    cont = vec(o.wc) .> 0
+                    @test all(vec(o.C)[cont] .>= vec(o.F_t)[cont] .* (1 - 1e-12))
+                    short = vec(o.LW) .<= vec(o.F_t)
+                    @test all(vec(o.wc)[short] .== 0)
+                    n_forced += sum(short .& (vec(s.w) .> 0))
+                    t < m24.T && (s = o.state)
+                end
+                @info "floor_F" forced_household_years = n_forced
+            end
         end
 
         # The bequest term against the solver: on the fine grid at step 12 the

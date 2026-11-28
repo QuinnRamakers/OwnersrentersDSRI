@@ -11,13 +11,16 @@ adds a third output, the probability of defaulting this year (default as a
 choice, step 24). `ratio` (with `default` only) makes the first output the
 share of all liquid resources consumed, C = c LW, with no lower bound on
 consumption: saving (1 - c) LW is positive whenever LW is, and a household is
-forced to default only when LW <= 0.
+forced to default only when LW <= 0. `floor_F` (with `default` only) makes a
+household that continues consume at least the floor amount F_t: consumption
+is F_t + s (LW - F_t), and default is forced when LW <= F_t.
 """
 Base.@kwdef struct Spec
     retire::Bool = false
     tenure::Bool = false
     default::Bool = false
     ratio::Bool = false
+    floor_F::Bool = false
 end
 
 n_inputs(spec::Spec) = 5 + 2 * spec.retire + spec.tenure
@@ -110,6 +113,7 @@ function choices(net, m::Model, spec::Spec; hard::Bool=false)
                 d = ifelse.(d .> 0.5, one.(d), zero.(d))
             end
             spec.ratio && return (; c=sh, pi=sigmoid.(out[2:2, :]), d, ratio=true)
+            spec.floor_F && return (; s=sh, pi=sigmoid.(out[2:2, :]), d, floor_F=true)
             return (; s=sh, pi=sigmoid.(out[2:2, :]), d)
         end
         return (; s=sh, pi=sigmoid.(out[2:2, :]))

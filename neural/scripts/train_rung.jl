@@ -7,7 +7,8 @@
 # is a base, `age` (age and the state) or `ret` (also years to retirement and
 # a retired indicator), with optional suffixes: _w<hidden units>, _d<hidden
 # layers>, _s<seed>, _n<households a step>, _k<training steps>, _lr<rate, as
-# 1e-3 written 1e-3>, and _joint (one network for all the test sets, with a
+# 1e-3 written 1e-3>, _floorF (with default as a choice, a household that
+# continues consumes at least the floor amount; Spec floor_F), and _joint (one network for all the test sets, with a
 # tenure indicator; with one test set of a model without housing, the second
 # tenure is the same model with the indicator set to owner). Writes
 # neural/data/results_<tag>.mat and prints a table.
@@ -20,9 +21,11 @@ function parse_variant(v::AbstractString)
     base = parts[1]
     base in ("age", "ret") || error("variant $v: the base must be age or ret")
     o = Dict{String,Any}("name" => v, "retire" => base == "ret", "hidden" => 64, "depth" => 2,
-                         "seed" => 1, "N" => 16384, "steps" => 3000, "lr" => 1e-3, "joint" => false)
+                         "seed" => 1, "N" => 16384, "steps" => 3000, "lr" => 1e-3, "joint" => false, "floorF" => false)
     for p in parts[2:end]
-        if p == "joint"
+        if p == "floorF"
+            o["floorF"] = true
+        elseif p == "joint"
             o["joint"] = true
         elseif startswith(p, "lr")
             o["lr"] = parse(Float64, p[3:end])
@@ -99,7 +102,7 @@ floored(P, m) = mean(P["LW"] .< m.phi_path' .* P["Y"])
         "ce grid", "net-grid", "s.e.", "fl. net", "fl. grid", "train s")
 for v in variants
     o = parse_variant(v)
-    spec = Spec(retire=o["retire"], tenure=o["joint"], default=any(s.m.default_choice for s in sets))
+    spec = Spec(retire=o["retire"], tenure=o["joint"], default=any(s.m.default_choice for s in sets), floor_F=o["floorF"])
     if o["joint"]
         ms = [s.m for s in sets]
         es = [s.e for s in sets]
@@ -135,7 +138,7 @@ for v in variants
                                 "se_net" => c.a.se, "ce_grid" => c.b.ce, "se_grid" => c.b.se,
                                 "diff" => c.diff, "se_diff" => c.se_diff, "train_sec" => secs,
                                 "curve_step" => first.(curve), "curve_value" => last.(curve),
-                                "theta" => Float64.(theta), "retire" => o["retire"], "joint" => o["joint"], "default" => spec.default,
+                                "theta" => Float64.(theta), "retire" => o["retire"], "joint" => o["joint"], "default" => spec.default, "floor_F" => spec.floor_F,
                                 "hidden" => o["hidden"], "depth" => o["depth"], "seed" => o["seed"],
                                 "N" => o["N"], "steps" => o["steps"], "lr" => o["lr"],
                                 "net" => profiles(P, ms[j]), "grid" => profiles(Gs[j], ms[j]),

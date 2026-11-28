@@ -147,6 +147,36 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-28 Step 24 network with consumption at least F when continuing: trains, 4.5% behind the grid (spec: none, asked by Quinn in Claude Code)
+
+Changed: Quinn chose a floor at F for a household that continues. `Spec(default=true, floor_F=true)` makes consumption F_t + s (LW - F_t) and forces default when LW <= F_t; above that, default is still a choice. The change is in `neural/src/policy.jl` and `neural/src/model.jl`; the `_floorF` variant suffix is in `train_rung.jl`; `diagnostics/step24_default/plot_floorF.m` draws the figure. The solver is unchanged: the grid policy never consumes below F while solvent (entry below).
+
+Checks run: Julia tests 288 of 288 pass. The new test checks every year of 2,000 households that continuing consumption is at least F and that no household continues with LW <= F.
+
+Same test set as the entry below (step 24 renters, beq_shift 1, fine grid; `results_step24shift1_floorF_renter.mat`, GPU):
+
+| variant | ce net (s.e.) | ce grid | net - grid (s.e.) | bankrupt net | bankrupt grid | train s |
+|---|---|---|---|---|---|---|
+| 8,192 households, 1,000 steps, lr 3e-3 | 0.2680 (0.0064) | 0.2807 | -0.0127 (0.0024) | 0.0015 | 0.0064 | 1,142 |
+| 16,384 households, 3,000 steps, lr 3e-4 | 0.2653 (0.0059) | 0.2807 | -0.0154 (0.0023) | 0.0015 | 0.0064 | 2,969 |
+
+(The bankrupt columns are the share of household-years whose resources fall short of the floor amount.)
+
+By age (`diagnostics/step24_default/floorF_by_age.png`), the faster network against the grid:
+
+| age | consumption | liquid wealth | equity share | bankrupt |
+|---|---|---|---|---|
+| 45 | 0.50 / 0.64 | 4.6 / 2.9 | 0.20 / 0.77 | 0 / 0 |
+| 67 | 0.74 / 0.81 | 8.9 / 4.9 | 0.17 / 0.94 | 0.0001 / 0.0008 |
+| 95 | 0.60 / 0.59 | 8.5 / 1.4 | 0.64 / 0.68 | 0.008 / 0.034 |
+
+Consumption and wealth are in entry incomes.
+
+Reading: the floor removes the second minus infinity. The network now trains to within 4.5% of the grid policy's simulated welfare (5 standard errors), against nothing before. It is more cautious than the grid: it consumes less while working, holds about twice the liquid wealth at 67 and does not run it down in retirement, holds far less equity from 40 on, and goes bankrupt a quarter as often. Its worst 1% of households still carry 41% of E[U] (the grid's 56%). So the mean objective still pushes it to insure against the bankruptcy tail at the cost of the typical household. The two training settings agree. The value function's ce (0.3196) stays above both simulated values.
+
+Commit: see below, pushed to work-2026-11-26.
+Open: (1) the production value of beq_shift. (2) Whether the network's caution is a training problem (lifetime-reward objective dominated by the tail) or the grid's policy being too aggressive near the floor; an owner run and a second seed would tell more.
+
 ### 2026-11-28 Bequest shifter; step 24 renters with shifter 1 against the fine grid (spec: none, asked by Quinn in Claude Code)
 
 Changed: new primitive `beq_shift` (years of the floor amount F = phi_t Y). A solvent household's bequest B is valued as chi u(B + beq_shift F), and the bankrupt household's with the same shifter, chi u((beq_bankrupt + beq_shift) F). The change is in `+solver/bellman_step_lna.m` (the four bequest sites), `+config/derive.m` (D_beq), `+config/params.m` (0, so production is unchanged), `ladder.same_calibration` (0 for older results), `neural.export_model` and the Julia model year. `neural.make_testsets` takes `override=`, `tag=` and `tenures=`. CALIBRATION.md has the row; the value is open. `why_training_fails.jl` takes a test set as its third argument.
