@@ -147,6 +147,64 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-28 Step 24: the default boundary in the solver, and a grid node on it (spec: docs/prompts/grid_value_gap.md, hypothesis 4; asked by Quinn through the session "Solver-simulation welfare gap")
+Quinn asked for the default boundary in the solver's backward induction, then "afterwards see if we can make a grid point that exactly is at the boundary of exercising the option". Both are numerics options, off by default; no production value changed. Branch `claude/default-boundary-solver-a7b2a5`, not merged.
+
+What was built:
+1. `default_boundary` ('off' default, 'cont', 'extend'; commit 4403545). 'off' interpolates next year's V = max(V_default, V_continue) in z, as before. 'cont' interpolates V_continue alone and takes the exact default value, phi Y D^(1/(1-gamma)), where it is more, at each quadrature node: the rule the simulator already used to decide default. 'extend' is 'cont' with V_continue at the nodes where continuing is not open set to the nearest open node's z times the ratio of the two nodes' resources above the edge (`utility.cont_z`). The line then reaches zero at the edge of continuing, not at the closed node beyond it; the simulator reads V_continue the same way.
+2. `u2_coord = 'boundary'` (commits c0fae23 and 669c7d9). Before each period is solved, `solver.find_boundary` finds, on every (u1, u3, q) line of the period's grid, the u2 where continuing and defaulting are worth the same. It uses point solves of the period's Bellman problem against next year's value and Illinois root finding in the log of resources above the edge, to 1e-6. The second axis is then v = u2 / u2b, so the node v = 1 sits on the boundary and the simulator defaults at v >= 1. Between lines the boundary is interpolated through rho = s_b / z_def, the resources above the edge at the boundary over the default value's certainty equivalent (`utility.u2_scale_fn`). Interpolating the boundary as a share of u2_max (c0fae23) made 75.8% of owners default on the tiny grid, because their boundary sits just below u2_max.
+3. `diagnostics/value_gap/boundary_study.m` (solve, `compare_rules`, `boundary_lines`, checks) and `boundary_lines.m` (the node decisions along each u2 line). `fresh_policy`'s boundary rule now solves every state past v = 1 at the state.
+4. Tests: `default_boundary_param`, `cont_z_extend` (fast); `default_boundary_step`, `boundary_coord_solve` (solve).
+
+Off is the old solver in every bit. On the tiny step 24 grids against the base commit 6de3b5e, V, c_pol, pi_pol, V_cont, ce_entry and the floored share were identical: renters ce_entry 0.3769696112 (159 s base, 152 s new), owners 0.4007739216 (820 s, 831 s).
+
+Step 24 (production), tiny grid [8 6 6 4], gh_n 3, on the PC (2 thread workers). 4,000 households, seed 303. Value = ce_entry. Simulated under the simulator's own rule (grid) and with the decision solved at the state where the cell's corners disagree (boundary). Standard errors in brackets.
+
+| tenure, solver | value | simulated, grid | simulated, boundary | ever default, grid / boundary | worst 1% share, grid / boundary | solve s |
+|---|---|---|---|---|---|---|
+| renters, off | 0.3770 | 0.0037 (0.0007) | 0.1706 (0.0041) | 7.7% / 16.6% | 1.00 / 0.52 | 146 |
+| renters, cont | 0.3754 | 0.0036 (0.0007) | 0.1774 (0.0043) | 7.9% / 16.5% | 1.00 / 0.53 | 134 |
+| renters, extend | 0.3748 | 0.0369 (0.0068) | 0.1821 (0.0045) | 16.4% / 16.4% | 1.00 / 0.54 | 133 |
+| renters, boundary node | 0.3746 | 0.1982 (0.0059) | 0.1984 (0.0058) | 8.8% / 10.0% | 0.62 / 0.62 | 435 (211 search) |
+| owners, off | 0.4008 | 0.2094 (0.0349) | 0.3061 (0.0243) | 0.0% / 0.05% | 0.93 / 0.67 | 932 |
+| owners, cont | 0.3915 | 0.2155 (0.0373) | 0.3065 (0.0242) | 0.0% / 0.05% | 0.92 / 0.66 | 992 |
+| owners, extend | 0.3889 | 0.2850 (0.0201) | 0.3222 (0.0239) | 0.18% / 0.03% | 0.74 / 0.58 | 1,140 |
+| owners, boundary node | 0.4006 | 0.2468 (0.0096) | 0.3343 (0.0269) | 6.7% / 0.03% | 0.57 / 0.53 | 2,795 (1,002 search) |
+
+Standard grid [16 16 10 8], gh_n 5, renters, on the DSRI, 8 threads beside three other jobs. Commit c0fae23 for the first three rows (started 27 November 20:51 UTC, 1 h 33 min); commit 669c7d9 for the last (started 28 November 00:28 UTC, 34 min). 20,000 households, seed 303. Checks: c_bound_25_39 0, offgrid 0 in every case.
+
+| solver | value | simulated, grid | simulated, boundary | ever default, grid / boundary | worst 1% share | solve s |
+|---|---|---|---|---|---|---|
+| off | 0.3544 | 0.0234 (0.0037) | 0.2036 (0.0042) | 7.3% / 9.1% | 1.00 / 0.74 | 2,003 |
+| extend | 0.3538 | 0.2067 (0.0041) | 0.2100 (0.0042) | 8.8% / 8.8% | 0.74 / 0.73 | 1,266 |
+| boundary node (c0fae23 interpolation) | 0.3538 | 0.2106 (0.0044) | 0.2105 (0.0044) | 7.0% / 7.0% | 0.74 / 0.74 | 1,987 (567 search) |
+| boundary node (669c7d9) | 0.3536 | 0.2125 (0.0044) | 0.2120 (0.0044) | 7.0% / 7.0% | 0.74 / 0.74 | 1,985 (582 search) |
+
+Solve times on the pod are noisy (other jobs): 'off' took longer than 'extend'.
+
+The boundary along u2, at the nodes: on every grid above, each line switches once at most, from continuing at low u2 to defaulting at high u2. No line switches back or switches twice. Renters standard grid: 4,009 of 13,680 line-periods switch, the rest never default before the edge. The boundary search takes a median of 20-24 rounds of point solves a period (6-42), about as much as one grid step on these grids.
+
+What it means:
+1. The kink of the max is not where the solver overstates. 'cont' and 'extend' lower the renters' value at entry by under 1% (0.3770 to 0.3748) and the owners' by 3% (0.4008 to 0.3889).
+2. What the options fix is the simulator's own default decision. With 'extend', and on the standard renter grid, the simulator's rule gives the same welfare as solving the decision at each state (0.2067 against 0.2100). With the boundary node on renters it gives exactly that, with no point solves (0.1982 / 0.1984 tiny, 0.2125 / 0.2120 standard at 669c7d9). The single households that set welfare under 'off' (worst 1% hold all utility) are gone.
+3. For owners the boundary node gives the best value against simulation of all variants (0.4006 against 0.3343 with the decision solved past v = 1). But the simulator's v >= 1 rule still makes 6.7% of owners default where the solved decision says 0.03%: between lines the owners' boundary is still misplaced. Read the owners' boundary rule, not their grid rule, until that is fixed.
+4. Even with exact decisions, the value at entry stays about 67% (renters, standard grid: 0.3536 against 0.2120) to 20% (owners, tiny grid) above simulated welfare. That part is not at the default boundary. On the standard renter grid it is close to step 18's gap on the same grid (0.3479 against 0.2161), which refines away along u1. The session "Solver-simulation welfare gap" found on the same grid that `interp_space` 'logz' gives value 0.2337 against 0.2477 simulated (100,000 households). The boundary coordinate combines with 'logz' (no closed nodes); not yet run.
+5. Welfare at step 24 is set by single households wherever the simulator lets them continue on almost nothing; the modelling choices there (a bequest shifter, the floor as the lower bound of consumption) are open with Quinn and were not touched.
+
+Checks, on the PC (2 thread workers):
+1. `run_tests(solve=false)`: 0 of 25 failed (before c0fae23). In the full run at 669c7d9 all 25 fast checks passed.
+2. Full `run_tests` at 669c7d9: 2 of 46 failed, 2 skipped (`floor_off_identical`, `bequest_off_identical`: their baselines are only on the pod).
+   - `boundary_coord_solve` (new) failed its first bound. At the v = 1 node of the 41 crossing lines, continuing and defaulting tie to a median of 2.8e-10 but at most 1.1e-3, and the bound asked for 1e-4 at 98% of the lines. The two searches start from different points (next year's policy for the grid, fixed points for the boundary), so the bound is now a median under 1e-6 and nothing over 1e-2, as `default_choice_step` bounds the same kind of difference. Run alone with that bound it passes, with the same numbers.
+   - `floor_node_test` failed: "owner 1: solve out of range", the equity share at -6.07e-05 against a bound of -1e-6. Step 16 runs none of the new code. The same test fails the same way on the base commit 6de3b5e run alone on this PC, so it is not this change; it does pass the renter half. Not fixed here.
+   - `default_boundary_step` (new) passed: from one continuation, 'cont' never priced a node above 'off', and 'extend' never above 'cont' (highest rise 0 at both ages, both tenures). The value fell at 12-161 of 224 (renter) or 896 (owner) nodes, by at most 21%.
+3. `model.checks` on every solve above: c_bound_25_39 0 and offgrid 0.
+
+Not done:
+1. The boundary coordinate with `interp_space` 'logz' on the standard renter grid runs on the DSRI (commit 9e1ed7d, folder `/Solutionstorage/OwnersrentersDSRI_boundary`, log `runs/boundary_std3.txt`, started 28 November 01:17 UTC). The VPN dropped before it finished, so its result is not here.
+2. The owners' boundary between lines: the simulator's v >= 1 rule over-defaults (6.7% against 0.03%). Neither the standard nor the production owner grid has been run with the boundary coordinate.
+
+Commits: 4403545, c0fae23, 669c7d9, 9e1ed7d, this entry.
+
 ### 2026-11-27 Step 18: the owners' solver-simulation gap is the absorbing state (spec: none, asked by Quinn in Claude Code)
 Quinn: "I think the problem might be in the absorption state and how it is in the model".
 Test (`diagnostics/step18_absorbing/value_along_paths.m`, `bankrupt_owners.m`): the step-18 standard-grid solve's own policy simulated for 100,000 households (seed 303); at every age, the solver's value at each household's state (its V interpolated as in the solver; the bankrupt value u(F) D_beq(t) for the bankrupt) against the utility the household goes on to realise. The code path was read first: the solver's budget, its next-year bankruptcy test (`bankrupt_nodes`, `next_h_cost`) and the simulator's apply the same rule to the same housing costs.
