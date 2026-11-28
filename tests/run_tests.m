@@ -994,15 +994,23 @@ p = ladder.params(24); p.c_min = 10000; p.u2_coord = 'boundary';
 p.grid_dims = [6 5 4 3]; p.gh_n = 3; p = config.derive(p);
 assert(p.u2_grid(end) == 1, 'the v axis does not end at 1');
 r = model.run(p, N_sim = 2000, keep_sim = true, verbose = false);
-R = r.sol.u2_bnd;
-assert(isequal(size(R), [numel(p.u1_grid), numel(p.u3_grid), numel(p.q_grid), p.T]) && all(R(:) > 0 & R(:) <= 1), ...
+P = r.sol.u2_bnd;                                  % rho = s_b / z_def by line
+assert(isequal(size(P), [numel(p.u1_grid), numel(p.u3_grid), numel(p.q_grid), p.T]) && all(isfinite(P(:)) & P(:) >= 0), ...
     'the boundary table');
 gap = []; below = []; n_cross = 0;
 for t = [10, p.t_ret + 5, p.T - 3]
+    R = r.sol.bnd_info(t).r;                       % the boundary as a share of u2_max
+    assert(all(R(:) > 0 & R(:) <= 1), 'the boundary share at t = %d', t);
     Vc = r.sol.V_cont(:, :, :, :, t);
     zd = p.phi_path(t) * p.u1_grid(:) * p.D_beq(t) ^ (1 / (1 - p.gamma));
     zc = ce(Vc, p.gamma);
-    cross = squeeze(R(:, :, :, t) < 1 & R(:, :, :, t) > 1e-3);     % N1 x N3 x Nq
+    cross = R < 1 & R > 1e-3;                      % N1 x N3 x Nq
+    % at the lines' own nodes the interpolated boundary is the one found
+    [L1, L3] = ndgrid(p.u1_grid, p.u3_grid);
+    m = utility.u2_scale(r.p, t, L1, L3, 1, r.ann_price);
+    um = utility.u2_max(r.p, t, L1, L3, 1, r.ann_price);
+    iq1 = find(p.q_grid == 1);
+    assert(max(abs(m(:) ./ um(:) - reshape(R(:, :, iq1), [], 1))) < 1e-9, 't = %d: the boundary at the nodes', t);
     n_cross = n_cross + nnz(cross);
     top = squeeze(zc(:, end, :, :)) ./ zd - 1;
     gap = [gap; top(cross)]; %#ok<AGROW>

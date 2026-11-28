@@ -23,10 +23,14 @@ function [R, info] = find_boundary(t, V_next, p, profile, shocks, ann_price, opt
 %   the lines not yet settled; a line is settled when its bracket is below
 %   opts.tol in y (a relative error in resources) or opts.rounds is reached.
 %
-%   R is N_u1 x N_u3 x N_q, the boundary's u2 as a share of u2_max: 1 on a
-%   line that never defaults before the edge (or where the edge lies past
-%   u2 = 1), opts.r_all on one that defaults at u2 = 0 already. info counts
-%   those lines (n_none, n_all), the rounds, the point solves and seconds.
+%   R is N_u1 x N_u3 x N_q, rho = s_b / z_def on each line: the resources
+%   above the edge at the boundary over the default value's certainty
+%   equivalent, the quantity utility.u2_scale_fn interpolates between lines
+%   (see finish below for lines without a crossing). info.r holds the
+%   boundary's u2 as a share of u2_max: 1 on a line that never defaults
+%   before the edge (or where the edge lies past u2 = 1), opts.r_all on one
+%   that defaults at u2 = 0 already. info counts those lines (n_none,
+%   n_all), the rounds, the point solves and seconds.
 %   Where q enters neither this year nor later, one q slice is searched and
 %   copied, as the grid solve does.
 
@@ -64,6 +68,7 @@ flat = ~(den > 0);
 info.n_flat = nnz(flat);
 r(flat) = 1;
 live = find(~flat);
+k = zeros(0, 1); all_def = false(0, 1);
 if isempty(live), R = finish(r); return; end
 
     function f = fz(k, u2)
@@ -123,8 +128,39 @@ r(k) = u2_of(k, y) ./ u2m(k);
 R = finish(r);
 
     function R = finish(r)
-        R = reshape(r, numel(g1), numel(p.u3_grid), numel(qs));
-        if ~q_now && Nq > 1, R = repmat(R, 1, 1, Nq); end
+        % rho: the resources above the edge at the boundary over the default
+        % value's certainty equivalent, s_b / z_def, which is what
+        % utility.u2_scale_fn interpolates between lines (s_b goes with
+        % z_def, so rho changes little along u1). A line that crosses keeps
+        % its own; one that does not (the edge past the cube, or past
+        % u2_max) takes its nearest crossing neighbour's along u1, at most
+        % s(u2_max) / z_def, so that its own node stays at u2_max, or 0
+        % (the edge) without one.
+        u2b = r .* u2m;
+        s_b = num - den .* u2b;
+        rho = s_b ./ zd;
+        cr = false(n, 1); cr(k) = true;              % lines with a root
+        rho(live(all_def)) = num(live(all_def)) ./ zd(live(all_def));
+        N1 = numel(g1); N3 = numel(p.u3_grid); NQ = numel(qs);
+        rho = reshape(rho, N1, N3, NQ); cr = reshape(cr, N1, N3, NQ);
+        cap = reshape(max(s_lo, 0) ./ zd, N1, N3, NQ);
+        ad = false(n, 1); ad(live(all_def)) = true; ad = reshape(ad, N1, N3, NQ);
+        for jq = 1:NQ
+            for j3 = 1:N3
+                ic = find(cr(:, j3, jq));
+                for j1 = find(~cr(:, j3, jq) & ~ad(:, j3, jq)).'
+                    if isempty(ic)
+                        rho(j1, j3, jq) = 0;
+                    else
+                        [~, ii] = min(abs(ic - j1));
+                        rho(j1, j3, jq) = min(rho(ic(ii), j3, jq), cap(j1, j3, jq));
+                    end
+                end
+            end
+        end
+        R = rho;
+        info.r = reshape(r, N1, N3, NQ);             % the boundary as a share of u2_max
+        if ~q_now && Nq > 1, R = repmat(R, 1, 1, Nq); info.r = repmat(info.r, 1, 1, Nq); end
         info.sec = toc(t0);
     end
 end
