@@ -147,6 +147,33 @@ Done: 2026-10-12
 
 ## Log (from Claude Code)
 
+### 2026-11-28 Bequest shifter; step 24 renters with shifter 1 against the fine grid (spec: none, asked by Quinn in Claude Code)
+
+Changed: new primitive `beq_shift` (years of the floor amount F = phi_t Y). A solvent household's bequest B is valued as chi u(B + beq_shift F), and the bankrupt household's with the same shifter, chi u((beq_bankrupt + beq_shift) F). The change is in `+solver/bellman_step_lna.m` (the four bequest sites), `+config/derive.m` (D_beq), `+config/params.m` (0, so production is unchanged), `ladder.same_calibration` (0 for older results), `neural.export_model` and the Julia model year. `neural.make_testsets` takes `override=`, `tag=` and `tenures=`. CALIBRATION.md has the row; the value is open. `why_training_fails.jl` takes a test set as its third argument.
+
+Checks run:
+- Full `run_tests`: 1 of 42 failed, 2 skipped. The failure is the old `floor_node_test` "owner 1: solve out of range"; it fails the same way before this change. With beq_shift 0 the solver only adds 0.
+- Julia tests: 136 of 136.
+
+Reference solve: step 24 renters, beq_shift 1, production fine grid 32x16x40x4, gh_n 5, PC. Solve 4,649 s; offgrid [0 0 0 0]; c_bound_25_39 0; ce_entry 0.3196; the grid policy simulated on the 20,000 test households gives 0.2807 (`testset_24shift1_renter_fine.mat`, `solve_24shift1_renter_fine.mat`).
+
+The network on the same households (`train_rung.jl`, GPU, `results_step24shift1_renter.mat`):
+
+| variant | ce net (s.e.) | ce grid | net - grid (s.e.) | floored net | floored grid | train s |
+|---|---|---|---|---|---|---|
+| 8,192 households, 1,000 steps, lr 3e-3 | 0.00068 (0.00013) | 0.2807 | -0.280 (0.006) | 0.0065 | 0.0064 | 605 |
+| 16,384 households, 3,000 steps, lr 3e-4 | 0.00036 (0.00009) | 0.2807 | -0.280 (0.006) | 0.0220 | 0.0064 | 1,988 |
+
+Decomposition (`why_training_fails.jl 300 s23,s24 testset_24shift1_renter_fine.mat`, CPU, 4,096 households, 300 steps):
+- Step 23 (default forced at the floor) with the shifter trains: ce 0.264 (s.e. 0.004), against 0.00037 without the shifter. 970 of 20,000 households carry half of E[U]. The trained objective is 71% consumption, 28% default and 0.2% bequest.
+- Step 24 still fails: ce 0.00002. The objective, both at the starting network and after training, is 100% consumption below F by solvent households. One household carries half of E[U].
+- The grid policy never does this: 0 of 1,509,021 solvent household-years in the test panel consume below F.
+
+Reading: the shifter removes the bequest's minus infinity, and that was the whole of the step-23 failure. At step 24 a solvent household is allowed to consume below F. The network starts there (its default probability starts at 0.001), and u(c) as c goes to zero is the second minus infinity. The mean over households is again set by one path. The grid's max(V_default, V_continue) never chooses that region; the network has no such max.
+
+Commit: see below, pushed to work-2026-11-26.
+Open: (1) the production value of beq_shift (Quinn). (2) How the network treats consumption below F when it continues: a lower bound at F when continuing (the grid never goes below it, but Quinn asked for no floor), a value network that supplies the max (DeepV), or a bound on the utility in training only. Quinn's choice.
+
 ### 2026-11-27 Step 24 with consumption as a ratio of resources, no floor: fails the same way (spec: none, asked by Quinn in Claude Code)
 
 Asked by Quinn: no floor, an output that is a ratio that could go to zero. `Spec(ratio=true)` (with `default` only) makes the first output the share of all liquid resources consumed, C = c LW, so saving (1 - c) LW is positive whenever LW is. Default is forced only when LW <= 0, instead of LW <= 1e-6 Y. The year was already able to take a ratio `c`; the change is in `neural/src/policy.jl` and the forced rule in `neural/src/model.jl`. Julia tests 136 of 136 pass.

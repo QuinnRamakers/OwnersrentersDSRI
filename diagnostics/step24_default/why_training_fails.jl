@@ -8,18 +8,20 @@
 #  2. Both steps, and step 23 without the bequest motive, trained alike (steps, households, rate), then evaluated with
 #     hard decisions on the same 20,000 Julia draws.
 # Run from the repository root:
-#   julia --project=neural diagnostics/step24_default/why_training_fails.jl [steps] [arms]
+#   julia --project=neural diagnostics/step24_default/why_training_fails.jl [steps] [arms] [file]
 # arms: a comma list of chi0, s23, s24 and s24ratio (step 24 with the first
 # output a ratio of all liquid resources, no lower bound on consumption);
-# all four by default.
+# all four by default. file is the replay or test set the models are built
+# from (replay_23_renter.mat by default; its default_choice is set off and on).
 using NeuralPolicy, MAT, Flux, Statistics, Printf, Random
 
 const DATA = joinpath(@__DIR__, "..", "..", "neural", "data")
 steps = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 300
 arms = length(ARGS) >= 2 ? split(ARGS[2], ",") : ["chi0", "s23", "s24", "s24ratio"]
-d = matread(joinpath(DATA, "replay_23_renter.mat"))
-m23 = Model(d["model"])
-kw = Dict{Symbol,Any}(k => getfield(m23, k) for k in fieldnames(Model))
+d = matread(joinpath(DATA, length(ARGS) >= 3 ? ARGS[3] : "replay_23_renter.mat"))
+kw = Dict{Symbol,Any}(k => getfield(Model(d["model"]), k) for k in fieldnames(Model))
+kw[:default_choice] = false
+m23 = Model(; kw...)
 kw[:default_choice] = true
 m24 = Model(; kw...)
 crra(c, g) = c^(1 - g) / (1 - g)
