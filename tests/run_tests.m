@@ -399,8 +399,13 @@ for t = 1:p.T
     assert(abs(p.D_abs(t) / D - 1) < 1e-12, 'D_abs(%d) = %.15g against %.15g', t, p.D_abs(t), D);
     assert(abs(p.G_abs(t) / G - 1) < 1e-12, 'G_abs(%d) = %.15g against %.15g', t, p.G_abs(t), G);
 end
-assert(p.chi == 32 && max(abs(p.D_beq ./ (p.D_abs + p.chi * p.beq_bankrupt ^ (1 - p.gamma) * p.G_abs) - 1)) < 1e-14, ...
-    'D_beq is not D_abs + chi beq_bankrupt^(1-gamma) G_abs');
+assert(p.chi == 32 && max(abs(p.D_beq ./ (p.D_abs + p.chi * (p.beq_bankrupt + p.beq_shift) ^ (1 - p.gamma) * p.G_abs) - 1)) < 1e-14, ...
+    'D_beq is not D_abs + chi (beq_bankrupt + beq_shift)^(1-gamma) G_abs');
+q = config.params(false); q.beq_shift = -1;
+assert(threw_id(@() config.derive(q), 'derive:beq_shift'), 'a negative bequest shifter accepted');
+q = config.params(false); q.beq_shift = 3; q = config.derive(q);
+assert(max(abs(q.D_beq ./ (q.D_abs + q.chi * (q.beq_bankrupt + 3) ^ (1 - q.gamma) * q.G_abs) - 1)) < 1e-14, ...
+    'D_beq ignores the bequest shifter');
 q = ladder.params('reit');
 assert(q.chi == 0 && isequal(q.D_beq, q.D_abs), 'D_beq is not D_abs without a bequest motive');
 q = config.params(false); q.beq_bankrupt = 0;

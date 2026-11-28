@@ -40,7 +40,7 @@ function decompose(m, choose, e, N; guard)
         parts["c >= F"] .+= ifelse.(below, 0.0, uc)
         parts["default"] .+= disc .* wd .* crra.(max.(Ft, guard), g) .* m.D_beq[t]
         if m.chi > 0
-            b = max.(vec(o.beq_next), 1e-12 .* vec(o.W))
+            b = max.(vec(o.beq_next) .+ m.beq_shift .* vec(o.F_t), 1e-12 .* vec(o.W))
             ub = ifelse.(wc .> 0, wc .* m.beta * (1 - m.p_surv[t]) * m.chi .* crra.(max.(b, guard), g), 0.0) .* disc
             small = b .< Ft
             parts["bequest b < F"] .+= ifelse.(small, ub, 0.0)

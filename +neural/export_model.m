@@ -21,6 +21,7 @@ m.gamma = p.gamma;
 m.beta = p.beta;
 m.chi = p.chi;
 m.beq_bankrupt = p.beq_bankrupt;
+m.beq_shift = p.beq_shift;
 
 % Taxes and returns
 m.tau_inc = p.tau_inc;

@@ -13,6 +13,11 @@ function files = make_testsets(steps, opts)
 %   same households. With keep_solve=true the whole model.run output (the
 %   solution included) is also saved, as solve_<step>_<tenure>_<numerics>.mat,
 %   for neural.evaluate_policy and neural.paths_net.
+%   override= sets primitives on top of each step (for example
+%   struct('beq_shift', 1)), and tag= is added to the file names
+%   (testset_<step><tag>_<tenure>_<numerics>.mat) so they do not replace the
+%   step's own.
+%   tenures= ({'renter'}, {'owner'} or both) limits the tenures solved.
 
 arguments
     steps cell = {1}
@@ -21,14 +26,22 @@ arguments
     opts.seed (1,1) double = 202
     opts.out_dir char = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'neural', 'data')
     opts.keep_solve (1,1) logical = false
+    opts.override struct = struct()
+    opts.tag char = ''
+    opts.tenures cell = {}
 end
 
 if ~isfolder(opts.out_dir), mkdir(opts.out_dir); end
 files = {};
 for i = 1:numel(steps)
     p = ladder.params(steps{i});
+    for fn = fieldnames(opts.override).'
+        assert(isfield(config.params(false), fn{1}), 'make_testsets:override', '%s is not a primitive.', fn{1});
+        p.(fn{1}) = opts.override.(fn{1});
+    end
     arms = {p.is_owner};
     if model.tenures_differ(p), arms = {false, true}; end
+    if ~isempty(opts.tenures), arms = cellfun(@(s) strcmp(s, 'owner'), opts.tenures, 'UniformOutput', false); end
     for a = 1:numel(arms)
         for k = 1:numel(opts.numerics)
             n = ladder.numerics(opts.numerics{k});
@@ -38,7 +51,7 @@ for i = 1:numel(steps)
             pa.gh_n = n.gh_n;
             pa = config.derive(pa);
             r = model.run(pa, N_sim=n.N_sim, verbose=false);
-            name = sprintf('testset_%s_%s_%s.mat', p.ladder.number, model.tenure(pa), n.name);
+            name = sprintf('testset_%s%s_%s_%s.mat', p.ladder.number, opts.tag, model.tenure(pa), n.name);
             file = fullfile(opts.out_dir, name);
             neural.export_replay(r, opts.N, opts.seed, file);
             if opts.keep_solve

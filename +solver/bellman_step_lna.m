@@ -55,7 +55,9 @@ function [V_t, c_pol, pi_pol, tau_pol, reit_pol, Vc_t] = bellman_step_lna(t, V_n
 %   for the rest of its life, with no choices, worth
 %   F^(1-gamma)/(1-gamma) * p.D_beq(t); with a bequest motive it is valued as
 %   leaving p.beq_bankrupt years of F at its death (config.derive; D_beq =
-%   D_abs when p.chi = 0). Without it the household consumes the
+%   D_abs when p.chi = 0). A solvent household's bequest B is valued as
+%   chi u(B + p.beq_shift F), and the bankrupt one's with the same shifter.
+%   Without it the household consumes the
 %   floor for this year only, saves nothing, and keeps its pot, house and
 %   income. The value jumps at the edge of bankruptcy; with p.abs_node_test
 %   the continuation tests each quadrature node against next year's floor
@@ -320,6 +322,11 @@ end
 % nx also carries the rule for the powers over the quadrature nodes (upow):
 % pw = gamma - 1 when p.fast_power is on and that is an integer from 1 to 32,
 % else 0, MATLAB's power. A p-struct saved before fast_power existed has none.
+% nx.bs is the bequest shifter per unit of W at the node, set in the node
+% loop: p.beq_shift years of this year's floor amount, phi_t Y.
+nx.bs = 0;
+bs_fac = 0;                                  % a p-struct saved before beq_shift existed has none
+if isfield(p, 'beq_shift'), bs_fac = p.beq_shift * phi_t; end
 nx.pw = 0;
 if isfield(p, 'fast_power') && p.fast_power && one_m_g == round(one_m_g) && one_m_g <= -1 && one_m_g >= -32
     nx.pw = -one_m_g;
@@ -441,6 +448,7 @@ for iq = slices
         A_next_W = R_A * A_next_pre_return;
         F_W      = max(phi_t * lam, FLOOR_EPS);
         F_lo     = max(phi_lo * lam, FLOOR_EPS);     % F_W unless default is a choice
+        nxj      = nx; nxj.bs = bs_fac * lam;        % the bequest shifter, per unit of W
 
         if LW_W <= F_lo && absorbing
             % Bankrupt: the floor for the rest of life, no choices, no bequest.
@@ -458,17 +466,17 @@ for iq = slices
                 u2_0   = max(min(denAH0 ./ max(denAH0, 1e-12), 1), 0);
                 u3_0   = max(min(A_next_W ./ max(denAH0, 1e-12), 1), 0);
                 z_0    = z_at(pp_z, u1_0, u2_0, u3_0, q_n);
-                val    = val + beta_eff * sum(w_join .* (upow(W_g0 .* z_0, one_m_g, nx.pw) / one_m_g));
+                val    = val + beta_eff * sum(w_join .* (upow(W_g0 .* z_0, one_m_g, nxj.pw) / one_m_g));
             end
             if beq_eff > 0
-                beq_base = max(h_beq_fac * H_next_W, FLOOR_EPS);
-                val = val + beq_eff * sum(w_join .* (upow(beq_base, one_m_g, nx.pw) / one_m_g));
+                beq_base = max(h_beq_fac * H_next_W + nxj.bs, FLOOR_EPS);
+                val = val + beq_eff * sum(w_join .* (upow(beq_base, one_m_g, nxj.pw) / one_m_g));
             end
             if free_dc && A_next_pre_return > 0
                 % Nothing saved, but the pot is still invested: the shares alone.
                 [tS_f, tR_f, val] = sweep_dc(tau, tau_R, val, u_f, 0, A_next_pre_return, dcx, ...
                     H_next_W, Y_next_W, w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
-                    FLOOR_EPS, nx);
+                    FLOOR_EPS, nxj);
                 tS_sub(j) = tS_f; tR_sub(j) = tR_f;
             end
             best = -inf;
@@ -492,7 +500,7 @@ for iq = slices
             end
             p_j = min(max(P_fix(k, iq), 0), 1);
             v_j = bellman_rhs(c_j, p_j, LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                              w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+                              w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nxj);
             V_sub(j) = v_j; c_sub(j) = c_j; pi_sub(j) = p_j; Vc_sub(j) = v_j;
             continue
         end
@@ -507,7 +515,7 @@ for iq = slices
         for s = 1:size(cand, 1)
             v = bellman_rhs(cand(s,1), cand(s,2), LW_W, Rf_at, R_S_at, ...
                     A_next_W, H_next_W, Y_next_W, ...
-                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nxj);
             if v > maxval, maxval = v; c_seed = cand(s,1); pi_seed = cand(s,2); end
         end
 
@@ -515,7 +523,7 @@ for iq = slices
         if use_refine
             [c_sw, p_sw, v_sw] = sweep_cpi(c_seed, pi_seed, maxval, LW_W, Rf_at, R_S_at, ...
                 A_next_W, H_next_W, Y_next_W, w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, ...
-                h_beq_fac, c_floor, dc0, dp0, nx);
+                h_beq_fac, c_floor, dc0, dp0, nxj);
             if v_sw > maxval
                 maxval = v_sw; c_seed = c_sw; pi_seed = p_sw;
             end
@@ -525,7 +533,7 @@ for iq = slices
         lb2 = [c_floor; 0];
         ub2 = [1; 1];
         rhs_fun = @(x) bellman_rhs(x(1), x(2), LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                                   w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+                                   w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nxj);
         if use_ce
             % Certainty-equivalent units relative to the seed: a monotone
             % transform of the objective, equal to -1 at the seed at every node.
@@ -553,7 +561,7 @@ for iq = slices
             [v_f, x_f] = free_dc_search(v_j, [c_j, p_j, tau, tau_R], ...
                 [c_warm, pi_warm, tw_pts(k), rw_pts(k)], LW_W, Rf_at, R_S_at, A_next_pre_return, dcx, ...
                 H_next_W, Y_next_W, w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, ...
-                c_floor, dc0, dp0, nx, use_ce, inv_omg, obj_scale, opts_opt);
+                c_floor, dc0, dp0, nxj, use_ce, inv_omg, obj_scale, opts_opt);
             if v_f > v_j
                 v_j = v_f; c_j = x_f(1); p_j = x_f(2);
                 tS_sub(j) = x_f(3); tR_sub(j) = x_f(4);
@@ -567,7 +575,7 @@ for iq = slices
         if c_j >= 1
             if pi_limit
                 p_j = limit_share(LW_W, Rf_at, R_S_at, A_next_W, H_next_W, Y_next_W, ...
-                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nx);
+                    w_join, pp_z, q_n, one_m_g, beta_eff, beq_eff, h_beq_fac, nxj);
             else
                 p_j = 1;
             end
@@ -763,7 +771,7 @@ if beta_eff > 0
     rhs = rhs + beta_eff * (w.' * (upow(CE_n, one_m_g, nx.pw) / one_m_g)).';
 end
 if beq_eff > 0
-    beq_base = max(X_next + h_beq_fac * H_next_W, beq_lo);
+    beq_base = max(X_next + h_beq_fac * H_next_W + nx.bs, beq_lo);
     rhs = rhs + beq_eff * (w.' * (upow(beq_base, one_m_g, nx.pw) / one_m_g)).';
 end
 end
@@ -892,7 +900,7 @@ if beta_eff > 0
     rhs_val  = rhs_val + beta_eff * EV;
 end
 if beq_eff > 0
-    beq_base = X_next_W + h_beq_fac * H_next_W;
+    beq_base = X_next_W + h_beq_fac * H_next_W + nx.bs;
     beq_n    = upow(beq_base, one_m_g, nx.pw) / one_m_g;
     E_beq    = sum(w .* beq_n);
     rhs_val  = rhs_val + beq_eff * E_beq;
@@ -947,7 +955,7 @@ for r = 1:4
         rhs    = rhs + beta_eff * (w.' * V_n).';
     end
     if beq_eff > 0
-        beq_base = X_next + h_beq_fac * H_next_W;
+        beq_base = X_next + h_beq_fac * H_next_W + nx.bs;
         rhs = rhs + beq_eff * (w.' * (upow(beq_base, one_m_g, nx.pw) / one_m_g)).';
     end
     [mv, im] = max(rhs);

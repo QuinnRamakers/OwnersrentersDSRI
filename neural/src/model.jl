@@ -19,6 +19,7 @@ Base.@kwdef struct Model
     beta::Float64
     chi::Float64
     beq_bankrupt::Float64
+    beq_shift::Float64 = 0.0
     tau_inc::Float64
     tau_cg_bond::Float64
     tau_wealth::Float64
@@ -69,7 +70,7 @@ function Model(d::AbstractDict)
     v(k) = _column(d[k])
     b(k) = _scalar(d[k]) != 0
     Model(T=Int(s("T")), t_ret=Int(s("t_ret")), age0=Int(s("age0")), is_owner=b("is_owner"),
-          gamma=s("gamma"), beta=s("beta"), chi=s("chi"), beq_bankrupt=s("beq_bankrupt"),
+          gamma=s("gamma"), beta=s("beta"), chi=s("chi"), beq_bankrupt=s("beq_bankrupt"), beq_shift=haskey(d, "beq_shift") ? s("beq_shift") : 0.0,
           tau_inc=s("tau_inc"), tau_cg_bond=s("tau_cg_bond"), tau_wealth=s("tau_wealth"),
           tau_cg_stock=s("tau_cg_stock"), cg_loss_offset=b("cg_loss_offset"),
           r=s("r"), Rf=s("Rf"), mu_S=s("mu_S"), sigma_S=s("sigma_S"),
@@ -365,7 +366,7 @@ Each household's utility this year, discounted to year t only by nothing
 going bankrupt this year u(F) D_beq(t), the value of the floor for the rest
 of its life as the solver counts it; zero for one bankrupt before. Utility is
 of consumption in units of `unit`. With a bequest motive a solvent household
-also gets beta (1 - p_t) chi u(bequest after a year of returns), the value of
+also gets beta (1 - p_t) chi u(bequest after a year of returns + beq_shift F_t), the value of
 dying after this year in the solver (p_T = 0, so the last year counts it
 fully). `guard` bounds consumption and the bequest below (a share of `unit`)
 so that Float32 cannot overflow; it is 0 in evaluation.
@@ -385,7 +386,7 @@ function year_utility(m::Model, t::Integer, o, unit, guard)
         u = ifelse.(o.enter, u .* F(m.D_beq[t]), ifelse.(o.look, u, zero(F)))
     end
     if m.chi > 0
-        b = max.(o.beq_next, F(1e-12) .* o.W) ./ F(unit)
+        b = max.(o.beq_next .+ F(m.beq_shift) .* o.F_t, F(1e-12) .* o.W) ./ F(unit)
         ub = F(m.beta * (1 - m.p_surv[t]) * m.chi) .* crra.(max.(b, F(guard)), omg)
         u = u .+ (m.default_choice ? ifelse.(o.wc .> 0, o.wc .* ub, zero(F)) : ifelse.(o.look, ub, zero(F)))
     end

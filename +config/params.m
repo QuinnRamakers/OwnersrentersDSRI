@@ -33,6 +33,7 @@ p.gamma = 5;                  % relative risk aversion
 p.beta  = 0.96;               % time discount factor (placeholder)
 p.chi   = 32;                 % bequest intensity: b^gamma with b = 2 years of consumption (paper, 16 November 2026); 0 = none
 p.beq_bankrupt = 1;           % a bankrupt household is valued as leaving this many years of its floor consumption (placeholder)
+p.beq_shift    = 0;           % bequest shifter: chi u(B + beq_shift F), in years of the floor amount F; 0 = none
 
 % Labour income. Owners use income_coef and sigma_l_log; renters the _rent fields.
 p.income_source       = 'dhs';     % 'dhs': DHS cubic in euros; 'poly': CGM cubic, not in euros; 'table': BKV age effects
